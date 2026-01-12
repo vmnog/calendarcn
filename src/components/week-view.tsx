@@ -93,12 +93,12 @@ export function WeekView({
 
       {/* ONLY this part scrolls */}
       <div className="flex-1 overflow-auto">
-        <div className="flex" style={{ height: hours.length * HOUR_HEIGHT }}>
+        <div className="relative flex" style={{ height: hours.length * HOUR_HEIGHT }}>
           <WeekViewTimeAxis hours={hours} hourHeight={HOUR_HEIGHT} />
           <div className="relative flex-1">
             <WeekViewGrid days={days} hours={hours} hourHeight={HOUR_HEIGHT} />
-            <WeekViewTimeIndicator days={days} hourHeight={HOUR_HEIGHT} />
           </div>
+          <WeekViewTimeIndicator days={days} hourHeight={HOUR_HEIGHT} />
         </div>
       </div>
     </div>

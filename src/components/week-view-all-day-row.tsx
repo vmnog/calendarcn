@@ -14,7 +14,7 @@ export function WeekViewAllDayRow({ days, className }: WeekViewAllDayRowProps) {
       style={{ gridTemplateColumns: "4rem 1fr" }}
     >
       {/* All-day label */}
-      <div className="border-border text-muted-foreground flex items-center justify-end border-r px-2 py-2 text-xs">
+      <div className="border-border text-muted-foreground flex items-center justify-end border-r px-2 py-2 text-xxs">
         All-day
       </div>
 

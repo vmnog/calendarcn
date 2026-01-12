@@ -16,7 +16,7 @@ export function WeekViewTimeAxis({
   return (
     <div
       className={cn(
-        "border-border grid w-16 flex-shrink-0 border-r",
+        "grid w-16 flex-shrink-0",
         className
       )}
       style={{
@@ -27,7 +27,7 @@ export function WeekViewTimeAxis({
       {hours.map((hourSlot) => (
         <div
           key={hourSlot.hour}
-          className="text-muted-foreground relative pr-2 text-right text-xs"
+          className="text-muted-foreground relative pr-2 text-right text-xxs"
         >
           {/* Show label at top of each cell, skip 12 AM (hour 0) */}
           {hourSlot.hour > 0 && (

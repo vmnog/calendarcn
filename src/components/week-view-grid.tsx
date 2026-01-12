@@ -25,7 +25,7 @@ export function WeekViewGrid({
             <div
               key={`${day.date.toISOString()}-${hourSlot.hour}`}
               className={cn(
-                "border-border border-b border-l first:border-l-0",
+                "border-border border-b border-l",
                 isWeekend && "bg-calendar-weekend",
                 day.isToday && "bg-accent/30"
               )}

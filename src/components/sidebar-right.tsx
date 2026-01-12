@@ -6,11 +6,9 @@ import { Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Calendars } from "@/components/calendars"
 import { DatePicker } from "@/components/date-picker"
-import { NavUser } from "@/components/nav-user"
 import {
   SidebarContent,
   SidebarFooter,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -21,11 +19,6 @@ const SIDEBAR_WIDTH = "18rem"
 
 // This is sample data.
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   calendars: [
     {
       name: "My Calendars",
@@ -67,9 +60,6 @@ export function SidebarRight({ open = true }: SidebarRightProps) {
           open ? "left-0" : "left-[calc(var(--sidebar-width)*-1)]"
         )}
       >
-        <SidebarHeader className="border-sidebar-border h-16 border-b">
-          <NavUser user={data.user} />
-        </SidebarHeader>
         <SidebarContent>
           <DatePicker />
           <SidebarSeparator className="mx-0" />

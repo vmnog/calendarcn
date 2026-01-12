@@ -39,7 +39,7 @@ export function WeekViewDayColumns({
       style={{ gridTemplateColumns: "4rem 1fr" }}
     >
       {/* Timezone label */}
-      <div className="text-muted-foreground flex items-center justify-center text-xs">
+      <div className="text-muted-foreground flex items-center justify-end pr-2 text-xxs">
         {timezone}
       </div>
 
