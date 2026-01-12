@@ -52,17 +52,19 @@ function Calendar({
         ),
         month: cn("flex flex-col w-full gap-0", defaultClassNames.month),
         nav: cn(
-          "flex flex-row items-center justify-end gap-0",
+          "grid w-full items-center gap-0",
+          "[grid-template-columns:1.25rem_repeat(7,1fr)]",
+          "[&>button:first-child]:col-start-7 [&>button:last-child]:col-start-8",
           defaultClassNames.nav
         ),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-6 aria-disabled:opacity-50 p-0 select-none",
+          "size-6 aria-disabled:opacity-50 p-0 select-none hover:!bg-calendar-day-hover transition-none justify-self-center",
           defaultClassNames.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-6 aria-disabled:opacity-50 p-0 select-none",
+          "size-6 aria-disabled:opacity-50 p-0 select-none hover:!bg-calendar-day-hover transition-none justify-self-center",
           defaultClassNames.button_next
         ),
         month_caption: cn(
@@ -91,11 +93,11 @@ function Calendar({
         table: "w-full border-collapse",
         weekdays: cn("flex", defaultClassNames.weekdays),
         weekday: cn(
-          "text-muted-foreground rounded-md flex-1 font-normal text-[0.7rem] select-none",
+          "text-muted-foreground rounded-md flex-1 font-normal text-xxs select-none",
           defaultClassNames.weekday
         ),
         week: cn(
-          "flex w-full items-center relative",
+          "flex w-full items-center relative group/week",
           "has-[[data-today=true]]:before:absolute has-[[data-today=true]]:before:inset-y-0 has-[[data-today=true]]:before:left-6 has-[[data-today=true]]:before:right-1 has-[[data-today=true]]:before:bg-calendar-current-week has-[[data-today=true]]:before:rounded-md has-[[data-today=true]]:before:-z-10",
           defaultClassNames.week
         ),
@@ -104,7 +106,7 @@ function Calendar({
           defaultClassNames.week_number_header
         ),
         week_number: cn(
-          "text-[0.7rem] select-none text-muted-foreground w-5",
+          "text-xxs select-none text-muted-foreground w-5",
           defaultClassNames.week_number
         ),
         day: cn(
@@ -170,7 +172,7 @@ function Calendar({
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>
-              <div className="flex h-(--cell-size) w-5 items-center justify-center text-center">
+              <div className="flex h-(--cell-size) w-5 items-center justify-center text-center text-xxs">
                 {children}
               </div>
             </td>
@@ -214,7 +216,7 @@ function CalendarDayButton({
       data-outside={modifiers.outside}
       data-today={modifiers.today}
       className={cn(
-        "text-foreground data-[outside=true]:text-muted-foreground/40 data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 dark:hover:text-accent-foreground flex size-7 items-center justify-center leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70",
+        "text-foreground data-[outside=true]:text-muted-foreground/40 data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 flex size-7 items-center justify-center leading-none font-normal transition-none group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70 hover:bg-calendar-day-hover group-has-[[data-today=true]]/week:hover:bg-calendar-day-hover-current-week data-[today=true]:hover:!bg-primary data-[today=true]:hover:!text-primary-foreground",
         defaultClassNames.day,
         className
       )}

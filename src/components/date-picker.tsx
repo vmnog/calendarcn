@@ -10,7 +10,7 @@ import {
 
 export function DatePicker() {
   const [date, setDate] = React.useState<Date | undefined>(
-    new Date(2026, 0, 11)
+    new Date()
   )
 
   return (

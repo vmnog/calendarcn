@@ -20,6 +20,8 @@
   --color-sidebar: var(--sidebar);
   --color-calendar-weekend: var(--calendar-weekend);
   --color-calendar-current-week: var(--calendar-current-week);
+  --color-calendar-day-hover: var(--calendar-day-hover);
+  --color-calendar-day-hover-current-week: var(--calendar-day-hover-current-week);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -78,6 +80,8 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --calendar-weekend: #fcfcfc;
   --calendar-current-week: #EDECE9;
+  --calendar-day-hover: #EEECE8;
+  --calendar-day-hover-current-week: #E2E1DC;
   --sidebar: #f8f8f7;
   --sidebar-foreground: #939391;
   --sidebar-muted-foreground: #cfcfce;
@@ -116,6 +120,8 @@ html.dark,
   --chart-5: oklch(0.645 0.246 16.439);
   --calendar-weekend: #181818;
   --calendar-current-week: #2E2E2E;
+  --calendar-day-hover: #2E2E2E;
+  --calendar-day-hover-current-week: #3D3D3D;
   --sidebar: #202020;
   --sidebar-foreground: #868686;
   --sidebar-muted-foreground: #555555;

@@ -61,18 +61,20 @@ export function WeekViewTimeIndicator({
           </span>
         </div>
 
-        {/* Vertical line at start of grid */}
-        <div className="bg-primary h-3 w-0.5 flex-shrink-0 translate-y-[0.5px]" />
-
-        {/* Horizontal lines across day columns */}
-        {days.map((day) => (
-          <div
-            key={day.date.toISOString()}
-            className={cn(
-              "flex-1 bg-primary",
-              day.isToday ? "h-[3px]" : "h-[0.5px]"
+        {/* Horizontal lines across day columns with vertical line at today's start */}
+        {days.map((day, index) => (
+          <React.Fragment key={day.date.toISOString()}>
+            {/* Vertical line at the start of today's column */}
+            {index === todayIndex && (
+              <div className="bg-primary h-3 w-0.5 flex-shrink-0 translate-y-[0.5px]" />
             )}
-          />
+            <div
+              className={cn(
+                "flex-1 bg-primary",
+                day.isToday ? "h-[3px]" : "h-[0.5px]"
+              )}
+            />
+          </React.Fragment>
         ))}
       </div>
     </div>
