@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   ChevronDownIcon,
   ChevronUpIcon,
+  Undo2Icon,
 } from "lucide-react"
 import {
   DayPicker,
@@ -13,6 +14,11 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 function Calendar({
   className,
@@ -22,9 +28,15 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
+  showBackToToday,
+  onBackToToday,
+  monthLabel,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
+  showBackToToday?: boolean
+  onBackToToday?: () => void
+  monthLabel?: string
 }) {
   const defaultClassNames = getDefaultClassNames()
 
@@ -52,19 +64,17 @@ function Calendar({
         ),
         month: cn("flex flex-col w-full gap-0", defaultClassNames.month),
         nav: cn(
-          "grid w-full items-center gap-0",
-          "[grid-template-columns:1.25rem_repeat(7,1fr)]",
-          "[&>button:first-child]:col-start-7 [&>button:last-child]:col-start-8",
+          "flex w-full items-center justify-end gap-0",
           defaultClassNames.nav
         ),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-6 aria-disabled:opacity-50 p-0 select-none hover:!bg-calendar-day-hover transition-none justify-self-center",
+          "size-6 aria-disabled:opacity-50 p-0 select-none hover:!bg-calendar-day-hover hover:!text-current transition-none justify-self-center",
           defaultClassNames.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-6 aria-disabled:opacity-50 p-0 select-none hover:!bg-calendar-day-hover transition-none justify-self-center",
+          "size-6 aria-disabled:opacity-50 p-0 select-none hover:!bg-calendar-day-hover hover:!text-current transition-none justify-self-center",
           defaultClassNames.button_next
         ),
         month_caption: cn(
@@ -97,7 +107,7 @@ function Calendar({
           defaultClassNames.weekday
         ),
         week: cn(
-          "flex w-full items-center relative group/week",
+          "flex w-full items-center relative group/week mb-0.5",
           "has-[[data-today=true]]:before:absolute has-[[data-today=true]]:before:inset-y-0 has-[[data-today=true]]:before:left-6 has-[[data-today=true]]:before:right-1 has-[[data-today=true]]:before:bg-calendar-current-week has-[[data-today=true]]:before:rounded-md has-[[data-today=true]]:before:-z-10",
           defaultClassNames.week
         ),
@@ -148,24 +158,83 @@ function Calendar({
             />
           )
         },
-        Chevron: ({ className, orientation, ...props }) => {
-          if (orientation === "left") {
-            return (
-              <ChevronUpIcon className={cn("size-4", className)} {...props} />
-            )
-          }
-
-          if (orientation === "right") {
-            return (
-              <ChevronDownIcon
-                className={cn("size-4", className)}
-                {...props}
-              />
-            )
-          }
-
+        Nav: ({ className, ...props }) => {
           return (
-            <ChevronDownIcon className={cn("size-4", className)} {...props} />
+            <nav className={cn("flex w-full items-center", className)} {...props}>
+              {/* Week number space - same as week_number_header */}
+              <div className="w-5" />
+
+              {/* Month label - spans 4 columns worth (Su-We) */}
+              {monthLabel && (
+                <span className="text-sidebar-primary flex-[4] text-sm font-medium">
+                  {monthLabel}
+                </span>
+              )}
+              {!monthLabel && <span className="flex-[4]" />}
+
+              {/* Th column - Undo button or empty space */}
+              {showBackToToday && onBackToToday ? (
+                <div className="flex-1 flex justify-center">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={onBackToToday}
+                        className={cn(
+                          buttonVariants({ variant: buttonVariant }),
+                          "size-6 p-0 select-none hover:!bg-calendar-day-hover hover:!text-current transition-none"
+                        )}
+                      >
+                        <Undo2Icon className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Go back to today</TooltipContent>
+                  </Tooltip>
+                </div>
+              ) : (
+                <span className="flex-1" />
+              )}
+
+              {/* Fr column - Up chevron */}
+              <div className="flex-1 flex justify-center">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        buttonVariants({ variant: buttonVariant }),
+                        "size-6 p-0 select-none hover:!bg-calendar-day-hover hover:!text-current transition-none"
+                      )}
+                      aria-label="Go to previous month"
+                      onClick={props.onPreviousClick}
+                    >
+                      <ChevronUpIcon className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Go to previous month</TooltipContent>
+                </Tooltip>
+              </div>
+
+              {/* Sa column - Down chevron */}
+              <div className="flex-1 flex justify-center">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        buttonVariants({ variant: buttonVariant }),
+                        "size-6 p-0 select-none hover:!bg-calendar-day-hover hover:!text-current transition-none"
+                      )}
+                      aria-label="Go to next month"
+                      onClick={props.onNextClick}
+                    >
+                      <ChevronDownIcon className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Go to next month</TooltipContent>
+                </Tooltip>
+              </div>
+            </nav>
           )
         },
         DayButton: CalendarDayButton,
@@ -216,7 +285,7 @@ function CalendarDayButton({
       data-outside={modifiers.outside}
       data-today={modifiers.today}
       className={cn(
-        "text-foreground data-[outside=true]:text-muted-foreground/40 data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 flex size-7 items-center justify-center leading-none font-normal transition-none group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70 hover:bg-calendar-day-hover group-has-[[data-today=true]]/week:hover:bg-calendar-day-hover-current-week data-[today=true]:hover:!bg-primary data-[today=true]:hover:!text-primary-foreground",
+        "text-foreground data-[outside=true]:text-muted-foreground/40 data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground flex size-7 items-center justify-center leading-none font-normal transition-none outline-none focus-visible:outline-none focus-visible:ring-0 data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70 hover:bg-calendar-day-hover group-has-[[data-today=true]]/week:hover:bg-calendar-day-hover-current-week data-[today=true]:hover:!bg-primary data-[today=true]:hover:!text-primary-foreground",
         defaultClassNames.day,
         className
       )}

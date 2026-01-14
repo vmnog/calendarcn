@@ -18,30 +18,68 @@ import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
   SidebarProvider,
-  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Kbd } from "@/components/ui/kbd";
 
-export default function Page() {
+function PageContent() {
   const [leftSidebarOpen, setLeftSidebarOpen] = React.useState(true);
   const [currentDate] = React.useState(() => new Date());
+  const { toggleSidebar } = useSidebar();
 
   const { monthName, year, weekNumber } = getCalendarHeaderInfo(currentDate, 0);
 
+  // Keyboard shortcuts
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Command + / for left sidebar
+      if (e.metaKey && e.key === "/") {
+        e.preventDefault();
+        setLeftSidebarOpen((prev) => !prev);
+        return;
+      }
+      // / for right sidebar (only if not in an input)
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+          return;
+        }
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleSidebar]);
+
   return (
-    <SidebarProvider className="h-screen">
+    <>
       <SidebarRight open={leftSidebarOpen} />
       <SidebarInset className="flex flex-col overflow-hidden">
         <header className="bg-background sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2">
           <div className="flex flex-1 items-center gap-2 px-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              onClick={() => setLeftSidebarOpen((prev) => !prev)}
-            >
-              <PanelLeftIcon />
-              <span className="sr-only">Toggle Calendar Sidebar</span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={() => setLeftSidebarOpen((prev) => !prev)}
+                >
+                  <PanelLeftIcon />
+                  <span className="sr-only">Toggle Calendar Sidebar</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Hide sidebar <Kbd className="ml-1">⌘</Kbd> <Kbd>/</Kbd>
+              </TooltipContent>
+            </Tooltip>
             <Separator
               orientation="vertical"
               className="mr-2 data-[orientation=vertical]:h-4"
@@ -57,8 +95,8 @@ export default function Page() {
           <div className="flex items-center gap-2 px-3">
             <ThemeToggle />
             <Avatar className="size-8">
-              <AvatarImage src="/avatars/shadcn.jpg" alt="User" />
-              <AvatarFallback>U</AvatarFallback>
+              <AvatarImage src="https://github.com/vmnog.png" alt="Victor Nogueira" />
+              <AvatarFallback>VN</AvatarFallback>
             </Avatar>
             <Button variant="secondary" size="sm">
               Today
@@ -73,10 +111,22 @@ export default function Page() {
                 <span className="sr-only">Next week</span>
               </Button>
             </div>
-            <SidebarTrigger>
-              <PanelRightIcon />
-              <span className="sr-only">Toggle Navigation Sidebar</span>
-            </SidebarTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={toggleSidebar}
+                >
+                  <PanelRightIcon />
+                  <span className="sr-only">Toggle Navigation Sidebar</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Hide context panel <Kbd className="ml-1">/</Kbd>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </header>
         <div className="flex flex-1 flex-col overflow-hidden">
@@ -84,6 +134,14 @@ export default function Page() {
         </div>
       </SidebarInset>
       <SidebarLeft />
+    </>
+  );
+}
+
+export default function Page() {
+  return (
+    <SidebarProvider className="h-screen">
+      <PageContent />
     </SidebarProvider>
   );
 }

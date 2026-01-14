@@ -15,7 +15,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar"
 
-const SIDEBAR_WIDTH = "18rem"
+const SIDEBAR_WIDTH = "15rem"
 
 // This is sample data.
 const data = {
