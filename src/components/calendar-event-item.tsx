@@ -15,43 +15,43 @@ const eventColorStyles: Record<
   red: {
     bg: "bg-event-red-bg",
     bgHover: "hover:bg-event-red-bg/70",
-    border: "bg-event-red",
+    border: "bg-event-red-border",
     text: "text-event-red",
   },
   orange: {
     bg: "bg-event-orange-bg",
     bgHover: "hover:bg-event-orange-bg/70",
-    border: "bg-event-orange",
+    border: "bg-event-orange-border",
     text: "text-event-orange",
   },
   yellow: {
     bg: "bg-event-yellow-bg",
     bgHover: "hover:bg-event-yellow-bg/70",
-    border: "bg-event-yellow",
+    border: "bg-event-yellow-border",
     text: "text-event-yellow",
   },
   green: {
     bg: "bg-event-green-bg",
     bgHover: "hover:bg-event-green-bg/70",
-    border: "bg-event-green",
+    border: "bg-event-green-border",
     text: "text-event-green",
   },
   blue: {
     bg: "bg-event-blue-bg",
     bgHover: "hover:bg-event-blue-bg/70",
-    border: "bg-event-blue",
+    border: "bg-event-blue-border",
     text: "text-event-blue",
   },
   purple: {
     bg: "bg-event-purple-bg",
     bgHover: "hover:bg-event-purple-bg/70",
-    border: "bg-event-purple",
+    border: "bg-event-purple-border",
     text: "text-event-purple",
   },
   gray: {
     bg: "bg-event-gray-bg",
     bgHover: "hover:bg-event-gray-bg/70",
-    border: "bg-event-gray",
+    border: "bg-event-gray-border",
     text: "text-event-gray",
   },
 };
@@ -152,29 +152,28 @@ export function CalendarEventItem({
       {/* Left border - curved outside, straight inside */}
       <div
         className={cn(
-          "absolute left-0 top-0 bottom-0 w-[3px] rounded-l-md",
+          "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-white dark:mix-blend-overlay",
           styles.border,
           eventIsPast && "opacity-50"
         )}
       />
       <div
         className={cn(
-          "relative flex flex-col gap-0.5 h-full pl-1 overflow-hidden",
+          "relative flex flex-col h-full pl-1 overflow-hidden",
           isCompact && "flex-row items-center gap-1",
           eventIsPast && "opacity-50"
         )}
       >
         <span
           className={cn(
-            "font-medium text-[0.625rem] leading-tight break-words",
-            styles.text,
-            "dark:text-white"
+            "font-medium text-[0.625rem] leading-tight break-words dark:text-white/80",
+            styles.text
           )}
         >
           {event.title}
         </span>
         {!isCompact && (
-          <span className={cn("text-[0.625rem] whitespace-nowrap", styles.text, "dark:text-white/50")}>
+          <span className={cn("text-[0.625rem] whitespace-nowrap dark:text-white dark:mix-blend-overlay", styles.text)}>
             {formatEventTimeRange(event)}
           </span>
         )}
@@ -273,7 +272,7 @@ export function AllDayEventItem({
       {spanStart && (
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-[3px] rounded-l-md",
+            "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-white dark:mix-blend-overlay",
             styles.border,
             eventIsPast && "opacity-50"
           )}
@@ -281,10 +280,9 @@ export function AllDayEventItem({
       )}
       <span
         className={cn(
-          "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap",
+          "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap dark:text-white",
           spanStart && "pl-1",
           styles.text,
-          "dark:text-white",
           eventIsPast && "opacity-50"
         )}
       >
@@ -293,9 +291,8 @@ export function AllDayEventItem({
       {hasStartTime && (
         <span
           className={cn(
-            "relative text-[0.625rem] leading-tight whitespace-nowrap shrink-0",
+            "relative text-[0.625rem] leading-tight whitespace-nowrap shrink-0 dark:text-white dark:mix-blend-overlay",
             styles.text,
-            "dark:text-white/50",
             eventIsPast && "opacity-50"
           )}
         >

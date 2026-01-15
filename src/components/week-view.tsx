@@ -26,19 +26,19 @@ export const TIME_AXIS_WIDTH = 64;
 
 /**
  * Generates an array of WeekDay objects for the week containing the given date
+ * Note: isToday is computed dynamically, not cached, to handle overnight page views
  */
 function generateWeekDays(
-  currentDate: Date,
+  displayedDate: Date,
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
-): WeekDay[] {
-  const weekStart = startOfWeek(currentDate, { weekStartsOn });
-  const weekEnd = endOfWeek(currentDate, { weekStartsOn });
+): Omit<WeekDay, "isToday">[] {
+  const weekStart = startOfWeek(displayedDate, { weekStartsOn });
+  const weekEnd = endOfWeek(displayedDate, { weekStartsOn });
 
   return eachDayOfInterval({ start: weekStart, end: weekEnd }).map((date) => ({
     date,
     dayName: format(date, "EEE"),
     dayNumber: date.getDate(),
-    isToday: isToday(date),
   }));
 }
 
@@ -78,10 +78,16 @@ export function WeekView({
   onEventClick,
   className,
 }: WeekViewProps) {
-  const days = React.useMemo(
+  const baseDays = React.useMemo(
     () => generateWeekDays(currentDate, weekStartsOn),
     [currentDate, weekStartsOn]
   );
+
+  // Compute isToday fresh on each render to handle overnight page views
+  const days: WeekDay[] = baseDays.map((day) => ({
+    ...day,
+    isToday: isToday(day.date),
+  }));
 
   const hours = React.useMemo(() => generateHours(), []);
 
