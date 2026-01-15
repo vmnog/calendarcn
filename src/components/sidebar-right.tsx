@@ -49,14 +49,14 @@ export function SidebarRight({ open = true }: SidebarRightProps) {
       {/* Gap element that handles the space transition */}
       <div
         className={cn(
-          "relative bg-transparent transition-[width] duration-200 ease-linear",
+          "relative bg-transparent",
           open ? "w-(--sidebar-width)" : "w-0"
         )}
       />
       {/* Sidebar container */}
       <div
         className={cn(
-          "bg-sidebar fixed inset-y-0 left-0 z-10 hidden h-svh w-(--sidebar-width) flex-col border-r transition-[left] duration-200 ease-linear md:flex",
+          "bg-sidebar fixed inset-y-0 left-0 z-10 hidden h-svh w-(--sidebar-width) flex-col border-r md:flex",
           open ? "left-0" : "left-[calc(var(--sidebar-width)*-1)]"
         )}
       >

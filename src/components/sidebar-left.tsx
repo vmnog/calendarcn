@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Search, Square } from "lucide-react"
+import { CalendarSearch, PanelRightIcon } from "lucide-react"
 
 import { Kbd } from "@/components/ui/kbd"
 import {
@@ -12,27 +12,48 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 export function SidebarLeft({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
+  const { toggleSidebar } = useSidebar()
+
   return (
-    <Sidebar side="right" className="border-l" {...props}>
+    <Sidebar side="right" className="border-l bg-white dark:bg-[#191919]" {...props}>
       <SidebarHeader className="p-3">
         <div className="flex items-center gap-2">
-          <Search className="text-muted-foreground size-4 shrink-0" />
+          <CalendarSearch className="text-muted-foreground size-4 shrink-0" />
           <input
             type="text"
             placeholder="Search events"
-            className="text-muted-foreground placeholder:text-muted-foreground h-9 w-full bg-transparent text-sm outline-none"
+            className="text-muted-foreground placeholder:text-muted-foreground h-9 w-full bg-transparent text-xs outline-none"
           />
-          <Square className="text-muted-foreground size-4 shrink-0" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+              >
+                <PanelRightIcon className="size-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              Close context panel <Kbd className="ml-1">/</Kbd>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup className="px-3">
-          <SidebarGroupLabel className="text-foreground text-sm font-semibold">
+        <SidebarGroup className="px-3 pt-6">
+          <SidebarGroupLabel className="text-foreground text-xs font-semibold px-0">
             Useful shortcuts
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -75,7 +96,7 @@ function ShortcutRow({
   children: React.ReactNode
 }) {
   return (
-    <div className="text-muted-foreground flex items-center justify-between py-1.5 text-sm">
+    <div className="text-muted-foreground flex items-center justify-between py-1 text-xs">
       <span>{label}</span>
       <div className="flex items-center gap-1">{children}</div>
     </div>

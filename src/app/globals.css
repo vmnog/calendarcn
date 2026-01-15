@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --font-size-xxs: 0.625rem;
   --text-xxs: 0.625rem;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -22,6 +23,22 @@
   --color-calendar-current-week: var(--calendar-current-week);
   --color-calendar-day-hover: var(--calendar-day-hover);
   --color-calendar-day-hover-current-week: var(--calendar-day-hover-current-week);
+
+  /* Event colors */
+  --color-event-red: var(--event-red);
+  --color-event-red-bg: var(--event-red-bg);
+  --color-event-orange: var(--event-orange);
+  --color-event-orange-bg: var(--event-orange-bg);
+  --color-event-yellow: var(--event-yellow);
+  --color-event-yellow-bg: var(--event-yellow-bg);
+  --color-event-green: var(--event-green);
+  --color-event-green-bg: var(--event-green-bg);
+  --color-event-blue: var(--event-blue);
+  --color-event-blue-bg: var(--event-blue-bg);
+  --color-event-purple: var(--event-purple);
+  --color-event-purple-bg: var(--event-purple-bg);
+  --color-event-gray: var(--event-gray);
+  --color-event-gray-bg: var(--event-gray-bg);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -57,6 +74,22 @@
   --radius: 0.625rem;
   --background: #ffffff;
   --foreground: #32302c;
+
+  /* Event colors - light mode */
+  --event-red: #C53929;
+  --event-red-bg: #FFD6C9;
+  --event-orange: #C56A13;
+  --event-orange-bg: #FFE6CA;
+  --event-yellow: #7D7215;
+  --event-yellow-bg: #FFEFBD;
+  --event-green: #2E7D32;
+  --event-green-bg: #D7FDE0;
+  --event-blue: #1976D2;
+  --event-blue-bg: #DAF3FE;
+  --event-purple: #7B1FA2;
+  --event-purple-bg: #F9E6FE;
+  --event-gray: #616161;
+  --event-gray-bg: #F4F4F4;
   --card: #ffffff;
   --card-foreground: #32302c;
   --popover: #ffffff;
@@ -97,6 +130,22 @@ html.dark,
 .dark {
   --background: #191919;
   --foreground: #d9d9d9;
+
+  /* Event colors - dark mode */
+  --event-red: #F28B82;
+  --event-red-bg: #662826;
+  --event-orange: #FCAD70;
+  --event-orange-bg: #663821;
+  --event-yellow: #FFF475;
+  --event-yellow-bg: #605221;
+  --event-green: #81C995;
+  --event-green-bg: #2E4C34;
+  --event-blue: #8AB4F8;
+  --event-blue-bg: #284E66;
+  --event-purple: #D7AEFB;
+  --event-purple-bg: #42355F;
+  --event-gray: #DADCE0;
+  --event-gray-bg: #4E4E4E;
   --card: #202020;
   --card-foreground: #d9d9d9;
   --popover: #202020;

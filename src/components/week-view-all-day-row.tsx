@@ -1,39 +1,118 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { WeekViewAllDayRowProps } from "./week-view-types";
+import { isPast, isSameDay } from "date-fns";
+import { calculateAllDayEventRows } from "@/lib/event-utils";
+import { AllDayEventItem } from "./calendar-event-item";
+import type { CalendarEvent, WeekViewAllDayRowProps } from "./week-view-types";
+
+const ALL_DAY_EVENT_HEIGHT = 24;
+const ALL_DAY_ROW_GAP = 2;
 
 /**
  * All-day row for displaying all-day events
  * Shows "All-day" label on the left with 7 day columns
  */
-export function WeekViewAllDayRow({ days, className }: WeekViewAllDayRowProps) {
+export function WeekViewAllDayRow({
+  days,
+  allDayEvents = [],
+  className,
+}: WeekViewAllDayRowProps) {
+  const eventRows = calculateAllDayEventRows(allDayEvents, days);
+  const maxRow = eventRows.length > 0 ? Math.max(...eventRows.map((r) => r.row)) + 1 : 0;
+  const contentHeight = maxRow > 0 ? maxRow * (ALL_DAY_EVENT_HEIGHT + ALL_DAY_ROW_GAP) + 8 : 32;
+
   return (
     <div
       className={cn("border-border grid border-t border-b bg-background", className)}
       style={{ gridTemplateColumns: "4rem 1fr" }}
     >
       {/* All-day label */}
-      <div className="border-border text-muted-foreground flex items-center justify-end border-r px-2 py-2 text-xxs">
+      <div className="border-border text-muted-foreground flex items-start justify-end border-r px-2 py-2 text-xxs">
         All-day
       </div>
 
       {/* Day columns for all-day events */}
-      <div className="grid grid-cols-7">
-        {days.map((day) => {
-          const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
-          return (
-            <div
-              key={day.date.toISOString()}
-              className={cn(
-                "border-border min-h-[2rem] border-l first:border-l-0",
-                isWeekend && "bg-calendar-weekend",
-                day.isToday && "bg-accent/30"
-              )}
+      <div className="relative" style={{ minHeight: `${contentHeight}px` }}>
+        {/* Background grid */}
+        <div className="absolute inset-0 grid grid-cols-7">
+          {days.map((day) => {
+            const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
+            return (
+              <div
+                key={day.date.toISOString()}
+                className={cn(
+                  "border-border border-l first:border-l-0 h-full",
+                  isWeekend && "bg-calendar-weekend"
+                )}
+              />
+            );
+          })}
+        </div>
+
+        {/* Events */}
+        <div className="relative py-1 px-0.5">
+          {eventRows.map(({ event, startColumn, endColumn, row }) => (
+            <AllDayEventRow
+              key={event.id}
+              event={event}
+              startColumn={startColumn}
+              endColumn={endColumn}
+              row={row}
+              totalColumns={days.length}
+              days={days}
             />
-          );
-        })}
+          ))}
+        </div>
       </div>
+    </div>
+  );
+}
+
+interface AllDayEventRowProps {
+  event: CalendarEvent;
+  startColumn: number;
+  endColumn: number;
+  row: number;
+  totalColumns: number;
+  days: WeekViewAllDayRowProps["days"];
+}
+
+function AllDayEventRow({
+  event,
+  startColumn,
+  endColumn,
+  row,
+  totalColumns,
+  days,
+}: AllDayEventRowProps) {
+  const left = (startColumn / totalColumns) * 100;
+  // Subtract ~1.2% for right gap (same 8% gap as regular events, scaled to column width)
+  const columnWidth = 100 / totalColumns;
+  const rightGap = columnWidth * 0.08;
+  const width = ((endColumn - startColumn + 1) / totalColumns) * 100 - rightGap;
+  const top = row * (ALL_DAY_EVENT_HEIGHT + ALL_DAY_ROW_GAP);
+
+  const spanStart = isSameDay(event.start, days[startColumn].date);
+  const spanEnd = isSameDay(event.end, days[endColumn].date);
+
+  return (
+    <div
+      className="absolute"
+      style={{
+        left: `${left}%`,
+        width: `${width}%`,
+        top: `${top}px`,
+        paddingLeft: "2px",
+        paddingRight: "2px",
+      }}
+    >
+      <AllDayEventItem
+        event={event}
+        isPast={isPast(event.end)}
+        spanStart={spanStart}
+        spanEnd={spanEnd}
+      />
     </div>
   );
 }

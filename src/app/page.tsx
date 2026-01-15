@@ -8,6 +8,7 @@ import {
   PanelRightIcon,
 } from "lucide-react";
 
+import { generateMockEvents } from "@/lib/mock-events";
 import { SidebarLeft } from "@/components/sidebar-left";
 import { SidebarRight } from "@/components/sidebar-right";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -30,9 +31,14 @@ import { Kbd } from "@/components/ui/kbd";
 function PageContent() {
   const [leftSidebarOpen, setLeftSidebarOpen] = React.useState(true);
   const [currentDate] = React.useState(() => new Date());
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, open: rightSidebarOpen } = useSidebar();
 
   const { monthName, year, weekNumber } = getCalendarHeaderInfo(currentDate, 0);
+
+  const events = React.useMemo(
+    () => generateMockEvents(currentDate),
+    [currentDate]
+  );
 
   // Keyboard shortcuts
   React.useEffect(() => {
@@ -77,7 +83,7 @@ function PageContent() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                Hide sidebar <Kbd className="ml-1">⌘</Kbd> <Kbd>/</Kbd>
+                {leftSidebarOpen ? "Close" : "Open"} sidebar <Kbd className="ml-1">⌘</Kbd> <Kbd>/</Kbd>
               </TooltipContent>
             </Tooltip>
             <Separator
@@ -111,26 +117,28 @@ function PageContent() {
                 <span className="sr-only">Next week</span>
               </Button>
             </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  onClick={toggleSidebar}
-                >
-                  <PanelRightIcon />
-                  <span className="sr-only">Toggle Navigation Sidebar</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                Hide context panel <Kbd className="ml-1">/</Kbd>
-              </TooltipContent>
-            </Tooltip>
+            {!rightSidebarOpen && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7"
+                    onClick={toggleSidebar}
+                  >
+                    <PanelRightIcon />
+                    <span className="sr-only">Toggle Navigation Sidebar</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  Open context panel <Kbd className="ml-1">/</Kbd>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </header>
         <div className="flex flex-1 flex-col overflow-hidden">
-          <WeekView currentDate={currentDate} />
+          <WeekView currentDate={currentDate} events={events} />
         </div>
       </SidebarInset>
       <SidebarLeft />

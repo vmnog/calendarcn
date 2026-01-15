@@ -74,6 +74,8 @@ export function getCalendarHeaderInfo(currentDate: Date, weekStartsOn: 0 | 1 | 2
 export function WeekView({
   currentDate = new Date(),
   weekStartsOn = 0,
+  events = [],
+  onEventClick,
   className,
 }: WeekViewProps) {
   const days = React.useMemo(
@@ -83,12 +85,22 @@ export function WeekView({
 
   const hours = React.useMemo(() => generateHours(), []);
 
+  const allDayEvents = React.useMemo(
+    () => events.filter((e) => e.isAllDay),
+    [events]
+  );
+
+  const timedEvents = React.useMemo(
+    () => events.filter((e) => !e.isAllDay),
+    [events]
+  );
+
   return (
     <div className={cn("flex h-full flex-col", className)}>
       {/* Header - NOT in scroll container, won't scroll */}
       <div className="flex-shrink-0">
         <WeekViewDayColumns days={days} />
-        <WeekViewAllDayRow days={days} />
+        <WeekViewAllDayRow days={days} allDayEvents={allDayEvents} />
       </div>
 
       {/* ONLY this part scrolls */}
@@ -96,7 +108,13 @@ export function WeekView({
         <div className="relative flex" style={{ height: hours.length * HOUR_HEIGHT }}>
           <WeekViewTimeAxis hours={hours} hourHeight={HOUR_HEIGHT} />
           <div className="relative flex-1">
-            <WeekViewGrid days={days} hours={hours} hourHeight={HOUR_HEIGHT} />
+            <WeekViewGrid
+              days={days}
+              hours={hours}
+              hourHeight={HOUR_HEIGHT}
+              events={timedEvents}
+              onEventClick={onEventClick}
+            />
           </div>
           <WeekViewTimeIndicator days={days} hourHeight={HOUR_HEIGHT} />
         </div>

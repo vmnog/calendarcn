@@ -30,6 +30,10 @@ export interface WeekViewProps {
   currentDate?: Date;
   /** Day the week starts on. Defaults to 0 (Sunday) */
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
+  /** Events to display on the calendar */
+  events?: CalendarEvent[];
+  /** Optional click handler for events */
+  onEventClick?: (event: CalendarEvent) => void;
   /** Optional className for the root element */
   className?: string;
 }
@@ -66,6 +70,10 @@ export interface WeekViewGridProps {
   hours: HourSlot[];
   /** Height of each hour row in pixels */
   hourHeight: number;
+  /** Events to display on the grid */
+  events?: CalendarEvent[];
+  /** Optional click handler for events */
+  onEventClick?: (event: CalendarEvent) => void;
   /** Optional className */
   className?: string;
 }
@@ -88,6 +96,80 @@ export interface WeekViewTimeIndicatorProps {
 export interface WeekViewAllDayRowProps {
   /** Array of days to display */
   days: WeekDay[];
+  /** All-day events to display */
+  allDayEvents?: CalendarEvent[];
+  /** Optional className */
+  className?: string;
+}
+
+/**
+ * Represents a calendar event
+ */
+export interface CalendarEvent {
+  /** Unique identifier for the event */
+  id: string;
+  /** Event title */
+  title: string;
+  /** Start date and time */
+  start: Date;
+  /** End date and time */
+  end: Date;
+  /** Whether this is an all-day event */
+  isAllDay?: boolean;
+  /** Event color (for styling) */
+  color?: EventColor;
+  /** Calendar ID this event belongs to */
+  calendarId?: string;
+  /** Optional description */
+  description?: string;
+  /** Optional location */
+  location?: string;
+}
+
+/**
+ * Predefined event colors
+ */
+export type EventColor =
+  | "red"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "blue"
+  | "purple"
+  | "gray";
+
+/**
+ * Represents a positioned event for rendering in the grid
+ */
+export interface PositionedEvent {
+  /** The original event */
+  event: CalendarEvent;
+  /** Top position as percentage from the day start */
+  top: number;
+  /** Height as percentage of the day */
+  height: number;
+  /** Left position as percentage (for overlap handling) */
+  left: number;
+  /** Width as percentage (for overlap handling) */
+  width: number;
+  /** Column index when events overlap */
+  column: number;
+  /** Total columns when events overlap */
+  totalColumns: number;
+}
+
+/**
+ * Props for the CalendarEventItem component
+ */
+export interface CalendarEventItemProps {
+  /** The positioned event to render */
+  positionedEvent: PositionedEvent;
+  /** Height of each hour in pixels */
+  hourHeight: number;
+  /** Whether the event is in the past */
+  isPast?: boolean;
+  /** Optional click handler */
+  onClick?: (event: CalendarEvent) => void;
   /** Optional className */
   className?: string;
 }
