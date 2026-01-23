@@ -109,7 +109,7 @@ Contributions are welcome! Feel free to:
 
 - Design inspired by [Notion Calendar](https://www.notion.so/product/calendar)
 - Built with [shadcn/ui](https://ui.shadcn.com/) components
-- Created by [Victor Nogueira](https://github.com/vmnog)
+- Created by [Victor Nogueira](https://vmnog.com)
 
 ## Links
 
