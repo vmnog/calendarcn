@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Calendar CN - Open Source Calendar Component",
+  title: "CalendarCN - Beautiful Open Source Calendar for React",
   description:
-    "A beautifully crafted calendar component for React. Built with shadcn/ui, inspired by Notion Calendar. Week view, dark mode, and more.",
+    "A beautifully crafted calendar component for React. Built with shadcn/ui and Tailwind CSS, inspired by Notion Calendar. Features week view, dark mode, event colors, and more.",
   keywords: [
     "calendar",
     "react",
@@ -31,32 +31,32 @@ export const metadata: Metadata = {
     "week view",
     "dark mode",
   ],
-  authors: [{ name: "Victor Nogueira", url: "https://github.com/vmnog" }],
+  authors: [{ name: "Victor Nogueira", url: "https://vmnog.com" }],
   creator: "Victor Nogueira",
   openGraph: {
     type: "website",
     locale: "en_US",
     url: "https://calendarcn.vercel.app",
-    title: "Calendar CN - Open Source Calendar Component",
+    title: "CalendarCN - Beautiful Open Source Calendar for React",
     description:
-      "A beautifully crafted calendar component for React. Built with shadcn/ui, inspired by Notion Calendar.",
-    siteName: "Calendar CN",
+      "A beautifully crafted calendar component built with shadcn/ui and Tailwind CSS, inspired by Notion Calendar. Week view, dark mode, and more.",
+    siteName: "CalendarCN",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Calendar CN - Open Source Calendar Component",
+        alt: "CalendarCN - Beautiful Open Source Calendar for React",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Calendar CN - Open Source Calendar Component",
+    title: "CalendarCN - Beautiful Open Source Calendar for React",
     description:
-      "A beautifully crafted calendar component for React. Built with shadcn/ui, inspired by Notion Calendar.",
+      "A beautifully crafted calendar component built with shadcn/ui and Tailwind CSS, inspired by Notion Calendar. Week view, dark mode, and more.",
     images: ["/og-image.png"],
-    creator: "@vmaborern",
+    creator: "@mevmnog",
   },
   metadataBase: new URL("https://calendarcn.vercel.app"),
 };
