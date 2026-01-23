@@ -1,14 +1,18 @@
 "use client"
 
 import * as React from "react"
-import { Plus } from "lucide-react"
+import { Eye, HelpCircle, Link2, Plus, UserRound } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Calendars } from "@/components/calendars"
 import { DatePicker } from "@/components/date-picker"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { Button } from "@/components/ui/button"
 import {
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -17,20 +21,31 @@ import {
 
 const SIDEBAR_WIDTH = "15rem"
 
-// This is sample data.
-const data = {
-  calendars: [
+export type CalendarColor = "red" | "orange" | "yellow" | "green" | "blue" | "purple" | "gray"
+
+export interface CalendarItem {
+  name: string
+  color: CalendarColor
+  visible: boolean
+  isSubscribed?: boolean
+}
+
+export interface CalendarAccount {
+  email: string
+  calendars: CalendarItem[]
+}
+
+// Sample data grouped by email accounts
+const data: { accounts: CalendarAccount[] } = {
+  accounts: [
     {
-      name: "My Calendars",
-      items: ["Personal", "Work", "Family"],
-    },
-    {
-      name: "Favorites",
-      items: ["Holidays", "Birthdays"],
-    },
-    {
-      name: "Other",
-      items: ["Travel", "Reminders", "Deadlines"],
+      email: "me@vmnog.com",
+      calendars: [
+        { name: "me@vmnog.com", color: "red", visible: true },
+        { name: "Personal", color: "purple", visible: true },
+        { name: "Family", color: "yellow", visible: false },
+        { name: "Holidays in Brazil", color: "green", visible: true, isSubscribed: true },
+      ],
     },
   ],
 }
@@ -62,18 +77,53 @@ export function SidebarRight({ open = true }: SidebarRightProps) {
       >
         <SidebarContent>
           <DatePicker />
+          {/* Scheduling Section */}
+          <SidebarGroup className="py-0">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton className="text-sidebar-foreground">
+                    <Link2 className="size-4 text-sidebar-muted-foreground" />
+                    <span className="flex-1 text-sm">Scheduling</span>
+                    <Eye className="size-4 text-sidebar-muted-foreground" />
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+          {/* Meet with input */}
+          <SidebarGroup className="py-2 px-2">
+            <div className="flex items-center gap-2 rounded-md bg-[#EFEFEE] dark:bg-sidebar px-2 py-1.5">
+              <UserRound className="size-4 shrink-0 text-sidebar-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Meet with..."
+                className="flex-1 bg-transparent text-sm text-sidebar-foreground placeholder:text-sidebar-muted-foreground outline-none"
+              />
+            </div>
+          </SidebarGroup>
+          <Calendars accounts={data.accounts} />
           <SidebarSeparator className="mx-0" />
-          <Calendars calendars={data.calendars} />
+          <SidebarGroup className="py-0">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton className="text-sidebar-foreground text-sm">
+                    <Plus className="size-4" />
+                    <span>Add calendar account</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton>
-                <Plus />
-                <span>New Calendar</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+        <SidebarFooter className="border-t border-sidebar-border">
+          <div className="flex items-center justify-start gap-1 px-2 py-2">
+            <Button variant="ghost" size="icon" className="size-7 text-sidebar-foreground">
+              <HelpCircle className="size-4" />
+            </Button>
+            <ThemeToggle className="text-sidebar-foreground" />
+          </div>
         </SidebarFooter>
       </div>
     </div>

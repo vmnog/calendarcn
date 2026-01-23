@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import {
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   PanelLeftIcon,
@@ -11,10 +12,15 @@ import {
 import { generateMockEvents } from "@/lib/mock-events";
 import { SidebarLeft } from "@/components/sidebar-left";
 import { SidebarRight } from "@/components/sidebar-right";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { WeekView, getCalendarHeaderInfo } from "@/components/week-view";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
@@ -75,7 +81,7 @@ function PageContent() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7"
+                  className="size-7 text-muted-foreground"
                   onClick={() => setLeftSidebarOpen((prev) => !prev)}
                 >
                   <PanelLeftIcon />
@@ -99,20 +105,33 @@ function PageContent() {
             </h1>
           </div>
           <div className="flex items-center gap-2 px-4">
-            <ThemeToggle />
-            <Avatar className="size-8">
+            <Avatar className="size-7">
               <AvatarImage src="https://github.com/vmnog.png" alt="Victor Nogueira" />
               <AvatarFallback>VN</AvatarFallback>
             </Avatar>
-            <Button variant="secondary" size="sm">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="secondary" size="sm" className="gap-1 px-3">
+                  Week
+                  <ChevronDownIcon className="size-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem>Day</DropdownMenuItem>
+                <DropdownMenuItem>Week</DropdownMenuItem>
+                <DropdownMenuItem>Month</DropdownMenuItem>
+                <DropdownMenuItem>Year</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="secondary" size="sm" className="px-3">
               Today
             </Button>
             <div className="flex items-center">
-              <Button variant="ghost" size="icon" className="size-8">
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground">
                 <ChevronLeftIcon className="size-4" />
                 <span className="sr-only">Previous week</span>
               </Button>
-              <Button variant="ghost" size="icon" className="size-8">
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground">
                 <ChevronRightIcon className="size-4" />
                 <span className="sr-only">Next week</span>
               </Button>
@@ -123,7 +142,7 @@ function PageContent() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-7"
+                    className="size-7 text-muted-foreground"
                     onClick={toggleSidebar}
                   >
                     <PanelRightIcon />

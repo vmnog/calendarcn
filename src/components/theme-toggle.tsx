@@ -4,9 +4,14 @@ import * as React from "react"
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
 import { useTheme } from "next-themes"
 
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  className?: string
+}
+
+export function ThemeToggle({ className }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
 
@@ -38,7 +43,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="icon" className="size-8">
+      <Button variant="ghost" size="icon" className={cn("size-7 text-sidebar-muted-foreground", className)}>
         <MonitorIcon className="size-4" />
         <span className="sr-only">Toggle theme</span>
       </Button>
@@ -49,7 +54,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      className="size-8"
+      className={cn("size-7 text-sidebar-muted-foreground", className)}
       onClick={cycleTheme}
     >
       {getIcon()}
