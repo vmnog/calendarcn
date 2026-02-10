@@ -108,7 +108,6 @@ function Calendar({
         ),
         week: cn(
           "flex w-full items-center relative group/week mb-0.5",
-          "has-[[data-today=true]]:before:absolute has-[[data-today=true]]:before:inset-y-0 has-[[data-today=true]]:before:left-6 has-[[data-today=true]]:before:right-1 has-[[data-today=true]]:before:bg-calendar-current-week has-[[data-today=true]]:before:rounded-md has-[[data-today=true]]:before:-z-10",
           defaultClassNames.week
         ),
         week_number_header: cn(
@@ -121,6 +120,9 @@ function Calendar({
         ),
         day: cn(
           "relative flex items-center justify-center w-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-md group/day select-none",
+          "[&.in-view-day]:bg-calendar-current-week",
+          "[&.in-view-day:not(.in-view-day+.in-view-day)]:rounded-l-md",
+          "[&.in-view-day:not(:has(+.in-view-day))]:rounded-r-md",
           props.showWeekNumber
             ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-md"
             : "[&:first-child[data-selected=true]_button]:rounded-l-md",
@@ -267,6 +269,8 @@ function CalendarDayButton({
     if (modifiers.focused) ref.current?.focus()
   }, [modifiers.focused])
 
+  const isInView = "inView" in modifiers && modifiers.inView === true
+
   return (
     <Button
       ref={ref}
@@ -284,8 +288,9 @@ function CalendarDayButton({
       data-range-middle={modifiers.range_middle}
       data-outside={modifiers.outside}
       data-today={modifiers.today}
+      data-in-view={isInView}
       className={cn(
-        "text-foreground data-[outside=true]:text-muted-foreground/40 data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground flex size-7 items-center justify-center leading-none font-normal transition-none outline-none focus-visible:outline-none focus-visible:ring-0 data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70 hover:bg-calendar-day-hover group-has-[[data-today=true]]/week:hover:bg-calendar-day-hover-current-week data-[today=true]:hover:!bg-primary data-[today=true]:hover:!text-primary-foreground",
+        "text-foreground data-[outside=true]:text-muted-foreground/40 data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground flex size-7 items-center justify-center leading-none font-normal transition-none outline-none focus-visible:outline-none focus-visible:ring-0 data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70 hover:bg-calendar-day-hover data-[in-view=true]:hover:bg-calendar-day-hover-current-week data-[today=true]:hover:!bg-primary data-[today=true]:hover:!text-primary-foreground",
         defaultClassNames.day,
         className
       )}

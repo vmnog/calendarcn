@@ -16,6 +16,8 @@ import type { WeekViewTimeIndicatorProps } from "./week-view-types";
 export function WeekViewTimeIndicator({
   days,
   hourHeight,
+  scrollDays,
+  scrollStyle,
   className,
 }: WeekViewTimeIndicatorProps) {
   const [currentTime, setCurrentTime] = React.useState(() => new Date());
@@ -48,6 +50,32 @@ export function WeekViewTimeIndicator({
   // Format time as "H:MMAM/PM" (e.g., "5:48PM")
   const formattedTime = format(currentTime, "h:mma").toUpperCase();
 
+  const lineDays = scrollDays ?? days;
+  const lineTodayIndex = lineDays.findIndex((d) => d.isToday);
+
+  const linesContent = (
+    <div className="flex items-center">
+      {lineDays.map((day, index) => (
+        <React.Fragment key={day.date.toISOString()}>
+          {index === lineTodayIndex && (
+            <div className="relative flex-shrink-0">
+              <div className="bg-primary h-3 w-[3px] translate-y-[0.5px] rounded-full shadow-[0_0_0_1px_white] dark:shadow-[0_0_0_1px_black]" />
+              <div className="absolute top-[6.5px] left-[2px] bg-primary h-[1px] w-[2px] z-10" />
+              <div className="absolute top-[5.5px] left-[2px] bg-primary h-[1px] w-[2px] z-10" />
+              <div className="absolute top-[4.5px] left-[2px] bg-primary h-[1px] w-[2px] z-10" />
+            </div>
+          )}
+          <div
+            className={cn(
+              "flex-1 bg-primary",
+              day.isToday ? "h-[3px] rounded-r-full shadow-[0_0_0_1px_white] dark:shadow-[0_0_0_1px_black]" : "h-[0.5px]"
+            )}
+          />
+        </React.Fragment>
+      ))}
+    </div>
+  );
+
   return (
     <div
       className={cn("pointer-events-none absolute left-0 right-0 z-20", className)}
@@ -61,27 +89,14 @@ export function WeekViewTimeIndicator({
           </span>
         </div>
 
-        {/* Horizontal lines across day columns with vertical line at today's start */}
-        {days.map((day, index) => (
-          <React.Fragment key={day.date.toISOString()}>
-            {/* Vertical line at the start of today's column */}
-            {index === todayIndex && (
-              <div className="relative flex-shrink-0">
-                <div className="bg-primary h-3 w-[3px] translate-y-[0.5px] rounded-full shadow-[0_0_0_1px_white] dark:shadow-[0_0_0_1px_black]" />
-                {/* Cover the shadow at intersection */}
-                <div className="absolute top-[6.5px] left-[2px] bg-primary h-[1px] w-[2px] z-10" />
-                <div className="absolute top-[5.5px] left-[2px] bg-primary h-[1px] w-[2px] z-10" />
-                <div className="absolute top-[4.5px] left-[2px] bg-primary h-[1px] w-[2px] z-10" />
-              </div>
-            )}
-            <div
-              className={cn(
-                "flex-1 bg-primary",
-                day.isToday ? "h-[3px] rounded-r-full shadow-[0_0_0_1px_white] dark:shadow-[0_0_0_1px_black]" : "h-[0.5px]"
-              )}
-            />
-          </React.Fragment>
-        ))}
+        {/* Horizontal lines across day columns */}
+        {scrollStyle ? (
+          <div className="flex-1 overflow-hidden">
+            <div style={scrollStyle}>{linesContent}</div>
+          </div>
+        ) : (
+          linesContent
+        )}
       </div>
     </div>
   );

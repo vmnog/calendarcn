@@ -24,14 +24,53 @@ function getTimezoneAbbreviation(): string {
 
 /**
  * Day column headers showing day names and date numbers
- * Includes timezone label on the left
+ * Includes timezone label on the left (unless standalone mode)
  * Highlights the current day
  */
 export function WeekViewDayColumns({
   days,
+  standalone,
   className,
 }: WeekViewDayColumnsProps) {
   const timezone = getTimezoneAbbreviation();
+
+  // Standalone mode: just render the day columns (used inside scroll container)
+  if (standalone) {
+    return (
+      <div
+        className={cn("grid", className)}
+        style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
+      >
+        {days.map((day) => (
+          <div
+            key={day.date.toISOString()}
+            className={cn(
+              "flex items-center justify-center py-2 text-sm",
+              day.isToday ? "gap-0.5 " : "gap-0"
+            )}
+          >
+            <span
+              className={cn(
+                day.isToday ? "text-foreground font-medium" : "text-muted-foreground font-normal"
+              )}
+            >
+              {day.dayName}
+            </span>
+            <span
+              className={cn(
+                "flex h-5 w-[1.2rem] items-center justify-center rounded-xs text-sm",
+                day.isToday
+                  ? "bg-primary text-primary-foreground font-medium"
+                  : "text-muted-foreground"
+              )}
+            >
+              {day.dayNumber}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -44,7 +83,10 @@ export function WeekViewDayColumns({
       </div>
 
       {/* Day columns */}
-      <div className="grid grid-cols-7">
+      <div
+        className="grid"
+        style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
+      >
         {days.map((day) => (
           <div
             key={day.date.toISOString()}

@@ -11,11 +11,12 @@ const ALL_DAY_ROW_GAP = 2;
 
 /**
  * All-day row for displaying all-day events
- * Shows "All-day" label on the left with 7 day columns
+ * Shows "All-day" label on the left with day columns
  */
 export function WeekViewAllDayRow({
   days,
   allDayEvents = [],
+  scrollStyle,
   className,
 }: WeekViewAllDayRowProps) {
   const eventRows = calculateAllDayEventRows(allDayEvents, days);
@@ -32,37 +33,44 @@ export function WeekViewAllDayRow({
         All-day
       </div>
 
-      {/* Day columns for all-day events */}
-      <div className="relative" style={{ minHeight: `${contentHeight}px` }}>
-        {/* Background grid */}
-        <div className="absolute inset-0 grid grid-cols-7">
-          {days.map((day) => {
-            const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
-            return (
-              <div
-                key={day.date.toISOString()}
-                className={cn(
-                  "border-border border-l first:border-l-0 h-full",
-                  isWeekend && "bg-calendar-weekend"
-                )}
-              />
-            );
-          })}
-        </div>
+      {/* Day columns for all-day events - wrapped for scroll sync */}
+      <div className="overflow-hidden">
+        <div style={scrollStyle}>
+          <div className="relative" style={{ minHeight: `${contentHeight}px` }}>
+            {/* Background grid */}
+            <div
+              className="absolute inset-0 grid"
+              style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
+            >
+              {days.map((day) => {
+                const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
+                return (
+                  <div
+                    key={day.date.toISOString()}
+                    className={cn(
+                      "border-border border-l first:border-l-0 h-full",
+                      isWeekend && "bg-calendar-weekend"
+                    )}
+                  />
+                );
+              })}
+            </div>
 
-        {/* Events */}
-        <div className="relative py-1 px-0.5">
-          {eventRows.map(({ event, startColumn, endColumn, row }) => (
-            <AllDayEventRow
-              key={event.id}
-              event={event}
-              startColumn={startColumn}
-              endColumn={endColumn}
-              row={row}
-              totalColumns={days.length}
-              days={days}
-            />
-          ))}
+            {/* Events */}
+            <div className="relative py-1 px-0.5">
+              {eventRows.map(({ event, startColumn, endColumn, row }) => (
+                <AllDayEventRow
+                  key={event.id}
+                  event={event}
+                  startColumn={startColumn}
+                  endColumn={endColumn}
+                  row={row}
+                  totalColumns={days.length}
+                  days={days}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

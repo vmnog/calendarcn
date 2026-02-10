@@ -1,3 +1,5 @@
+import type React from "react";
+
 /**
  * Represents a single day in the week view
  */
@@ -34,6 +36,8 @@ export interface WeekViewProps {
   events?: CalendarEvent[];
   /** Optional click handler for events */
   onEventClick?: (event: CalendarEvent) => void;
+  /** Callback when the displayed date changes (via scroll navigation) */
+  onDateChange?: (date: Date) => void;
   /** Optional className for the root element */
   className?: string;
 }
@@ -44,6 +48,8 @@ export interface WeekViewProps {
 export interface WeekViewDayColumnsProps {
   /** Array of days to display */
   days: WeekDay[];
+  /** When true, renders without the timezone/grid wrapper (used in scroll container) */
+  standalone?: boolean;
   /** Optional className */
   className?: string;
 }
@@ -86,6 +92,10 @@ export interface WeekViewTimeIndicatorProps {
   days: WeekDay[];
   /** Height of each hour row in pixels */
   hourHeight: number;
+  /** Buffered days array for scroll-synchronized line rendering */
+  scrollDays?: WeekDay[];
+  /** Scroll transform style to apply to the lines */
+  scrollStyle?: React.CSSProperties;
   /** Optional className */
   className?: string;
 }
@@ -98,6 +108,8 @@ export interface WeekViewAllDayRowProps {
   days: WeekDay[];
   /** All-day events to display */
   allDayEvents?: CalendarEvent[];
+  /** Optional scroll transform style for horizontal scroll sync */
+  scrollStyle?: React.CSSProperties;
   /** Optional className */
   className?: string;
 }

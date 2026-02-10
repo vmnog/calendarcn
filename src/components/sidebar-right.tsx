@@ -57,9 +57,12 @@ const data: { accounts: CalendarAccount[] } = {
 
 interface SidebarRightProps {
   open?: boolean
+  onDateSelect?: (date: Date) => void
+  currentDate?: Date
+  visibleDays?: Date[]
 }
 
-export function SidebarRight({ open = true }: SidebarRightProps) {
+export function SidebarRight({ open = true, onDateSelect, currentDate, visibleDays }: SidebarRightProps) {
   return (
     <div
       data-state={open ? "expanded" : "collapsed"}
@@ -81,7 +84,7 @@ export function SidebarRight({ open = true }: SidebarRightProps) {
         )}
       >
         <SidebarContent>
-          <DatePicker />
+          <DatePicker onDateSelect={onDateSelect} currentDate={currentDate} visibleDays={visibleDays} />
           {/* Scheduling Section */}
           <SidebarGroup className="py-0">
             <SidebarGroupContent>

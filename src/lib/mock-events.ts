@@ -7,10 +7,11 @@ import {
 import type { CalendarEvent } from "@/components/week-view-types";
 
 /**
- * Generates mock events for the current week
+ * Generates mock events anchored to the real current week (at page load).
+ * Events have fixed absolute dates and don't shift when navigating.
  */
-export function generateMockEvents(currentDate: Date): CalendarEvent[] {
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+export function generateMockEvents(): CalendarEvent[] {
+  const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
 
   return [
     // Monday events

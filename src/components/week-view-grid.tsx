@@ -22,8 +22,11 @@ export function WeekViewGrid({
     <div className={cn("relative", className)}>
       {/* Background grid */}
       <div
-        className="grid grid-cols-7"
-        style={{ gridTemplateRows: `repeat(${hours.length}, ${hourHeight}px)` }}
+        className="grid"
+        style={{
+          gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+          gridTemplateRows: `repeat(${hours.length}, ${hourHeight}px)`,
+        }}
       >
         {hours.map((hourSlot) =>
           days.map((day) => {
@@ -42,7 +45,10 @@ export function WeekViewGrid({
       </div>
 
       {/* Events layer */}
-      <div className="absolute inset-0 grid grid-cols-7 pointer-events-none">
+      <div
+        className="absolute inset-0 grid pointer-events-none"
+        style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
+      >
         {days.map((day) => {
           const positionedEvents = calculatePositionedEvents(events, day);
 
