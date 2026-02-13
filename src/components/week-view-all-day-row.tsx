@@ -25,16 +25,15 @@ export function WeekViewAllDayRow({
 
   return (
     <div
-      className={cn("border-border grid border-t border-b bg-background", className)}
-      style={{ gridTemplateColumns: "4rem 1fr" }}
+      className={cn("border-border flex border-t border-b bg-background", className)}
     >
       {/* All-day label */}
-      <div className="border-border text-muted-foreground flex items-start justify-end border-r px-2 py-2 text-xxs">
+      <div className="border-border text-muted-foreground flex w-16 flex-shrink-0 items-start justify-end border-r px-2 py-2 text-xxs">
         All-day
       </div>
 
       {/* Day columns for all-day events - wrapped for scroll sync */}
-      <div className="overflow-hidden">
+      <div className="flex-1 overflow-hidden">
         <div style={scrollStyle}>
           <div className="relative" style={{ minHeight: `${contentHeight}px` }}>
             {/* Background grid */}

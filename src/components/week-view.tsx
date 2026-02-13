@@ -227,18 +227,15 @@ export function WeekView({
       {/* Header - day columns and all-day row with synchronized scroll */}
       <div className="flex-shrink-0">
         <div className="overflow-hidden" ref={dayColumnsScrollRef}>
-          <div
-            className="grid bg-background"
-            style={{
-              gridTemplateColumns: `4rem 1fr`,
-            }}
-          >
+          <div className="flex bg-background">
             {/* Timezone label - rendered outside scroll container */}
-            <div className="text-muted-foreground flex items-center justify-end pr-2 text-xxs">
+            <div className="text-muted-foreground flex w-16 flex-shrink-0 items-center justify-end pr-2 text-xxs">
               {new Date().toLocaleTimeString("en-US", { timeZoneName: "short" }).match(/\s([A-Z]{2,5})$/)?.[1] ?? ""}
             </div>
-            <div style={scrollStyle}>
-              <WeekViewDayColumns days={bufferedDays} standalone />
+            <div className="flex-1 overflow-hidden">
+              <div style={scrollStyle}>
+                <WeekViewDayColumns days={bufferedDays} standalone />
+              </div>
             </div>
           </div>
         </div>
