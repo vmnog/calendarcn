@@ -19,8 +19,8 @@ import { WeekViewGrid } from "./week-view-grid";
 import { WeekViewTimeAxis } from "./week-view-time-axis";
 import { WeekViewTimeIndicator } from "./week-view-time-indicator";
 
-/** Height of each hour row in pixels */
-export const HOUR_HEIGHT = 48;
+/** Minimum height of each hour row in pixels */
+const MIN_HOUR_HEIGHT = 48;
 
 /** Width of the time axis column in pixels (4rem = 64px) */
 export const TIME_AXIS_WIDTH = 64;
@@ -154,21 +154,22 @@ export function WeekView({
     [events]
   );
 
-  // Compute day column width from container
+  // Compute day column width and dynamic hour height from container
   const [dayColumnWidth, setDayColumnWidth] = React.useState(0);
+  const [hourHeight, setHourHeight] = React.useState(MIN_HOUR_HEIGHT);
 
   React.useEffect(() => {
-    const updateWidth = () => {
+    const updateDimensions = () => {
       const container = scrollContainerRef.current;
       if (!container) return;
-      // The scrollable area is after the time axis (4rem = 64px)
       const availableWidth = container.clientWidth - TIME_AXIS_WIDTH;
       setDayColumnWidth(availableWidth / VISIBLE_DAYS);
+      setHourHeight(Math.max(MIN_HOUR_HEIGHT, container.clientHeight / 24));
     };
 
-    updateWidth();
+    updateDimensions();
 
-    const observer = new ResizeObserver(updateWidth);
+    const observer = new ResizeObserver(updateDimensions);
     if (scrollContainerRef.current) {
       observer.observe(scrollContainerRef.current);
     }
@@ -257,15 +258,15 @@ export function WeekView({
       >
         <div
           className="relative flex"
-          style={{ height: hours.length * HOUR_HEIGHT }}
+          style={{ height: hours.length * hourHeight }}
         >
-          <WeekViewTimeAxis hours={hours} hourHeight={HOUR_HEIGHT} />
+          <WeekViewTimeAxis hours={hours} hourHeight={hourHeight} />
           <div className="relative flex-1 overflow-hidden">
             <div style={scrollStyle}>
               <WeekViewGrid
                 days={bufferedDays}
                 hours={hours}
-                hourHeight={HOUR_HEIGHT}
+                hourHeight={hourHeight}
                 events={timedEvents}
                 onEventClick={onEventClick}
               />
@@ -273,7 +274,7 @@ export function WeekView({
           </div>
           <WeekViewTimeIndicator
             days={days}
-            hourHeight={HOUR_HEIGHT}
+            hourHeight={hourHeight}
             scrollDays={bufferedDays}
             scrollStyle={scrollStyle}
           />
