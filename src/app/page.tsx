@@ -58,12 +58,9 @@ function PageContent() {
   );
   const { toggleSidebar, open: rightSidebarOpen } = useSidebar();
 
-  const { monthName, year, weekNumber } = getCalendarHeaderInfo(currentDate, 0);
+  const [visibleDays, setVisibleDays] = React.useState<Date[]>(() => getVisibleDays(currentDate));
 
-  const visibleDays = React.useMemo(
-    () => getVisibleDays(currentDate),
-    [currentDate]
-  );
+  const { monthName, year, weekNumber } = getCalendarHeaderInfo(visibleDays[0], 0);
 
   const events = React.useMemo(
     () => generateMockEvents(),
@@ -214,7 +211,7 @@ function PageContent() {
           </div>
         </header>
         <div className="flex flex-1 flex-col overflow-hidden">
-          <WeekView currentDate={currentDate} events={events} onDateChange={goToDate} />
+          <WeekView currentDate={currentDate} events={events} onDateChange={goToDate} onVisibleDaysChange={setVisibleDays} />
         </div>
       </SidebarInset>
       <SidebarLeft />

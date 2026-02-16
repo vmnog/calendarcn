@@ -19,11 +19,38 @@ export function DatePicker({ onDateSelect, currentDate, visibleDays }: DatePicke
   const [today] = React.useState(() => new Date())
   const [displayedMonth, setDisplayedMonth] = React.useState<Date>(currentDate ?? today)
 
-  // Sync displayedMonth when currentDate changes
+  // Track previous first visible day to determine scroll direction
+  const prevFirstDayRef = React.useRef<Date | null>(null)
+
+  // Auto-navigate datepicker month so highlighted days stay visible
+  // Scrolling forward → keep last visible day's month shown
+  // Scrolling backward → keep first visible day's month shown
   React.useEffect(() => {
-    if (!currentDate) return;
-    setDisplayedMonth(currentDate)
-  }, [currentDate])
+    if (!visibleDays || visibleDays.length === 0) return
+
+    const firstDay = visibleDays[0]
+    const lastDay = visibleDays[visibleDays.length - 1]
+    const prevFirstDay = prevFirstDayRef.current
+    prevFirstDayRef.current = firstDay
+
+    const setMonthIfChanged = (anchor: Date) => {
+      setDisplayedMonth((prev) => {
+        if (prev.getMonth() === anchor.getMonth() && prev.getFullYear() === anchor.getFullYear()) {
+          return prev
+        }
+        return anchor
+      })
+    }
+
+    // Scrolling forward → ensure last visible day's month is displayed
+    if (prevFirstDay && firstDay.getTime() > prevFirstDay.getTime()) {
+      setMonthIfChanged(lastDay)
+      return
+    }
+
+    // Scrolling backward or initial render → ensure first visible day's month is displayed
+    setMonthIfChanged(firstDay)
+  }, [visibleDays])
 
   const isSameMonth =
     displayedMonth.getMonth() === today.getMonth() &&

@@ -38,6 +38,8 @@ export interface WeekViewProps {
   onEventClick?: (event: CalendarEvent) => void;
   /** Callback when the displayed date changes (via scroll navigation) */
   onDateChange?: (date: Date) => void;
+  /** Callback when the visible days change during scroll (real-time updates) */
+  onVisibleDaysChange?: (days: Date[]) => void;
   /** Optional className for the root element */
   className?: string;
 }

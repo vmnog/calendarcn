@@ -31,8 +31,8 @@ const VISIBLE_DAYS = 7;
 /** Number of buffer days on each side for scroll */
 const BUFFER_DAYS = 7;
 
-/** Total days rendered (buffer + visible + buffer) */
-const TOTAL_DAYS = BUFFER_DAYS + VISIBLE_DAYS + BUFFER_DAYS;
+/** Buffer extension step size (extend in chunks to reduce re-renders) */
+const BUFFER_STEP = 7;
 
 /**
  * Generates an array of WeekDay objects starting from the given date.
@@ -55,10 +55,11 @@ function generateWeekDays(
  * for smooth horizontal scroll transitions
  */
 function generateBufferedDays(
-  startDate: Date
+  startDate: Date,
+  bufferDays: number
 ): Omit<WeekDay, "isToday">[] {
-  const bufferStart = addDays(startDate, -BUFFER_DAYS);
-  const bufferEnd = addDays(startDate, VISIBLE_DAYS + BUFFER_DAYS - 1);
+  const bufferStart = addDays(startDate, -bufferDays);
+  const bufferEnd = addDays(startDate, VISIBLE_DAYS + bufferDays - 1);
 
   return eachDayOfInterval({ start: bufferStart, end: bufferEnd }).map(
     (date) => ({
@@ -114,6 +115,7 @@ export function WeekView({
   events = [],
   onEventClick,
   onDateChange,
+  onVisibleDaysChange,
   className,
 }: WeekViewProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -127,17 +129,6 @@ export function WeekView({
   );
 
   const days: WeekDay[] = baseDays.map((day) => ({
-    ...day,
-    isToday: isToday(day.date),
-  }));
-
-  // Extended buffered days (21 days) for scroll
-  const bufferedBaseDays = React.useMemo(
-    () => generateBufferedDays(currentDate),
-    [currentDate]
-  );
-
-  const bufferedDays: WeekDay[] = bufferedBaseDays.map((day) => ({
     ...day,
     isToday: isToday(day.date),
   }));
@@ -195,6 +186,36 @@ export function WeekView({
       onNavigate: handleNavigate,
     });
 
+  // Compute how many days the scroll has shifted from center
+  const scrollDaysDelta = dayColumnWidth > 0
+    ? Math.round(-scrollOffset / dayColumnWidth)
+    : 0;
+
+  // Report visible days to parent in real-time as scroll crosses day boundaries
+  React.useEffect(() => {
+    const start = addDays(currentDate, scrollDaysDelta);
+    const end = addDays(start, VISIBLE_DAYS - 1);
+    onVisibleDaysChange?.(eachDayOfInterval({ start, end }));
+  }, [currentDate, scrollDaysDelta, onVisibleDaysChange]);
+
+  // Dynamic buffer: extends in BUFFER_STEP chunks based on scroll distance
+  const extraScrollDays = dayColumnWidth > 0
+    ? Math.ceil(Math.abs(scrollOffset) / dayColumnWidth / BUFFER_STEP) * BUFFER_STEP
+    : 0;
+  const dynamicBuffer = BUFFER_DAYS + extraScrollDays;
+  const totalDays = dynamicBuffer + VISIBLE_DAYS + dynamicBuffer;
+
+  // Extended buffered days for scroll (grows dynamically with scroll distance)
+  const bufferedBaseDays = React.useMemo(
+    () => generateBufferedDays(currentDate, dynamicBuffer),
+    [currentDate, dynamicBuffer]
+  );
+
+  const bufferedDays: WeekDay[] = bufferedBaseDays.map((day) => ({
+    ...day,
+    isToday: isToday(day.date),
+  }));
+
   // Trigger slide animation when currentDate changes externally (not from scroll)
   React.useEffect(() => {
     if (scrollNavigatedRef.current) {
@@ -212,12 +233,12 @@ export function WeekView({
     triggerSlideAnimation(daysDiff);
   }, [currentDate, triggerSlideAnimation]);
 
-  // The base translateX centers on the middle 7 days (skip BUFFER_DAYS columns)
-  const baseTranslateX = -(BUFFER_DAYS * dayColumnWidth);
+  // The base translateX centers on the visible days (skip dynamicBuffer columns)
+  const baseTranslateX = -(dynamicBuffer * dayColumnWidth);
   const transformX = baseTranslateX + scrollOffset;
 
   const scrollStyle: React.CSSProperties = {
-    width: `${(TOTAL_DAYS / VISIBLE_DAYS) * 100}%`,
+    width: `${(totalDays / VISIBLE_DAYS) * 100}%`,
     transform: `translateX(${transformX}px)`,
     transition: isAnimating ? `transform ${200}ms ease-out` : "none",
   };
