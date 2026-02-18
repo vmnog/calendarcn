@@ -179,7 +179,7 @@ export function WeekView({
     [currentDate, onDateChange]
   );
 
-  const { scrollOffset, isAnimating, triggerSlideAnimation } =
+  const { scrollOffset, slideOffset, isAnimating, triggerSlideAnimation } =
     useHorizontalScroll({
       containerRef: scrollContainerRef,
       dayColumnWidth,
@@ -235,7 +235,7 @@ export function WeekView({
 
   // The base translateX centers on the visible days (skip dynamicBuffer columns)
   const baseTranslateX = -(dynamicBuffer * dayColumnWidth);
-  const transformX = baseTranslateX + scrollOffset;
+  const transformX = baseTranslateX + scrollOffset + slideOffset;
 
   const scrollStyle: React.CSSProperties = {
     width: `${(totalDays / VISIBLE_DAYS) * 100}%`,

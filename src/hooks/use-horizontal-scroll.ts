@@ -10,6 +10,7 @@ interface UseHorizontalScrollOptions {
 
 interface UseHorizontalScrollReturn {
   scrollOffset: number;
+  slideOffset: number;
   isScrolling: boolean;
   isAnimating: boolean;
   triggerSlideAnimation: (daysDelta: number) => void;
@@ -24,6 +25,7 @@ export function useHorizontalScroll({
   onNavigate,
 }: UseHorizontalScrollOptions): UseHorizontalScrollReturn {
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [slideOffset, setSlideOffset] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
@@ -68,6 +70,7 @@ export function useHorizontalScroll({
   );
 
   // Programmatic slide animation for button/keyboard navigation
+  // Uses slideOffset (not scrollOffset) so dynamicBuffer isn't affected
   // Does NOT call onNavigate — caller is responsible for having already changed the date
   const triggerSlideAnimation = useCallback(
     (daysDelta: number) => {
@@ -75,13 +78,13 @@ export function useHorizontalScroll({
 
       // Start from the opposite direction to create slide effect
       const startOffset = daysDelta * dayColumnWidth;
-      setScrollOffset(startOffset);
+      setSlideOffset(startOffset);
 
       // Force a reflow then animate to 0
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setIsAnimating(true);
-          setScrollOffset(0);
+          setSlideOffset(0);
           setTimeout(() => {
             setIsAnimating(false);
           }, SNAP_ANIMATION_MS);
@@ -130,6 +133,7 @@ export function useHorizontalScroll({
 
   return {
     scrollOffset,
+    slideOffset,
     isScrolling,
     isAnimating,
     triggerSlideAnimation,
