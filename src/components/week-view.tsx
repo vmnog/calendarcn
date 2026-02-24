@@ -114,6 +114,8 @@ export function WeekView({
   currentDate = new Date(),
   events = [],
   onEventClick,
+  selectedEventId,
+  onBackgroundClick,
   onDateChange,
   onVisibleDaysChange,
   className,
@@ -244,7 +246,7 @@ export function WeekView({
   };
 
   return (
-    <div className={cn("flex h-full flex-col", className)}>
+    <div className={cn("flex h-full flex-col", className)} onClick={onBackgroundClick}>
       {/* Header - day columns and all-day row with synchronized scroll */}
       <div className="flex-shrink-0">
         <div className="overflow-hidden" ref={dayColumnsScrollRef}>
@@ -264,6 +266,8 @@ export function WeekView({
           <WeekViewAllDayRow
             days={bufferedDays}
             allDayEvents={allDayEvents}
+            onEventClick={onEventClick}
+            selectedEventId={selectedEventId}
             scrollStyle={scrollStyle}
           />
         </div>
@@ -287,6 +291,7 @@ export function WeekView({
                 hourHeight={hourHeight}
                 events={timedEvents}
                 onEventClick={onEventClick}
+                selectedEventId={selectedEventId}
               />
             </div>
           </div>
@@ -295,6 +300,7 @@ export function WeekView({
             hourHeight={hourHeight}
             scrollDays={bufferedDays}
             scrollStyle={scrollStyle}
+            behindSelection={!!selectedEventId}
           />
         </div>
       </div>

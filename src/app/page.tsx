@@ -12,6 +12,7 @@ import {
 import { addWeeks, startOfWeek } from "date-fns";
 import { generateMockEvents } from "@/lib/mock-events";
 import { SidebarLeft } from "@/components/sidebar-left";
+import type { CalendarEvent } from "@/components/week-view-types";
 import { SidebarRight } from "@/components/sidebar-right";
 import { WeekView, getCalendarHeaderInfo, getVisibleDays } from "@/components/week-view";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,6 +39,7 @@ import { Kbd } from "@/components/ui/kbd";
 function PageContent() {
   const [leftSidebarOpen, setLeftSidebarOpen] = React.useState(true);
   const [currentDate, setCurrentDate] = React.useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
+  const [selectedEvent, setSelectedEvent] = React.useState<CalendarEvent | null>(null);
 
   const goToToday = React.useCallback(() => setCurrentDate(startOfWeek(new Date(), { weekStartsOn: 0 })), []);
   const goToPrevWeek = React.useCallback(
@@ -76,6 +78,12 @@ function PageContent() {
         setLeftSidebarOpen((prev) => !prev);
         return;
       }
+      // Escape to deselect event
+      if (e.key === "Escape") {
+        setSelectedEvent(null);
+        return;
+      }
+
       // Skip single-key shortcuts when focused on input/textarea
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
@@ -211,10 +219,10 @@ function PageContent() {
           </div>
         </header>
         <div className="flex flex-1 flex-col overflow-hidden">
-          <WeekView currentDate={currentDate} events={events} onDateChange={goToDate} onVisibleDaysChange={setVisibleDays} />
+          <WeekView currentDate={currentDate} events={events} onEventClick={setSelectedEvent} selectedEventId={selectedEvent?.id} onBackgroundClick={() => setSelectedEvent(null)} onDateChange={goToDate} onVisibleDaysChange={setVisibleDays} />
         </div>
       </SidebarInset>
-      <SidebarLeft />
+      <SidebarLeft selectedEvent={selectedEvent} onPrevWeek={goToPrevWeek} onNextWeek={goToNextWeek} />
     </>
   );
 }

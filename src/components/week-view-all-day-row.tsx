@@ -16,6 +16,8 @@ const ALL_DAY_ROW_GAP = 2;
 export function WeekViewAllDayRow({
   days,
   allDayEvents = [],
+  onEventClick,
+  selectedEventId,
   scrollStyle,
   className,
 }: WeekViewAllDayRowProps) {
@@ -66,6 +68,8 @@ export function WeekViewAllDayRow({
                   row={row}
                   totalColumns={days.length}
                   days={days}
+                  onEventClick={onEventClick}
+                  isSelected={event.id === selectedEventId}
                 />
               ))}
             </div>
@@ -83,6 +87,8 @@ interface AllDayEventRowProps {
   row: number;
   totalColumns: number;
   days: WeekViewAllDayRowProps["days"];
+  onEventClick?: (event: CalendarEvent) => void;
+  isSelected?: boolean;
 }
 
 function AllDayEventRow({
@@ -92,6 +98,8 @@ function AllDayEventRow({
   row,
   totalColumns,
   days,
+  onEventClick,
+  isSelected,
 }: AllDayEventRowProps) {
   const left = (startColumn / totalColumns) * 100;
   // Subtract ~1.2% for right gap (same 8% gap as regular events, scaled to column width)
@@ -117,6 +125,8 @@ function AllDayEventRow({
       <AllDayEventItem
         event={event}
         isPast={isPast(event.end)}
+        isSelected={isSelected}
+        onClick={onEventClick}
         spanStart={spanStart}
         spanEnd={spanEnd}
       />

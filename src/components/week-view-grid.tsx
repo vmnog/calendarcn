@@ -16,6 +16,7 @@ export function WeekViewGrid({
   hourHeight,
   events = [],
   onEventClick,
+  selectedEventId,
   className,
 }: WeekViewGridProps) {
   return (
@@ -58,6 +59,7 @@ export function WeekViewGrid({
               events={positionedEvents}
               hourHeight={hourHeight}
               onEventClick={onEventClick}
+              selectedEventId={selectedEventId}
             />
           );
         })}
@@ -70,12 +72,14 @@ interface DayEventsColumnProps {
   events: ReturnType<typeof calculatePositionedEvents>;
   hourHeight: number;
   onEventClick?: (event: CalendarEvent) => void;
+  selectedEventId?: string;
 }
 
 function DayEventsColumn({
   events,
   hourHeight,
   onEventClick,
+  selectedEventId,
 }: DayEventsColumnProps) {
   return (
     <div className="relative h-full pointer-events-auto">
@@ -85,6 +89,7 @@ function DayEventsColumn({
           positionedEvent={positionedEvent}
           hourHeight={hourHeight}
           isPast={isPast(positionedEvent.event.end)}
+          isSelected={positionedEvent.event.id === selectedEventId}
           onClick={onEventClick}
         />
       ))}

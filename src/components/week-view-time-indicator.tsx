@@ -18,6 +18,7 @@ export function WeekViewTimeIndicator({
   hourHeight,
   scrollDays,
   scrollStyle,
+  behindSelection,
   className,
 }: WeekViewTimeIndicatorProps) {
   const [currentTime, setCurrentTime] = React.useState(() => new Date());
@@ -78,7 +79,7 @@ export function WeekViewTimeIndicator({
 
   return (
     <div
-      className={cn("pointer-events-none absolute left-0 right-0 z-20", className)}
+      className={cn("pointer-events-none absolute left-0 right-0", behindSelection ? "z-10" : "z-20", className)}
       style={{ top: topPosition }}
     >
       <div className="flex -translate-y-1/2 items-center">

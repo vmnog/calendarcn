@@ -36,6 +36,10 @@ export interface WeekViewProps {
   events?: CalendarEvent[];
   /** Optional click handler for events */
   onEventClick?: (event: CalendarEvent) => void;
+  /** ID of the currently selected event */
+  selectedEventId?: string;
+  /** Callback when clicking empty calendar space (not on an event) */
+  onBackgroundClick?: () => void;
   /** Callback when the displayed date changes (via scroll navigation) */
   onDateChange?: (date: Date) => void;
   /** Callback when the visible days change during scroll (real-time updates) */
@@ -82,6 +86,8 @@ export interface WeekViewGridProps {
   events?: CalendarEvent[];
   /** Optional click handler for events */
   onEventClick?: (event: CalendarEvent) => void;
+  /** ID of the currently selected event */
+  selectedEventId?: string;
   /** Optional className */
   className?: string;
 }
@@ -98,6 +104,8 @@ export interface WeekViewTimeIndicatorProps {
   scrollDays?: WeekDay[];
   /** Scroll transform style to apply to the lines */
   scrollStyle?: React.CSSProperties;
+  /** Whether to render behind selected events */
+  behindSelection?: boolean;
   /** Optional className */
   className?: string;
 }
@@ -110,10 +118,22 @@ export interface WeekViewAllDayRowProps {
   days: WeekDay[];
   /** All-day events to display */
   allDayEvents?: CalendarEvent[];
+  /** Optional click handler for events */
+  onEventClick?: (event: CalendarEvent) => void;
+  /** ID of the currently selected event */
+  selectedEventId?: string;
   /** Optional scroll transform style for horizontal scroll sync */
   scrollStyle?: React.CSSProperties;
   /** Optional className */
   className?: string;
+}
+
+/**
+ * Represents an event reminder
+ */
+export interface EventReminder {
+  amount: number;
+  unit: "minutes" | "hours" | "days";
 }
 
 /**
@@ -138,6 +158,18 @@ export interface CalendarEvent {
   description?: string;
   /** Optional location */
   location?: string;
+  /** Timezone string (e.g. "GMT-3 Sao Paulo") */
+  timezone?: string;
+  /** Recurrence rule display string (e.g. "Every week on Thu") */
+  recurrence?: string;
+  /** Reminders list */
+  reminders?: EventReminder[];
+  /** Busy/Free status */
+  status?: "busy" | "free";
+  /** Visibility setting */
+  visibility?: "default" | "public" | "private";
+  /** Calendar account email for display */
+  calendarEmail?: string;
 }
 
 /**
@@ -182,6 +214,8 @@ export interface CalendarEventItemProps {
   hourHeight: number;
   /** Whether the event is in the past */
   isPast?: boolean;
+  /** Whether the event is currently selected */
+  isSelected?: boolean;
   /** Optional click handler */
   onClick?: (event: CalendarEvent) => void;
   /** Optional className */

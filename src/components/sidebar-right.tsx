@@ -48,7 +48,10 @@ const data: { accounts: CalendarAccount[] } = {
       calendars: [
         { name: "me@vmnog.com", color: "red", visible: true },
         { name: "Personal", color: "purple", visible: true },
-        { name: "Family", color: "yellow", visible: false },
+        { name: "Work", color: "blue", visible: true },
+        { name: "Family", color: "orange", visible: true },
+        { name: "Side Projects", color: "yellow", visible: true },
+        { name: "Fitness", color: "green", visible: true },
         { name: "Holidays in Brazil", color: "green", visible: true, isSubscribed: true },
       ],
     },
