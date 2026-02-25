@@ -12,6 +12,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { useHorizontalScroll } from "@/hooks/use-horizontal-scroll";
+import { useEventDrag } from "@/hooks/use-event-drag";
 import type { HourSlot, WeekDay, WeekViewProps } from "./week-view-types";
 import { WeekViewAllDayRow } from "./week-view-all-day-row";
 import { WeekViewDayColumns } from "./week-view-day-columns";
@@ -118,6 +119,8 @@ export function WeekView({
   onBackgroundClick,
   onDateChange,
   onVisibleDaysChange,
+  onEventChange,
+  dirtyEventIds,
   className,
 }: WeekViewProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -169,6 +172,14 @@ export function WeekView({
     return () => observer.disconnect();
   }, []);
 
+  const { dragState, handleEventMouseDown } = useEventDrag({
+    hourHeight,
+    scrollContainerRef,
+    events: timedEvents,
+    onEventChange,
+    onEventClick,
+  });
+
   // Track whether navigation was initiated by scroll (to avoid double-animation)
   const scrollNavigatedRef = React.useRef(false);
   const prevDateRef = React.useRef(currentDate);
@@ -186,6 +197,7 @@ export function WeekView({
       containerRef: scrollContainerRef,
       dayColumnWidth,
       onNavigate: handleNavigate,
+      disabled: dragState?.isDragging,
     });
 
   // Compute how many days the scroll has shifted from center
@@ -292,6 +304,9 @@ export function WeekView({
                 events={timedEvents}
                 onEventClick={onEventClick}
                 selectedEventId={selectedEventId}
+                dragState={dragState ?? undefined}
+                onEventDragMouseDown={handleEventMouseDown}
+                dirtyEventIds={dirtyEventIds}
               />
             </div>
           </div>

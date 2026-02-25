@@ -39,7 +39,20 @@ import { Kbd } from "@/components/ui/kbd";
 function PageContent() {
   const [leftSidebarOpen, setLeftSidebarOpen] = React.useState(true);
   const [currentDate, setCurrentDate] = React.useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
-  const [selectedEvent, setSelectedEvent] = React.useState<CalendarEvent | null>(null);
+  const [events, setEvents] = React.useState(() => generateMockEvents());
+  const [dirtyEventIds, setDirtyEventIds] = React.useState(() => new Set<string>());
+  const [selectedEventId, setSelectedEventId] = React.useState<string | null>(null);
+  const selectedEvent = React.useMemo(
+    () => events.find((e) => e.id === selectedEventId) ?? null,
+    [events, selectedEventId]
+  );
+
+  const handleEventChange = React.useCallback((updatedEvent: CalendarEvent) => {
+    setEvents((prev) =>
+      prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e))
+    );
+    setDirtyEventIds((prev) => new Set(prev).add(updatedEvent.id));
+  }, []);
 
   const goToToday = React.useCallback(() => setCurrentDate(startOfWeek(new Date(), { weekStartsOn: 0 })), []);
   const goToPrevWeek = React.useCallback(
@@ -64,11 +77,6 @@ function PageContent() {
 
   const { monthName, year, weekNumber } = getCalendarHeaderInfo(visibleDays[0], 0);
 
-  const events = React.useMemo(
-    () => generateMockEvents(),
-    []
-  );
-
   // Keyboard shortcuts
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -80,7 +88,7 @@ function PageContent() {
       }
       // Escape to deselect event
       if (e.key === "Escape") {
-        setSelectedEvent(null);
+        setSelectedEventId(null);
         return;
       }
 
@@ -219,7 +227,7 @@ function PageContent() {
           </div>
         </header>
         <div className="flex flex-1 flex-col overflow-hidden">
-          <WeekView currentDate={currentDate} events={events} onEventClick={setSelectedEvent} selectedEventId={selectedEvent?.id} onBackgroundClick={() => setSelectedEvent(null)} onDateChange={goToDate} onVisibleDaysChange={setVisibleDays} />
+          <WeekView currentDate={currentDate} events={events} onEventClick={(e) => setSelectedEventId(e.id)} selectedEventId={selectedEvent?.id} onBackgroundClick={() => setSelectedEventId(null)} onDateChange={goToDate} onVisibleDaysChange={setVisibleDays} onEventChange={handleEventChange} dirtyEventIds={dirtyEventIds} />
         </div>
       </SidebarInset>
       <SidebarLeft selectedEvent={selectedEvent} onPrevWeek={goToPrevWeek} onNextWeek={goToNextWeek} />

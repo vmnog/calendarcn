@@ -6,6 +6,7 @@ interface UseHorizontalScrollOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
   dayColumnWidth: number;
   onNavigate: (daysDelta: number) => void;
+  disabled?: boolean;
 }
 
 interface UseHorizontalScrollReturn {
@@ -23,6 +24,7 @@ export function useHorizontalScroll({
   containerRef,
   dayColumnWidth,
   onNavigate,
+  disabled,
 }: UseHorizontalScrollOptions): UseHorizontalScrollReturn {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [slideOffset, setSlideOffset] = useState(0);
@@ -99,6 +101,8 @@ export function useHorizontalScroll({
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
+      if (disabled) return;
+
       // Only handle horizontal-dominant scrolls
       if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
 
@@ -129,7 +133,7 @@ export function useHorizontalScroll({
         clearTimeout(scrollEndTimer.current);
       }
     };
-  }, [containerRef, snapAndNavigate]);
+  }, [containerRef, snapAndNavigate, disabled]);
 
   return {
     scrollOffset,

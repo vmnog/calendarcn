@@ -44,6 +44,10 @@ export interface WeekViewProps {
   onDateChange?: (date: Date) => void;
   /** Callback when the visible days change during scroll (real-time updates) */
   onVisibleDaysChange?: (days: Date[]) => void;
+  /** Callback when an event is changed (e.g. dragged to a new time) */
+  onEventChange?: (event: CalendarEvent) => void;
+  /** Set of event IDs with unsaved changes */
+  dirtyEventIds?: Set<string>;
   /** Optional className for the root element */
   className?: string;
 }
@@ -88,6 +92,12 @@ export interface WeekViewGridProps {
   onEventClick?: (event: CalendarEvent) => void;
   /** ID of the currently selected event */
   selectedEventId?: string;
+  /** Current drag state if an event is being dragged */
+  dragState?: EventDragState;
+  /** Mousedown handler to initiate event drag */
+  onEventDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  /** Set of event IDs with unsaved changes */
+  dirtyEventIds?: Set<string>;
   /** Optional className */
   className?: string;
 }
@@ -205,6 +215,37 @@ export interface PositionedEvent {
 }
 
 /**
+ * Drag variant for rendering events in different visual states during drag
+ */
+export type EventDragVariant = "default" | "ghost" | "dragging" | "placeholder";
+
+/**
+ * State of an in-progress event drag operation
+ */
+export interface EventDragState {
+  /** ID of the event being dragged */
+  eventId: string;
+  /** Original start time before drag */
+  originalStart: Date;
+  /** Original end time before drag */
+  originalEnd: Date;
+  /** Current snapped start time during drag */
+  currentStart: Date;
+  /** Current snapped end time during drag */
+  currentEnd: Date;
+  /** Whether the drag threshold has been met */
+  isDragging: boolean;
+  /** Raw cursor Y position in px (unsnapped, for smooth dragging copy) */
+  cursorY: number;
+  /** Raw cursor X position in px relative to grid container */
+  cursorX: number;
+  /** Viewport clientX for fixed-position dragging copy */
+  clientX: number;
+  /** Viewport clientY for fixed-position dragging copy */
+  clientY: number;
+}
+
+/**
  * Props for the CalendarEventItem component
  */
 export interface CalendarEventItemProps {
@@ -218,6 +259,24 @@ export interface CalendarEventItemProps {
   isSelected?: boolean;
   /** Optional click handler */
   onClick?: (event: CalendarEvent) => void;
+  /** Drag variant for visual state during drag */
+  dragVariant?: EventDragVariant;
+  /** Whether this event has unsaved changes */
+  isDirty?: boolean;
+  /** Override start time (for dragging/placeholder positioning) */
+  overrideStart?: Date;
+  /** Override end time (for dragging/placeholder positioning) */
+  overrideEnd?: Date;
+  /** Mousedown handler to initiate drag */
+  onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  /** Raw cursor Y position for smooth dragging copy */
+  cursorY?: number;
+  /** Raw cursor X position for smooth dragging copy */
+  cursorX?: number;
+  /** Fixed width in px (for free-floating dragging copy) */
+  fixedWidth?: number;
+  /** Fixed height in px (for free-floating dragging copy) */
+  fixedHeight?: number;
   /** Optional className */
   className?: string;
 }
