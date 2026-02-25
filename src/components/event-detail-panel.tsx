@@ -17,8 +17,8 @@ import {
   MoreHorizontal,
   NotepadText,
   RefreshCcw,
-  Scissors,
   SquareDashed,
+  TabletSmartphone,
   Trash2,
   User,
   Video,
@@ -192,6 +192,8 @@ function EventTypeHelpIcon({ tooltip }: { tooltip?: string }) {
 export function EventDetailPanel({ event, onPrevWeek, onNextWeek }: EventDetailPanelProps) {
   const color = event.color ?? "blue";
   const [eventType, setEventType] = React.useState<EventType>("Event");
+  const [eventDropdownOpen, setEventDropdownOpen] = React.useState(false);
+  const [hoveredOther, setHoveredOther] = React.useState(false);
 
   const otherTypes = EVENT_TYPES.filter((t) => t !== eventType);
 
@@ -199,22 +201,31 @@ export function EventDetailPanel({ event, onPrevWeek, onNextWeek }: EventDetailP
     <div className="flex flex-col gap-3 py-3">
       {/* Header */}
       <div className="flex items-center justify-between px-4">
-        <DropdownMenu>
+        <DropdownMenu open={eventDropdownOpen} onOpenChange={(open) => { setEventDropdownOpen(open); if (open) setHoveredOther(false); }}>
           <DropdownMenuTrigger asChild>
-            <button type="button" className="text-foreground flex items-center gap-0.5 text-xs font-medium">
+            <button type="button" className={cn("flex items-center gap-0.5 text-xs font-medium rounded-sm px-2.5 py-1.5 -ml-2.5 gap-1.5", eventDropdownOpen ? "bg-[#252525] text-white" : "text-foreground")}>
               {eventType}
-              <ChevronDown className="text-[#C7C5C1] dark:text-[#595959] size-3.5" />
+              <ChevronDown className={cn("size-3.5", eventDropdownOpen ? "text-[#595959]" : "text-[#C7C5C1] dark:text-[#595959]")} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="left" className="min-w-[180px] bg-[#252525] border-[#303030]">
-            <DropdownMenuItem className="group/item text-xs text-white focus:bg-[#303030] focus:text-white" onSelect={() => setEventType(eventType)}>
+          <DropdownMenuContent align="start" side="left" sideOffset={12} alignOffset={-4} className="min-w-[180px] bg-[#252525] border-[#303030]" onMouseLeave={() => setHoveredOther(false)}>
+            <DropdownMenuItem
+              className={cn("group/item text-xs text-white focus:bg-[#303030] focus:text-white", !hoveredOther && "bg-[#303030]")}
+              onSelect={() => setEventType(eventType)}
+              onMouseEnter={() => setHoveredOther(false)}
+            >
               <Check className="size-3.5" />
               <span className="flex-1">{eventType}</span>
               <EventTypeHelpIcon tooltip={EVENT_TYPE_TOOLTIPS[eventType]} />
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-[#303030]" />
             {otherTypes.map((type) => (
-              <DropdownMenuItem key={type} className="group/item text-xs text-white focus:bg-[#303030] focus:text-white pl-8" onSelect={() => setEventType(type)}>
+              <DropdownMenuItem
+                key={type}
+                className="group/item text-xs text-white focus:bg-[#303030] focus:text-white pl-8"
+                onSelect={() => setEventType(type)}
+                onMouseEnter={() => setHoveredOther(true)}
+              >
                 <span className="flex-1">{type}</span>
                 <EventTypeHelpIcon tooltip={EVENT_TYPE_TOOLTIPS[type]} />
               </DropdownMenuItem>
@@ -227,27 +238,27 @@ export function EventDetailPanel({ event, onPrevWeek, onNextWeek }: EventDetailP
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="left" className="min-w-[180px]">
-            <DropdownMenuItem className="text-xs">
-              <Scissors className="size-3.5" />
-              Cut
-              <DropdownMenuShortcut>⌘X</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs">
-              <Copy className="size-3.5" />
-              Copy
-              <DropdownMenuShortcut>⌘C</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs">
+          <DropdownMenuContent align="start" side="left" className="min-w-[180px] bg-[#252525] border-[#303030]">
+            <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
               <SquareDashed className="size-3.5" />
-              Duplicate
-              <DropdownMenuShortcut>⌘D</DropdownMenuShortcut>
+              Cut
+              <DropdownMenuShortcut className="text-white/40">⌘X</DropdownMenuShortcut>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" className="text-xs">
-              <Trash2 className="size-3.5" />
+            <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
+              <TabletSmartphone className="size-3.5" />
+              Copy
+              <DropdownMenuShortcut className="text-white/40">⌘C</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
+              <Copy className="size-3.5" />
+              Duplicate
+              <DropdownMenuShortcut className="text-white/40">⌘D</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-[#303030]" />
+            <DropdownMenuItem className="text-xs text-[#E56458] focus:!bg-[#DE5551] focus:!text-white focus:[&>svg]:!text-white focus:[&>[data-slot=dropdown-menu-shortcut]]:!text-white">
+              <Trash2 className="size-3.5 text-[#E56458]" />
               Delete
-              <DropdownMenuShortcut>delete</DropdownMenuShortcut>
+              <DropdownMenuShortcut className="text-white/40 tracking-normal">delete</DropdownMenuShortcut>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
