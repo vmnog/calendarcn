@@ -227,6 +227,8 @@ export type EventDragVariant = "default" | "ghost" | "dragging" | "placeholder";
 export interface EventDragState {
   /** ID of the event being dragged */
   eventId: string;
+  /** The original event being dragged (preserved across week navigations) */
+  event: CalendarEvent;
   /** Original start time before drag */
   originalStart: Date;
   /** Original end time before drag */
@@ -235,6 +237,8 @@ export interface EventDragState {
   currentStart: Date;
   /** Current snapped end time during drag */
   currentEnd: Date;
+  /** Target day for the placeholder (decoupled from currentStart for cross-column drag) */
+  currentDate: Date;
   /** Whether the drag threshold has been met */
   isDragging: boolean;
   /** Raw cursor Y position in px (unsnapped, for smooth dragging copy) */

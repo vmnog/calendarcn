@@ -158,7 +158,29 @@ export function EventContextMenu({
   onEventChange,
 }: EventContextMenuProps) {
   const menuRef = React.useRef<HTMLDivElement>(null);
+  const [adjustedPos, setAdjustedPos] = React.useState(position);
+  const [ready, setReady] = React.useState(false);
   const currentColor = event.color ?? "blue";
+
+  React.useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!menu) return;
+
+    const menuHeight = menu.offsetHeight;
+    const menuWidth = menu.offsetWidth;
+    let y = position.y;
+    let x = position.x;
+
+    if (position.y + menuHeight > window.innerHeight) {
+      y = position.y - menuHeight;
+    }
+    if (position.x + menuWidth > window.innerWidth) {
+      x = position.x - menuWidth;
+    }
+
+    setAdjustedPos({ x, y });
+    setReady(true);
+  }, [position]);
 
   React.useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -195,7 +217,11 @@ export function EventContextMenu({
     <div
       ref={menuRef}
       className="fixed z-50 min-w-[200px] rounded-md border border-[#303030] bg-[#252525] p-1 shadow-md animate-in fade-in-0 zoom-in-95"
-      style={{ top: position.y, left: position.x }}
+      style={{
+        top: adjustedPos.y,
+        left: adjustedPos.x,
+        opacity: ready ? 1 : 0,
+      }}
     >
       {/* Color selector row */}
       <div className="flex items-center gap-1.5 px-2 py-1.5">

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { createPortal } from "react-dom";
+import { isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { isPast } from "date-fns";
 import { calculatePositionedEvents } from "@/lib/event-utils";
@@ -96,11 +97,19 @@ export function WeekViewGrid({
         })}
       </div>
 
+      {/* Drag placeholder overlay — rendered at grid level for cross-column support */}
+      {dragState?.isDragging && (
+        <DragPlaceholderOverlay
+          days={days}
+          hourHeight={hourHeight}
+          dragState={dragState}
+        />
+      )}
+
       {/* Floating dragging copy — rendered at grid level so it can move freely */}
       {dragState?.isDragging && (
         <FloatingDragCopy
           days={days}
-          events={events}
           hourHeight={hourHeight}
           dragState={dragState}
           dirtyEventIds={dirtyEventIds}
@@ -111,9 +120,64 @@ export function WeekViewGrid({
   );
 }
 
+interface DragPlaceholderOverlayProps {
+  days: WeekViewGridProps["days"];
+  hourHeight: number;
+  dragState: EventDragState;
+}
+
+function DragPlaceholderOverlay({
+  days,
+  hourHeight,
+  dragState,
+}: DragPlaceholderOverlayProps) {
+  // Find the target column index using dragState.currentDate
+  const targetColumnIndex = days.findIndex((d) =>
+    isSameDay(d.date, dragState.currentDate),
+  );
+
+  if (targetColumnIndex === -1) return null;
+
+  // Build a minimal PositionedEvent from the drag state event
+  const placeholderPositioned: PositionedEvent = {
+    event: dragState.event,
+    top: 0,
+    height: 0,
+    left: 0,
+    width: 92,
+    column: 0,
+    totalColumns: 1,
+  };
+
+  return (
+    <div
+      className="absolute inset-0 grid pointer-events-none"
+      style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
+    >
+      {days.map((day, i) => {
+        if (i !== targetColumnIndex) {
+          return <div key={day.date.toISOString()} />;
+        }
+
+        return (
+          <div key={day.date.toISOString()} className="relative">
+            <CalendarEventItem
+              key={`${dragState.eventId}-placeholder`}
+              positionedEvent={placeholderPositioned}
+              hourHeight={hourHeight}
+              dragVariant="placeholder"
+              overrideStart={dragState.currentStart}
+              overrideEnd={dragState.currentEnd}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 interface FloatingDragCopyProps {
   days: WeekViewGridProps["days"];
-  events: CalendarEvent[];
   hourHeight: number;
   dragState: EventDragState;
   dirtyEventIds?: Set<string>;
@@ -122,54 +186,55 @@ interface FloatingDragCopyProps {
 
 function FloatingDragCopy({
   days,
-  events,
   hourHeight,
   dragState,
   dirtyEventIds,
   gridWidth,
 }: FloatingDragCopyProps) {
-  for (const day of days) {
-    const positionedEvents = calculatePositionedEvents(events, day);
-    const match = positionedEvents.find((pe) => pe.event.id === dragState.eventId);
-    if (!match) continue;
+  const floatingPositioned: PositionedEvent = {
+    event: dragState.event,
+    top: 0,
+    height: 0,
+    left: 0,
+    width: 92,
+    column: 0,
+    totalColumns: 1,
+  };
 
-    const isDirty = dirtyEventIds?.has(dragState.eventId);
-    const durationMinutes =
-      (dragState.currentEnd.getTime() - dragState.currentStart.getTime()) / 60000;
-    const heightPx = (durationMinutes / 60) * hourHeight;
-    const columnWidthPx = (days.length > 0 ? gridWidth / days.length : 200) * 0.92;
+  const isDirty = dirtyEventIds?.has(dragState.eventId);
+  const durationMinutes =
+    (dragState.currentEnd.getTime() - dragState.currentStart.getTime()) / 60000;
+  const heightPx = (durationMinutes / 60) * hourHeight;
+  const columnWidthPx = (days.length > 0 ? gridWidth / days.length : 200) * 0.92;
 
-    return createPortal(
-      <div
-        className="pointer-events-none"
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100vw",
-          height: "100vh",
-          zIndex: 9999,
-        }}
-      >
-        <CalendarEventItem
-          key={`${dragState.eventId}-dragging`}
-          positionedEvent={match}
-          hourHeight={hourHeight}
-          dragVariant="dragging"
-          isDirty={isDirty}
-          overrideStart={dragState.currentStart}
-          overrideEnd={dragState.currentEnd}
-          cursorY={dragState.clientY}
-          cursorX={dragState.clientX}
-          fixedWidth={columnWidthPx}
-          fixedHeight={heightPx}
-        />
-      </div>,
-      document.body,
-    );
-  }
-
-  return null;
+  return createPortal(
+    <div
+      className="pointer-events-none"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 9999,
+      }}
+    >
+      <CalendarEventItem
+        key={`${dragState.eventId}-dragging`}
+        positionedEvent={floatingPositioned}
+        hourHeight={hourHeight}
+        dragVariant="dragging"
+        isDirty={isDirty}
+        overrideStart={dragState.currentStart}
+        overrideEnd={dragState.currentEnd}
+        cursorY={dragState.clientY}
+        cursorX={dragState.clientX}
+        fixedWidth={columnWidthPx}
+        fixedHeight={heightPx}
+      />
+    </div>,
+    document.body,
+  );
 }
 
 interface DayEventsColumnProps {
@@ -183,32 +248,17 @@ interface DayEventsColumnProps {
   dirtyEventIds?: Set<string>;
 }
 
-function renderColumnDragElements(
+function renderColumnGhost(
   positionedEvent: PositionedEvent,
   hourHeight: number,
-  dragState: EventDragState,
 ) {
-  const eventId = positionedEvent.event.id;
-
   return (
-    <React.Fragment key={eventId}>
-      {/* Ghost at original position */}
-      <CalendarEventItem
-        key={`${eventId}-ghost`}
-        positionedEvent={positionedEvent}
-        hourHeight={hourHeight}
-        dragVariant="ghost"
-      />
-      {/* Snap placeholder at drop target */}
-      <CalendarEventItem
-        key={`${eventId}-placeholder`}
-        positionedEvent={positionedEvent}
-        hourHeight={hourHeight}
-        dragVariant="placeholder"
-        overrideStart={dragState.currentStart}
-        overrideEnd={dragState.currentEnd}
-      />
-    </React.Fragment>
+    <CalendarEventItem
+      key={`${positionedEvent.event.id}-ghost`}
+      positionedEvent={positionedEvent}
+      hourHeight={hourHeight}
+      dragVariant="ghost"
+    />
   );
 }
 
@@ -229,11 +279,7 @@ function DayEventsColumn({
         const isBeingDragged = dragState?.isDragging && dragState.eventId === eventId;
 
         if (isBeingDragged) {
-          return renderColumnDragElements(
-            positionedEvent,
-            hourHeight,
-            dragState,
-          );
+          return renderColumnGhost(positionedEvent, hourHeight);
         }
 
         return (

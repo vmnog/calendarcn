@@ -172,14 +172,6 @@ export function WeekView({
     return () => observer.disconnect();
   }, []);
 
-  const { dragState, handleEventMouseDown } = useEventDrag({
-    hourHeight,
-    scrollContainerRef,
-    events: timedEvents,
-    onEventChange,
-    onEventClick,
-  });
-
   // Track whether navigation was initiated by scroll (to avoid double-animation)
   const scrollNavigatedRef = React.useRef(false);
   const prevDateRef = React.useRef(currentDate);
@@ -191,6 +183,30 @@ export function WeekView({
     },
     [currentDate, onDateChange]
   );
+
+  const handleDragNavigate = React.useCallback(
+    (daysDelta: number) => {
+      onDateChange?.(addDays(currentDate, daysDelta));
+    },
+    [currentDate, onDateChange],
+  );
+
+  const visibleDayDates = React.useMemo(
+    () => days.map((d) => d.date),
+    [days],
+  );
+
+  const { dragState, handleEventMouseDown } = useEventDrag({
+    hourHeight,
+    scrollContainerRef,
+    events: timedEvents,
+    days: visibleDayDates,
+    dayColumnWidth,
+    timeAxisWidth: TIME_AXIS_WIDTH,
+    onEventChange,
+    onEventClick,
+    onDragNavigate: handleDragNavigate,
+  });
 
   const { scrollOffset, slideOffset, isAnimating, triggerSlideAnimation } =
     useHorizontalScroll({
