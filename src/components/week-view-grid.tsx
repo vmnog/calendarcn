@@ -135,7 +135,7 @@ function FloatingDragCopy({
     const durationMinutes =
       (dragState.currentEnd.getTime() - dragState.currentStart.getTime()) / 60000;
     const heightPx = (durationMinutes / 60) * hourHeight;
-    const columnWidthPx = days.length > 0 ? gridWidth / days.length : 200;
+    const columnWidthPx = (days.length > 0 ? gridWidth / days.length : 200) * 0.92;
 
     return createPortal(
       <div
