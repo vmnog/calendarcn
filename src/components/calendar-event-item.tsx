@@ -216,6 +216,8 @@ export function CalendarEventItem({
         )}
         style={{
           ...posStyle,
+          left: "0%",
+          width: "100%",
           zIndex: 25,
         }}
       />
