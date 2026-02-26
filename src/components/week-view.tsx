@@ -306,6 +306,7 @@ export function WeekView({
                 selectedEventId={selectedEventId}
                 dragState={dragState ?? undefined}
                 onEventDragMouseDown={handleEventMouseDown}
+                onEventChange={onEventChange}
                 dirtyEventIds={dirtyEventIds}
               />
             </div>

@@ -96,6 +96,8 @@ export interface WeekViewGridProps {
   dragState?: EventDragState;
   /** Mousedown handler to initiate event drag */
   onEventDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  /** Callback when an event is changed (e.g. color change from context menu) */
+  onEventChange?: (event: CalendarEvent) => void;
   /** Set of event IDs with unsaved changes */
   dirtyEventIds?: Set<string>;
   /** Optional className */
@@ -269,6 +271,8 @@ export interface CalendarEventItemProps {
   overrideEnd?: Date;
   /** Mousedown handler to initiate drag */
   onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  /** Callback when an event is changed (e.g. color change from context menu) */
+  onEventChange?: (event: CalendarEvent) => void;
   /** Raw cursor Y position for smooth dragging copy */
   cursorY?: number;
   /** Raw cursor X position for smooth dragging copy */

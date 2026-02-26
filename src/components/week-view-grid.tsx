@@ -26,6 +26,7 @@ export function WeekViewGrid({
   selectedEventId,
   dragState,
   onEventDragMouseDown,
+  onEventChange,
   dirtyEventIds,
   className,
 }: WeekViewGridProps) {
@@ -88,6 +89,7 @@ export function WeekViewGrid({
               selectedEventId={selectedEventId}
               dragState={dragState}
               onEventDragMouseDown={onEventDragMouseDown}
+              onEventChange={onEventChange}
               dirtyEventIds={dirtyEventIds}
             />
           );
@@ -177,6 +179,7 @@ interface DayEventsColumnProps {
   selectedEventId?: string;
   dragState?: EventDragState;
   onEventDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  onEventChange?: (event: CalendarEvent) => void;
   dirtyEventIds?: Set<string>;
 }
 
@@ -216,6 +219,7 @@ function DayEventsColumn({
   selectedEventId,
   dragState,
   onEventDragMouseDown,
+  onEventChange,
   dirtyEventIds,
 }: DayEventsColumnProps) {
   return (
@@ -241,6 +245,7 @@ function DayEventsColumn({
             isSelected={eventId === selectedEventId}
             onClick={onEventClick}
             onDragMouseDown={onEventDragMouseDown}
+            onEventChange={onEventChange}
             isDirty={dirtyEventIds?.has(eventId)}
           />
         );

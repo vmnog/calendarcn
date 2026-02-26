@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { cn } from "@/lib/utils";
 import { format, isPast } from "date-fns";
 import type {
@@ -7,6 +8,7 @@ import type {
   CalendarEventItemProps,
   EventColor,
 } from "./week-view-types";
+import { EventContextMenu } from "./event-context-menu";
 
 const eventColorStyles: Record<
   EventColor,
@@ -124,6 +126,7 @@ export function CalendarEventItem({
   overrideStart,
   overrideEnd,
   onDragMouseDown,
+  onEventChange,
   cursorY,
   cursorX,
   fixedWidth,
@@ -134,6 +137,13 @@ export function CalendarEventItem({
   const color = event.color ?? "blue";
   const styles = eventColorStyles[color];
   const eventIsPast = isPastProp ?? isPast(event.end);
+
+  const [contextMenu, setContextMenu] = React.useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const closeContextMenu = React.useCallback(() => setContextMenu(null), []);
 
   const displayStart = overrideStart ?? event.start;
   const displayEnd = overrideEnd ?? event.end;
@@ -308,82 +318,99 @@ export function CalendarEventItem({
     onClick?.(event);
   }
 
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }
+
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onMouseDown={handleMouseDown}
-      onClick={handleClick}
-      onKeyDown={handleKeyDown}
-      className={cn(
-        "absolute rounded-md px-2 py-1",
-        "cursor-pointer hover:z-10 focus:outline-none focus-visible:outline-none",
-        "overflow-hidden select-none",
-        isSelected && "z-20",
-        className,
-      )}
-      style={{
-        ...posStyle,
-        zIndex: isSelected ? 20 : positionedEvent.column,
-      }}
-    >
-      {/* Solid background layer to prevent transparency bleed-through */}
-      <div className="absolute inset-0 rounded-md bg-white dark:bg-[#191919]" />
-
-      {/* Colored background layer - uses border color when selected */}
+    <>
       <div
+        role="button"
+        tabIndex={0}
+        onMouseDown={handleMouseDown}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        onContextMenu={handleContextMenu}
         className={cn(
-          "absolute inset-0 rounded-md",
-          isSelected ? styles.border : styles.bg,
-          eventIsPast && !isSelected && "opacity-60",
+          "absolute rounded-md px-2 py-1",
+          "cursor-pointer hover:z-10 focus:outline-none focus-visible:outline-none",
+          "overflow-hidden select-none",
+          isSelected && "z-20",
+          className,
         )}
-      />
+        style={{
+          ...posStyle,
+          zIndex: isSelected ? 20 : positionedEvent.column,
+        }}
+      >
+        {/* Solid background layer to prevent transparency bleed-through */}
+        <div className="absolute inset-0 rounded-md bg-white dark:bg-[#191919]" />
 
-      {/* Left border - hidden when selected (merges with bg) */}
-      {!isSelected && (
+        {/* Colored background layer - uses border color when selected */}
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-white dark:mix-blend-overlay",
-            styles.border,
-            eventIsPast && "opacity-60",
+            "absolute inset-0 rounded-md",
+            isSelected ? styles.border : styles.bg,
+            eventIsPast && !isSelected && "opacity-60",
           )}
         />
-      )}
-      <div
-        className={cn(
-          "relative flex flex-col h-full pl-1 overflow-hidden",
-          isCompact && "flex-row items-center gap-1",
+
+        {/* Left border - hidden when selected (merges with bg) */}
+        {!isSelected && (
+          <div
+            className={cn(
+              "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-white dark:mix-blend-overlay",
+              styles.border,
+              eventIsPast && "opacity-60",
+            )}
+          />
         )}
-      >
-        <span
+        <div
           className={cn(
-            "font-medium text-[0.625rem] leading-tight break-words flex items-center gap-0.5",
-            isSelected
-              ? "text-white dark:text-white"
-              : cn(styles.text, "dark:text-white/80", eventIsPast && "opacity-60"),
+            "relative flex flex-col h-full pl-1 overflow-hidden",
+            isCompact && "flex-row items-center gap-1",
           )}
         >
-          {isDirty && <span className="text-[0.35rem] shrink-0">●</span>}
-          {event.title}
-        </span>
-        {!isCompact && (
           <span
             className={cn(
-              "text-[0.625rem] whitespace-nowrap",
+              "font-medium text-[0.625rem] leading-tight break-words flex items-center gap-0.5",
               isSelected
                 ? "text-white dark:text-white"
-                : cn(
-                    styles.text,
-                    "dark:text-white dark:mix-blend-overlay",
-                    eventIsPast && "opacity-60 dark:opacity-100",
-                  ),
+                : cn(styles.text, "dark:text-white/80", eventIsPast && "opacity-60"),
             )}
           >
-            {formatEventTimeRange(displayEvent)}
+            {isDirty && <span className="text-[0.35rem] shrink-0">●</span>}
+            {event.title}
           </span>
-        )}
+          {!isCompact && (
+            <span
+              className={cn(
+                "text-[0.625rem] whitespace-nowrap",
+                isSelected
+                  ? "text-white dark:text-white"
+                  : cn(
+                      styles.text,
+                      "dark:text-white dark:mix-blend-overlay",
+                      eventIsPast && "opacity-60 dark:opacity-100",
+                    ),
+              )}
+            >
+              {formatEventTimeRange(displayEvent)}
+            </span>
+          )}
+        </div>
       </div>
-    </div>
+      {contextMenu && (
+        <EventContextMenu
+          event={event}
+          position={contextMenu}
+          onClose={closeContextMenu}
+          onEventChange={onEventChange}
+        />
+      )}
+    </>
   );
 }
 
