@@ -12,7 +12,6 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
-  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
 import {
@@ -105,7 +104,6 @@ export function SidebarLeft({
           </SidebarGroup>
         )}
       </SidebarContent>
-      <SidebarRail />
     </Sidebar>
   )
 }

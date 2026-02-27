@@ -131,6 +131,7 @@ export function CalendarEventItem({
   cursorX,
   fixedWidth,
   fixedHeight,
+  onContextMenuOpenChange,
   className,
 }: CalendarEventItemProps) {
   const { event } = positionedEvent;
@@ -143,7 +144,10 @@ export function CalendarEventItem({
     y: number;
   } | null>(null);
 
-  const closeContextMenu = React.useCallback(() => setContextMenu(null), []);
+  const closeContextMenu = React.useCallback(() => {
+    setContextMenu(null);
+    onContextMenuOpenChange?.(false);
+  }, [onContextMenuOpenChange]);
 
   const displayStart = overrideStart ?? event.start;
   const displayEnd = overrideEnd ?? event.end;
@@ -322,6 +326,7 @@ export function CalendarEventItem({
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({ x: e.clientX, y: e.clientY });
+    onContextMenuOpenChange?.(true);
   }
 
   return (

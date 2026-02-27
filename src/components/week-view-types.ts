@@ -100,6 +100,8 @@ export interface WeekViewGridProps {
   onEventChange?: (event: CalendarEvent) => void;
   /** Set of event IDs with unsaved changes */
   dirtyEventIds?: Set<string>;
+  /** Callback when context menu open state changes */
+  onContextMenuOpenChange?: (open: boolean) => void;
   /** Optional className */
   className?: string;
 }
@@ -285,6 +287,8 @@ export interface CalendarEventItemProps {
   fixedWidth?: number;
   /** Fixed height in px (for free-floating dragging copy) */
   fixedHeight?: number;
+  /** Callback when context menu open state changes */
+  onContextMenuOpenChange?: (open: boolean) => void;
   /** Optional className */
   className?: string;
 }

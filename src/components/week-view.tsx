@@ -153,6 +153,7 @@ export function WeekView({
   // Compute day column width and dynamic hour height from container
   const [dayColumnWidth, setDayColumnWidth] = React.useState(0);
   const [hourHeight, setHourHeight] = React.useState(MIN_HOUR_HEIGHT);
+  const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
 
   React.useEffect(() => {
     const updateDimensions = () => {
@@ -213,7 +214,7 @@ export function WeekView({
       containerRef: scrollContainerRef,
       dayColumnWidth,
       onNavigate: handleNavigate,
-      disabled: dragState?.isDragging,
+      disabled: dragState?.isDragging || contextMenuOpen,
     });
 
   // Compute how many days the scroll has shifted from center
@@ -324,6 +325,7 @@ export function WeekView({
                 onEventDragMouseDown={handleEventMouseDown}
                 onEventChange={onEventChange}
                 dirtyEventIds={dirtyEventIds}
+                onContextMenuOpenChange={setContextMenuOpen}
               />
             </div>
           </div>

@@ -29,6 +29,7 @@ export function WeekViewGrid({
   onEventDragMouseDown,
   onEventChange,
   dirtyEventIds,
+  onContextMenuOpenChange,
   className,
 }: WeekViewGridProps) {
   const gridRef = React.useRef<HTMLDivElement>(null);
@@ -92,6 +93,7 @@ export function WeekViewGrid({
               onEventDragMouseDown={onEventDragMouseDown}
               onEventChange={onEventChange}
               dirtyEventIds={dirtyEventIds}
+              onContextMenuOpenChange={onContextMenuOpenChange}
             />
           );
         })}
@@ -246,6 +248,7 @@ interface DayEventsColumnProps {
   onEventDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
   onEventChange?: (event: CalendarEvent) => void;
   dirtyEventIds?: Set<string>;
+  onContextMenuOpenChange?: (open: boolean) => void;
 }
 
 function renderColumnGhost(
@@ -271,6 +274,7 @@ function DayEventsColumn({
   onEventDragMouseDown,
   onEventChange,
   dirtyEventIds,
+  onContextMenuOpenChange,
 }: DayEventsColumnProps) {
   return (
     <div className="relative h-full pointer-events-auto">
@@ -293,6 +297,7 @@ function DayEventsColumn({
             onDragMouseDown={onEventDragMouseDown}
             onEventChange={onEventChange}
             isDirty={dirtyEventIds?.has(eventId)}
+            onContextMenuOpenChange={onContextMenuOpenChange}
           />
         );
       })}
