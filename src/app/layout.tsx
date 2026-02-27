@@ -69,15 +69,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
-      {process.env.NODE_ENV === "development" && (
-        <head>
-          <Script
-            src="https://unpkg.com/react-scan/dist/auto.global.js"
-            crossOrigin="anonymous"
-            strategy="beforeInteractive"
-          />
-        </head>
-      )}
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
       >
@@ -89,6 +80,13 @@ export default function RootLayout({
         >
           {children}
           {process.env.NODE_ENV === "development" && <Agentation />}
+          {process.env.NODE_ENV === "development" && (
+            <Script
+              src="https://unpkg.com/react-scan/dist/auto.global.js"
+              crossOrigin="anonymous"
+              strategy="beforeInteractive"
+            />
+          )}
         </ThemeProvider>
       </body>
     </html>
