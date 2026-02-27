@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -323,15 +324,15 @@ function PageContent() {
   );
 }
 
+const ClientPageContent = dynamic(
+  () => Promise.resolve({ default: PageContent }),
+  { ssr: false }
+);
+
 export default function Page() {
-  const [mounted, setMounted] = React.useState(false);
-  React.useEffect(() => setMounted(true), []);
-
-  if (!mounted) return null;
-
   return (
     <SidebarProvider className="h-screen">
-      <PageContent />
+      <ClientPageContent />
     </SidebarProvider>
   );
 }
