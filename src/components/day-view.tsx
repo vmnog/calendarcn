@@ -1,35 +1,39 @@
 "use client";
 
-import { addDays, eachDayOfInterval, format, getWeek } from "date-fns";
+import { format } from "date-fns";
 
 import { cn } from "@/lib/utils";
-import { useCalendarView } from "@/hooks/use-calendar-view";
-import type { WeekViewProps } from "./week-view-types";
+import { useCalendarView, TIME_AXIS_WIDTH } from "@/hooks/use-calendar-view";
+import type { CalendarEvent } from "./week-view-types";
 import { WeekViewAllDayRow } from "./week-view-all-day-row";
 import { WeekViewDayColumns } from "./week-view-day-columns";
 import { WeekViewGrid } from "./week-view-grid";
 import { WeekViewTimeAxis } from "./week-view-time-axis";
 import { WeekViewTimeIndicator } from "./week-view-time-indicator";
 
-const VISIBLE_DAYS = 7;
+export interface DayViewProps {
+  currentDate?: Date;
+  events?: CalendarEvent[];
+  onEventClick?: (event: CalendarEvent) => void;
+  selectedEventId?: string;
+  onBackgroundClick?: () => void;
+  onDateChange?: (date: Date) => void;
+  onVisibleDaysChange?: (days: Date[]) => void;
+  onEventChange?: (event: CalendarEvent) => void;
+  dirtyEventIds?: Set<string>;
+  className?: string;
+}
 
-export function getCalendarHeaderInfo(
-  currentDate: Date,
-  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
-) {
+export function getDayHeaderInfo(currentDate: Date) {
   return {
+    dayName: format(currentDate, "EEEE"),
     monthName: format(currentDate, "MMMM"),
+    dayNumber: format(currentDate, "d"),
     year: format(currentDate, "yyyy"),
-    weekNumber: getWeek(currentDate, { weekStartsOn }),
   };
 }
 
-export function getVisibleDays(currentDate: Date): Date[] {
-  const end = addDays(currentDate, VISIBLE_DAYS - 1);
-  return eachDayOfInterval({ start: currentDate, end });
-}
-
-export function WeekView({
+export function DayView({
   currentDate = new Date(),
   events = [],
   onEventClick,
@@ -40,7 +44,7 @@ export function WeekView({
   onEventChange,
   dirtyEventIds,
   className,
-}: WeekViewProps) {
+}: DayViewProps) {
   const {
     scrollContainerRef,
     days,
@@ -53,9 +57,9 @@ export function WeekView({
     handleEventMouseDown,
     scrollStyle,
   } = useCalendarView({
-    visibleDaysCount: VISIBLE_DAYS,
-    bufferDays: 7,
-    bufferStep: 7,
+    visibleDaysCount: 1,
+    bufferDays: 3,
+    bufferStep: 3,
     currentDate,
     events,
     onEventClick,

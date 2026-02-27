@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -9,12 +10,15 @@ import {
   PanelRightIcon,
 } from "lucide-react";
 
-import { addWeeks, startOfWeek } from "date-fns";
+import { addDays, addWeeks, format, startOfDay, startOfWeek } from "date-fns";
 import { generateMockEvents } from "@/lib/mock-events";
 import { SidebarLeft } from "@/components/sidebar-left";
 import type { CalendarEvent } from "@/components/week-view-types";
 import { SidebarRight } from "@/components/sidebar-right";
 import { WeekView, getCalendarHeaderInfo, getVisibleDays } from "@/components/week-view";
+import { DayView, getDayHeaderInfo } from "@/components/day-view";
+
+type CalendarView = "day" | "week";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +42,7 @@ import { Kbd } from "@/components/ui/kbd";
 
 function PageContent() {
   const [leftSidebarOpen, setLeftSidebarOpen] = React.useState(true);
+  const [currentView, setCurrentView] = React.useState<CalendarView>("week");
   const [currentDate, setCurrentDate] = React.useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
   const [events, setEvents] = React.useState(() => generateMockEvents());
   const [dirtyEventIds, setDirtyEventIds] = React.useState(() => new Set<string>());
@@ -54,86 +59,132 @@ function PageContent() {
     setDirtyEventIds((prev) => new Set(prev).add(updatedEvent.id));
   }, []);
 
-  const goToToday = React.useCallback(() => setCurrentDate(startOfWeek(new Date(), { weekStartsOn: 0 })), []);
-  const goToPrevWeek = React.useCallback(
-    () => setCurrentDate((prev) => addWeeks(prev, -1)),
-    []
-  );
-  const goToNextWeek = React.useCallback(
-    () => setCurrentDate((prev) => addWeeks(prev, 1)),
-    []
-  );
+  const switchView = React.useCallback((view: CalendarView) => {
+    if (view === currentView) return;
+    if (view === "day") {
+      const today = startOfDay(new Date());
+      setCurrentView("day");
+      setCurrentDate(today);
+      setVisibleDays([today]);
+    } else {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+      setCurrentView("week");
+      setCurrentDate(weekStart);
+      setVisibleDays(getVisibleDays(weekStart));
+    }
+  }, [currentView, currentDate]);
+
+  const goToToday = React.useCallback(() => {
+    if (currentView === "day") {
+      setCurrentDate(startOfDay(new Date()));
+    } else {
+      setCurrentDate(startOfWeek(new Date(), { weekStartsOn: 0 }));
+    }
+  }, [currentView]);
+
+  const goToPrev = React.useCallback(() => {
+    if (currentView === "day") {
+      setCurrentDate((prev) => addDays(prev, -1));
+    } else {
+      setCurrentDate((prev) => addWeeks(prev, -1));
+    }
+  }, [currentView]);
+
+  const goToNext = React.useCallback(() => {
+    if (currentView === "day") {
+      setCurrentDate((prev) => addDays(prev, 1));
+    } else {
+      setCurrentDate((prev) => addWeeks(prev, 1));
+    }
+  }, [currentView]);
+
   const goToDate = React.useCallback(
     (date: Date) => setCurrentDate(date),
     []
   );
-  const goToDateWeek = React.useCallback(
-    (date: Date) => setCurrentDate(startOfWeek(date, { weekStartsOn: 0 })),
-    []
+  const goToDateFromSidebar = React.useCallback(
+    (date: Date) => {
+      if (currentView === "day") {
+        setCurrentDate(startOfDay(date));
+      } else {
+        setCurrentDate(startOfWeek(date, { weekStartsOn: 0 }));
+      }
+    },
+    [currentView]
   );
   const { toggleSidebar, open: rightSidebarOpen } = useSidebar();
 
-  const [visibleDays, setVisibleDays] = React.useState<Date[]>(() => getVisibleDays(currentDate));
+  const [visibleDays, setVisibleDays] = React.useState<Date[]>(() =>
+    currentView === "day" ? [currentDate] : getVisibleDays(currentDate)
+  );
 
-  const { monthName, year, weekNumber } = getCalendarHeaderInfo(visibleDays[0], 0);
+  const weekHeaderInfo = getCalendarHeaderInfo(visibleDays[0] ?? currentDate, 0);
+  const dayHeaderInfo = getDayHeaderInfo(visibleDays[0] ?? currentDate);
+
+  const navLabel = currentView === "day" ? "day" : "week";
 
   // Keyboard shortcuts
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Command + / for left sidebar
       if (e.metaKey && e.key === "/") {
         e.preventDefault();
         setLeftSidebarOpen((prev) => !prev);
         return;
       }
-      // Escape to deselect event
       if (e.key === "Escape") {
         setSelectedEventId(null);
         return;
       }
 
-      // Skip single-key shortcuts when focused on input/textarea
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
         return;
       }
 
-      // / for right sidebar
       if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         toggleSidebar();
         return;
       }
 
-      // T for today
       if (e.key === "t" || e.key === "T") {
         e.preventDefault();
         goToToday();
         return;
       }
 
-      // J or ArrowLeft for previous week
-      if (e.key === "j" || e.key === "J" || e.key === "ArrowLeft") {
+      if (e.key === "d" || e.key === "D") {
         e.preventDefault();
-        goToPrevWeek();
+        switchView("day");
         return;
       }
 
-      // K or ArrowRight for next week
+      if (e.key === "w" || e.key === "W") {
+        e.preventDefault();
+        switchView("week");
+        return;
+      }
+
+      if (e.key === "j" || e.key === "J" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        goToPrev();
+        return;
+      }
+
       if (e.key === "k" || e.key === "K" || e.key === "ArrowRight") {
         e.preventDefault();
-        goToNextWeek();
+        goToNext();
         return;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleSidebar, goToToday, goToPrevWeek, goToNextWeek]);
+  }, [toggleSidebar, goToToday, goToPrev, goToNext, switchView]);
 
   return (
     <>
-      <SidebarRight open={leftSidebarOpen} onDateSelect={goToDateWeek} currentDate={currentDate} visibleDays={visibleDays} />
+      <SidebarRight open={leftSidebarOpen} onDateSelect={goToDateFromSidebar} currentDate={currentDate} visibleDays={visibleDays} />
       <SidebarInset className="flex flex-col overflow-hidden">
         <header className="bg-background sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2">
           <div className="flex flex-1 items-center gap-2 px-4">
@@ -158,11 +209,24 @@ function PageContent() {
               className="mr-2 data-[orientation=vertical]:h-4"
             />
             <h1 className="text-xl">
-              <span className="font-extrabold">{monthName}</span>{" "}
-              <span className="font-extrabold">{year}</span>{" "}
-              <span className="text-muted-foreground text-xs">
-                Week {weekNumber}
-              </span>
+              {currentView === "day" ? (
+                <>
+                  <span className="font-extrabold">
+                    {dayHeaderInfo.monthName} {dayHeaderInfo.dayNumber}
+                  </span>{" "}
+                  <span className="text-muted-foreground text-xs">
+                    {dayHeaderInfo.dayName}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="font-extrabold">{weekHeaderInfo.monthName}</span>{" "}
+                  <span className="font-extrabold">{weekHeaderInfo.year}</span>{" "}
+                  <span className="text-muted-foreground text-xs">
+                    Week {weekHeaderInfo.weekNumber}
+                  </span>
+                </>
+              )}
             </h1>
           </div>
           <div className="flex items-center gap-2 px-4">
@@ -173,16 +237,17 @@ function PageContent() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="secondary" size="sm" className="gap-1 px-3">
-                  Week
+                  {currentView === "day" ? "Day" : "Week"}
                   <ChevronDownIcon className="size-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem disabled>
+                <DropdownMenuItem onSelect={() => switchView("day")}>
                   Day
-                  <span className="bg-muted text-muted-foreground ml-auto rounded px-1.5 py-0.5 text-[10px] leading-none font-medium">Soon</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>Week</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => switchView("week")}>
+                  Week
+                </DropdownMenuItem>
                 <DropdownMenuItem disabled>
                   Month
                   <span className="bg-muted text-muted-foreground ml-auto rounded px-1.5 py-0.5 text-[10px] leading-none font-medium">Soon</span>
@@ -197,13 +262,13 @@ function PageContent() {
               Today
             </Button>
             <div className="flex items-center">
-              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" onClick={goToPrevWeek}>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" onClick={goToPrev}>
                 <ChevronLeftIcon className="size-4" />
-                <span className="sr-only">Previous week</span>
+                <span className="sr-only">Previous {navLabel}</span>
               </Button>
-              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" onClick={goToNextWeek}>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" onClick={goToNext}>
                 <ChevronRightIcon className="size-4" />
-                <span className="sr-only">Next week</span>
+                <span className="sr-only">Next {navLabel}</span>
               </Button>
             </div>
             {!rightSidebarOpen && (
@@ -227,18 +292,47 @@ function PageContent() {
           </div>
         </header>
         <div className="flex flex-1 flex-col overflow-hidden">
-          <WeekView currentDate={currentDate} events={events} onEventClick={(e) => setSelectedEventId(e.id)} selectedEventId={selectedEvent?.id} onBackgroundClick={() => setSelectedEventId(null)} onDateChange={goToDate} onVisibleDaysChange={setVisibleDays} onEventChange={handleEventChange} dirtyEventIds={dirtyEventIds} />
+          {currentView === "day" ? (
+            <DayView
+              currentDate={currentDate}
+              events={events}
+              onEventClick={(e) => setSelectedEventId(e.id)}
+              selectedEventId={selectedEvent?.id}
+              onBackgroundClick={() => setSelectedEventId(null)}
+              onDateChange={goToDate}
+              onVisibleDaysChange={setVisibleDays}
+              onEventChange={handleEventChange}
+              dirtyEventIds={dirtyEventIds}
+            />
+          ) : (
+            <WeekView
+              currentDate={currentDate}
+              events={events}
+              onEventClick={(e) => setSelectedEventId(e.id)}
+              selectedEventId={selectedEvent?.id}
+              onBackgroundClick={() => setSelectedEventId(null)}
+              onDateChange={goToDate}
+              onVisibleDaysChange={setVisibleDays}
+              onEventChange={handleEventChange}
+              dirtyEventIds={dirtyEventIds}
+            />
+          )}
         </div>
       </SidebarInset>
-      <SidebarLeft selectedEvent={selectedEvent} onPrevWeek={goToPrevWeek} onNextWeek={goToNextWeek} />
+      <SidebarLeft selectedEvent={selectedEvent} onPrevWeek={goToPrev} onNextWeek={goToNext} />
     </>
   );
 }
 
+const ClientPageContent = dynamic(
+  () => Promise.resolve({ default: PageContent }),
+  { ssr: false }
+);
+
 export default function Page() {
   return (
     <SidebarProvider className="h-screen">
-      <PageContent />
+      <ClientPageContent />
     </SidebarProvider>
   );
 }
