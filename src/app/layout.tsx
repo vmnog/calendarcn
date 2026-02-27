@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Agentation } from "agentation";
@@ -68,6 +69,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
+      <head>
+        <Script
+          src="https://unpkg.com/react-scan/dist/auto.global.js"
+          crossOrigin="anonymous"
+          strategy="beforeInteractive"
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
       >
