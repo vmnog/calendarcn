@@ -59,16 +59,19 @@ function PageContent() {
   }, []);
 
   const switchView = React.useCallback((view: CalendarView) => {
-    setCurrentView((prev) => {
-      if (prev === view) return prev;
-      if (view === "day") {
-        setCurrentDate(startOfDay(new Date()));
-      } else {
-        setCurrentDate((d) => startOfWeek(d, { weekStartsOn: 0 }));
-      }
-      return view;
-    });
-  }, []);
+    if (view === currentView) return;
+    if (view === "day") {
+      const today = startOfDay(new Date());
+      setCurrentView("day");
+      setCurrentDate(today);
+      setVisibleDays([today]);
+    } else {
+      const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+      setCurrentView("week");
+      setCurrentDate(weekStart);
+      setVisibleDays(getVisibleDays(weekStart));
+    }
+  }, [currentView, currentDate]);
 
   const goToToday = React.useCallback(() => {
     if (currentView === "day") {
@@ -321,6 +324,11 @@ function PageContent() {
 }
 
 export default function Page() {
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
+
   return (
     <SidebarProvider className="h-screen">
       <PageContent />
