@@ -80,13 +80,6 @@ export default function RootLayout({
         >
           {children}
           {process.env.NODE_ENV === "development" && <Agentation />}
-          {process.env.NODE_ENV === "development" && (
-            <Script
-              src="https://unpkg.com/react-scan/dist/auto.global.js"
-              crossOrigin="anonymous"
-              strategy="beforeInteractive"
-            />
-          )}
         </ThemeProvider>
       </body>
     </html>
