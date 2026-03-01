@@ -30,8 +30,8 @@ A beautifully crafted, open source calendar component for React. Built with [sha
 
 ### Prerequisites
 
-- Node.js 18+
-- pnpm (recommended) or npm
+- Node.js 22+ (see `.nvmrc`)
+- [pnpm 9+](https://pnpm.io/)
 
 ### Installation
 
@@ -77,29 +77,19 @@ src/
 
 | Shortcut | Action |
 |----------|--------|
+| `T` | Go to today |
+| `J` / `ArrowLeft` | Previous week |
+| `K` / `ArrowRight` | Next week |
 | `/` | Toggle context panel |
 | `⌘ + /` | Toggle calendar sidebar |
 
 ## Contributing
 
-Contributions are welcome! Feel free to:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Contributions are welcome! Please read the [Contributing Guide](./CONTRIBUTING.md) to get started.
 
 ## Roadmap
 
-- [ ] Month view
-- [ ] Day view
-- [ ] Year view
-- [ ] Drag and drop events
-- [ ] Event creation/editing
-- [ ] Recurring events
-- [ ] Google Calendar integration
-- [ ] iCal import/export
+See [ROADMAP.md](./ROADMAP.md) for the full roadmap.
 
 ## License
 
