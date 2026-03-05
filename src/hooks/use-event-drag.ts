@@ -213,15 +213,14 @@ export function useEventDrag({
         clientY: e.clientY - drag.offsetWithinEvent,
       });
 
-      // Edge-of-view week navigation
-      // Trigger when cursor is within EDGE_ZONE_PX of the grid boundary OR past it
+      // Edge-of-view navigation (1 day in day view, 7 days in week view)
       const cursorXInGrid = e.clientX - gridLeftEdge;
       const gridWidth = colWidth * visibleDays.length;
 
       if (cursorXInGrid < EDGE_ZONE_PX) {
-        scheduleEdgeNav(-7);
+        scheduleEdgeNav(-visibleDays.length);
       } else if (cursorXInGrid > gridWidth - EDGE_ZONE_PX) {
-        scheduleEdgeNav(7);
+        scheduleEdgeNav(visibleDays.length);
       } else {
         cancelEdgeNav();
       }
