@@ -48,6 +48,16 @@ export interface WeekViewProps {
   onEventChange?: (event: CalendarEvent) => void;
   /** Set of event IDs with unsaved changes */
   dirtyEventIds?: Set<string>;
+  /** Whether the right sidebar is open */
+  isSidebarOpen?: boolean;
+  /** Callback to dock popover to sidebar (opens sidebar) */
+  onDockToSidebar?: () => void;
+  /** Callback to close popover (deselect event) */
+  onClosePopover?: () => void;
+  /** Navigate to previous week */
+  onPrevWeek?: () => void;
+  /** Navigate to next week */
+  onNextWeek?: () => void;
   /** Optional className for the root element */
   className?: string;
 }
@@ -106,6 +116,16 @@ export interface WeekViewGridProps {
   dirtyEventIds?: Set<string>;
   /** Callback when context menu open state changes */
   onContextMenuOpenChange?: (open: boolean) => void;
+  /** Whether the right sidebar is open */
+  isSidebarOpen?: boolean;
+  /** Callback to dock popover to sidebar */
+  onDockToSidebar?: () => void;
+  /** Callback to close popover */
+  onClosePopover?: () => void;
+  /** Navigate to previous week */
+  onPrevWeek?: () => void;
+  /** Navigate to next week */
+  onNextWeek?: () => void;
   /** Optional className */
   className?: string;
 }
@@ -156,6 +176,16 @@ export interface WeekViewAllDayRowProps {
   onEventChange?: (event: CalendarEvent) => void;
   /** Ref to attach to the scroll content div for column measurements */
   allDayScrollContentRef?: React.RefObject<HTMLDivElement | null>;
+  /** Whether the right sidebar is open */
+  isSidebarOpen?: boolean;
+  /** Callback to dock popover to sidebar */
+  onDockToSidebar?: () => void;
+  /** Callback to close popover */
+  onClosePopover?: () => void;
+  /** Navigate to previous week */
+  onPrevWeek?: () => void;
+  /** Navigate to next week */
+  onNextWeek?: () => void;
   /** Optional className */
   className?: string;
 }
@@ -361,6 +391,16 @@ export interface CalendarEventItemProps {
   fixedHeight?: number;
   /** Callback when context menu open state changes */
   onContextMenuOpenChange?: (open: boolean) => void;
+  /** Whether the right sidebar is open (controls popover visibility) */
+  isSidebarOpen?: boolean;
+  /** Callback to dock popover to sidebar */
+  onDockToSidebar?: () => void;
+  /** Callback to close popover (deselect event) */
+  onClosePopover?: () => void;
+  /** Navigate to previous week */
+  onPrevWeek?: () => void;
+  /** Navigate to next week */
+  onNextWeek?: () => void;
   /** Optional className */
   className?: string;
 }

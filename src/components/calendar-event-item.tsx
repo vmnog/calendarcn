@@ -3,6 +3,8 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { format, isPast } from "date-fns";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
+import { EventDetailPopover } from "./event-detail-popover";
 import type {
   CalendarEvent,
   CalendarEventItemProps,
@@ -139,6 +141,11 @@ export function CalendarEventItem({
   fixedWidth,
   fixedHeight,
   onContextMenuOpenChange,
+  isSidebarOpen,
+  onDockToSidebar,
+  onClosePopover,
+  onPrevWeek,
+  onNextWeek,
   className,
 }: CalendarEventItemProps) {
   const { event, segmentPosition = "full" } = positionedEvent;
@@ -387,95 +394,128 @@ export function CalendarEventItem({
     onContextMenuOpenChange?.(true);
   }
 
-  return (
-    <>
-      <div
-        role="button"
-        tabIndex={0}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
-        onContextMenu={handleContextMenu}
-        className={cn(
-          "absolute px-2 py-1",
-          hasTopRounding && "rounded-t-md",
-          hasBottomRounding && "rounded-b-md",
-          "cursor-pointer hover:z-10 focus:outline-none focus-visible:outline-none",
-          "overflow-hidden select-none",
-          isSelected && "z-20",
-          className,
-        )}
-        style={{
-          ...posStyle,
-          zIndex: isSelected ? 20 : positionedEvent.column,
-        }}
-      >
-        {/* Solid background layer to prevent transparency bleed-through */}
-        <div className={cn(
-          "absolute inset-0 bg-white dark:bg-[#191919]",
-          hasTopRounding && "rounded-t-md",
-          hasBottomRounding && "rounded-b-md",
-        )} />
+  const showPopover = isSelected && isSidebarOpen === false;
 
-        {/* Colored background layer - uses border color when selected */}
+  const eventElement = (
+    <div
+      role="button"
+      tabIndex={0}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      onContextMenu={handleContextMenu}
+      className={cn(
+        "absolute px-2 py-1",
+        hasTopRounding && "rounded-t-md",
+        hasBottomRounding && "rounded-b-md",
+        "cursor-pointer hover:z-10 focus:outline-none focus-visible:outline-none",
+        "overflow-hidden select-none",
+        isSelected && "z-20",
+        className,
+      )}
+      style={{
+        ...posStyle,
+        zIndex: isSelected ? 20 : positionedEvent.column,
+      }}
+    >
+      {/* Solid background layer to prevent transparency bleed-through */}
+      <div className={cn(
+        "absolute inset-0 bg-white dark:bg-[#191919]",
+        hasTopRounding && "rounded-t-md",
+        hasBottomRounding && "rounded-b-md",
+      )} />
+
+      {/* Colored background layer - uses border color when selected */}
+      <div
+        className={cn(
+          "absolute inset-0",
+          hasTopRounding && "rounded-t-md",
+          hasBottomRounding && "rounded-b-md",
+          isSelected ? styles.border : styles.bg,
+          eventIsPast && !isSelected && "opacity-60",
+        )}
+      />
+
+      {/* Left border - hidden when selected (merges with bg) */}
+      {!isSelected && (
         <div
           className={cn(
-            "absolute inset-0",
-            hasTopRounding && "rounded-t-md",
-            hasBottomRounding && "rounded-b-md",
-            isSelected ? styles.border : styles.bg,
-            eventIsPast && !isSelected && "opacity-60",
+            "absolute left-0 top-0 bottom-0 w-[4px] dark:bg-white dark:mix-blend-overlay",
+            hasTopRounding && "rounded-tl-md",
+            hasBottomRounding && "rounded-bl-md",
+            styles.border,
+            eventIsPast && "opacity-60",
           )}
         />
-
-        {/* Left border - hidden when selected (merges with bg) */}
-        {!isSelected && (
-          <div
-            className={cn(
-              "absolute left-0 top-0 bottom-0 w-[4px] dark:bg-white dark:mix-blend-overlay",
-              hasTopRounding && "rounded-tl-md",
-              hasBottomRounding && "rounded-bl-md",
-              styles.border,
-              eventIsPast && "opacity-60",
-            )}
-          />
+      )}
+      <div
+        className={cn(
+          "relative flex flex-col h-full pl-1 overflow-hidden",
+          isCompact && "flex-row items-center gap-1",
         )}
-        <div
+      >
+        <span
           className={cn(
-            "relative flex flex-col h-full pl-1 overflow-hidden",
-            isCompact && "flex-row items-center gap-1",
+            "font-medium text-[0.625rem] leading-tight break-words flex items-center gap-0.5",
+            isSelected
+              ? "text-white dark:text-white"
+              : cn(styles.text, "dark:text-white/80", eventIsPast && "opacity-60"),
           )}
         >
+          {isDirty && <span className="text-[0.35rem] shrink-0">●</span>}
+          {event.title}
+        </span>
+        {!isCompact && (
           <span
             className={cn(
-              "font-medium text-[0.625rem] leading-tight break-words flex items-center gap-0.5",
+              "text-[0.625rem] whitespace-nowrap",
               isSelected
                 ? "text-white dark:text-white"
-                : cn(styles.text, "dark:text-white/80", eventIsPast && "opacity-60"),
+                : cn(
+                    styles.text,
+                    "dark:text-white dark:mix-blend-overlay",
+                    eventIsPast && "opacity-60 dark:opacity-100",
+                  ),
             )}
           >
-            {isDirty && <span className="text-[0.35rem] shrink-0">●</span>}
-            {event.title}
+            {formatEventTimeRange(displayEvent)}
           </span>
-          {!isCompact && (
-            <span
-              className={cn(
-                "text-[0.625rem] whitespace-nowrap",
-                isSelected
-                  ? "text-white dark:text-white"
-                  : cn(
-                      styles.text,
-                      "dark:text-white dark:mix-blend-overlay",
-                      eventIsPast && "opacity-60 dark:opacity-100",
-                    ),
-              )}
-            >
-              {formatEventTimeRange(displayEvent)}
-            </span>
-          )}
-        </div>
+        )}
       </div>
+    </div>
+  );
+
+  if (showPopover) {
+    return (
+      <>
+        <Popover open onOpenChange={(open) => { if (!open) onClosePopover?.(); }}>
+          <PopoverTrigger asChild>
+            {eventElement}
+          </PopoverTrigger>
+          <EventDetailPopover
+            event={event}
+            onClose={() => onClosePopover?.()}
+            onDockToSidebar={() => onDockToSidebar?.()}
+            onPrevWeek={onPrevWeek}
+            onNextWeek={onNextWeek}
+          />
+        </Popover>
+        {contextMenu && (
+          <EventContextMenu
+            event={event}
+            position={contextMenu}
+            onClose={closeContextMenu}
+            onEventChange={onEventChange}
+          />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {eventElement}
       {contextMenu && (
         <EventContextMenu
           event={event}
@@ -503,6 +543,16 @@ export interface AllDayEventItemProps {
     event: CalendarEvent,
     edge: "left" | "right",
   ) => void;
+  /** Whether the right sidebar is open (controls popover visibility) */
+  isSidebarOpen?: boolean;
+  /** Callback to dock popover to sidebar */
+  onDockToSidebar?: () => void;
+  /** Callback to close popover (deselect event) */
+  onClosePopover?: () => void;
+  /** Navigate to previous week */
+  onPrevWeek?: () => void;
+  /** Navigate to next week */
+  onNextWeek?: () => void;
 }
 
 /**
@@ -527,6 +577,11 @@ export function AllDayEventItem({
   spanStart = true,
   spanEnd = true,
   onResizeMouseDown,
+  isSidebarOpen,
+  onDockToSidebar,
+  onClosePopover,
+  onPrevWeek,
+  onNextWeek,
 }: AllDayEventItemProps) {
   const color = event.color ?? "blue";
   const styles = eventColorStyles[color];
@@ -592,7 +647,9 @@ export function AllDayEventItem({
     }
   }
 
-  return (
+  const showPopover = isSelected && isSidebarOpen === false;
+
+  const eventElement = (
     <div
       role="button"
       tabIndex={0}
@@ -670,4 +727,25 @@ export function AllDayEventItem({
       )}
     </div>
   );
+
+  if (showPopover) {
+    return (
+      <Popover open onOpenChange={(open) => { if (!open) onClosePopover?.(); }}>
+        <PopoverTrigger asChild>
+          {eventElement}
+        </PopoverTrigger>
+        <EventDetailPopover
+          event={event}
+          onClose={() => onClosePopover?.()}
+          onDockToSidebar={() => onDockToSidebar?.()}
+          onPrevWeek={onPrevWeek}
+          onNextWeek={onNextWeek}
+          side="right"
+          align="start"
+        />
+      </Popover>
+    );
+  }
+
+  return eventElement;
 }

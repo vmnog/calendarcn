@@ -41,6 +41,8 @@ interface EventDetailPanelProps {
   event: CalendarEvent;
   onPrevWeek?: () => void;
   onNextWeek?: () => void;
+  /** Extra action buttons rendered in the header row (after the "..." menu). */
+  headerActions?: React.ReactNode;
 }
 
 const colorDotClass: Record<EventColor, string> = {
@@ -189,7 +191,7 @@ function EventTypeHelpIcon({ tooltip }: { tooltip?: string }) {
   );
 }
 
-export function EventDetailPanel({ event, onPrevWeek, onNextWeek }: EventDetailPanelProps) {
+export function EventDetailPanel({ event, onPrevWeek, onNextWeek, headerActions }: EventDetailPanelProps) {
   const color = event.color ?? "blue";
   const [eventType, setEventType] = React.useState<EventType>("Event");
   const [eventDropdownOpen, setEventDropdownOpen] = React.useState(false);
@@ -232,36 +234,39 @@ export function EventDetailPanel({ event, onPrevWeek, onNextWeek }: EventDetailP
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-7 text-[#C7C5C1] dark:text-[#595959]">
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="left" className="min-w-[180px] bg-[#252525] border-[#303030]">
-            <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
-              <SquareDashed className="size-3.5" />
-              Cut
-              <DropdownMenuShortcut className="text-white/40">⌘X</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
-              <TabletSmartphone className="size-3.5" />
-              Copy
-              <DropdownMenuShortcut className="text-white/40">⌘C</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
-              <Copy className="size-3.5" />
-              Duplicate
-              <DropdownMenuShortcut className="text-white/40">⌘D</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-[#303030]" />
-            <DropdownMenuItem className="text-xs text-[#E56458] focus:!bg-[#DE5551] focus:!text-white focus:[&>svg]:!text-white focus:[&>[data-slot=dropdown-menu-shortcut]]:!text-white">
-              <Trash2 className="size-3.5 text-[#E56458]" />
-              Delete
-              <DropdownMenuShortcut className="text-white/40 tracking-normal">delete</DropdownMenuShortcut>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-0.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-7 text-[#C7C5C1] dark:text-[#595959]">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="left" className="min-w-[180px] bg-[#252525] border-[#303030]">
+              <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
+                <SquareDashed className="size-3.5" />
+                Cut
+                <DropdownMenuShortcut className="text-white/40">⌘X</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
+                <TabletSmartphone className="size-3.5" />
+                Copy
+                <DropdownMenuShortcut className="text-white/40">⌘C</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
+                <Copy className="size-3.5" />
+                Duplicate
+                <DropdownMenuShortcut className="text-white/40">⌘D</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-[#303030]" />
+              <DropdownMenuItem className="text-xs text-[#E56458] focus:!bg-[#DE5551] focus:!text-white focus:[&>svg]:!text-white focus:[&>[data-slot=dropdown-menu-shortcut]]:!text-white">
+                <Trash2 className="size-3.5 text-[#E56458]" />
+                Delete
+                <DropdownMenuShortcut className="text-white/40 tracking-normal">delete</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {headerActions}
+        </div>
       </div>
 
       {/* Title */}

@@ -33,6 +33,11 @@ export function WeekViewGrid({
   onEventChange,
   dirtyEventIds,
   onContextMenuOpenChange,
+  isSidebarOpen,
+  onDockToSidebar,
+  onClosePopover,
+  onPrevWeek,
+  onNextWeek,
   className,
 }: WeekViewGridProps) {
   const gridRef = React.useRef<HTMLDivElement>(null);
@@ -100,6 +105,11 @@ export function WeekViewGrid({
               onEventChange={onEventChange}
               dirtyEventIds={dirtyEventIds}
               onContextMenuOpenChange={onContextMenuOpenChange}
+              isSidebarOpen={isSidebarOpen}
+              onDockToSidebar={onDockToSidebar}
+              onClosePopover={onClosePopover}
+              onPrevWeek={onPrevWeek}
+              onNextWeek={onNextWeek}
             />
           );
         })}
@@ -410,6 +420,11 @@ interface DayEventsColumnProps {
   onEventChange?: (event: CalendarEvent) => void;
   dirtyEventIds?: Set<string>;
   onContextMenuOpenChange?: (open: boolean) => void;
+  isSidebarOpen?: boolean;
+  onDockToSidebar?: () => void;
+  onClosePopover?: () => void;
+  onPrevWeek?: () => void;
+  onNextWeek?: () => void;
 }
 
 function renderColumnGhost(
@@ -439,6 +454,11 @@ function DayEventsColumn({
   onEventChange,
   dirtyEventIds,
   onContextMenuOpenChange,
+  isSidebarOpen,
+  onDockToSidebar,
+  onClosePopover,
+  onPrevWeek,
+  onNextWeek,
 }: DayEventsColumnProps) {
   return (
     <div className="relative h-full pointer-events-auto">
@@ -526,6 +546,11 @@ function DayEventsColumn({
             onEventChange={onEventChange}
             isDirty={dirtyEventIds?.has(eventId)}
             onContextMenuOpenChange={onContextMenuOpenChange}
+            isSidebarOpen={isSidebarOpen}
+            onDockToSidebar={onDockToSidebar}
+            onClosePopover={onClosePopover}
+            onPrevWeek={onPrevWeek}
+            onNextWeek={onNextWeek}
           />
         );
       })}

@@ -24,6 +24,12 @@ export function WeekViewAllDayRow({
   allDayResizeState,
   onAllDayResizeMouseDown,
   allDayScrollContentRef,
+  onEventChange,
+  isSidebarOpen,
+  onDockToSidebar,
+  onClosePopover,
+  onPrevWeek,
+  onNextWeek,
   className,
 }: WeekViewAllDayRowProps) {
   const eventRows = calculateAllDayEventRows(allDayEvents, days);
@@ -90,6 +96,11 @@ export function WeekViewAllDayRow({
                     originalStartColumn={startColumn}
                     originalEndColumn={endColumn}
                     isBeingResized={isBeingResized}
+                    isSidebarOpen={isSidebarOpen}
+                    onDockToSidebar={onDockToSidebar}
+                    onClosePopover={onClosePopover}
+                    onPrevWeek={onPrevWeek}
+                    onNextWeek={onNextWeek}
                   />
                 );
               })}
@@ -114,6 +125,11 @@ interface AllDayEventRowProps {
   originalStartColumn: number;
   originalEndColumn: number;
   isBeingResized?: boolean;
+  isSidebarOpen?: boolean;
+  onDockToSidebar?: () => void;
+  onClosePopover?: () => void;
+  onPrevWeek?: () => void;
+  onNextWeek?: () => void;
 }
 
 function AllDayEventRow({
@@ -129,6 +145,11 @@ function AllDayEventRow({
   originalStartColumn,
   originalEndColumn,
   isBeingResized,
+  isSidebarOpen,
+  onDockToSidebar,
+  onClosePopover,
+  onPrevWeek,
+  onNextWeek,
 }: AllDayEventRowProps) {
   const left = (startColumn / totalColumns) * 100;
   // Subtract ~1.2% for right gap (same 8% gap as regular events, scaled to column width)
@@ -173,6 +194,11 @@ function AllDayEventRow({
         spanStart={spanStart}
         spanEnd={spanEnd}
         onResizeMouseDown={handleResizeMouseDown}
+        isSidebarOpen={isSidebarOpen}
+        onDockToSidebar={onDockToSidebar}
+        onClosePopover={onClosePopover}
+        onPrevWeek={onPrevWeek}
+        onNextWeek={onNextWeek}
       />
     </div>
   );
