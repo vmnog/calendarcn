@@ -227,7 +227,7 @@ function PageContent() {
           </div>
         </header>
         <div className="flex flex-1 flex-col overflow-hidden">
-          <WeekView currentDate={currentDate} events={events} onEventClick={(e) => setSelectedEventId(e.id)} selectedEventId={selectedEvent?.id} onBackgroundClick={() => setSelectedEventId(null)} onDateChange={goToDate} onVisibleDaysChange={setVisibleDays} onEventChange={handleEventChange} dirtyEventIds={dirtyEventIds} />
+          <WeekView currentDate={currentDate} events={events} onEventClick={(e) => setSelectedEventId(e.id)} selectedEventId={selectedEvent?.id} onBackgroundClick={() => setSelectedEventId(null)} onDateChange={goToDate} onVisibleDaysChange={setVisibleDays} onEventChange={handleEventChange} dirtyEventIds={dirtyEventIds} isSidebarOpen={rightSidebarOpen} onDockToSidebar={() => { if (!rightSidebarOpen) toggleSidebar(); }} onClosePopover={() => setSelectedEventId(null)} onPrevWeek={goToPrevWeek} onNextWeek={goToNextWeek} />
         </div>
       </SidebarInset>
       <SidebarLeft selectedEvent={selectedEvent} onPrevWeek={goToPrevWeek} onNextWeek={goToNextWeek} />
