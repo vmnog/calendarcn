@@ -19,6 +19,13 @@ interface EventDetailPopoverProps {
   side?: "right" | "bottom" | "left" | "top";
   /** Alignment along the side axis. Defaults to "center". */
   align?: "start" | "center" | "end";
+  /**
+   * Override the top collision padding. When omitted the header height is
+   * used so the popover never overlaps the weekday header. All-day events
+   * live *inside* the header, so they pass a small value to avoid being
+   * pushed off-screen.
+   */
+  collisionPaddingTop?: number;
 }
 
 export function EventDetailPopover({
@@ -29,8 +36,21 @@ export function EventDetailPopover({
   onNextWeek,
   side = "right",
   align = "center",
+  collisionPaddingTop,
 }: EventDetailPopoverProps) {
-  const { boundary, headerHeight } = useCalendarPopoverBoundary();
+  const { boundary, headerHeight, view } = useCalendarPopoverBoundary();
+
+  /**
+   * In day view the event trigger spans the full grid width, leaving no room
+   * for a 320px popover on either side within the calendar container.
+   * Skip the collision boundary so Radix uses the viewport instead.
+   */
+  const isDayView = view === "day";
+  const effectiveBoundary = isDayView
+    ? undefined
+    : boundary
+      ? [boundary]
+      : undefined;
 
   const popoverHeaderActions = (
     <>
@@ -66,9 +86,14 @@ export function EventDetailPopover({
       side={side}
       align={align}
       sideOffset={8}
-      collisionPadding={{ top: headerHeight, bottom: 8, left: 16, right: 16 }}
-      collisionBoundary={boundary ? [boundary] : undefined}
-      className="w-[320px] max-h-[80vh] overflow-y-auto p-0 bg-popover border shadow-lg rounded-lg"
+      collisionPadding={{
+        top: collisionPaddingTop ?? headerHeight,
+        bottom: 8,
+        left: 16,
+        right: 16,
+      }}
+      collisionBoundary={effectiveBoundary}
+      className="w-[320px] max-h-[80vh] overflow-y-auto p-0 bg-popover/80 backdrop-blur-xl border shadow-lg rounded-lg"
       onOpenAutoFocus={(e) => e.preventDefault()}
       onCloseAutoFocus={(e) => e.preventDefault()}
     >

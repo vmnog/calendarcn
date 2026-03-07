@@ -8,7 +8,9 @@ import type { WeekViewDayColumnsProps } from "./week-view-types";
  */
 function getTimezoneAbbreviation(): string {
   const date = new Date();
-  const timeZoneString = date.toLocaleTimeString("en-US", { timeZoneName: "short" });
+  const timeZoneString = date.toLocaleTimeString("en-US", {
+    timeZoneName: "short",
+  });
   const match = timeZoneString.match(/\s([A-Z]{2,5})$/);
 
   if (match) {
@@ -46,12 +48,14 @@ export function WeekViewDayColumns({
             key={day.date.toISOString()}
             className={cn(
               "flex items-center justify-center py-2 text-sm",
-              day.isToday ? "gap-0.5 " : "gap-0"
+              day.isToday ? "gap-0.5 " : "gap-0",
             )}
           >
             <span
               className={cn(
-                day.isToday ? "text-foreground font-medium" : "text-muted-foreground font-normal"
+                day.isToday
+                  ? "text-foreground font-medium"
+                  : "text-muted-foreground font-normal",
               )}
             >
               {day.dayName}
@@ -61,7 +65,7 @@ export function WeekViewDayColumns({
                 "flex h-5 w-[1.2rem] items-center justify-center rounded-xs text-sm",
                 day.isToday
                   ? "bg-primary text-primary-foreground font-medium"
-                  : "text-muted-foreground"
+                  : "text-muted-foreground",
               )}
             >
               {day.dayNumber}
@@ -92,12 +96,14 @@ export function WeekViewDayColumns({
             key={day.date.toISOString()}
             className={cn(
               "flex items-center justify-center py-2 text-sm",
-              day.isToday ? "gap-0.5 " : "gap-0"
+              day.isToday ? "gap-0.5 " : "gap-0",
             )}
           >
             <span
               className={cn(
-                day.isToday ? "text-foreground font-medium" : "text-muted-foreground font-normal"
+                day.isToday
+                  ? "text-foreground font-medium"
+                  : "text-muted-foreground font-normal",
               )}
             >
               {day.dayName}
@@ -107,7 +113,7 @@ export function WeekViewDayColumns({
                 "flex h-5 w-[1.2rem] items-center justify-center rounded-xs text-sm",
                 day.isToday
                   ? "bg-primary text-primary-foreground font-medium"
-                  : "text-muted-foreground"
+                  : "text-muted-foreground",
               )}
             >
               {day.dayNumber}
