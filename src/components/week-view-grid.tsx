@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { isPast } from "date-fns";
 import { calculatePositionedEvents } from "@/lib/event-utils";
 import { CalendarEventItem } from "./calendar-event-item";
+import { useCalendarPopoverBoundary } from "./calendar-popover-context";
 import type {
   CalendarEvent,
   EventDragState,
@@ -40,6 +41,8 @@ export function WeekViewGrid({
   onNextWeek,
   className,
 }: WeekViewGridProps) {
+  const { view } = useCalendarPopoverBoundary();
+  const isDayView = view === "day";
   const gridRef = React.useRef<HTMLDivElement>(null);
   const [gridWidth, setGridWidth] = React.useState(0);
 
@@ -68,7 +71,8 @@ export function WeekViewGrid({
       >
         {hours.map((hourSlot) =>
           days.map((day) => {
-            const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
+            const isWeekend =
+              day.date.getDay() === 0 || day.date.getDay() === 6;
             return (
               <div
                 key={`${day.date.toISOString()}-${hourSlot.hour}`}
@@ -88,7 +92,17 @@ export function WeekViewGrid({
         style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
       >
         {days.map((day) => {
-          const positionedEvents = calculatePositionedEvents(events, day);
+          /**
+           * Day view uses a smaller right gap than week view so events
+           * nearly fill the column but still show a sliver of the grid
+           * line — matching Notion Calendar's day-view styling.
+           */
+          const rightGap = isDayView ? 2 : 8;
+          const positionedEvents = calculatePositionedEvents(
+            events,
+            day,
+            rightGap,
+          );
 
           return (
             <DayEventsColumn
@@ -117,13 +131,16 @@ export function WeekViewGrid({
 
       {/* Resize placeholder overlay — rendered at grid level for cross-day support */}
       {resizeState?.isResizing &&
-        !isSameDay(resizeState.currentStartDate, resizeState.currentEndDate) && (
-        <ResizePlaceholderOverlay
-          days={days}
-          hourHeight={hourHeight}
-          resizeState={resizeState}
-        />
-      )}
+        !isSameDay(
+          resizeState.currentStartDate,
+          resizeState.currentEndDate,
+        ) && (
+          <ResizePlaceholderOverlay
+            days={days}
+            hourHeight={hourHeight}
+            resizeState={resizeState}
+          />
+        )}
 
       {/* Drag placeholder overlay — rendered at grid level for cross-column support */}
       {dragState?.isDragging && (
@@ -217,12 +234,20 @@ function ResizePlaceholderOverlay({
 }: ResizePlaceholderOverlayProps) {
   if (resizeState.effectiveEdge === "bottom") {
     return (
-      <BottomEdgeOverlay days={days} hourHeight={hourHeight} resizeState={resizeState} />
+      <BottomEdgeOverlay
+        days={days}
+        hourHeight={hourHeight}
+        resizeState={resizeState}
+      />
     );
   }
 
   return (
-    <TopEdgeOverlay days={days} hourHeight={hourHeight} resizeState={resizeState} />
+    <TopEdgeOverlay
+      days={days}
+      hourHeight={hourHeight}
+      resizeState={resizeState}
+    />
   );
 }
 
@@ -233,7 +258,9 @@ function BottomEdgeOverlay({
 }: ResizePlaceholderOverlayProps) {
   const endDay = resizeState.currentEndDate;
 
-  const startColIndex = days.findIndex((d) => isSameDay(d.date, resizeState.currentStartDate));
+  const startColIndex = days.findIndex((d) =>
+    isSameDay(d.date, resizeState.currentStartDate),
+  );
   const endColIndex = days.findIndex((d) => isSameDay(d.date, endDay));
 
   if (startColIndex === -1 || endColIndex === -1) return null;
@@ -251,7 +278,9 @@ function BottomEdgeOverlay({
         }
 
         const isEndColumn = i === endColIndex;
-        const segmentPosition = isEndColumn ? "end" as const : "middle" as const;
+        const segmentPosition = isEndColumn
+          ? ("end" as const)
+          : ("middle" as const);
 
         const midnight = startOfDay(day.date);
         const overrideStart = midnight;
@@ -294,7 +323,9 @@ function TopEdgeOverlay({
   const startDay = resizeState.currentStartDate;
 
   const startColIndex = days.findIndex((d) => isSameDay(d.date, startDay));
-  const endColIndex = days.findIndex((d) => isSameDay(d.date, resizeState.currentEndDate));
+  const endColIndex = days.findIndex((d) =>
+    isSameDay(d.date, resizeState.currentEndDate),
+  );
 
   if (startColIndex === -1 || endColIndex === -1) return null;
   if (endColIndex <= startColIndex) return null;
@@ -311,7 +342,9 @@ function TopEdgeOverlay({
         }
 
         const isStartColumn = i === startColIndex;
-        const segmentPosition = isStartColumn ? "start" as const : "middle" as const;
+        const segmentPosition = isStartColumn
+          ? ("start" as const)
+          : ("middle" as const);
 
         const midnight = startOfDay(day.date);
         const overrideStart = isStartColumn
@@ -375,7 +408,8 @@ function FloatingDragCopy({
   const durationMinutes =
     (dragState.currentEnd.getTime() - dragState.currentStart.getTime()) / 60000;
   const heightPx = (durationMinutes / 60) * hourHeight;
-  const columnWidthPx = (days.length > 0 ? gridWidth / days.length : 200) * 0.92;
+  const columnWidthPx =
+    (days.length > 0 ? gridWidth / days.length : 200) * 0.92;
 
   return createPortal(
     <div
@@ -416,7 +450,11 @@ interface DayEventsColumnProps {
   dragState?: EventDragState;
   onEventDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
   resizeState?: EventResizeState;
-  onEventResizeMouseDown?: (e: React.MouseEvent, event: CalendarEvent, edge: "top" | "bottom") => void;
+  onEventResizeMouseDown?: (
+    e: React.MouseEvent,
+    event: CalendarEvent,
+    edge: "top" | "bottom",
+  ) => void;
   onEventChange?: (event: CalendarEvent) => void;
   dirtyEventIds?: Set<string>;
   onContextMenuOpenChange?: (open: boolean) => void;
@@ -464,26 +502,32 @@ function DayEventsColumn({
     <div className="relative h-full pointer-events-auto">
       {events.map((positionedEvent) => {
         const eventId = positionedEvent.event.id;
-        const isBeingDragged = dragState?.isDragging && dragState.eventId === eventId;
+        const isBeingDragged =
+          dragState?.isDragging && dragState.eventId === eventId;
 
         if (isBeingDragged) {
           return renderColumnGhost(positionedEvent, hourHeight);
         }
 
-        const isBeingResized = resizeState?.isResizing && resizeState.eventId === eventId;
+        const isBeingResized =
+          resizeState?.isResizing && resizeState.eventId === eventId;
 
         if (isBeingResized) {
-          const { effectiveEdge, currentStartDate, currentEndDate } = resizeState;
+          const { effectiveEdge, currentStartDate, currentEndDate } =
+            resizeState;
           const isCrossDay = !isSameDay(currentStartDate, currentEndDate);
 
           // Determine if this column is the anchor column
           const isAnchorColumn =
-            (effectiveEdge === "bottom" && isSameDay(columnDate, currentStartDate)) ||
+            (effectiveEdge === "bottom" &&
+              isSameDay(columnDate, currentStartDate)) ||
             (effectiveEdge === "top" && isSameDay(columnDate, currentEndDate));
 
           // Check if this column is within the new range at all
           const colTime = columnDate.getTime();
-          const inRange = colTime >= currentStartDate.getTime() && colTime <= currentEndDate.getTime();
+          const inRange =
+            colTime >= currentStartDate.getTime() &&
+            colTime <= currentEndDate.getTime();
 
           // Non-anchor columns with original segments: render as ghost
           // Columns outside new range with original segments: render as ghost
