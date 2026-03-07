@@ -17,7 +17,7 @@ import type {
  */
 export function getEventsForDay(
   events: CalendarEvent[],
-  day: WeekDay
+  day: WeekDay,
 ): CalendarEvent[] {
   const dayStart = startOfDay(day.date);
   const dayEnd = addDays(dayStart, 1);
@@ -36,7 +36,7 @@ export function getEventsForDay(
  */
 export function getAllDayEventsForDay(
   events: CalendarEvent[],
-  day: WeekDay
+  day: WeekDay,
 ): CalendarEvent[] {
   return events.filter((event) => {
     if (!event.isAllDay) {
@@ -46,9 +46,11 @@ export function getAllDayEventsForDay(
     const dayEnd = new Date(dayStart);
     dayEnd.setHours(23, 59, 59, 999);
 
-    return isWithinInterval(dayStart, { start: event.start, end: event.end }) ||
+    return (
+      isWithinInterval(dayStart, { start: event.start, end: event.end }) ||
       isSameDay(event.start, day.date) ||
-      isSameDay(event.end, day.date);
+      isSameDay(event.end, day.date)
+    );
   });
 }
 
@@ -58,15 +60,20 @@ export function getAllDayEventsForDay(
 function eventsOverlap(a: CalendarEvent, b: CalendarEvent): boolean {
   return areIntervalsOverlapping(
     { start: a.start, end: a.end },
-    { start: b.start, end: b.end }
+    { start: b.start, end: b.end },
   );
 }
 
 /**
  * Groups overlapping events into columns
  */
-function assignColumns(events: CalendarEvent[]): Map<string, { column: number; totalColumns: number }> {
-  const columnAssignments = new Map<string, { column: number; totalColumns: number }>();
+function assignColumns(
+  events: CalendarEvent[],
+): Map<string, { column: number; totalColumns: number }> {
+  const columnAssignments = new Map<
+    string,
+    { column: number; totalColumns: number }
+  >();
 
   if (events.length === 0) {
     return columnAssignments;
@@ -105,7 +112,7 @@ function assignColumns(events: CalendarEvent[]): Map<string, { column: number; t
           continue;
         }
         const overlapsWithGroup = group.some((groupEvent) =>
-          eventsOverlap(groupEvent, otherEvent)
+          eventsOverlap(groupEvent, otherEvent),
         );
         if (!overlapsWithGroup) {
           continue;
@@ -132,7 +139,7 @@ function assignColumns(events: CalendarEvent[]): Map<string, { column: number; t
       for (let colIndex = 0; colIndex < columns.length; colIndex++) {
         const column = columns[colIndex];
         const overlapsWithColumn = column.some((colEvent) =>
-          eventsOverlap(colEvent, event)
+          eventsOverlap(colEvent, event),
         );
         if (overlapsWithColumn) {
           continue;
@@ -170,11 +177,14 @@ function assignColumns(events: CalendarEvent[]): Map<string, { column: number; t
 }
 
 /**
- * Calculates positioned events for rendering in the grid
+ * Calculates positioned events for rendering in the grid.
+ * @param rightGapPercent - right gap in percentage. Defaults to 8.
+ *   Pass 0 for day view so events fill the full column width.
  */
 export function calculatePositionedEvents(
   events: CalendarEvent[],
-  day: WeekDay
+  day: WeekDay,
+  rightGapPercent = 8,
 ): PositionedEvent[] {
   const dayEvents = getEventsForDay(events, day);
 
@@ -195,7 +205,8 @@ export function calculatePositionedEvents(
 
     // Compute effective start/end clamped to this day's boundaries
     const effectiveStart = event.start > dayStart ? event.start : dayStart;
-    const effectiveEnd = event.end < nextDayMidnight ? event.end : nextDayMidnight;
+    const effectiveEnd =
+      event.end < nextDayMidnight ? event.end : nextDayMidnight;
 
     // Calculate top position (percentage from day start)
     const minutesFromDayStart = differenceInMinutes(effectiveStart, dayStart);
@@ -219,7 +230,7 @@ export function calculatePositionedEvents(
 
     // Calculate left and width based on column assignment
     // Events cascade with overlap - leftmost event has no gap, rightmost has gap
-    const rightGap = 8;
+    const rightGap = rightGapPercent;
     const overlapAmount = 8; // percentage overlap between adjacent events
     const { column, totalColumns } = assignment;
 
@@ -234,7 +245,8 @@ export function calculatePositionedEvents(
       // Multiple overlapping events
       // Formula: n * eventWidth - (n-1) * overlap = availableWidth
       // So: eventWidth = (availableWidth + (n-1) * overlap) / n
-      const eventWidth = (100 - rightGap + overlapAmount * (totalColumns - 1)) / totalColumns;
+      const eventWidth =
+        (100 - rightGap + overlapAmount * (totalColumns - 1)) / totalColumns;
 
       left = column * (eventWidth - overlapAmount);
 
@@ -272,7 +284,7 @@ export interface AllDayEventRow {
 
 export function calculateAllDayEventRows(
   events: CalendarEvent[],
-  days: WeekDay[]
+  days: WeekDay[],
 ): AllDayEventRow[] {
   const allDayEvents = events.filter((e) => e.isAllDay);
 
@@ -303,8 +315,10 @@ export function calculateAllDayEventRows(
       const day = days[i];
       const dayStart = startOfDay(day.date);
 
-      if (isSameDay(event.start, day.date) ||
-          (event.start <= dayStart && event.end >= dayStart)) {
+      if (
+        isSameDay(event.start, day.date) ||
+        (event.start <= dayStart && event.end >= dayStart)
+      ) {
         if (startColumn === -1) {
           startColumn = i;
         }
@@ -324,7 +338,7 @@ export function calculateAllDayEventRows(
       const rowOccupied = occupiedRows.get(targetRow) ?? [];
       const hasConflict = rowOccupied.some(
         (occupied) =>
-          !(endColumn < occupied.start || startColumn > occupied.end)
+          !(endColumn < occupied.start || startColumn > occupied.end),
       );
 
       if (!hasConflict) {

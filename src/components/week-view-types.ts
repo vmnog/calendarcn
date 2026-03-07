@@ -1,6 +1,11 @@
 import type React from "react";
 
 /**
+ * Calendar view mode — "day" shows a single column, "week" shows 7 columns
+ */
+export type ViewType = "day" | "week";
+
+/**
  * Represents a single day in the week view
  */
 export interface WeekDay {
@@ -28,6 +33,8 @@ export interface HourSlot {
  * Props for the main WeekView component
  */
 export interface WeekViewProps {
+  /** Calendar view mode. Defaults to "week" */
+  view?: ViewType;
   /** Reference date to show the week for. Defaults to today */
   currentDate?: Date;
   /** Day the week starts on. Defaults to 0 (Sunday) */
@@ -109,7 +116,11 @@ export interface WeekViewGridProps {
   /** Current resize state if an event is being resized */
   resizeState?: EventResizeState;
   /** Mousedown handler to initiate event resize */
-  onEventResizeMouseDown?: (e: React.MouseEvent, event: CalendarEvent, edge: "top" | "bottom") => void;
+  onEventResizeMouseDown?: (
+    e: React.MouseEvent,
+    event: CalendarEvent,
+    edge: "top" | "bottom",
+  ) => void;
   /** Callback when an event is changed (e.g. color change from context menu) */
   onEventChange?: (event: CalendarEvent) => void;
   /** Set of event IDs with unsaved changes */
@@ -186,6 +197,10 @@ export interface WeekViewAllDayRowProps {
   onPrevWeek?: () => void;
   /** Navigate to next week */
   onNextWeek?: () => void;
+  /** Index of the first visible column (used to skip buffer-only events in day view) */
+  visibleStartIndex?: number;
+  /** Number of visible columns (defaults to days.length when omitted) */
+  visibleCount?: number;
   /** Optional className */
   className?: string;
 }
@@ -378,7 +393,11 @@ export interface CalendarEventItemProps {
   /** Mousedown handler to initiate drag */
   onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
   /** Mousedown handler to initiate resize */
-  onResizeMouseDown?: (e: React.MouseEvent, event: CalendarEvent, edge: "top" | "bottom") => void;
+  onResizeMouseDown?: (
+    e: React.MouseEvent,
+    event: CalendarEvent,
+    edge: "top" | "bottom",
+  ) => void;
   /** Callback when an event is changed (e.g. color change from context menu) */
   onEventChange?: (event: CalendarEvent) => void;
   /** Raw cursor Y position for smooth dragging copy */
