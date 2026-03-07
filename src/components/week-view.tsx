@@ -393,6 +393,7 @@ export function WeekView({
               allDayResizeState={allDayResizeState ?? undefined}
               onAllDayResizeMouseDown={handleAllDayResizeMouseDown}
               onEventChange={onEventChange}
+              onContextMenuOpenChange={setContextMenuOpen}
               allDayScrollContentRef={allDayScrollContentRef}
               isSidebarOpen={isSidebarOpen}
               onDockToSidebar={onDockToSidebar}
@@ -405,7 +406,7 @@ export function WeekView({
           </div>
         </div>
 
-        {/* Scrollable grid area — also serves as the collision boundary for popovers */}
+        {/* Scrollable grid area \u2014 also serves as the collision boundary for popovers */}
         <div
           ref={scrollContainerRef}
           className="flex-1 overflow-auto scrollbar-hide"

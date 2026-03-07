@@ -26,6 +26,7 @@ export function WeekViewAllDayRow({
   onAllDayResizeMouseDown,
   allDayScrollContentRef,
   onEventChange,
+  onContextMenuOpenChange,
   isSidebarOpen,
   onDockToSidebar,
   onClosePopover,
@@ -119,6 +120,8 @@ export function WeekViewAllDayRow({
                     originalStartColumn={startColumn}
                     originalEndColumn={endColumn}
                     isBeingResized={isBeingResized}
+                    onEventChange={onEventChange}
+                    onContextMenuOpenChange={onContextMenuOpenChange}
                     isSidebarOpen={isSidebarOpen}
                     onDockToSidebar={onDockToSidebar}
                     onClosePopover={onClosePopover}
@@ -149,6 +152,10 @@ interface AllDayEventRowProps {
   originalStartColumn: number;
   originalEndColumn: number;
   isBeingResized?: boolean;
+  /** Callback when an event is changed (e.g. color change from context menu) */
+  onEventChange?: (event: CalendarEvent) => void;
+  /** Callback when context menu open state changes */
+  onContextMenuOpenChange?: (open: boolean) => void;
   isSidebarOpen?: boolean;
   onDockToSidebar?: () => void;
   onClosePopover?: () => void;
@@ -171,6 +178,8 @@ function AllDayEventRow({
   originalStartColumn,
   originalEndColumn,
   isBeingResized,
+  onEventChange,
+  onContextMenuOpenChange,
   isSidebarOpen,
   onDockToSidebar,
   onClosePopover,
@@ -183,7 +192,7 @@ function AllDayEventRow({
 
   const left = (startColumn / totalColumns) * 100;
   // Day view uses a smaller right gap than week view so events nearly fill
-  // the column but still show a sliver of the grid — matching Notion Calendar.
+  // the column but still show a sliver of the grid \u2014 matching Notion Calendar.
   const columnWidth = 100 / totalColumns;
   const rightGap = isDayView ? columnWidth * 0.02 : columnWidth * 0.08;
   const width = ((endColumn - startColumn + 1) / totalColumns) * 100 - rightGap;
@@ -203,7 +212,7 @@ function AllDayEventRow({
    * CSS `padding-left` percentages are relative to the **containing block's
    * width** (the wrapper div), not the grid container. We must convert from
    * container-relative coordinates to wrapper-relative coordinates:
-   *   offset = (visibleStart% - left%) × (100 / width%)
+   *   offset = (visibleStart% - left%) \u00D7 (100 / width%)
    */
   const visibleColumnIndex = visibleStartIndex ?? 1;
   const visibleStartPercent = (visibleColumnIndex / totalColumns) * 100;
@@ -211,7 +220,7 @@ function AllDayEventRow({
     ? Math.max(0, visibleStartPercent - left)
     : 0;
   /** Small extra nudge (in container %) so the title doesn't sit flush
-   *  against the visible column edge — gives it a bit of breathing room. */
+   *  against the visible column edge \u2014 gives it a bit of breathing room. */
   const TITLE_NUDGE_PERCENT = 0.1;
   const titleOffsetPercent =
     hiddenContainerPercent > 0 && width > 0
@@ -250,6 +259,8 @@ function AllDayEventRow({
         spanStart={spanStart}
         spanEnd={spanEnd}
         onResizeMouseDown={handleResizeMouseDown}
+        onEventChange={onEventChange}
+        onContextMenuOpenChange={onContextMenuOpenChange}
         isSidebarOpen={isSidebarOpen}
         onDockToSidebar={onDockToSidebar}
         onClosePopover={onClosePopover}

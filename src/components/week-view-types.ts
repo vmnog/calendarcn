@@ -1,7 +1,7 @@
 import type React from "react";
 
 /**
- * Calendar view mode — "day" shows a single column, "week" shows 7 columns
+ * Calendar view mode \u2014 \u201cday\u201d shows a single column, \u201cweek\u201d shows 7 columns
  */
 export type ViewType = "day" | "week";
 
@@ -185,6 +185,8 @@ export interface WeekViewAllDayRowProps {
   ) => void;
   /** Callback when an event is changed */
   onEventChange?: (event: CalendarEvent) => void;
+  /** Callback when context menu open state changes */
+  onContextMenuOpenChange?: (open: boolean) => void;
   /** Ref to attach to the scroll content div for column measurements */
   allDayScrollContentRef?: React.RefObject<HTMLDivElement | null>;
   /** Whether the right sidebar is open */

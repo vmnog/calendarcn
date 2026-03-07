@@ -102,11 +102,11 @@ function formatEventTimeRange(event: CalendarEvent): string {
 
   // If same period (both AM or both PM), only show period at the end
   if (startPeriod === endPeriod) {
-    return `${startTime}–${endTime} ${endPeriod}`;
+    return `${startTime}\u2013${endTime} ${endPeriod}`;
   }
 
   // Different periods, show both
-  return `${startTime} ${startPeriod}–${endTime} ${endPeriod}`;
+  return `${startTime} ${startPeriod}\u2013${endTime} ${endPeriod}`;
 }
 
 function computeOverrideStyle(
@@ -374,7 +374,7 @@ export function CalendarEventItem({
           )}
         >
           <span className="font-medium text-[0.625rem] leading-tight break-words text-white dark:text-white flex items-center gap-0.5">
-            {isDirty && <span className="text-[0.35rem] shrink-0">●</span>}
+            {isDirty && <span className="text-[0.35rem] shrink-0">\u25CF</span>}
             {event.title}
           </span>
           {heightPx >= 40 && (
@@ -531,7 +531,7 @@ export function CalendarEventItem({
                 ),
           )}
         >
-          {isDirty && <span className="text-[0.35rem] shrink-0">●</span>}
+          {isDirty && <span className="text-[0.35rem] shrink-0">\u25CF</span>}
           {event.title}
         </span>
         {!isCompact && (
@@ -568,7 +568,7 @@ export function CalendarEventItem({
            * In day view the event spans the full grid width, so Radix can't
            * fit the popover beside the trigger. Place a zero-width anchor at
            * the RIGHT edge of the calendar boundary and use side="left" so
-           * the popover extends leftward — matching Notion Calendar.
+           * the popover extends leftward \u2014 matching Notion Calendar.
            *
            * The anchor is portaled to document.body to escape scroll
            * containers that apply CSS transforms (which break position:fixed
@@ -640,6 +640,10 @@ export interface AllDayEventItemProps {
     event: CalendarEvent,
     edge: "left" | "right",
   ) => void;
+  /** Callback when an event is changed (e.g. color change from context menu) */
+  onEventChange?: (event: CalendarEvent) => void;
+  /** Callback when context menu open state changes */
+  onContextMenuOpenChange?: (open: boolean) => void;
   /** Whether the right sidebar is open (controls popover visibility) */
   isSidebarOpen?: boolean;
   /** Callback to dock popover to sidebar */
@@ -653,7 +657,7 @@ export interface AllDayEventItemProps {
   /**
    * Percentage of the event's width that is hidden off-screen to the left.
    * Used in day view to offset the title into the visible area so multi-day
-   * events always show their title — "sticky title" effect.
+   * events always show their title \u2014 \u201csticky title\u201d effect.
    */
   titleOffsetPercent?: number;
 }
@@ -680,6 +684,8 @@ export function AllDayEventItem({
   spanStart = true,
   spanEnd = true,
   onResizeMouseDown,
+  onEventChange,
+  onContextMenuOpenChange,
   isSidebarOpen,
   onDockToSidebar,
   onClosePopover,
@@ -753,6 +759,23 @@ export function AllDayEventItem({
     }
   }
 
+  const [contextMenu, setContextMenu] = React.useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+
+  const closeContextMenu = React.useCallback(() => {
+    setContextMenu(null);
+    onContextMenuOpenChange?.(false);
+  }, [onContextMenuOpenChange]);
+
+  function handleContextMenu(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+    onContextMenuOpenChange?.(true);
+  }
+
   const showPopover = isSelected && isSidebarOpen === false;
 
   const eventElement = (
@@ -761,6 +784,7 @@ export function AllDayEventItem({
       tabIndex={0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
+      onContextMenu={handleContextMenu}
       onMouseMove={handleAllDayMouseMove}
       onMouseDown={handleAllDayMouseDown}
       className={cn(
@@ -845,47 +869,69 @@ export function AllDayEventItem({
 
   if (showPopover) {
     return (
-      <Popover
-        open
-        onOpenChange={(open) => {
-          if (!open) onClosePopover?.();
-        }}
-      >
-        <PopoverTrigger asChild>{eventElement}</PopoverTrigger>
-        {/*
-         * In day view, all-day events span the full width. Portal the
-         * anchor to document.body (escaping transformed scroll containers)
-         * and position it at the calendar boundary's right edge so the
-         * popover always appears at the visible right edge — even when the
-         * event wrapper extends into off-screen buffer days.
-         */}
-        {isDayView &&
-          createPortal(
-            <PopoverAnchor
-              className="pointer-events-none"
-              style={{
-                position: "fixed",
-                left: boundaryRight,
-                top: 0,
-                bottom: 0,
-                width: 0,
-              }}
-            />,
-            document.body,
-          )}
-        <EventDetailPopover
-          event={event}
-          onClose={() => onClosePopover?.()}
-          onDockToSidebar={() => onDockToSidebar?.()}
-          onPrevWeek={onPrevWeek}
-          onNextWeek={onNextWeek}
-          side={isDayView ? "left" : "right"}
-          align="start"
-          collisionPaddingTop={isDayView ? headerBottom : undefined}
-        />
-      </Popover>
+      <>
+        <Popover
+          open
+          onOpenChange={(open) => {
+            if (!open) onClosePopover?.();
+          }}
+        >
+          <PopoverTrigger asChild>{eventElement}</PopoverTrigger>
+          {/*
+           * In day view, all-day events span the full width. Portal the
+           * anchor to document.body (escaping transformed scroll containers)
+           * and position it at the calendar boundary's right edge so the
+           * popover always appears at the visible right edge \u2014 even when the
+           * event wrapper extends into off-screen buffer days.
+           */}
+          {isDayView &&
+            createPortal(
+              <PopoverAnchor
+                className="pointer-events-none"
+                style={{
+                  position: "fixed",
+                  left: boundaryRight,
+                  top: 0,
+                  bottom: 0,
+                  width: 0,
+                }}
+              />,
+              document.body,
+            )}
+          <EventDetailPopover
+            event={event}
+            onClose={() => onClosePopover?.()}
+            onDockToSidebar={() => onDockToSidebar?.()}
+            onPrevWeek={onPrevWeek}
+            onNextWeek={onNextWeek}
+            side={isDayView ? "left" : "right"}
+            align="start"
+            collisionPaddingTop={isDayView ? headerBottom : undefined}
+          />
+        </Popover>
+        {contextMenu && (
+          <EventContextMenu
+            event={event}
+            position={contextMenu}
+            onClose={closeContextMenu}
+            onEventChange={onEventChange}
+          />
+        )}
+      </>
     );
   }
 
-  return eventElement;
+  return (
+    <>
+      {eventElement}
+      {contextMenu && (
+        <EventContextMenu
+          event={event}
+          position={contextMenu}
+          onClose={closeContextMenu}
+          onEventChange={onEventChange}
+        />
+      )}
+    </>
+  );
 }
