@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 
 import { addDays, addWeeks, format, startOfDay, startOfWeek } from "date-fns";
+import { useTheme } from "next-themes";
 import { generateMockEvents } from "@/lib/mock-events";
+import { CommandMenu } from "@/components/command-menu";
 import { SidebarLeft } from "@/components/sidebar-left";
 import type { CalendarEvent, ViewType } from "@/components/week-view-types";
 import { SidebarRight } from "@/components/sidebar-right";
@@ -41,6 +43,7 @@ import {
 import { Kbd } from "@/components/ui/kbd";
 
 function PageContent() {
+  const { theme, setTheme } = useTheme();
   const [leftSidebarOpen, setLeftSidebarOpen] = React.useState(true);
   const [view, setView] = React.useState<ViewType>("week");
   const [currentDate, setCurrentDate] = React.useState(() =>
@@ -50,6 +53,7 @@ function PageContent() {
   const [selectedEventId, setSelectedEventId] = React.useState<string | null>(
     null,
   );
+  const [commandMenuOpen, setCommandMenuOpen] = React.useState(false);
   const selectedEvent = React.useMemo(
     () => events.find((e) => e.id === selectedEventId) ?? null,
     [events, selectedEventId],
@@ -112,6 +116,19 @@ function PageContent() {
     },
     [view],
   );
+
+  const cycleTheme = React.useCallback(() => {
+    if (theme === "system") {
+      setTheme("light");
+      return;
+    }
+    if (theme === "light") {
+      setTheme("dark");
+      return;
+    }
+    setTheme("system");
+  }, [theme, setTheme]);
+
   const { toggleSidebar, open: rightSidebarOpen } = useSidebar();
 
   const [visibleDays, setVisibleDays] = React.useState<Date[]>(() =>
@@ -126,6 +143,12 @@ function PageContent() {
   // Keyboard shortcuts
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+K for command menu
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandMenuOpen((prev) => !prev);
+        return;
+      }
       // Command + / for left sidebar
       if (e.metaKey && e.key === "/") {
         e.preventDefault();
@@ -185,14 +208,32 @@ function PageContent() {
         goToNext();
         return;
       }
+
+      // M for cycle theme (system → light → dark)
+      if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        cycleTheme();
+        return;
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleSidebar, goToToday, goToPrev, goToNext, switchView]);
+  }, [toggleSidebar, goToToday, goToPrev, goToNext, switchView, cycleTheme]);
 
   return (
     <>
+      <CommandMenu
+        open={commandMenuOpen}
+        onOpenChange={setCommandMenuOpen}
+        onGoToToday={goToToday}
+        onGoToPrev={goToPrev}
+        onGoToNext={goToNext}
+        onSwitchView={switchView}
+        onToggleLeftSidebar={() => setLeftSidebarOpen((prev) => !prev)}
+        onToggleRightSidebar={toggleSidebar}
+        onCycleTheme={cycleTheme}
+      />
       <SidebarRight
         open={leftSidebarOpen}
         onDateSelect={goToDateWeek}
