@@ -77,6 +77,83 @@ Key files:
 - `eventColorStyles[color]` map for event color variants
 - Z-index scale: events (0-2) → selected (20) → placeholder (25) → dragging (30) → portal (9999)
 
+### Interactive Element Patterns (Detail Panel)
+
+The event detail panel follows Notion Calendar's interaction patterns. Reuse these exact patterns when adding new editable fields.
+
+#### Color Tokens (hardcoded, not CSS variables)
+
+| Role | Value |
+|------|-------|
+| Muted text / icons (light) | `text-[#C7C5C1]` |
+| Muted text / icons (dark) | `dark:text-[#595959]` |
+| Hover border | `hover:border-[#373737]` |
+| Focus background | `focus:bg-[#242424]` or `has-[:focus]:bg-[#242424]` |
+| Focus border (matches bg) | `focus:border-[#242424]` or `has-[:focus]:border-[#242424]` |
+| Dropdown open bg | `bg-[#252525]` |
+| Dropdown border | `border-[#303030]` |
+
+#### Inline Editable Input Pattern
+
+For any text field that should be editable inline (title, time, etc.):
+
+```tsx
+// State
+const [value, setValue] = useState(initialValue);
+const inputRef = useRef<HTMLInputElement>(null);
+const escapePressedRef = useRef(false);
+const valueOnFocusRef = useRef(initialValue);
+
+// Sync from parent
+useEffect(() => { setValue(derivedValue); }, [derivedValue]);
+
+// Handlers
+onFocus  → store current value in valueOnFocusRef (for Escape restore)
+onChange → update local state (+ optionally call onEventChange for real-time preview)
+onBlur   → validate & commit (skip if escapePressedRef is true)
+onKeyDown Enter → blur (triggers commit via onBlur)
+onKeyDown Escape → e.stopPropagation() + set escapePressedRef + restore original + blur
+```
+
+Key details:
+- `e.stopPropagation()` on Escape prevents the global keydown handler from deselecting the event
+- `escapePressedRef` prevents the blur handler from committing stale state after Escape
+- For title: call `onEventChange` on every keystroke for real-time calendar preview
+- For time inputs: only call `onEventChange` on blur (mid-edit text like "3:" is invalid)
+- Time inputs auto-select text on focus via `requestAnimationFrame(() => ref.current?.select())`
+
+#### Editable Input Styling
+
+**Standalone input** (e.g., title):
+```
+rounded-sm border border-transparent bg-transparent outline-none
+hover:border-[#373737]
+focus:border-[#242424] focus:bg-[#242424]
+```
+
+**Grouped input** (e.g., icon + input, or arrow + input + label in one bordered container):
+- Wrapper div gets the border/hover/focus styling using `has-[:focus]`:
+  ```
+  rounded-sm border border-transparent cursor-text
+  hover:border-[#373737]
+  has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]
+  ```
+- Wrapper gets `onClick={() => inputRef.current?.focus()}` so clicking anywhere focuses the input
+- Inner input gets `border-none p-0 bg-transparent outline-none` (no border, wrapper handles it)
+
+#### Non-Input Interactive Elements
+
+**Dropdown trigger buttons** (e.g., event type selector):
+```
+rounded-sm border border-transparent hover:border-[#373737]
+```
+
+**Icon buttons** (e.g., "..." more menu):
+```
+border border-transparent hover:border-[#242424] hover:bg-[#242424]
+```
+This makes the hover border blend with the hover background (invisible border effect).
+
 ### Hooks Pattern
 
 - Store all option/prop values in refs synced via `useEffect`
