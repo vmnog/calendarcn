@@ -39,6 +39,7 @@ import type { CalendarEvent, EventColor } from "./week-view-types";
 
 interface EventDetailPanelProps {
   event: CalendarEvent;
+  onEventChange?: (event: CalendarEvent) => void;
   onPrevWeek?: () => void;
   onNextWeek?: () => void;
   /** Extra action buttons rendered in the header row (after the "..." menu). */
@@ -69,7 +70,7 @@ function formatDuration(start: Date, end: Date): string {
     return `${hours}h`;
   }
 
-  return `${hours}h${minutes}min`;
+  return `${hours}h ${minutes}min`;
 }
 
 function formatTimeDisplay(date: Date): string {
@@ -78,6 +79,84 @@ function formatTimeDisplay(date: Date): string {
     return format(date, "h a");
   }
   return format(date, "h:mm a");
+}
+
+interface ParsedTime {
+  hours: number;
+  minutes: number;
+}
+
+/**
+ * Parses a user-typed time string into hours and minutes.
+ * Accepts formats: "3 PM", "3:30 PM", "15:00", "3pm", "330pm", "3:30pm".
+ * Returns null if the input cannot be parsed.
+ */
+function parseTimeInput(input: string): ParsedTime | null {
+  const trimmed = input.trim().toLowerCase();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  const isPM = /pm$/.test(trimmed);
+  const isAM = /am$/.test(trimmed);
+  const stripped = trimmed.replace(/\s*(am|pm)\s*$/, "").trim();
+
+  if (stripped.length === 0) {
+    return null;
+  }
+
+  let hours: number;
+  let minutes: number;
+
+  if (stripped.includes(":")) {
+    const parts = stripped.split(":");
+    if (parts.length !== 2) {
+      return null;
+    }
+    hours = Number.parseInt(parts[0], 10);
+    minutes = Number.parseInt(parts[1], 10);
+  } else {
+    const num = Number.parseInt(stripped, 10);
+    if (Number.isNaN(num)) {
+      return null;
+    }
+    if (stripped.length > 2 && num > 99) {
+      // e.g., "330" → 3:30, "1230" → 12:30
+      minutes = num % 100;
+      hours = Math.floor(num / 100);
+    } else {
+      hours = num;
+      minutes = 0;
+    }
+  }
+
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return null;
+  }
+
+  // Apply AM/PM conversion
+  if (isPM && hours < 12) {
+    hours += 12;
+  }
+  if (isAM && hours === 12) {
+    hours = 0;
+  }
+
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return null;
+  }
+
+  return { hours, minutes };
+}
+
+/**
+ * Returns a new Date with the same year/month/day as `base`
+ * but with hours and minutes replaced.
+ */
+function applyTimeToDate(base: Date, hours: number, minutes: number): Date {
+  const result = new Date(base);
+  result.setHours(hours, minutes, 0, 0);
+  return result;
 }
 
 function formatVisibility(visibility?: "default" | "public" | "private"): string {
@@ -180,7 +259,7 @@ function EventTypeHelpIcon({ tooltip }: { tooltip?: string }) {
       <CircleHelp className="size-3.5 text-white" />
       {tooltipPos && ReactDOM.createPortal(
         <div
-          className="pointer-events-none fixed z-[100] max-w-[240px] rounded-md bg-[#252525] border border-[#303030] px-2 py-1 text-xs text-white shadow-md"
+          className="pointer-events-none fixed z-[100] max-w-[240px] rounded-sm bg-[#252525] border border-[#303030] px-2 py-1 text-xs text-white shadow-md"
           style={{ top: tooltipPos.top, left: tooltipPos.left - 8, transform: "translate(-100%, -50%)" }}
         >
           {tooltip}
@@ -191,11 +270,187 @@ function EventTypeHelpIcon({ tooltip }: { tooltip?: string }) {
   );
 }
 
-export function EventDetailPanel({ event, onPrevWeek, onNextWeek, headerActions }: EventDetailPanelProps) {
+export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek, headerActions }: EventDetailPanelProps) {
   const color = event.color ?? "blue";
   const [eventType, setEventType] = React.useState<EventType>("Event");
   const [eventDropdownOpen, setEventDropdownOpen] = React.useState(false);
   const [hoveredOther, setHoveredOther] = React.useState(false);
+  const [titleValue, setTitleValue] = React.useState(event.title);
+  const titleRef = React.useRef<HTMLInputElement>(null);
+  const escapePressedRef = React.useRef(false);
+  /** Stores the title when the input gains focus, used to restore on Escape. */
+  const titleOnFocusRef = React.useRef(event.title);
+
+  React.useEffect(() => {
+    setTitleValue(event.title);
+  }, [event.title]);
+
+  const handleTitleChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const next = e.target.value;
+      setTitleValue(next);
+      onEventChange?.({ ...event, title: next });
+    },
+    [event, onEventChange],
+  );
+
+  const handleTitleFocus = React.useCallback(() => {
+    titleOnFocusRef.current = event.title;
+  }, [event.title]);
+
+  const commitTitle = React.useCallback(() => {
+    if (escapePressedRef.current) {
+      escapePressedRef.current = false;
+      return;
+    }
+    const trimmed = titleValue.trim();
+    if (trimmed === titleValue) {
+      return;
+    }
+    onEventChange?.({ ...event, title: trimmed });
+  }, [titleValue, event, onEventChange]);
+
+  const handleTitleKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        titleRef.current?.blur();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        escapePressedRef.current = true;
+        const original = titleOnFocusRef.current;
+        setTitleValue(original);
+        onEventChange?.({ ...event, title: original });
+        titleRef.current?.blur();
+      }
+    },
+    [event, onEventChange],
+  );
+
+  // --- Start time input state & handlers ---
+  const [startTimeValue, setStartTimeValue] = React.useState(() => formatTimeDisplay(event.start));
+  const startTimeRef = React.useRef<HTMLInputElement>(null);
+  const startTimeEscapePressedRef = React.useRef(false);
+  const startTimeOnFocusRef = React.useRef(formatTimeDisplay(event.start));
+
+  React.useEffect(() => {
+    setStartTimeValue(formatTimeDisplay(event.start));
+  }, [event.start]);
+
+  const handleStartTimeChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setStartTimeValue(e.target.value);
+    },
+    [],
+  );
+
+  const handleStartTimeFocus = React.useCallback(() => {
+    startTimeOnFocusRef.current = formatTimeDisplay(event.start);
+    requestAnimationFrame(() => {
+      startTimeRef.current?.select();
+    });
+  }, [event.start]);
+
+  const commitStartTime = React.useCallback(() => {
+    if (startTimeEscapePressedRef.current) {
+      startTimeEscapePressedRef.current = false;
+      return;
+    }
+    const parsed = parseTimeInput(startTimeValue);
+    if (!parsed) {
+      setStartTimeValue(startTimeOnFocusRef.current);
+      return;
+    }
+    const newStart = applyTimeToDate(event.start, parsed.hours, parsed.minutes);
+    if (newStart.getTime() >= event.end.getTime()) {
+      setStartTimeValue(startTimeOnFocusRef.current);
+      return;
+    }
+    setStartTimeValue(formatTimeDisplay(newStart));
+    onEventChange?.({ ...event, start: newStart });
+  }, [startTimeValue, event, onEventChange]);
+
+  const handleStartTimeKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        startTimeRef.current?.blur();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        startTimeEscapePressedRef.current = true;
+        setStartTimeValue(startTimeOnFocusRef.current);
+        startTimeRef.current?.blur();
+      }
+    },
+    [],
+  );
+
+  // --- End time input state & handlers ---
+  const [endTimeValue, setEndTimeValue] = React.useState(() => formatTimeDisplay(event.end));
+  const endTimeRef = React.useRef<HTMLInputElement>(null);
+  const endTimeEscapePressedRef = React.useRef(false);
+  const endTimeOnFocusRef = React.useRef(formatTimeDisplay(event.end));
+
+  React.useEffect(() => {
+    setEndTimeValue(formatTimeDisplay(event.end));
+  }, [event.end]);
+
+  const handleEndTimeChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEndTimeValue(e.target.value);
+    },
+    [],
+  );
+
+  const handleEndTimeFocus = React.useCallback(() => {
+    endTimeOnFocusRef.current = formatTimeDisplay(event.end);
+    requestAnimationFrame(() => {
+      endTimeRef.current?.select();
+    });
+  }, [event.end]);
+
+  const commitEndTime = React.useCallback(() => {
+    if (endTimeEscapePressedRef.current) {
+      endTimeEscapePressedRef.current = false;
+      return;
+    }
+    const parsed = parseTimeInput(endTimeValue);
+    if (!parsed) {
+      setEndTimeValue(endTimeOnFocusRef.current);
+      return;
+    }
+    const newEnd = applyTimeToDate(event.end, parsed.hours, parsed.minutes);
+    if (newEnd.getTime() <= event.start.getTime()) {
+      setEndTimeValue(endTimeOnFocusRef.current);
+      return;
+    }
+    setEndTimeValue(formatTimeDisplay(newEnd));
+    onEventChange?.({ ...event, end: newEnd });
+  }, [endTimeValue, event, onEventChange]);
+
+  const handleEndTimeKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        endTimeRef.current?.blur();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        endTimeEscapePressedRef.current = true;
+        setEndTimeValue(endTimeOnFocusRef.current);
+        endTimeRef.current?.blur();
+      }
+    },
+    [],
+  );
 
   const otherTypes = EVENT_TYPES.filter((t) => t !== eventType);
 
@@ -205,7 +460,7 @@ export function EventDetailPanel({ event, onPrevWeek, onNextWeek, headerActions 
       <div className="flex items-center justify-between px-4">
         <DropdownMenu open={eventDropdownOpen} onOpenChange={(open) => { setEventDropdownOpen(open); if (open) setHoveredOther(false); }}>
           <DropdownMenuTrigger asChild>
-            <button type="button" className={cn("flex items-center gap-0.5 text-xs font-medium rounded-sm px-2.5 py-1.5 -ml-2.5 gap-1.5", eventDropdownOpen ? "bg-[#252525] text-white" : "text-foreground")}>
+            <button type="button" className={cn("flex items-center gap-0.5 text-xs font-medium rounded-sm border border-transparent px-2.5 py-1.5 -ml-2.5 gap-1.5 hover:border-[#373737]", eventDropdownOpen ? "bg-[#252525] text-white" : "text-foreground")}>
               {eventType}
               <ChevronDown className={cn("size-3.5", eventDropdownOpen ? "text-[#595959]" : "text-[#C7C5C1] dark:text-[#595959]")} />
             </button>
@@ -237,7 +492,7 @@ export function EventDetailPanel({ event, onPrevWeek, onNextWeek, headerActions 
         <div className="flex items-center gap-0.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-7 text-[#C7C5C1] dark:text-[#595959]">
+              <Button variant="ghost" size="icon" className="size-7 border border-transparent hover:border-[#242424] hover:bg-[#242424] text-[#C7C5C1] dark:text-[#595959]">
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -270,20 +525,53 @@ export function EventDetailPanel({ event, onPrevWeek, onNextWeek, headerActions 
       </div>
 
       {/* Title */}
-      <p className="text-foreground px-4 text-xs">{event.title}</p>
+      <input
+        ref={titleRef}
+        type="text"
+        value={titleValue}
+        onChange={handleTitleChange}
+        onFocus={handleTitleFocus}
+        onBlur={commitTitle}
+        onKeyDown={handleTitleKeyDown}
+        placeholder="Title"
+        className="text-foreground placeholder:text-[#C7C5C1] dark:placeholder:text-[#595959] mx-2 rounded-sm border border-transparent bg-transparent px-2 py-1.5 text-xs outline-none hover:border-[#373737] focus:border-[#242424] focus:bg-[#242424]"
+      />
 
       {/* Divider */}
       <div className="border-border border-t" />
 
       {/* Time */}
       {(event.start.getHours() !== 0 || event.start.getMinutes() !== 0 || event.end.getHours() !== 0 || event.end.getMinutes() !== 0) && (
-        <div className="flex items-center gap-3 px-4">
-          <Clock className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-foreground font-medium">{formatTimeDisplay(event.start)}</span>
-            <span className="text-[#C7C5C1] dark:text-[#595959]">→</span>
-            <span className="text-foreground font-medium">{formatTimeDisplay(event.end)}</span>
-            <span className="text-[#C7C5C1] dark:text-[#595959]">{formatDuration(event.start, event.end)}</span>
+        <div className="flex min-w-0 items-center gap-1 px-2 text-xs">
+          {/* Start time group — Clock icon + input in one bordered container */}
+          <div className="flex shrink-0 cursor-text items-center gap-2 rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]" onClick={() => startTimeRef.current?.focus()}>
+            <Clock className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
+            <input
+              ref={startTimeRef}
+              type="text"
+              value={startTimeValue}
+              onChange={handleStartTimeChange}
+              onFocus={handleStartTimeFocus}
+              onBlur={commitStartTime}
+              onKeyDown={handleStartTimeKeyDown}
+              className="text-foreground w-[8ch] font-medium text-xs bg-transparent outline-none border-none p-0"
+            />
+          </div>
+          {/* End time group — arrow + input + duration in one bordered container */}
+          <div className="flex min-w-0 flex-1 cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]" onClick={() => endTimeRef.current?.focus()}>
+            <span className="mr-2 shrink-0 text-base leading-4 text-[#C7C5C1] dark:text-[#595959]">→</span>
+            <input
+              ref={endTimeRef}
+              type="text"
+              value={endTimeValue}
+              onChange={handleEndTimeChange}
+              onFocus={handleEndTimeFocus}
+              onBlur={commitEndTime}
+              onKeyDown={handleEndTimeKeyDown}
+              className="text-foreground min-w-0 font-medium text-xs bg-transparent outline-none border-none p-0"
+              size={endTimeValue.length}
+            />
+            <span className="shrink-0 text-[#C7C5C1] dark:text-[#595959]">{formatDuration(event.start, event.end)}</span>
           </div>
         </div>
       )}
