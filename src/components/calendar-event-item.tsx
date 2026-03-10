@@ -587,6 +587,7 @@ export function CalendarEventItem({
             )}
           <EventDetailPopover
             event={event}
+            onEventChange={onEventChange}
             onClose={() => onClosePopover?.()}
             onDockToSidebar={() => onDockToSidebar?.()}
             onPrevWeek={onPrevWeek}
@@ -1004,6 +1005,7 @@ export function AllDayEventItem({
             )}
           <EventDetailPopover
             event={event}
+            onEventChange={onEventChange}
             onClose={() => onClosePopover?.()}
             onDockToSidebar={() => onDockToSidebar?.()}
             onPrevWeek={onPrevWeek}

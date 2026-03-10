@@ -24,12 +24,14 @@ import type { CalendarEvent } from "./week-view-types"
 
 interface SidebarLeftProps extends React.ComponentProps<typeof Sidebar> {
   selectedEvent?: CalendarEvent | null;
+  onEventChange?: (event: CalendarEvent) => void;
   onPrevWeek?: () => void;
   onNextWeek?: () => void;
 }
 
 export function SidebarLeft({
   selectedEvent,
+  onEventChange,
   onPrevWeek,
   onNextWeek,
   ...props
@@ -70,7 +72,7 @@ export function SidebarLeft({
       </SidebarHeader>
       <SidebarContent>
         {selectedEvent ? (
-          <EventDetailPanel event={selectedEvent} onPrevWeek={onPrevWeek} onNextWeek={onNextWeek} />
+          <EventDetailPanel event={selectedEvent} onEventChange={onEventChange} onPrevWeek={onPrevWeek} onNextWeek={onNextWeek} />
         ) : (
           <SidebarGroup className="px-3 pt-6">
             <SidebarGroupLabel className="text-foreground text-xs font-semibold px-0">
