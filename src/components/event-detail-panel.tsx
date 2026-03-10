@@ -310,6 +310,8 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
   const [eventType, setEventType] = React.useState<EventType>("Event");
   const [eventDropdownOpen, setEventDropdownOpen] = React.useState(false);
   const [hoveredOther, setHoveredOther] = React.useState(false);
+  /** Whether the compact "All-day / Time zone / Repeat" row is expanded into individual rows. */
+  const [optionsExpanded, setOptionsExpanded] = React.useState(false);
   const [titleValue, setTitleValue] = React.useState(event.title);
   const titleRef = React.useRef<HTMLInputElement>(null);
   const escapePressedRef = React.useRef(false);
@@ -319,6 +321,11 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
   React.useEffect(() => {
     setTitleValue(event.title);
   }, [event.title]);
+
+  // Reset expanded options when switching to a different event
+  React.useEffect(() => {
+    setOptionsExpanded(false);
+  }, [event.id]);
 
   const handleTitleChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -722,11 +729,36 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
             </div>
           </div>
         </>
+      ) : optionsExpanded ? (
+        <>
+          {/* All-day toggle row */}
+          <div className="flex items-center gap-3 px-4">
+            <Switch size="xs" className="data-[state=unchecked]:!bg-[#C7C5C1] dark:data-[state=unchecked]:!bg-[#595959] data-[state=checked]:!bg-[#3A85D3]" />
+            <span className="text-foreground text-xs">All-day</span>
+          </div>
+
+          {/* Timezone row */}
+          <div className="flex items-center gap-3 px-4">
+            <Globe className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
+            <TimezoneDisplay timezone={event.timezone ?? "GMT-3 Sao Paulo"} />
+          </div>
+
+          {/* Repeat row (placeholder for non-recurring) */}
+          <div className="flex items-center gap-3 px-4">
+            <RefreshCcw className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
+            <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">Repeat</span>
+          </div>
+        </>
       ) : (
-        <div className="-mt-2 flex items-center gap-6 pl-10">
-          <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">All-day</span>
-          <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">Time zone</span>
-          <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">Repeat</span>
+        <div className="-mt-2 flex items-center pl-8">
+          <div
+            className="group/options flex cursor-default items-center gap-4 rounded-sm px-2 py-1.5 hover:bg-[#E8E8E4] dark:hover:bg-[#242424]"
+            onClick={() => setOptionsExpanded(true)}
+          >
+            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">All-day</span>
+            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">Time zone</span>
+            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">Repeat</span>
+          </div>
         </div>
       )}
 
