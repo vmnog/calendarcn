@@ -2,7 +2,13 @@
 
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { differenceInMinutes, format, isSameDay } from "date-fns";
+import {
+  addDays,
+  differenceInCalendarDays,
+  differenceInMinutes,
+  format,
+  parse,
+} from "date-fns";
 import {
   Bell,
   Check,
@@ -157,6 +163,35 @@ function applyTimeToDate(base: Date, hours: number, minutes: number): Date {
   const result = new Date(base);
   result.setHours(hours, minutes, 0, 0);
   return result;
+}
+
+function formatDateDisplay(date: Date): string {
+  return format(date, "EEE MMM d");
+}
+
+/**
+ * Parses a user-typed date string into a Date.
+ * Strips any leading weekday name and parses "MMM d" (e.g., "Mar 11").
+ * Uses the reference date's year. Returns null if unparseable.
+ */
+function parseDateInput(input: string, referenceDate: Date): Date | null {
+  const trimmed = input.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  // Strip optional leading weekday (e.g., "Tue ", "Wed ")
+  const withoutWeekday = trimmed.replace(/^[a-z]{3}\s+/i, "");
+  if (withoutWeekday.length === 0) {
+    return null;
+  }
+
+  const parsed = parse(withoutWeekday, "MMM d", referenceDate);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
 }
 
 function formatVisibility(visibility?: "default" | "public" | "private"): string {
@@ -452,6 +487,69 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
     [],
   );
 
+  // --- Date input state & handlers ---
+  const [dateValue, setDateValue] = React.useState(() => formatDateDisplay(event.start));
+  const dateRef = React.useRef<HTMLInputElement>(null);
+  const dateEscapePressedRef = React.useRef(false);
+  const dateOnFocusRef = React.useRef(formatDateDisplay(event.start));
+
+  React.useEffect(() => {
+    setDateValue(formatDateDisplay(event.start));
+  }, [event.start]);
+
+  const handleDateChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setDateValue(e.target.value);
+    },
+    [],
+  );
+
+  const handleDateFocus = React.useCallback(() => {
+    dateOnFocusRef.current = formatDateDisplay(event.start);
+    requestAnimationFrame(() => {
+      dateRef.current?.select();
+    });
+  }, [event.start]);
+
+  const commitDate = React.useCallback(() => {
+    if (dateEscapePressedRef.current) {
+      dateEscapePressedRef.current = false;
+      return;
+    }
+    const parsed = parseDateInput(dateValue, event.start);
+    if (!parsed) {
+      setDateValue(dateOnFocusRef.current);
+      return;
+    }
+    const dayDiff = differenceInCalendarDays(parsed, event.start);
+    if (dayDiff === 0) {
+      setDateValue(formatDateDisplay(event.start));
+      return;
+    }
+    const newStart = addDays(event.start, dayDiff);
+    const newEnd = addDays(event.end, dayDiff);
+    setDateValue(formatDateDisplay(newStart));
+    onEventChange?.({ ...event, start: newStart, end: newEnd });
+  }, [dateValue, event, onEventChange]);
+
+  const handleDateKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        dateRef.current?.blur();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        dateEscapePressedRef.current = true;
+        setDateValue(dateOnFocusRef.current);
+        dateRef.current?.blur();
+      }
+    },
+    [],
+  );
+
   const otherTypes = EVENT_TYPES.filter((t) => t !== eventType);
 
   return (
@@ -576,11 +674,22 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
         </div>
       )}
 
-      {/* Date — indented to align with time text */}
-      <div className="text-foreground pl-11 text-xs">
-        {isSameDay(event.start, event.end)
-          ? format(event.start, "EEE MMM d")
-          : `${format(event.start, "EEE MMM d")} → ${format(event.end, "EEE MMM d")}`}
+      {/* Date — editable inline input, indented to align with time text */}
+      <div
+        className="ml-8 mr-2 flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]"
+        onClick={() => dateRef.current?.focus()}
+      >
+        <input
+          ref={dateRef}
+          type="text"
+          value={dateValue}
+          onChange={handleDateChange}
+          onFocus={handleDateFocus}
+          onBlur={commitDate}
+          onKeyDown={handleDateKeyDown}
+          className="text-foreground text-xs bg-transparent outline-none border-none p-0"
+          size={dateValue.length}
+        />
       </div>
 
       {event.recurrence ? (
@@ -614,7 +723,7 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
           </div>
         </>
       ) : (
-        <div className="flex items-center gap-6 pl-11">
+        <div className="flex items-center gap-6 pl-10">
           <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">All-day</span>
           <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">Time zone</span>
           <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">Repeat</span>
