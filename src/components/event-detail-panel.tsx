@@ -557,6 +557,122 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
     [],
   );
 
+  // --- End date input state & handlers (shown only for all-day events) ---
+  const [endDateValue, setEndDateValue] = React.useState(() => formatDateDisplay(event.end));
+  const endDateRef = React.useRef<HTMLInputElement>(null);
+  const endDateEscapePressedRef = React.useRef(false);
+  const endDateOnFocusRef = React.useRef(formatDateDisplay(event.end));
+
+  React.useEffect(() => {
+    setEndDateValue(formatDateDisplay(event.end));
+  }, [event.end]);
+
+  const handleEndDateChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setEndDateValue(e.target.value);
+    },
+    [],
+  );
+
+  const handleEndDateFocus = React.useCallback(() => {
+    endDateOnFocusRef.current = formatDateDisplay(event.end);
+    requestAnimationFrame(() => {
+      endDateRef.current?.select();
+    });
+  }, [event.end]);
+
+  const commitEndDate = React.useCallback(() => {
+    if (endDateEscapePressedRef.current) {
+      endDateEscapePressedRef.current = false;
+      return;
+    }
+    const parsed = parseDateInput(endDateValue, event.end);
+    if (!parsed) {
+      setEndDateValue(endDateOnFocusRef.current);
+      return;
+    }
+    const dayDiff = differenceInCalendarDays(parsed, event.end);
+    if (dayDiff === 0) {
+      setEndDateValue(formatDateDisplay(event.end));
+      return;
+    }
+    const newEnd = addDays(event.end, dayDiff);
+    if (newEnd.getTime() < event.start.getTime()) {
+      setEndDateValue(endDateOnFocusRef.current);
+      return;
+    }
+    setEndDateValue(formatDateDisplay(newEnd));
+    onEventChange?.({ ...event, end: newEnd });
+  }, [endDateValue, event, onEventChange]);
+
+  const handleEndDateKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        endDateRef.current?.blur();
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        endDateEscapePressedRef.current = true;
+        setEndDateValue(endDateOnFocusRef.current);
+        endDateRef.current?.blur();
+      }
+    },
+    [],
+  );
+
+  // --- All-day toggle handler ---
+  /**
+   * Stores the original hours/minutes before toggling to all-day.
+   * When toggling off, these are applied to the current (possibly resized) dates.
+   */
+  const savedTimeOfDayRef = React.useRef<{
+    startHours: number;
+    startMinutes: number;
+    endHours: number;
+    endMinutes: number;
+  } | null>(null);
+
+  const handleAllDayToggle = React.useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        savedTimeOfDayRef.current = {
+          startHours: event.start.getHours(),
+          startMinutes: event.start.getMinutes(),
+          endHours: event.end.getHours(),
+          endMinutes: event.end.getMinutes(),
+        };
+        onEventChange?.({ ...event, isAllDay: true });
+        return;
+      }
+
+      if (savedTimeOfDayRef.current) {
+        const { startHours, startMinutes, endHours, endMinutes } = savedTimeOfDayRef.current;
+        onEventChange?.({
+          ...event,
+          isAllDay: false,
+          start: applyTimeToDate(event.start, startHours, startMinutes),
+          end: applyTimeToDate(event.end, endHours, endMinutes),
+        });
+        savedTimeOfDayRef.current = null;
+        return;
+      }
+
+      /** Default 9 AM – 10 AM when no saved times (e.g., existing all-day event). */
+      const DEFAULT_START_HOUR = 9;
+      const DEFAULT_END_HOUR = 10;
+      onEventChange?.({
+        ...event,
+        isAllDay: false,
+        start: applyTimeToDate(event.start, DEFAULT_START_HOUR, 0),
+        end: applyTimeToDate(event.end, DEFAULT_END_HOUR, 0),
+      });
+    },
+    [event, onEventChange],
+  );
+
   const otherTypes = EVENT_TYPES.filter((t) => t !== eventType);
 
   return (
@@ -645,11 +761,17 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
       {/* Divider */}
       <div className="border-border border-t" />
 
-      {/* Time */}
+      {/* Time — muted and non-interactive for all-day events */}
       {(event.start.getHours() !== 0 || event.start.getMinutes() !== 0 || event.end.getHours() !== 0 || event.end.getMinutes() !== 0) && (
         <div className="flex min-w-0 items-center gap-1 px-2 text-xs">
           {/* Start time group — Clock icon + input in one bordered container */}
-          <div className="flex shrink-0 cursor-text items-center gap-2 rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]" onClick={() => startTimeRef.current?.focus()}>
+          <div
+            className={cn(
+              "flex shrink-0 items-center gap-2 rounded-sm border border-transparent px-2 py-1.5",
+              event.isAllDay ? "cursor-default" : "cursor-text hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]",
+            )}
+            onClick={event.isAllDay ? undefined : () => startTimeRef.current?.focus()}
+          >
             <Clock className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
             <input
               ref={startTimeRef}
@@ -659,11 +781,22 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
               onFocus={handleStartTimeFocus}
               onBlur={commitStartTime}
               onKeyDown={handleStartTimeKeyDown}
-              className="text-foreground w-[8ch] font-medium text-xs bg-transparent outline-none border-none p-0"
+              readOnly={event.isAllDay}
+              tabIndex={event.isAllDay ? -1 : undefined}
+              className={cn(
+                "w-[8ch] font-medium text-xs bg-transparent outline-none border-none p-0",
+                event.isAllDay ? "text-[#C7C5C1] dark:text-[#595959] pointer-events-none" : "text-foreground",
+              )}
             />
           </div>
           {/* End time group — arrow + input + duration in one bordered container */}
-          <div className="flex min-w-0 flex-1 cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]" onClick={() => endTimeRef.current?.focus()}>
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 items-center rounded-sm border border-transparent px-2 py-1.5",
+              event.isAllDay ? "cursor-default" : "cursor-text hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]",
+            )}
+            onClick={event.isAllDay ? undefined : () => endTimeRef.current?.focus()}
+          >
             <span className="mr-2 shrink-0 text-base leading-4 text-[#C7C5C1] dark:text-[#595959]">→</span>
             <input
               ref={endTimeRef}
@@ -673,7 +806,12 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
               onFocus={handleEndTimeFocus}
               onBlur={commitEndTime}
               onKeyDown={handleEndTimeKeyDown}
-              className="text-foreground min-w-0 font-medium text-xs bg-transparent outline-none border-none p-0"
+              readOnly={event.isAllDay}
+              tabIndex={event.isAllDay ? -1 : undefined}
+              className={cn(
+                "min-w-0 font-medium text-xs bg-transparent outline-none border-none p-0",
+                event.isAllDay ? "text-[#C7C5C1] dark:text-[#595959] pointer-events-none" : "text-foreground",
+              )}
               size={endTimeValue.length}
             />
             <span className="shrink-0 text-[#C7C5C1] dark:text-[#595959]">{formatDuration(event.start, event.end)}</span>
@@ -681,37 +819,70 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
         </div>
       )}
 
-      {/* Date — editable inline input, indented to align with time text */}
-      <div
-        className="-mt-2 ml-8 mr-2 flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]"
-        onClick={() => dateRef.current?.focus()}
-      >
-        <input
-          ref={dateRef}
-          type="text"
-          value={dateValue}
-          onChange={handleDateChange}
-          onFocus={handleDateFocus}
-          onBlur={commitDate}
-          onKeyDown={handleDateKeyDown}
-          className="text-foreground text-xs bg-transparent outline-none border-none p-0"
-          size={dateValue.length}
-        />
+      {/* Date — editable inline input(s), indented to align with time text */}
+      <div className={cn("flex items-center gap-2 -mt-2", (event.start.getHours() !== 0 || event.start.getMinutes() !== 0 || event.end.getHours() !== 0 || event.end.getMinutes() !== 0) ? "ml-8" : "ml-4")}>
+        {/* Start date */}
+        <div
+          className="mr-0 flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]"
+          onClick={() => dateRef.current?.focus()}
+        >
+          <input
+            ref={dateRef}
+            type="text"
+            value={dateValue}
+            onChange={handleDateChange}
+            onFocus={handleDateFocus}
+            onBlur={commitDate}
+            onKeyDown={handleDateKeyDown}
+            className="text-foreground text-xs bg-transparent outline-none border-none p-0"
+            size={dateValue.length}
+          />
+        </div>
+        {/* End date — only visible for all-day events */}
+        {event.isAllDay && (
+          <div
+            className="flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]"
+            onClick={() => endDateRef.current?.focus()}
+          >
+            <input
+              ref={endDateRef}
+              type="text"
+              value={endDateValue}
+              onChange={handleEndDateChange}
+              onFocus={handleEndDateFocus}
+              onBlur={commitEndDate}
+              onKeyDown={handleEndDateKeyDown}
+              className="text-foreground text-xs bg-transparent outline-none border-none p-0"
+              size={endDateValue.length}
+            />
+          </div>
+        )}
       </div>
 
       {event.recurrence ? (
         <>
-          {/* All-day toggle row */}
-          <div className="flex items-center gap-3 px-4">
-            <Switch size="xs" className="data-[state=unchecked]:!bg-[#C7C5C1] dark:data-[state=unchecked]:!bg-[#595959] data-[state=checked]:!bg-[#3A85D3]" />
+          {/* All-day toggle row — clicking label or row triggers toggle */}
+          <div
+            className="flex cursor-default items-center gap-3 px-4"
+            onClick={() => handleAllDayToggle(!(event.isAllDay ?? false))}
+          >
+            <Switch
+              size="xs"
+              checked={event.isAllDay ?? false}
+              onCheckedChange={handleAllDayToggle}
+              onClick={(e) => e.stopPropagation()}
+              className="data-[state=unchecked]:!bg-[#C7C5C1] dark:data-[state=unchecked]:!bg-[#595959] data-[state=checked]:!bg-[#3A85D3]"
+            />
             <span className="text-foreground text-xs">All-day</span>
           </div>
 
-          {/* Timezone row */}
-          <div className="flex items-center gap-3 px-4">
-            <Globe className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-            <TimezoneDisplay timezone={event.timezone ?? "GMT-3 Sao Paulo"} />
-          </div>
+          {/* Timezone row — hidden when all-day */}
+          {!event.isAllDay && (
+            <div className="flex items-center gap-3 px-4">
+              <Globe className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
+              <TimezoneDisplay timezone={event.timezone ?? "GMT-3 Sao Paulo"} />
+            </div>
+          )}
 
           {/* Recurrence row */}
           <div className="flex items-center gap-3 px-4">
@@ -729,19 +900,30 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
             </div>
           </div>
         </>
-      ) : optionsExpanded ? (
+      ) : optionsExpanded || event.isAllDay ? (
         <>
-          {/* All-day toggle row */}
-          <div className="flex items-center gap-3 px-4">
-            <Switch size="xs" className="data-[state=unchecked]:!bg-[#C7C5C1] dark:data-[state=unchecked]:!bg-[#595959] data-[state=checked]:!bg-[#3A85D3]" />
+          {/* All-day toggle row — clicking label or row triggers toggle */}
+          <div
+            className="flex cursor-default items-center gap-3 px-4"
+            onClick={() => handleAllDayToggle(!(event.isAllDay ?? false))}
+          >
+            <Switch
+              size="xs"
+              checked={event.isAllDay ?? false}
+              onCheckedChange={handleAllDayToggle}
+              onClick={(e) => e.stopPropagation()}
+              className="data-[state=unchecked]:!bg-[#C7C5C1] dark:data-[state=unchecked]:!bg-[#595959] data-[state=checked]:!bg-[#3A85D3]"
+            />
             <span className="text-foreground text-xs">All-day</span>
           </div>
 
-          {/* Timezone row */}
-          <div className="flex items-center gap-3 px-4">
-            <Globe className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-            <TimezoneDisplay timezone={event.timezone ?? "GMT-3 Sao Paulo"} />
-          </div>
+          {/* Timezone row — hidden when all-day */}
+          {!event.isAllDay && (
+            <div className="flex items-center gap-3 px-4">
+              <Globe className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
+              <TimezoneDisplay timezone={event.timezone ?? "GMT-3 Sao Paulo"} />
+            </div>
+          )}
 
           {/* Repeat row (placeholder for non-recurring) */}
           <div className="flex items-center gap-3 px-4">

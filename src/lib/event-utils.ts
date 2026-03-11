@@ -12,8 +12,16 @@ import type {
   WeekDay,
 } from "@/components/week-view-types";
 
+/** Returns true when a timed event spans across midnight into a different day. */
+export function isMultiDayEvent(event: CalendarEvent): boolean {
+  if (event.isAllDay) {
+    return false;
+  }
+  return !isSameDay(event.start, event.end);
+}
+
 /**
- * Filters events for a specific day (excluding all-day events)
+ * Filters events for a specific day (excluding all-day and multi-day events)
  */
 export function getEventsForDay(
   events: CalendarEvent[],
@@ -23,7 +31,7 @@ export function getEventsForDay(
   const dayEnd = addDays(dayStart, 1);
 
   return events.filter((event) => {
-    if (event.isAllDay) {
+    if (event.isAllDay || isMultiDayEvent(event)) {
       return false;
     }
     // Event spans this day if it starts before day end AND ends after day start
@@ -286,7 +294,9 @@ export function calculateAllDayEventRows(
   events: CalendarEvent[],
   days: WeekDay[],
 ): AllDayEventRow[] {
-  const allDayEvents = events.filter((e) => e.isAllDay);
+  const allDayEvents = events.filter(
+    (e) => e.isAllDay || isMultiDayEvent(e),
+  );
 
   if (allDayEvents.length === 0) {
     return [];
