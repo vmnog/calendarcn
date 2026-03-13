@@ -137,7 +137,10 @@ export function CommandMenu({
           </CommandItem>
           <CommandItem onSelect={() => runCommand(onCycleTheme)}>
             Set theme...
-            <Kbd className="ml-auto">M</Kbd>
+            <KbdGroup className="ml-auto">
+              <Kbd>shift</Kbd>
+              <Kbd>M</Kbd>
+            </KbdGroup>
           </CommandItem>
         </CommandGroup>
 
@@ -159,9 +162,11 @@ export function CommandMenu({
               <Kbd>W</Kbd>
             </KbdGroup>
           </CommandItem>
-          <CommandItem disabled>
+          <CommandItem onSelect={() => runCommand(() => onSwitchView("month"))}>
             Display month view
-            {SOON_BADGE}
+            <KbdGroup className="ml-auto">
+              <Kbd>M</Kbd>
+            </KbdGroup>
           </CommandItem>
           <CommandItem disabled>
             Set number of displayed days...

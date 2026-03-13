@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import {
-  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   PanelLeftIcon,
@@ -14,7 +13,11 @@ import { useTheme } from "next-themes";
 import { generateMockEvents } from "@/lib/mock-events";
 import { CommandMenu } from "@/components/command-menu";
 import { SidebarLeft } from "@/components/sidebar-left";
-import type { CalendarEvent, ViewType } from "@/components/week-view-types";
+import type {
+  CalendarEvent,
+  ViewSettings,
+  ViewType,
+} from "@/components/week-view-types";
 import { SidebarRight } from "@/components/sidebar-right";
 import {
   WeekView,
@@ -23,12 +26,7 @@ import {
 } from "@/components/week-view";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ViewDropdown } from "@/components/view-dropdown";
 import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
@@ -54,6 +52,12 @@ function PageContent() {
     null,
   );
   const [commandMenuOpen, setCommandMenuOpen] = React.useState(false);
+  const [numberOfDays, setNumberOfDays] = React.useState(7);
+  const [viewSettings, setViewSettings] = React.useState<ViewSettings>({
+    showWeekends: true,
+    showDeclinedEvents: true,
+    showWeekNumbers: true,
+  });
   const selectedEvent = React.useMemo(
     () => events.find((e) => e.id === selectedEventId) ?? null,
     [events, selectedEventId],
@@ -107,15 +111,32 @@ function PageContent() {
       if (newView === view) return;
       setView(newView);
       if (newView === "day") {
-        // Week → Day: use today or keep current date
         setCurrentDate(startOfDay(new Date()));
-      } else {
-        // Day → Week: snap to week containing the current day
-        setCurrentDate((prev) => startOfWeek(prev, { weekStartsOn: 0 }));
+        return;
       }
+      // Week or Month: snap to week containing the current day
+      setCurrentDate((prev) => startOfWeek(prev, { weekStartsOn: 0 }));
     },
     [view],
   );
+
+  const toggleWeekends = React.useCallback(() => {
+    setViewSettings((prev) => ({ ...prev, showWeekends: !prev.showWeekends }));
+  }, []);
+
+  const toggleDeclinedEvents = React.useCallback(() => {
+    setViewSettings((prev) => ({
+      ...prev,
+      showDeclinedEvents: !prev.showDeclinedEvents,
+    }));
+  }, []);
+
+  const toggleWeekNumbers = React.useCallback(() => {
+    setViewSettings((prev) => ({
+      ...prev,
+      showWeekNumbers: !prev.showWeekNumbers,
+    }));
+  }, []);
 
   const cycleTheme = React.useCallback(() => {
     if (theme === "system") {
@@ -155,6 +176,23 @@ function PageContent() {
         setLeftSidebarOpen((prev) => !prev);
         return;
       }
+      // Shift+Cmd+E for toggle weekends
+      if (e.key === "e" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggleWeekends();
+        return;
+      }
+      // Shift+Cmd+D for toggle declined events
+      if (e.key === "d" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggleDeclinedEvents();
+        return;
+      }
+      // Cmd+, for general settings (placeholder)
+      if (e.key === "," && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        return;
+      }
       // Escape to deselect event
       if (e.key === "Escape") {
         setSelectedEventId(null);
@@ -181,6 +219,13 @@ function PageContent() {
         return;
       }
 
+      // 1 for day view
+      if (e.key === "1") {
+        e.preventDefault();
+        switchView("day");
+        return;
+      }
+
       // D for day view
       if (e.key === "d" || e.key === "D") {
         e.preventDefault();
@@ -188,10 +233,24 @@ function PageContent() {
         return;
       }
 
+      // 0 for week view
+      if (e.key === "0") {
+        e.preventDefault();
+        switchView("week");
+        return;
+      }
+
       // W for week view
       if (e.key === "w" || e.key === "W") {
         e.preventDefault();
         switchView("week");
+        return;
+      }
+
+      // 2-9 for number of days
+      if (/^[2-9]$/.test(e.key)) {
+        e.preventDefault();
+        setNumberOfDays(Number(e.key));
         return;
       }
 
@@ -209,17 +268,33 @@ function PageContent() {
         return;
       }
 
-      // M for cycle theme (system → light → dark)
-      if (e.key === "m" || e.key === "M") {
+      // Shift+M for cycle theme
+      if (e.key === "M" && e.shiftKey && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         cycleTheme();
+        return;
+      }
+
+      // m for month view (lowercase only, no shift)
+      if (e.key === "m") {
+        e.preventDefault();
+        switchView("month");
         return;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleSidebar, goToToday, goToPrev, goToNext, switchView, cycleTheme]);
+  }, [
+    toggleSidebar,
+    goToToday,
+    goToPrev,
+    goToNext,
+    switchView,
+    toggleWeekends,
+    toggleDeclinedEvents,
+    cycleTheme,
+  ]);
 
   return (
     <>
@@ -268,9 +343,9 @@ function PageContent() {
               <span className="font-extrabold">{monthName}</span>{" "}
               <span className="font-extrabold">{year}</span>{" "}
               <span className="text-muted-foreground text-xs">
-                {view === "day"
-                  ? format(currentDate, "EEEE, MMM d")
-                  : `Week ${weekNumber}`}
+                {view === "day" && format(currentDate, "EEEE, MMM d")}
+                {view === "week" && `Week ${weekNumber}`}
+                {view === "month" && format(currentDate, "MMMM")}
               </span>
             </h1>
           </div>
@@ -282,36 +357,16 @@ function PageContent() {
               />
               <AvatarFallback>VN</AvatarFallback>
             </Avatar>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="gap-1 px-3">
-                  {view === "day" ? "Day" : "Week"}
-                  <ChevronDownIcon className="size-4 text-muted-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => switchView("day")}>
-                  Day
-                  <Kbd className="ml-auto">D</Kbd>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => switchView("week")}>
-                  Week
-                  <Kbd className="ml-auto">W</Kbd>
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled>
-                  Month
-                  <span className="bg-muted text-muted-foreground ml-auto rounded px-1.5 py-0.5 text-[10px] leading-none font-medium">
-                    Soon
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled>
-                  Year
-                  <span className="bg-muted text-muted-foreground ml-auto rounded px-1.5 py-0.5 text-[10px] leading-none font-medium">
-                    Soon
-                  </span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <ViewDropdown
+              view={view}
+              numberOfDays={numberOfDays}
+              viewSettings={viewSettings}
+              onSwitchView={switchView}
+              onSetNumberOfDays={setNumberOfDays}
+              onToggleWeekends={toggleWeekends}
+              onToggleDeclinedEvents={toggleDeclinedEvents}
+              onToggleWeekNumbers={toggleWeekNumbers}
+            />
             <Button
               variant="secondary"
               size="sm"
