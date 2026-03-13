@@ -3,7 +3,16 @@ import type React from "react";
 /**
  * Calendar view mode \u2014 \u201cday\u201d shows a single column, \u201cweek\u201d shows 7 columns
  */
-export type ViewType = "day" | "week";
+export type ViewType = "day" | "week" | "month";
+
+/**
+ * View settings for display preferences (toggleable from the view dropdown)
+ */
+export interface ViewSettings {
+  showWeekends: boolean;
+  showDeclinedEvents: boolean;
+  showWeekNumbers: boolean;
+}
 
 /**
  * Represents a single day in the week view

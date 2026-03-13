@@ -39,18 +39,21 @@ export const TIME_AXIS_WIDTH = 64;
 const VISIBLE_DAYS_BY_VIEW: Record<ViewType, number> = {
   day: 1,
   week: 7,
+  month: 7,
 };
 
 /** Buffer days per view mode (each side, for horizontal scroll) */
 const BUFFER_DAYS_BY_VIEW: Record<ViewType, number> = {
   day: 1,
   week: 7,
+  month: 7,
 };
 
 /** Buffer extension step size per view mode */
 const BUFFER_STEP_BY_VIEW: Record<ViewType, number> = {
   day: 1,
   week: 7,
+  month: 7,
 };
 
 /**
