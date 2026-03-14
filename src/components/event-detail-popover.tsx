@@ -98,6 +98,12 @@ export function EventDetailPopover({
       className="w-[320px] max-h-[80vh] overflow-y-auto p-0 bg-popover/60 backdrop-blur-xl border shadow-lg rounded-lg"
       onOpenAutoFocus={(e) => e.preventDefault()}
       onCloseAutoFocus={(e) => e.preventDefault()}
+      onInteractOutside={(e) => {
+        const target = e.target as HTMLElement;
+        if (target.closest("[data-radix-popper-content-wrapper]")) {
+          e.preventDefault();
+        }
+      }}
     >
       <EventDetailPanel
         event={event}
