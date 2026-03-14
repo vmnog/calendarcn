@@ -357,7 +357,11 @@ export function WeekView({
       <div
         ref={calendarBoundaryRef}
         className={cn("flex h-full flex-col", className)}
-        onClick={onBackgroundClick}
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest("[data-radix-popper-content-wrapper]")) return;
+          onBackgroundClick?.();
+        }}
       >
         {/* Header - day columns and all-day row with synchronized scroll */}
         <div className="flex-shrink-0">
