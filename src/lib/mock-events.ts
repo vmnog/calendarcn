@@ -4,6 +4,10 @@ function d(month: number, day: number, hour: number, minute = 0): Date {
   return new Date(2026, month - 1, day, hour, minute);
 }
 
+function dy(year: number, month: number, day: number, hour: number, minute = 0): Date {
+  return new Date(year, month - 1, day, hour, minute);
+}
+
 interface EventOpts {
   isAllDay?: boolean;
   description?: string;
@@ -214,5 +218,17 @@ export function generateMockEvents(): CalendarEvent[] {
     ev("m31c", "Gym", d(4, 2, 18), d(4, 2, 19, 30), "green", "Fitness", { recurrence: "Every week on Thu", reminders: [{ amount: 30, unit: "minutes" }], calendarEmail: "me@vmnog.com" }),
     ev("m31d", "Friday Wrap-up", d(4, 3, 16), d(4, 3, 17), "blue", "Work", { recurrence: "Every week on Fri", description: "Review weekly accomplishments and set Monday priorities", reminders: [{ amount: 10, unit: "minutes" }], calendarEmail: "me@vmnog.com" }),
     ev("m32", "Month-End Report", d(3, 31, 10), d(3, 31, 11, 30), "red", "me@vmnog.com", { description: "Compile March metrics, budget reconciliation, and Q1 summary for finance", reminders: [{ amount: 1, unit: "hours" }], calendarEmail: "me@vmnog.com" }),
+
+    // ── Historical Sprint events (for search testing) ──
+    ev("h01", "Sprint Kickoff — Q2 Platform Migration Initiative", dy(2024, 6, 10, 9), dy(2024, 6, 10, 10, 30), "blue", "Work", { description: "Q2 2024 sprint kickoff — defining team velocity baseline", reminders: [{ amount: 10, unit: "minutes" }], calendarEmail: "me@vmnog.com" }),
+    ev("h02", "Sprint Retrospective — Process Improvements and Velocity Analysis", dy(2025, 3, 14, 14), dy(2025, 3, 14, 15), "blue", "Work", { description: "Q1 2025 sprint retro — process improvements discussion", reminders: [{ amount: 10, unit: "minutes" }], calendarEmail: "me@vmnog.com" }),
+
+    // ── Extra Sprint events on Mon Feb 23 2026 ──
+    ev("f25c", "Sprint Demo — Presenting New Dashboard Features to Stakeholders", d(2, 23, 14), d(2, 23, 15), "red", "me@vmnog.com", { description: "Demo sprint 4 deliverables to product team", reminders: [{ amount: 10, unit: "minutes" }], calendarEmail: "me@vmnog.com" }),
+    ev("f25d", "Sprint Retro", d(2, 23, 15, 30), d(2, 23, 16, 30), "yellow", "Side Projects", { description: "Sprint 4 retrospective — team feedback session", reminders: [{ amount: 10, unit: "minutes" }], calendarEmail: "me@vmnog.com" }),
+
+    // ── Sprint events on Mar 18 and Mar 19 2026 ──
+    ev("m17c", "Sprint Standup", d(3, 18, 9, 30), d(3, 18, 10), "red", "me@vmnog.com", { description: "Mid-sprint sync — check blockers and progress", reminders: [{ amount: 5, unit: "minutes" }], calendarEmail: "me@vmnog.com" }),
+    ev("m19b", "Sprint Grooming — Backlog Refinement and Story Estimation Session", d(3, 19, 10), d(3, 19, 11), "blue", "Work", { description: "Backlog grooming for next sprint — estimate and prioritize stories", reminders: [{ amount: 10, unit: "minutes" }], calendarEmail: "me@vmnog.com" }),
   ];
 }

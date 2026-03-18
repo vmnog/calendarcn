@@ -116,7 +116,7 @@ export function Calendars({ accounts }: CalendarsProps) {
                             <span
                               role="button"
                               tabIndex={0}
-                              className="inline-flex size-6 shrink-0 items-center justify-center rounded-md opacity-0 hover:bg-sidebar-accent group-hover/calendar-item:opacity-100"
+                              className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm opacity-0 hover:bg-sidebar-accent group-hover/calendar-item:opacity-100"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 toggleVisibility(account.email, calendar.name);

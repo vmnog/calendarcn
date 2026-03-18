@@ -208,13 +208,17 @@ html.dark,
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/50 select-none;
+    cursor: default;
+  }
+  input,
+  textarea,
+  [contenteditable="true"] {
+    @apply select-text;
+    cursor: text;
   }
   body {
     @apply bg-background text-foreground;
-  }
-  a {
-    cursor: default;
   }
 }
 

@@ -126,7 +126,7 @@ export function SidebarRight({
           </SidebarGroup>
           {/* Meet with input */}
           <SidebarGroup className="py-2 px-2">
-            <div className="flex items-center gap-2 rounded-md bg-[#EFEFEE] dark:bg-sidebar px-2 py-1.5">
+            <div className="flex items-center gap-2 rounded-sm bg-[#EFEFEE] dark:bg-sidebar px-2 py-1.5">
               <UserRound className="size-4 shrink-0 text-sidebar-muted-foreground" />
               <input
                 type="text"

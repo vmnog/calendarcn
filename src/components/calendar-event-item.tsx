@@ -18,7 +18,7 @@ import type {
 } from "./week-view-types";
 import { EventContextMenu } from "./event-context-menu";
 
-const eventColorStyles: Record<
+export const eventColorStyles: Record<
   EventColor,
   {
     bg: string;
@@ -250,7 +250,7 @@ export function CalendarEventItem({
     return (
       <div
         className={cn(
-          "absolute rounded-md px-2 py-1 pointer-events-none opacity-30 overflow-hidden",
+          "absolute rounded-sm px-2 py-1 pointer-events-none opacity-30 overflow-hidden",
           className,
         )}
         style={{
@@ -262,8 +262,8 @@ export function CalendarEventItem({
           zIndex: 15,
         }}
       >
-        <div className="absolute inset-0 rounded-md bg-white dark:bg-[#191919]" />
-        <div className={cn("absolute inset-0 rounded-md", styles.bg)} />
+        <div className="absolute inset-0 rounded-sm bg-white dark:bg-[#191919]" />
+        <div className={cn("absolute inset-0 rounded-sm", styles.bg)} />
         <div
           className={cn(
             "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-white dark:mix-blend-overlay",
@@ -305,7 +305,7 @@ export function CalendarEventItem({
     return (
       <div
         className={cn(
-          "absolute rounded-md pointer-events-none border-2",
+          "absolute rounded-sm pointer-events-none border-2",
           styles.borderLine,
           className,
         )}
@@ -351,15 +351,15 @@ export function CalendarEventItem({
       <div
         tabIndex={-1}
         className={cn(
-          "absolute rounded-md px-2 py-1",
+          "absolute rounded-sm px-2 py-1",
           "pointer-events-none cursor-grabbing",
           "overflow-hidden select-none opacity-80 shadow-lg",
           className,
         )}
         style={draggingStyle}
       >
-        <div className="absolute inset-0 rounded-md bg-white dark:bg-[#191919]" />
-        <div className={cn("absolute inset-0 rounded-md", styles.bg)} />
+        <div className="absolute inset-0 rounded-sm bg-white dark:bg-[#191919]" />
+        <div className={cn("absolute inset-0 rounded-sm", styles.bg)} />
         <div
           className={cn(
             "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-white dark:mix-blend-overlay",
@@ -768,7 +768,7 @@ export function AllDayEventItem({
     return (
       <div
         className={cn(
-          "relative h-6 pointer-events-none border-2 rounded-md",
+          "relative h-6 pointer-events-none border-2 rounded-sm",
           styles.borderLine,
           className,
         )}
@@ -783,13 +783,13 @@ export function AllDayEventItem({
         className={cn(
           "h-6 px-2 py-0.5 pointer-events-none cursor-grabbing",
           "overflow-hidden select-none flex items-center gap-1",
-          "rounded-md opacity-80 shadow-lg",
+          "rounded-sm opacity-80 shadow-lg",
           className,
         )}
       >
-        <div className="absolute inset-0 rounded-md bg-white dark:bg-[#191919]" />
+        <div className="absolute inset-0 rounded-sm bg-white dark:bg-[#191919]" />
         <div
-          className={cn("absolute inset-0 rounded-md", styles.bg)}
+          className={cn("absolute inset-0 rounded-sm", styles.bg)}
         />
         <div
           className={cn(

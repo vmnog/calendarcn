@@ -143,7 +143,7 @@ function SubMenu({
         </svg>
       </button>
       {open && (
-        <div className="absolute left-full top-0 ml-1 min-w-[180px] rounded-md border border-[#303030] bg-[#252525] p-1 shadow-lg">
+        <div className="absolute left-full top-0 ml-1 min-w-[180px] rounded-sm border border-[#303030] bg-[#252525] p-1 shadow-lg">
           {children}
         </div>
       )}
@@ -216,7 +216,7 @@ export function EventContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[200px] rounded-md border border-[#303030] bg-[#252525] p-1 shadow-md animate-in fade-in-0 zoom-in-95"
+      className="fixed z-50 min-w-[200px] rounded-sm border border-[#303030] bg-[#252525] p-1 shadow-md animate-in fade-in-0 zoom-in-95"
       style={{
         top: adjustedPos.y,
         left: adjustedPos.x,
