@@ -441,6 +441,7 @@ function PageContent() {
         </div>
       </SidebarInset>
       <SidebarLeft
+        events={events}
         selectedEvent={selectedEvent}
         onEventChange={handleEventChange}
         onPrevWeek={goToPrev}
