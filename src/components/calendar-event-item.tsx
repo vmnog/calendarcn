@@ -406,7 +406,7 @@ export function CalendarEventItem({
       return;
     }
 
-    target.style.cursor = "pointer";
+    target.style.cursor = "default";
   }
 
   function handleMouseDown(e: React.MouseEvent) {
@@ -469,7 +469,7 @@ export function CalendarEventItem({
         "absolute px-2 py-1",
         hasTopRounding && "rounded-t-md",
         hasBottomRounding && "rounded-b-md",
-        "cursor-pointer hover:z-10 focus:outline-none focus-visible:outline-none",
+        "cursor-default hover:z-10 focus:outline-none focus-visible:outline-none",
         "overflow-hidden select-none",
         isSelected && "z-20",
         className,
@@ -846,7 +846,7 @@ export function AllDayEventItem({
       return;
     }
 
-    target.style.cursor = "grab";
+    target.style.cursor = "default";
   }
 
   function handleAllDayMouseDown(e: React.MouseEvent) {
@@ -893,7 +893,7 @@ export function AllDayEventItem({
       onMouseMove={handleAllDayMouseMove}
       onMouseDown={handleAllDayMouseDown}
       className={cn(
-        "relative h-6 px-2 py-0.5 cursor-pointer",
+        "relative h-6 px-2 py-0.5 cursor-default",
         "hover:z-10 focus:outline-none focus-visible:outline-none",
         "overflow-hidden select-none flex items-center gap-1",
         spanStart && "rounded-l-md",
