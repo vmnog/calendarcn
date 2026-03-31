@@ -392,17 +392,17 @@ export function CalendarEventItem({
     const height = rect.height;
 
     if (showTopResize && showBottomResize && height < RESIZE_HOTZONE_PX * 2) {
-      target.style.cursor = "ns-resize";
+      target.style.cursor = "row-resize";
       return;
     }
 
     if (showTopResize && offsetY <= RESIZE_HOTZONE_PX) {
-      target.style.cursor = "ns-resize";
+      target.style.cursor = "row-resize";
       return;
     }
 
     if (showBottomResize && offsetY >= height - RESIZE_HOTZONE_PX) {
-      target.style.cursor = "ns-resize";
+      target.style.cursor = "row-resize";
       return;
     }
 
@@ -837,12 +837,12 @@ export function AllDayEventItem({
     const width = rect.width;
 
     if (spanStart && offsetX <= ALL_DAY_RESIZE_HOTZONE_PX) {
-      target.style.cursor = "ew-resize";
+      target.style.cursor = "col-resize";
       return;
     }
 
     if (spanEnd && offsetX >= width - ALL_DAY_RESIZE_HOTZONE_PX) {
-      target.style.cursor = "ew-resize";
+      target.style.cursor = "col-resize";
       return;
     }
 
