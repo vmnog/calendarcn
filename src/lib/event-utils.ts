@@ -5,6 +5,15 @@ import {
   differenceInMinutes,
   isWithinInterval,
   areIntervalsOverlapping,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachWeekOfInterval,
+  eachDayOfInterval,
+  getWeek,
+  format,
+  isToday,
 } from "date-fns";
 import type {
   CalendarEvent,
@@ -371,4 +380,308 @@ export function calculateAllDayEventRows(
   }
 
   return rows;
+}
+
+// ---------------------------------------------------------------------------
+// Month-view utilities
+// ---------------------------------------------------------------------------
+
+/** Height of a single event row in the month grid (px) */
+export const MONTH_EVENT_ROW_HEIGHT = 22;
+
+/** Minimum visible event slots per month cell */
+const MIN_MONTH_SLOTS = 2;
+
+/** Maximum visible event slots per month cell */
+const MAX_MONTH_SLOTS = 6;
+
+/**
+ * One week row inside the month grid.
+ */
+export interface MonthWeekRow {
+  weekNumber: number;
+  days: WeekDay[];
+}
+
+/**
+ * A single slot inside a month day cell.
+ *
+ * - `event-bar`  — a multi-day/all-day event bar that may span multiple columns
+ * - `event-item` — a single-day timed event (dot + title)
+ * - `more`       — the "+N more" overflow indicator
+ * - `spacer`     — an empty placeholder to keep slot indices aligned
+ */
+export type MonthCellSlot =
+  | {
+      type: "event-bar";
+      event: CalendarEvent;
+      colSpan: number;
+      isStart: boolean;
+      roundedLeft: boolean;
+      roundedRight: boolean;
+    }
+  | { type: "event-item"; event: CalendarEvent }
+  | { type: "more"; count: number }
+  | { type: "spacer" };
+
+/**
+ * Fully resolved layout for a single day cell in the month grid.
+ */
+export interface MonthDayCellLayout {
+  date: Date;
+  slots: MonthCellSlot[];
+  totalEvents: number;
+}
+
+/**
+ * Generates the month grid rows for a given date.
+ *
+ * Returns 4-6 week rows, each containing 7 `WeekDay` objects.
+ * The grid always starts on `weekStartsOn` and includes leading/trailing
+ * days from adjacent months so every row is complete.
+ */
+export function generateMonthGrid(
+  currentDate: Date,
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 0,
+): MonthWeekRow[] {
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+
+  const gridStart = startOfWeek(monthStart, { weekStartsOn });
+  const gridEnd = endOfWeek(monthEnd, { weekStartsOn });
+
+  const weekStarts = eachWeekOfInterval(
+    { start: gridStart, end: gridEnd },
+    { weekStartsOn },
+  );
+
+  return weekStarts.map((weekStart) => {
+    const weekEnd = endOfWeek(weekStart, { weekStartsOn });
+    const daysInWeek = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+    const days: WeekDay[] = daysInWeek.map((day) => ({
+      date: day,
+      dayName: format(day, "EEE"),
+      dayNumber: day.getDate(),
+      isToday: isToday(day),
+    }));
+
+    return {
+      weekNumber: getWeek(weekStart, { weekStartsOn }),
+      days,
+    };
+  });
+}
+
+/**
+ * Returns the number of visible event slots for a month cell given its
+ * pixel height.
+ *
+ * Clamped to [`MIN_MONTH_SLOTS`, `MAX_MONTH_SLOTS`].
+ */
+export function getMonthSlotCount(cellHeight: number): number {
+  const raw = Math.floor(cellHeight / MONTH_EVENT_ROW_HEIGHT);
+  return Math.max(MIN_MONTH_SLOTS, Math.min(MAX_MONTH_SLOTS, raw));
+}
+
+/**
+ * Computes the full layout (slot arrays) for every day cell in the month grid.
+ *
+ * The algorithm processes one week row at a time so that spanning events keep
+ * a stable slot index across columns.  Timed (single-day) events fill the
+ * remaining slots.  When the total events exceed `maxSlots`, the last slot is
+ * replaced with a "+N more" indicator.
+ *
+ * The returned Map is keyed by `startOfDay(date).toISOString()`.
+ */
+export function calculateMonthCellLayout(
+  weekRows: MonthWeekRow[],
+  events: CalendarEvent[],
+  maxSlots: number,
+): Map<string, MonthDayCellLayout> {
+  const result = new Map<string, MonthDayCellLayout>();
+
+  for (const row of weekRows) {
+    const rowStart = startOfDay(row.days[0].date);
+    const rowEnd = addDays(startOfDay(row.days[row.days.length - 1].date), 1);
+
+    // ---- 1. Identify spanning events (all-day OR multi-day) that overlap this week row ----
+    const spanningEvents = events.filter((ev) => {
+      if (!ev.isAllDay && !isMultiDayEvent(ev)) {
+        return false;
+      }
+      const evStart = startOfDay(ev.start);
+      const evEnd = ev.isAllDay ? addDays(startOfDay(ev.end), 1) : ev.end;
+      return evStart < rowEnd && evEnd > rowStart;
+    });
+
+    // Sort: longest first, then alphabetically by title
+    spanningEvents.sort((a, b) => {
+      const durA = a.end.getTime() - a.start.getTime();
+      const durB = b.end.getTime() - b.start.getTime();
+      if (durB !== durA) {
+        return durB - durA;
+      }
+      return a.title.localeCompare(b.title);
+    });
+
+    // ---- 2. Assign stable slot indices for spanning events ----
+    // slotAssignments[slotIndex] = array of { event, startCol, endCol }
+    const slotAssignments: {
+      event: CalendarEvent;
+      startCol: number;
+      endCol: number;
+    }[][] = [];
+
+    for (const ev of spanningEvents) {
+      const evStart = startOfDay(ev.start);
+      const evEnd = ev.isAllDay ? addDays(startOfDay(ev.end), 1) : ev.end;
+
+      // Determine column range within this week row (0-6)
+      let startCol = 0;
+      let endCol = 6;
+
+      for (let i = 0; i < row.days.length; i++) {
+        const dayStart = startOfDay(row.days[i].date);
+        const dayEnd = addDays(dayStart, 1);
+        if (evStart < dayEnd && evEnd > dayStart) {
+          startCol = i;
+          break;
+        }
+      }
+      for (let i = row.days.length - 1; i >= 0; i--) {
+        const dayStart = startOfDay(row.days[i].date);
+        const dayEnd = addDays(dayStart, 1);
+        if (evStart < dayEnd && evEnd > dayStart) {
+          endCol = i;
+          break;
+        }
+      }
+
+      // Find the first slot index where no existing assignment overlaps
+      let targetSlot = 0;
+      let placed = false;
+      while (!placed) {
+        if (targetSlot >= slotAssignments.length) {
+          slotAssignments.push([]);
+        }
+        const occupied = slotAssignments[targetSlot];
+        const hasConflict = occupied.some(
+          (o) => !(endCol < o.startCol || startCol > o.endCol),
+        );
+        if (!hasConflict) {
+          occupied.push({ event: ev, startCol, endCol });
+          placed = true;
+        } else {
+          targetSlot++;
+        }
+      }
+    }
+
+    // ---- 3. Collect timed (single-day) events per column ----
+    const timedByCol: CalendarEvent[][] = row.days.map(() => []);
+    for (const ev of events) {
+      if (ev.isAllDay || isMultiDayEvent(ev)) {
+        continue;
+      }
+      for (let col = 0; col < row.days.length; col++) {
+        const dayStart = startOfDay(row.days[col].date);
+        const dayEnd = addDays(dayStart, 1);
+        if (ev.start < dayEnd && ev.end > dayStart) {
+          timedByCol[col].push(ev);
+        }
+      }
+    }
+    // Sort each column's timed events by start time
+    for (const colEvents of timedByCol) {
+      colEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
+    }
+
+    // ---- 4. Build slots for each day cell ----
+    for (let col = 0; col < row.days.length; col++) {
+      const day = row.days[col];
+      const key = startOfDay(day.date).toISOString();
+
+      const slots: MonthCellSlot[] = [];
+
+      // Count total events touching this cell
+      let totalEvents = timedByCol[col].length;
+      for (const slotRow of slotAssignments) {
+        for (const assignment of slotRow) {
+          if (col >= assignment.startCol && col <= assignment.endCol) {
+            totalEvents++;
+          }
+        }
+      }
+
+      // Fill spanning event slots
+      for (let slotIdx = 0; slotIdx < slotAssignments.length; slotIdx++) {
+        const assignment = slotAssignments[slotIdx].find(
+          (a) => col >= a.startCol && col <= a.endCol,
+        );
+
+        if (!assignment) {
+          slots.push({ type: "spacer" });
+          continue;
+        }
+
+        const isStart = col === assignment.startCol;
+        const colSpan = assignment.endCol - col + 1;
+
+        const evEnd = assignment.event.isAllDay
+          ? addDays(startOfDay(assignment.event.end), 1)
+          : assignment.event.end;
+
+        const roundedLeft =
+          isStart && (isSameDay(assignment.event.start, day.date) || col === 0);
+        const roundedRight =
+          col === assignment.endCol &&
+          (evEnd <= addDays(startOfDay(day.date), 1) ||
+            col === row.days.length - 1);
+
+        if (isStart) {
+          slots.push({
+            type: "event-bar",
+            event: assignment.event,
+            colSpan,
+            isStart: true,
+            roundedLeft,
+            roundedRight,
+          });
+        } else {
+          // Continuation cell — spacer so rendering skips it (bar rendered from isStart cell)
+          slots.push({ type: "spacer" });
+        }
+      }
+
+      // Fill remaining slots with timed events
+      const usedSlots = slots.length;
+      const remainingSlots = maxSlots - usedSlots;
+      const timedEvents = timedByCol[col];
+
+      if (totalEvents <= maxSlots) {
+        // Everything fits
+        for (const ev of timedEvents) {
+          slots.push({ type: "event-item", event: ev });
+        }
+      } else {
+        // Need "+N more" in the last slot
+        const availableForTimed = Math.max(0, remainingSlots - 1);
+        const timedToShow = timedEvents.slice(0, availableForTimed);
+        for (const ev of timedToShow) {
+          slots.push({ type: "event-item", event: ev });
+        }
+        const hiddenCount = totalEvents - (usedSlots + timedToShow.length);
+        slots.push({ type: "more", count: hiddenCount });
+      }
+
+      result.set(key, {
+        date: day.date,
+        slots,
+        totalEvents,
+      });
+    }
+  }
+
+  return result;
 }
