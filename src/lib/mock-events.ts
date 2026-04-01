@@ -1561,5 +1561,46 @@ export function generateMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
+
+    // ── Month-view test events (all-day, spanning week boundaries) ──
+
+    // Multi-day all-day event crossing a weekend boundary: Thu Mar 26 – Mon Mar 30
+    ev("mv01", "Q1 Wrap Week", d(3, 26, 0), d(3, 30, 0), "purple", "Personal", {
+      isAllDay: true,
+      description:
+        "End-of-quarter wrap-up period spanning the weekend — cross-week boundary test",
+      calendarEmail: "me@vmnog.com",
+    }),
+
+    // Single-day all-day event
+    ev(
+      "mv02",
+      "Company Holiday",
+      d(3, 17, 0),
+      d(3, 17, 0),
+      "green",
+      "Holidays in Brazil",
+      {
+        isAllDay: true,
+        description: "St. Patrick's Day — office closed",
+        calendarEmail: "me@vmnog.com",
+      },
+    ),
+
+    // 3-day all-day event within a single week: Tue Mar 10 – Thu Mar 12
+    ev(
+      "mv03",
+      "Offsite Prep Days",
+      d(3, 10, 0),
+      d(3, 12, 0),
+      "orange",
+      "Work",
+      {
+        isAllDay: true,
+        description:
+          "Three-day preparation window for the team offsite — within-week all-day test",
+        calendarEmail: "me@vmnog.com",
+      },
+    ),
   ];
 }
