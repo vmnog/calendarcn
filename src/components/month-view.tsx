@@ -4,6 +4,7 @@ import { useRef, useMemo, useCallback, useState } from "react";
 import { startOfMonth } from "date-fns";
 
 import { cn } from "@/lib/utils";
+import { useMonthEventDrag } from "@/hooks/use-month-event-drag";
 import { generateMonthGrid } from "@/lib/event-utils";
 import { MonthViewGrid } from "./month-view-grid";
 import { EventContextMenu } from "./event-context-menu";
@@ -50,6 +51,7 @@ export function MonthView({
 }: MonthViewProps) {
   const boundaryRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
 
   const showWeekends = viewSettings?.showWeekends ?? true;
   const showWeekNumbers = viewSettings?.showWeekNumbers ?? false;
@@ -67,6 +69,18 @@ export function MonthView({
   const gridTemplateColumns = showWeekNumbers
     ? `2rem repeat(${colCount}, 1fr)`
     : `repeat(${colCount}, 1fr)`;
+
+  const { dragState, handleDragMouseDown } = useMonthEventDrag({
+    gridRef,
+    events,
+    onEventChange,
+    onEventClick,
+    columnCount: colCount,
+    rowCount: weekRows.length,
+  });
+
+  // Suppress unused variable warning — dragState will be consumed in a follow-up task
+  void dragState;
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, event: CalendarEvent) => {
@@ -130,7 +144,9 @@ export function MonthView({
           onContextMenu={handleContextMenu}
           onMoreClick={onMoreClick}
           onBackgroundClick={onBackgroundClick}
+          onDragMouseDown={handleDragMouseDown}
           selectedEventId={selectedEventId}
+          gridRef={gridRef}
           className="flex-1"
         />
 
