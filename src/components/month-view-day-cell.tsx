@@ -21,15 +21,9 @@ export interface MonthViewDayCellProps {
   className?: string;
 }
 
-/**
- * Formats the day label. First day of each month shows "Month Day" (e.g., "March 1").
- * All other days show just the day number.
- */
-function formatDayLabel(date: Date): string {
-  if (date.getDate() === 1) {
-    return format(date, "MMMM d");
-  }
-  return String(date.getDate());
+/** Returns the abbreviated month name for first-of-month labels */
+function getMonthName(date: Date): string {
+  return format(date, "MMMM");
 }
 
 export function MonthViewDayCell({
@@ -73,18 +67,42 @@ export function MonthViewDayCell({
       {/* Day number — right-aligned like Notion Calendar */}
       <div className="flex justify-end px-2 pt-1 pb-0.5">
         {todayDate ? (
-          <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
-            {dayNumber}
+          <span className="inline-flex items-center gap-1">
+            {isFirstOfMonth && (
+              <span className="text-xs font-bold text-primary">
+                {getMonthName(date)}
+              </span>
+            )}
+            <span className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-medium">
+              {dayNumber}
+            </span>
+          </span>
+        ) : isFirstOfMonth ? (
+          <span className="text-xs py-0.5">
+            <span
+              className={cn(
+                "font-bold",
+                isAdjacentMonth ? "text-muted-foreground" : "text-foreground",
+              )}
+            >
+              {getMonthName(date)}
+            </span>{" "}
+            <span
+              className={cn(
+                isAdjacentMonth ? "text-muted-foreground" : "text-foreground",
+              )}
+            >
+              {dayNumber}
+            </span>
           </span>
         ) : (
           <span
             className={cn(
               "text-xs py-0.5",
               isAdjacentMonth ? "text-muted-foreground" : "text-foreground",
-              isFirstOfMonth && "font-medium",
             )}
           >
-            {formatDayLabel(date)}
+            {dayNumber}
           </span>
         )}
       </div>

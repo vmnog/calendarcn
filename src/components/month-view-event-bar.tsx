@@ -1,5 +1,6 @@
 "use client";
 
+import { isPast } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 
@@ -75,6 +76,7 @@ export function MonthViewEventBar({
 }: MonthViewEventBarProps) {
   const color = event.color ?? "blue";
   const styles = barColorStyles[color];
+  const eventIsPast = isPast(event.end);
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
@@ -133,6 +135,7 @@ export function MonthViewEventBar({
           roundedLeft && "rounded-l-sm",
           roundedRight && "rounded-r-sm",
           isSelected ? styles.border : cn(styles.bg, styles.bgHover),
+          eventIsPast && !isSelected && "opacity-60",
         )}
       />
 
@@ -143,6 +146,7 @@ export function MonthViewEventBar({
             "absolute left-0 top-0 bottom-0 w-[3px] dark:bg-white dark:mix-blend-overlay",
             "rounded-l-sm",
             styles.border,
+            eventIsPast && "opacity-60",
           )}
         />
       )}
@@ -156,6 +160,7 @@ export function MonthViewEventBar({
           isSelected
             ? "text-white dark:text-white"
             : cn(styles.text, "dark:text-white/80"),
+          eventIsPast && !isSelected && "opacity-60",
         )}
       >
         {event.title}

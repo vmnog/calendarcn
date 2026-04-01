@@ -130,29 +130,30 @@ export function MonthView({
           {dayNames.map((name) => (
             <div
               key={name}
-              className="py-2 pr-2 text-right text-xs text-muted-foreground"
+              className="py-2 text-center text-xs text-muted-foreground"
             >
               {name}
             </div>
           ))}
         </div>
 
-        {/* Month grid */}
-        <MonthViewGrid
-          weekRows={weekRows}
-          events={events}
-          currentMonth={startOfMonth(currentDate)}
-          showWeekNumbers={showWeekNumbers}
-          showWeekends={showWeekends}
-          onEventClick={onEventClick}
-          onContextMenu={handleContextMenu}
-          onMoreClick={onMoreClick}
-          onBackgroundClick={onBackgroundClick}
-          onDragMouseDown={handleDragMouseDown}
-          selectedEventId={selectedEventId}
-          gridRef={gridRef}
-          className="flex-1"
-        />
+        {/* Month grid — scrollable with row snap */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide snap-y snap-mandatory">
+          <MonthViewGrid
+            weekRows={weekRows}
+            events={events}
+            currentMonth={startOfMonth(currentDate)}
+            showWeekNumbers={showWeekNumbers}
+            showWeekends={showWeekends}
+            onEventClick={onEventClick}
+            onContextMenu={handleContextMenu}
+            onMoreClick={onMoreClick}
+            onBackgroundClick={onBackgroundClick}
+            onDragMouseDown={handleDragMouseDown}
+            selectedEventId={selectedEventId}
+            gridRef={gridRef}
+          />
+        </div>
 
         {/* Context menu */}
         {contextMenu && (

@@ -73,11 +73,16 @@ export function MonthViewGrid({
 
   const columnCount = showWeekends ? 7 : 5;
 
+  /** Minimum row height so content is readable and scroll snap works */
+  const MIN_ROW_HEIGHT = 140;
+
   return (
     <div
       ref={containerRef}
-      className={cn("flex-1 grid", className)}
-      style={{ gridTemplateRows: `repeat(${weekRows.length}, 1fr)` }}
+      className={cn("grid", className)}
+      style={{
+        gridTemplateRows: `repeat(${weekRows.length}, minmax(${MIN_ROW_HEIGHT}px, 1fr))`,
+      }}
     >
       {weekRows.map((weekRow) => {
         const visibleDays = showWeekends
@@ -93,7 +98,7 @@ export function MonthViewGrid({
         return (
           <div
             key={weekRow.weekNumber}
-            className="grid min-h-0 overflow-hidden"
+            className="grid min-h-0 overflow-hidden snap-start"
             style={{ gridTemplateColumns }}
           >
             {showWeekNumbers && (
