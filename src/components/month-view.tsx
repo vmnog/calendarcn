@@ -137,8 +137,8 @@ export function MonthView({
           ))}
         </div>
 
-        {/* Month grid — scrollable with row snap */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide snap-y snap-mandatory">
+        {/* Month grid — fills remaining space */}
+        <div className="flex-1 overflow-hidden">
           <MonthViewGrid
             weekRows={weekRows}
             events={events}

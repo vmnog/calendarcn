@@ -386,14 +386,17 @@ export function calculateAllDayEventRows(
 // Month-view utilities
 // ---------------------------------------------------------------------------
 
-/** Height of a single event row in the month grid (px) */
-export const MONTH_EVENT_ROW_HEIGHT = 22;
+/** Height of a single event row in the month grid (px): h-5 (20px) + gap-px (1px) */
+export const MONTH_EVENT_ROW_HEIGHT = 21;
 
-/** Minimum visible event slots per month cell */
-const MIN_MONTH_SLOTS = 2;
+/** Height consumed by the day number header inside each cell (px) */
+const MONTH_DAY_HEADER_HEIGHT = 28;
+
+/** Minimum visible event slots per month cell (just "+N more" at smallest) */
+const MIN_MONTH_SLOTS = 1;
 
 /** Maximum visible event slots per month cell */
-const MAX_MONTH_SLOTS = 6;
+const MAX_MONTH_SLOTS = 8;
 
 /**
  * One week row inside the month grid.
@@ -480,7 +483,8 @@ export function generateMonthGrid(
  * Clamped to [`MIN_MONTH_SLOTS`, `MAX_MONTH_SLOTS`].
  */
 export function getMonthSlotCount(cellHeight: number): number {
-  const raw = Math.floor(cellHeight / MONTH_EVENT_ROW_HEIGHT);
+  const usable = cellHeight - MONTH_DAY_HEADER_HEIGHT;
+  const raw = Math.floor(usable / MONTH_EVENT_ROW_HEIGHT);
   return Math.max(MIN_MONTH_SLOTS, Math.min(MAX_MONTH_SLOTS, raw));
 }
 
