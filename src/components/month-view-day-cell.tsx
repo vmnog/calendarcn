@@ -65,40 +65,29 @@ export function MonthViewDayCell({
       )}
     >
       {/* Day number — right-aligned like Notion Calendar */}
-      <div className="flex justify-end px-2 pt-1 pb-0.5">
-        {todayDate ? (
-          <span className="inline-flex items-center gap-1">
-            {isFirstOfMonth && (
-              <span className="text-xs font-bold text-primary">
-                {getMonthName(date)}
-              </span>
+      <div className="flex justify-end items-center gap-1 px-2 pt-0.5 pb-0.5">
+        {isFirstOfMonth && (
+          <span
+            className={cn(
+              "text-[13px] font-semibold leading-none",
+              todayDate
+                ? "text-primary"
+                : isAdjacentMonth
+                  ? "text-muted-foreground"
+                  : "text-foreground",
             )}
-            <span className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-medium">
-              {dayNumber}
-            </span>
+          >
+            {getMonthName(date)}
           </span>
-        ) : isFirstOfMonth ? (
-          <span className="text-xs py-0.5">
-            <span
-              className={cn(
-                "font-bold",
-                isAdjacentMonth ? "text-muted-foreground" : "text-foreground",
-              )}
-            >
-              {getMonthName(date)}
-            </span>{" "}
-            <span
-              className={cn(
-                isAdjacentMonth ? "text-muted-foreground" : "text-foreground",
-              )}
-            >
-              {dayNumber}
-            </span>
+        )}
+        {todayDate ? (
+          <span className="flex h-6 min-w-6 items-center justify-center rounded-sm bg-primary px-1 text-[13px] font-medium leading-none text-primary-foreground">
+            {dayNumber}
           </span>
         ) : (
           <span
             className={cn(
-              "text-xs py-0.5",
+              "text-[13px] leading-none py-1",
               isAdjacentMonth ? "text-muted-foreground" : "text-foreground",
             )}
           >

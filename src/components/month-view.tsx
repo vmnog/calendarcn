@@ -123,14 +123,14 @@ export function MonthView({
           style={{ display: "grid", gridTemplateColumns }}
         >
           {showWeekNumbers && (
-            <div className="py-2 text-center text-xs text-muted-foreground">
+            <div className="py-2 text-center text-[11px] italic text-muted-foreground">
               w
             </div>
           )}
           {dayNames.map((name) => (
             <div
               key={name}
-              className="py-2 text-center text-xs text-muted-foreground"
+              className="py-2 text-center text-[13px] text-muted-foreground"
             >
               {name}
             </div>
