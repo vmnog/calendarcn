@@ -1,6 +1,6 @@
 "use client";
 
-import { isToday, isSameMonth } from "date-fns";
+import { isToday, isSameMonth, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "./calendar-types";
 import type { MonthCellSlot } from "@/lib/event-utils";
@@ -21,6 +21,17 @@ export interface MonthViewDayCellProps {
   className?: string;
 }
 
+/**
+ * Formats the day label. First day of each month shows "Month Day" (e.g., "March 1").
+ * All other days show just the day number.
+ */
+function formatDayLabel(date: Date): string {
+  if (date.getDate() === 1) {
+    return format(date, "MMMM d");
+  }
+  return String(date.getDate());
+}
+
 export function MonthViewDayCell({
   date,
   currentMonth,
@@ -37,6 +48,7 @@ export function MonthViewDayCell({
   const todayDate = isToday(date);
   const isAdjacentMonth = !isSameMonth(date, currentMonth);
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const isFirstOfMonth = dayNumber === 1;
 
   function handleBackgroundClick(e: React.MouseEvent) {
     if (
@@ -58,17 +70,23 @@ export function MonthViewDayCell({
         className,
       )}
     >
-      {/* Day number header */}
-      <div className="flex justify-center pt-1 pb-0.5">
-        <span
-          className={cn(
-            "flex size-6 items-center justify-center text-xs",
-            todayDate &&
-              "rounded-full bg-primary text-primary-foreground font-medium",
-          )}
-        >
-          {dayNumber}
-        </span>
+      {/* Day number — right-aligned like Notion Calendar */}
+      <div className="flex justify-end px-2 pt-1 pb-0.5">
+        {todayDate ? (
+          <span className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-medium">
+            {dayNumber}
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "text-xs py-0.5",
+              isAdjacentMonth ? "text-muted-foreground" : "text-foreground",
+              isFirstOfMonth && "font-medium",
+            )}
+          >
+            {formatDayLabel(date)}
+          </span>
+        )}
       </div>
 
       {/* Slots list — overflow-visible so multi-day bars can extend across columns */}

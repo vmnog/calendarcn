@@ -77,20 +77,22 @@ export function MonthViewEventItem({
       onMouseDown={handleMouseDown}
       onKeyDown={handleKeyDown}
       className={cn(
-        "flex items-center gap-1 px-1 py-0.5 rounded-sm",
-        "text-xs cursor-pointer select-none overflow-hidden",
+        "flex items-center gap-1 px-1 rounded-sm",
+        "text-xs leading-5 cursor-pointer select-none overflow-hidden",
         "hover:bg-accent/50 focus:outline-none focus-visible:outline-none",
         isSelected && "bg-primary/20 ring-1 ring-primary/40",
         className,
       )}
     >
       <span
-        className={cn("size-1.5 rounded-full shrink-0", dotClass)}
+        className={cn("size-[5px] rounded-full shrink-0", dotClass)}
         aria-hidden
       />
-      <span className="truncate text-foreground/80">
-        <span className="shrink-0">{formatEventTime(event.start)}&nbsp;</span>
-        <span>{event.title}</span>
+      <span className="truncate">
+        <span className="text-foreground/70 shrink-0">
+          {formatEventTime(event.start)}
+        </span>
+        <span className="text-foreground"> {event.title}</span>
       </span>
     </div>
   );

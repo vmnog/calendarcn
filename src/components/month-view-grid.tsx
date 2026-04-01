@@ -97,7 +97,7 @@ export function MonthViewGrid({
             style={{ gridTemplateColumns }}
           >
             {showWeekNumbers && (
-              <div className="flex items-start justify-center pt-1 text-xs text-muted-foreground border-b border-r border-border">
+              <div className="flex items-start justify-center pt-1.5 text-[10px] text-muted-foreground border-b border-r border-border">
                 {weekRow.weekNumber}
               </div>
             )}

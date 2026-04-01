@@ -116,17 +116,21 @@ export function MonthView({
         className={cn("flex h-full flex-col overflow-hidden", className)}
         onClick={handleRootClick}
       >
-        {/* Day-of-week header */}
+        {/* Day-of-week header — right-aligned to match day number positions */}
         <div
           ref={headerRef}
           className="border-b border-border bg-background"
           style={{ display: "grid", gridTemplateColumns }}
         >
-          {showWeekNumbers && <div />}
+          {showWeekNumbers && (
+            <div className="py-2 text-center text-xs text-muted-foreground">
+              w
+            </div>
+          )}
           {dayNames.map((name) => (
             <div
               key={name}
-              className="py-2 text-center text-xs font-medium text-muted-foreground"
+              className="py-2 pr-2 text-right text-xs text-muted-foreground"
             >
               {name}
             </div>

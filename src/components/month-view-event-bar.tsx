@@ -150,8 +150,8 @@ export function MonthViewEventBar({
       {/* Event title */}
       <span
         className={cn(
-          "relative text-[0.625rem] font-medium leading-tight truncate",
-          roundedLeft ? "pl-2" : "pl-1",
+          "relative text-xs font-medium leading-tight truncate",
+          roundedLeft ? "pl-1.5" : "pl-1",
           roundedRight ? "pr-1" : "pr-0",
           isSelected
             ? "text-white dark:text-white"
