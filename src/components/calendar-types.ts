@@ -1,5 +1,3 @@
-import type React from "react";
-
 /**
  * Calendar view mode — "day" shows a single column, "week" shows 7 columns
  */

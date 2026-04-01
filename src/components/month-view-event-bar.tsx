@@ -65,7 +65,6 @@ const barColorStyles: Record<
 
 export function MonthViewEventBar({
   event,
-  colSpan: _colSpan,
   roundedLeft,
   roundedRight,
   isSelected,
