@@ -35,9 +35,8 @@ The `cn()` function merges Tailwind classes using `clsx` + `tailwind-merge`. Alw
 ```ts
 // Correct
 cn("base-class", isActive && "active-class")
-
 // Wrong
-`base-class ${isActive ? "active-class" : ""}`
+`base-class ${isActive ? "active-class" : ""}`;
 ```
 
 ### mock-events.ts

@@ -294,9 +294,7 @@ export function calculateAllDayEventRows(
   events: CalendarEvent[],
   days: WeekDay[],
 ): AllDayEventRow[] {
-  const allDayEvents = events.filter(
-    (e) => e.isAllDay || isMultiDayEvent(e),
-  );
+  const allDayEvents = events.filter((e) => e.isAllDay || isMultiDayEvent(e));
 
   if (allDayEvents.length === 0) {
     return [];

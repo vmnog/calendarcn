@@ -12,27 +12,28 @@
 
 ## File Structure
 
-| Action | File | Responsibility |
-|--------|------|----------------|
-| Create | `src/components/calendar-types.ts` | Shared types: `CalendarEvent`, `EventColor`, `ViewType`, `ViewSettings`, `EventReminder`, `PositionedEvent`, drag/resize state types |
-| Modify | `src/components/week-view-types.ts` | Remove extracted types, re-export from `calendar-types.ts`, keep week-specific prop interfaces |
-| Rename | `src/components/week-view-day-columns.tsx` → `src/components/calendar-day-headers.tsx` | Generic day-of-week header row |
-| Modify | `src/components/week-view.tsx` | Update import from `calendar-day-headers` |
-| Modify | `src/app/page.tsx` | Add `MonthView` rendering, `highlightedDate` state, month navigation, `handleMoreClick` |
-| Create | `src/components/month-view.tsx` | Month view orchestrator: computes grid, filters events, delegates to children |
-| Create | `src/components/month-view-grid.tsx` | Renders week rows, measures cell height via ResizeObserver, computes slot count |
-| Create | `src/components/month-view-day-cell.tsx` | Individual day cell: day number, event bars, event items, "+N more" button |
-| Create | `src/components/month-view-event-bar.tsx` | All-day/multi-day colored bar (reuses `eventColorStyles` pattern) |
-| Create | `src/components/month-view-event-item.tsx` | Timed event line: colored dot + time + title |
-| Create | `src/hooks/use-month-event-drag.ts` | Day-snapping drag for month view events |
-| Modify | `src/lib/event-utils.ts` | Add `generateMonthGrid()` and `calculateMonthCellLayout()` |
-| Modify | `src/lib/mock-events.ts` | Add multi-day events spanning week boundaries for month view testing |
+| Action | File                                                                                   | Responsibility                                                                                                                       |
+| ------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Create | `src/components/calendar-types.ts`                                                     | Shared types: `CalendarEvent`, `EventColor`, `ViewType`, `ViewSettings`, `EventReminder`, `PositionedEvent`, drag/resize state types |
+| Modify | `src/components/week-view-types.ts`                                                    | Remove extracted types, re-export from `calendar-types.ts`, keep week-specific prop interfaces                                       |
+| Rename | `src/components/week-view-day-columns.tsx` → `src/components/calendar-day-headers.tsx` | Generic day-of-week header row                                                                                                       |
+| Modify | `src/components/week-view.tsx`                                                         | Update import from `calendar-day-headers`                                                                                            |
+| Modify | `src/app/page.tsx`                                                                     | Add `MonthView` rendering, `highlightedDate` state, month navigation, `handleMoreClick`                                              |
+| Create | `src/components/month-view.tsx`                                                        | Month view orchestrator: computes grid, filters events, delegates to children                                                        |
+| Create | `src/components/month-view-grid.tsx`                                                   | Renders week rows, measures cell height via ResizeObserver, computes slot count                                                      |
+| Create | `src/components/month-view-day-cell.tsx`                                               | Individual day cell: day number, event bars, event items, "+N more" button                                                           |
+| Create | `src/components/month-view-event-bar.tsx`                                              | All-day/multi-day colored bar (reuses `eventColorStyles` pattern)                                                                    |
+| Create | `src/components/month-view-event-item.tsx`                                             | Timed event line: colored dot + time + title                                                                                         |
+| Create | `src/hooks/use-month-event-drag.ts`                                                    | Day-snapping drag for month view events                                                                                              |
+| Modify | `src/lib/event-utils.ts`                                                               | Add `generateMonthGrid()` and `calculateMonthCellLayout()`                                                                           |
+| Modify | `src/lib/mock-events.ts`                                                               | Add multi-day events spanning week boundaries for month view testing                                                                 |
 
 ---
 
 ### Task 1: Extract Shared Types to `calendar-types.ts`
 
 **Files:**
+
 - Create: `src/components/calendar-types.ts`
 - Modify: `src/components/week-view-types.ts`
 - Modify: All files that import from `week-view-types.ts` (listed below)
@@ -438,6 +439,7 @@ export interface CalendarEventItemProps {
 - [ ] **Step 3: Verify all existing imports still resolve**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -457,6 +459,7 @@ git commit -m "refactor: extract shared types to calendar-types.ts"
 ### Task 2: Rename `week-view-day-columns.tsx` to `calendar-day-headers.tsx`
 
 **Files:**
+
 - Rename: `src/components/week-view-day-columns.tsx` → `src/components/calendar-day-headers.tsx`
 - Modify: `src/components/week-view.tsx` (update import)
 
@@ -468,6 +471,7 @@ git mv src/components/week-view-day-columns.tsx src/components/calendar-day-head
 ```
 
 Then in `src/components/calendar-day-headers.tsx`:
+
 - Rename the exported function from `WeekViewDayColumns` to `CalendarDayHeaders`
 - Keep `WeekViewDayColumnsProps` as the props type name (it's defined in `week-view-types.ts` and imported by the component — rename it later when convenient, but alias for now)
 
@@ -481,10 +485,13 @@ export function CalendarDayHeaders({
 - [ ] **Step 2: Update import in `week-view.tsx`**
 
 In `src/components/week-view.tsx`, change:
+
 ```ts
 import { WeekViewDayColumns } from "./week-view-day-columns";
 ```
+
 To:
+
 ```ts
 import { CalendarDayHeaders } from "./calendar-day-headers";
 ```
@@ -494,6 +501,7 @@ And update the JSX usage from `<WeekViewDayColumns` to `<CalendarDayHeaders`.
 - [ ] **Step 3: Verify typecheck passes**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -514,6 +522,7 @@ git commit -m "refactor: rename WeekViewDayColumns to CalendarDayHeaders"
 ### Task 3: Add `generateMonthGrid()` and `calculateMonthCellLayout()` to `event-utils.ts`
 
 **Files:**
+
 - Modify: `src/lib/event-utils.ts`
 
 These are the core algorithms the month view needs: grid generation and per-cell event slot allocation.
@@ -674,12 +683,8 @@ export function calculateMonthCellLayout(
   const result = new Map<string, MonthDayCellLayout>();
 
   // Separate multi-day/all-day events from timed events
-  const spanningEvents = events.filter(
-    (e) => e.isAllDay || isMultiDayEvent(e),
-  );
-  const timedEvents = events.filter(
-    (e) => !e.isAllDay && !isMultiDayEvent(e),
-  );
+  const spanningEvents = events.filter((e) => e.isAllDay || isMultiDayEvent(e));
+  const timedEvents = events.filter((e) => !e.isAllDay && !isMultiDayEvent(e));
 
   // Sort spanning events: longer duration first, then alphabetically
   const sortedSpanning = [...spanningEvents].sort((a, b) => {
@@ -776,15 +781,16 @@ export function calculateMonthCellLayout(
       const slots: MonthCellSlot[] = [];
 
       // Determine how many spanning event slots we need
-      const maxSpanSlot = spanningForDay.length > 0
-        ? Math.max(...spanningForDay.map((a) => a.slotIndex))
-        : -1;
+      const maxSpanSlot =
+        spanningForDay.length > 0
+          ? Math.max(...spanningForDay.map((a) => a.slotIndex))
+          : -1;
       const spanSlotCount = maxSpanSlot + 1;
 
       // Check if we need a "+N more" row
       const needsMore = totalEvents > maxSlots;
       const availableForTimed = needsMore
-        ? maxSlots - spanSlotCount - 1  // reserve 1 for "+N more"
+        ? maxSlots - spanSlotCount - 1 // reserve 1 for "+N more"
         : maxSlots - spanSlotCount;
 
       // Fill spanning event slots (with spacers for empty indices)
@@ -799,16 +805,26 @@ export function calculateMonthCellLayout(
           // Rounding: round left if event starts on or before this cell's day
           const eventStartDay = startOfDay(allocation.event.start);
           const eventEndDay = startOfDay(allocation.event.end);
-          const roundedLeft = isSameDay(eventStartDay, day.date) || eventStartDay >= dayStart && colIdx === allocation.startCol;
-          const roundedRight = isSameDay(eventEndDay, day.date) || colIdx === allocation.endCol;
+          const roundedLeft =
+            isSameDay(eventStartDay, day.date) ||
+            (eventStartDay >= dayStart && colIdx === allocation.startCol);
+          const roundedRight =
+            isSameDay(eventEndDay, day.date) || colIdx === allocation.endCol;
 
           slots.push({
             type: "event-bar",
             event: allocation.event,
             colSpan,
             isStart: isStartCell,
-            roundedLeft: colIdx === allocation.startCol && isSameDay(allocation.event.start, day.date) || colIdx === 0 && allocation.event.start < dayStart,
-            roundedRight: colIdx === allocation.endCol && (isSameDay(allocation.event.end, day.date) || allocation.event.end <= dayEnd) || colIdx === days.length - 1 && allocation.event.end > dayEnd,
+            roundedLeft:
+              (colIdx === allocation.startCol &&
+                isSameDay(allocation.event.start, day.date)) ||
+              (colIdx === 0 && allocation.event.start < dayStart),
+            roundedRight:
+              (colIdx === allocation.endCol &&
+                (isSameDay(allocation.event.end, day.date) ||
+                  allocation.event.end <= dayEnd)) ||
+              (colIdx === days.length - 1 && allocation.event.end > dayEnd),
           });
         } else {
           slots.push({ type: "spacer" });
@@ -816,9 +832,10 @@ export function calculateMonthCellLayout(
       }
 
       // Fill timed event slots
-      const timedToShow = availableForTimed > 0
-        ? timedForDay.slice(0, Math.max(0, availableForTimed))
-        : [];
+      const timedToShow =
+        availableForTimed > 0
+          ? timedForDay.slice(0, Math.max(0, availableForTimed))
+          : [];
 
       for (const event of timedToShow) {
         slots.push({ type: "event-item", event });
@@ -847,6 +864,7 @@ export function calculateMonthCellLayout(
 - [ ] **Step 3: Verify typecheck passes**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -866,6 +884,7 @@ git commit -m "feat: add generateMonthGrid and calculateMonthCellLayout utilitie
 ### Task 4: Create `MonthViewEventItem` (timed event line)
 
 **Files:**
+
 - Create: `src/components/month-view-event-item.tsx`
 
 The simplest rendering component — a single text line: colored dot + time + title.
@@ -965,15 +984,11 @@ export function MonthViewEventItem({
         className,
       )}
     >
-      <span
-        className={cn("size-1.5 shrink-0 rounded-full", dotStyle)}
-      />
+      <span className={cn("size-1.5 shrink-0 rounded-full", dotStyle)} />
       <span className="text-muted-foreground shrink-0">
         {formatMonthTime(event.start)}
       </span>
-      <span className="truncate text-foreground">
-        {event.title}
-      </span>
+      <span className="truncate text-foreground">{event.title}</span>
     </div>
   );
 }
@@ -982,6 +997,7 @@ export function MonthViewEventItem({
 - [ ] **Step 2: Verify typecheck passes**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -1001,6 +1017,7 @@ git commit -m "feat: add MonthViewEventItem component"
 ### Task 5: Create `MonthViewEventBar` (all-day/multi-day bar)
 
 **Files:**
+
 - Create: `src/components/month-view-event-bar.tsx`
 
 Colored horizontal bar for all-day and multi-day events in the month grid.
@@ -1183,6 +1200,7 @@ export function MonthViewEventBar({
 - [ ] **Step 2: Verify typecheck passes**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -1202,6 +1220,7 @@ git commit -m "feat: add MonthViewEventBar component"
 ### Task 6: Create `MonthViewDayCell` (individual day cell)
 
 **Files:**
+
 - Create: `src/components/month-view-day-cell.tsx`
 
 Renders a single day in the month grid: day number, event slots, "+N more".
@@ -1289,12 +1308,7 @@ export function MonthViewDayCell({
       <div className="flex flex-col gap-px px-0.5 pb-0.5 min-h-0 flex-1">
         {slots.map((slot, index) => {
           if (slot.type === "spacer") {
-            return (
-              <div
-                key={`spacer-${index}`}
-                className="h-5 shrink-0"
-              />
-            );
+            return <div key={`spacer-${index}`} className="h-5 shrink-0" />;
           }
 
           if (slot.type === "event-bar") {
@@ -1366,6 +1380,7 @@ export function MonthViewDayCell({
 - [ ] **Step 2: Verify typecheck passes**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -1385,6 +1400,7 @@ git commit -m "feat: add MonthViewDayCell component"
 ### Task 7: Create `MonthViewGrid` (week rows with cell height measurement)
 
 **Files:**
+
 - Create: `src/components/month-view-grid.tsx`
 
 The grid component that renders week rows, measures cell height, and computes slot counts.
@@ -1538,6 +1554,7 @@ export function MonthViewGrid({
 - [ ] **Step 2: Verify typecheck passes**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -1557,6 +1574,7 @@ git commit -m "feat: add MonthViewGrid component"
 ### Task 8: Create `MonthView` orchestrator
 
 **Files:**
+
 - Create: `src/components/month-view.tsx`
 
 The top-level month view component that receives props from `page.tsx` and assembles the grid.
@@ -1727,6 +1745,7 @@ export function MonthView({
 - [ ] **Step 2: Verify typecheck passes**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -1746,6 +1765,7 @@ git commit -m "feat: add MonthView orchestrator component"
 ### Task 9: Integrate MonthView into `page.tsx`
 
 **Files:**
+
 - Modify: `src/app/page.tsx`
 
 Wire up the MonthView, add month navigation, "+N more" click handler, and highlighted column state.
@@ -1770,6 +1790,7 @@ const [highlightedDate, setHighlightedDate] = React.useState<Date | null>(null);
 - [ ] **Step 2: Update navigation functions for month view**
 
 Update `goToToday`:
+
 ```ts
 const goToToday = React.useCallback(() => {
   if (view === "day") {
@@ -1783,6 +1804,7 @@ const goToToday = React.useCallback(() => {
 ```
 
 Update `goToPrev`:
+
 ```ts
 const goToPrev = React.useCallback(() => {
   if (view === "day") {
@@ -1796,6 +1818,7 @@ const goToPrev = React.useCallback(() => {
 ```
 
 Update `goToNext`:
+
 ```ts
 const goToNext = React.useCallback(() => {
   if (view === "day") {
@@ -1809,6 +1832,7 @@ const goToNext = React.useCallback(() => {
 ```
 
 Update `switchView` to handle month:
+
 ```ts
 const switchView = React.useCallback(
   (newView: ViewType) => {
@@ -1831,14 +1855,11 @@ const switchView = React.useCallback(
 - [ ] **Step 3: Add `handleMoreClick` callback**
 
 ```ts
-const handleMoreClick = React.useCallback(
-  (date: Date) => {
-    setView("week");
-    setCurrentDate(startOfWeek(date, { weekStartsOn: 0 }));
-    setHighlightedDate(date);
-  },
-  [],
-);
+const handleMoreClick = React.useCallback((date: Date) => {
+  setView("week");
+  setCurrentDate(startOfWeek(date, { weekStartsOn: 0 }));
+  setHighlightedDate(date);
+}, []);
 
 // Clear highlightedDate after 2 seconds
 React.useEffect(() => {
@@ -1898,7 +1919,8 @@ Replace the current `<WeekView ... />` block in the JSX with:
 The header already has `{view === "month" && format(currentDate, "MMMM")}` for the subtext. Verify it renders correctly. The `monthName` and `year` variables from `getCalendarHeaderInfo` may need updating for month view since `visibleDays[0]` might not be set when in month view. Add a fallback:
 
 ```ts
-const headerDate = view === "month" ? currentDate : (visibleDays[0] ?? currentDate);
+const headerDate =
+  view === "month" ? currentDate : (visibleDays[0] ?? currentDate);
 const { monthName, year, weekNumber } = getCalendarHeaderInfo(headerDate, 0);
 ```
 
@@ -1908,7 +1930,11 @@ Update the sr-only text for prev/next buttons to include "month":
 
 ```tsx
 <span className="sr-only">
-  {view === "day" ? "Previous day" : view === "month" ? "Previous month" : "Previous week"}
+  {view === "day"
+    ? "Previous day"
+    : view === "month"
+      ? "Previous month"
+      : "Previous week"}
 </span>
 ```
 
@@ -1921,6 +1947,7 @@ Update the sr-only text for prev/next buttons to include "month":
 - [ ] **Step 7: Verify typecheck and lint pass**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck && pnpm lint
 ```
@@ -1940,6 +1967,7 @@ git commit -m "feat: integrate MonthView into page with navigation and more-clic
 ### Task 10: Add mock events for month view testing
 
 **Files:**
+
 - Modify: `src/lib/mock-events.ts`
 
 Add multi-day events that span week boundaries and several all-day events to exercise the month view layout.
@@ -1951,7 +1979,9 @@ In `src/lib/mock-events.ts`, add the following events inside the `generateMockEv
 ```ts
 // Multi-day event spanning a week boundary (for month view testing)
 const monthViewMultiDay = new Date(baseDate);
-monthViewMultiDay.setDate(baseDate.getDate() + ((4 - baseDate.getDay() + 7) % 7)); // Thursday
+monthViewMultiDay.setDate(
+  baseDate.getDate() + ((4 - baseDate.getDay() + 7) % 7),
+); // Thursday
 const multiDayStart = new Date(monthViewMultiDay);
 multiDayStart.setHours(0, 0, 0, 0);
 const multiDayEnd = new Date(multiDayStart);
@@ -1993,6 +2023,7 @@ events.push({
 - [ ] **Step 2: Verify app builds**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -2012,6 +2043,7 @@ git commit -m "feat: add month-view-friendly mock events"
 ### Task 11: Create `useMonthEventDrag` hook
 
 **Files:**
+
 - Create: `src/hooks/use-month-event-drag.ts`
 
 Day-snapping drag for moving events in the month view. Timed events change date but keep time; all-day events shift start date preserving duration.
@@ -2083,9 +2115,15 @@ export function useMonthEventDrag({
   const onEventClickRef = useRef(onEventClick);
   const eventsRef = useRef(events);
 
-  useEffect(() => { onEventChangeRef.current = onEventChange; }, [onEventChange]);
-  useEffect(() => { onEventClickRef.current = onEventClick; }, [onEventClick]);
-  useEffect(() => { eventsRef.current = events; }, [events]);
+  useEffect(() => {
+    onEventChangeRef.current = onEventChange;
+  }, [onEventChange]);
+  useEffect(() => {
+    onEventClickRef.current = onEventClick;
+  }, [onEventClick]);
+  useEffect(() => {
+    eventsRef.current = events;
+  }, [events]);
 
   const handleMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
   const handleMouseUpRef = useRef<(() => void) | null>(null);
@@ -2106,7 +2144,12 @@ export function useMonthEventDrag({
 
       const deltaX = Math.abs(e.clientX - drag.startClientX);
       const deltaY = Math.abs(e.clientY - drag.startClientY);
-      if (!drag.isDragging && deltaX < DRAG_THRESHOLD_PX && deltaY < DRAG_THRESHOLD_PX) return;
+      if (
+        !drag.isDragging &&
+        deltaX < DRAG_THRESHOLD_PX &&
+        deltaY < DRAG_THRESHOLD_PX
+      )
+        return;
 
       if (!drag.isDragging) {
         drag.isDragging = true;
@@ -2165,7 +2208,10 @@ export function useMonthEventDrag({
           const event = eventsRef.current.find((e) => e.id === drag.eventId);
           if (!event) return null;
 
-          const daysDelta = differenceInCalendarDays(prev.targetDate, prev.originalDate);
+          const daysDelta = differenceInCalendarDays(
+            prev.targetDate,
+            prev.originalDate,
+          );
           if (daysDelta !== 0) {
             onEventChangeRef.current?.({
               ...event,
@@ -2229,11 +2275,13 @@ export function useMonthEventDrag({
 In `src/components/month-view-grid.tsx`, the `onDragMouseDown` prop is already passed through to day cells. The parent `MonthView` needs to create the hook and pass handlers. Update `src/components/month-view.tsx` to use the hook:
 
 Add import:
+
 ```ts
 import { useMonthEventDrag } from "@/hooks/use-month-event-drag";
 ```
 
 Inside the `MonthView` component, add:
+
 ```ts
 const gridRef = React.useRef<HTMLDivElement>(null);
 const columnCount = showWeekends ? 7 : 5;
@@ -2269,6 +2317,7 @@ In `src/components/month-view-day-cell.tsx`, add a `data-date` attribute to the 
 - [ ] **Step 4: Verify typecheck passes**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -2288,6 +2337,7 @@ git commit -m "feat: add useMonthEventDrag hook and wire into month view"
 ### Task 12: Add column highlight animation for "+N more" navigation
 
 **Files:**
+
 - Modify: `src/components/week-view.tsx`
 - Modify: `src/app/globals.css`
 
@@ -2339,12 +2389,13 @@ In `src/components/week-view-grid.tsx`, when rendering day columns, check if the
 In `src/app/page.tsx`, add to the `<WeekView>` JSX:
 
 ```tsx
-highlightedDate={highlightedDate}
+highlightedDate = { highlightedDate };
 ```
 
 - [ ] **Step 5: Verify typecheck passes**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm typecheck
 ```
@@ -2364,6 +2415,7 @@ git commit -m "feat: add column highlight animation for more-click navigation"
 ### Task 13: Visual polish and edge cases
 
 **Files:**
+
 - Modify: Various month view components
 
 Final pass for visual refinement and edge case handling.
@@ -2377,6 +2429,7 @@ const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 ```
 
 Add to the root div className:
+
 ```tsx
 isWeekend && "bg-calendar-weekend",
 ```
@@ -2386,6 +2439,7 @@ isWeekend && "bg-calendar-weekend",
 The current `MonthViewDayCell` renders bars within a single cell. For multi-day bars to visually span columns, the bars with `isStart: true` need to use absolute positioning that extends beyond their cell boundary. Update the bar rendering in `MonthViewDayCell`:
 
 For `event-bar` slots where `isStart` is true and `colSpan > 1`:
+
 ```tsx
 <div
   className="absolute left-0"
@@ -2407,6 +2461,7 @@ If/when declined event status is added, the filter in `MonthView` is already in 
 - [ ] **Step 4: Verify full build passes**
 
 Run:
+
 ```bash
 cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnpm lint && pnpm typecheck && pnpm format:check
 ```
@@ -2432,6 +2487,7 @@ cd /Users/victornogueira/fun/calendarcn/.claude/worktrees/feat-month-view && pnp
 ```
 
 Verify:
+
 - Press `M` to switch to month view — grid renders with correct number of weeks
 - Today's date has accent circle
 - Adjacent month days are dimmed

@@ -15,10 +15,7 @@ export function WeekViewTimeAxis({
 }: WeekViewTimeAxisProps) {
   return (
     <div
-      className={cn(
-        "grid w-16 flex-shrink-0",
-        className
-      )}
+      className={cn("grid w-16 flex-shrink-0", className)}
       style={{
         gridTemplateRows: `repeat(${hours.length}, ${hourHeight}px)`,
         gridTemplateColumns: "1fr",

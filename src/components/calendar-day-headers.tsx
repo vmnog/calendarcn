@@ -29,7 +29,7 @@ function getTimezoneAbbreviation(): string {
  * Includes timezone label on the left (unless standalone mode)
  * Highlights the current day
  */
-export function WeekViewDayColumns({
+export function CalendarDayHeaders({
   days,
   standalone,
   className,

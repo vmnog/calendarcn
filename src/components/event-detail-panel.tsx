@@ -194,7 +194,9 @@ function parseDateInput(input: string, referenceDate: Date): Date | null {
   return parsed;
 }
 
-function formatVisibility(visibility?: "default" | "public" | "private"): string {
+function formatVisibility(
+  visibility?: "default" | "public" | "private",
+): string {
   if (visibility === "public") {
     return "Public";
   }
@@ -216,10 +218,10 @@ function FieldRow({
   return (
     <div className="flex items-center gap-3 py-2">
       <Icon className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-      <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">{label}</span>
-      {value && (
-        <span className="text-muted-foreground text-xs">{value}</span>
-      )}
+      <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">
+        {label}
+      </span>
+      {value && <span className="text-muted-foreground text-xs">{value}</span>}
     </div>
   );
 }
@@ -227,7 +229,11 @@ function FieldRow({
 function TimezoneDisplay({ timezone }: { timezone: string }) {
   const spaceIdx = timezone.indexOf(" ");
   if (spaceIdx === -1) {
-    return <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">{timezone}</span>;
+    return (
+      <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">
+        {timezone}
+      </span>
+    );
   }
 
   const code = timezone.substring(0, spaceIdx);
@@ -258,17 +264,28 @@ function RecurrenceDisplay({ recurrence }: { recurrence: string }) {
   );
 }
 
-const EVENT_TYPES = ["Event", "Focus time", "Out of office", "Birthday"] as const;
+const EVENT_TYPES = [
+  "Event",
+  "Focus time",
+  "Out of office",
+  "Birthday",
+] as const;
 type EventType = (typeof EVENT_TYPES)[number];
 
 const EVENT_TYPE_TOOLTIPS: Partial<Record<EventType, string>> = {
-  "Focus time": "Create a focus time event with the option to automatically decline meetings during this time. Available for work and school accounts.",
-  "Out of office": "Create an out of office (OOO) event with the option to automatically decline meetings during this time. Available for work and school accounts.",
-  "Birthday": "Create a birthday event to keep track of a person's upcoming birthdays. Birthdays from your Google Contacts may appear on a separate Birthday calendar.",
+  "Focus time":
+    "Create a focus time event with the option to automatically decline meetings during this time. Available for work and school accounts.",
+  "Out of office":
+    "Create an out of office (OOO) event with the option to automatically decline meetings during this time. Available for work and school accounts.",
+  Birthday:
+    "Create a birthday event to keep track of a person's upcoming birthdays. Birthdays from your Google Contacts may appear on a separate Birthday calendar.",
 };
 
 function EventTypeHelpIcon({ tooltip }: { tooltip?: string }) {
-  const [tooltipPos, setTooltipPos] = React.useState<{ top: number; left: number } | null>(null);
+  const [tooltipPos, setTooltipPos] = React.useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   if (!tooltip) {
     return null;
@@ -292,20 +309,31 @@ function EventTypeHelpIcon({ tooltip }: { tooltip?: string }) {
       onMouseLeave={handleMouseLeave}
     >
       <CircleHelp className="size-3.5 text-white" />
-      {tooltipPos && ReactDOM.createPortal(
-        <div
-          className="pointer-events-none fixed z-[100] max-w-[240px] rounded-sm bg-[#252525] border border-[#303030] px-2 py-1 text-xs text-white shadow-md"
-          style={{ top: tooltipPos.top, left: tooltipPos.left - 8, transform: "translate(-100%, -50%)" }}
-        >
-          {tooltip}
-        </div>,
-        document.body
-      )}
+      {tooltipPos &&
+        ReactDOM.createPortal(
+          <div
+            className="pointer-events-none fixed z-[100] max-w-[240px] rounded-sm bg-[#252525] border border-[#303030] px-2 py-1 text-xs text-white shadow-md"
+            style={{
+              top: tooltipPos.top,
+              left: tooltipPos.left - 8,
+              transform: "translate(-100%, -50%)",
+            }}
+          >
+            {tooltip}
+          </div>,
+          document.body,
+        )}
     </span>
   );
 }
 
-export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek, headerActions }: EventDetailPanelProps) {
+export function EventDetailPanel({
+  event,
+  onEventChange,
+  onPrevWeek,
+  onNextWeek,
+  headerActions,
+}: EventDetailPanelProps) {
   const color = event.color ?? "blue";
   const [eventType, setEventType] = React.useState<EventType>("Event");
   const [eventDropdownOpen, setEventDropdownOpen] = React.useState(false);
@@ -373,7 +401,9 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
   );
 
   // --- Start time input state & handlers ---
-  const [startTimeValue, setStartTimeValue] = React.useState(() => formatTimeDisplay(event.start));
+  const [startTimeValue, setStartTimeValue] = React.useState(() =>
+    formatTimeDisplay(event.start),
+  );
   const startTimeRef = React.useRef<HTMLInputElement>(null);
   const startTimeEscapePressedRef = React.useRef(false);
   const startTimeOnFocusRef = React.useRef(formatTimeDisplay(event.start));
@@ -434,7 +464,9 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
   );
 
   // --- End time input state & handlers ---
-  const [endTimeValue, setEndTimeValue] = React.useState(() => formatTimeDisplay(event.end));
+  const [endTimeValue, setEndTimeValue] = React.useState(() =>
+    formatTimeDisplay(event.end),
+  );
   const endTimeRef = React.useRef<HTMLInputElement>(null);
   const endTimeEscapePressedRef = React.useRef(false);
   const endTimeOnFocusRef = React.useRef(formatTimeDisplay(event.end));
@@ -495,7 +527,9 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
   );
 
   // --- Date input state & handlers ---
-  const [dateValue, setDateValue] = React.useState(() => formatDateDisplay(event.start));
+  const [dateValue, setDateValue] = React.useState(() =>
+    formatDateDisplay(event.start),
+  );
   const dateRef = React.useRef<HTMLInputElement>(null);
   const dateEscapePressedRef = React.useRef(false);
   const dateOnFocusRef = React.useRef(formatDateDisplay(event.start));
@@ -558,7 +592,9 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
   );
 
   // --- End date input state & handlers (shown only for all-day events) ---
-  const [endDateValue, setEndDateValue] = React.useState(() => formatDateDisplay(event.end));
+  const [endDateValue, setEndDateValue] = React.useState(() =>
+    formatDateDisplay(event.end),
+  );
   const endDateRef = React.useRef<HTMLInputElement>(null);
   const endDateEscapePressedRef = React.useRef(false);
   const endDateOnFocusRef = React.useRef(formatDateDisplay(event.end));
@@ -649,7 +685,8 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
       }
 
       if (savedTimeOfDayRef.current) {
-        const { startHours, startMinutes, endHours, endMinutes } = savedTimeOfDayRef.current;
+        const { startHours, startMinutes, endHours, endMinutes } =
+          savedTimeOfDayRef.current;
         onEventChange?.({
           ...event,
           isAllDay: false,
@@ -679,16 +716,47 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
     <div className="flex flex-col gap-3 py-3">
       {/* Header */}
       <div className="flex items-center justify-between px-4">
-        <DropdownMenu open={eventDropdownOpen} onOpenChange={(open) => { setEventDropdownOpen(open); if (open) setHoveredOther(false); }}>
+        <DropdownMenu
+          open={eventDropdownOpen}
+          onOpenChange={(open) => {
+            setEventDropdownOpen(open);
+            if (open) setHoveredOther(false);
+          }}
+        >
           <DropdownMenuTrigger asChild>
-            <button type="button" className={cn("flex items-center gap-0.5 text-xs font-medium rounded-sm border border-transparent px-2.5 py-1.5 -ml-2.5 gap-1.5 hover:border-[#373737]", eventDropdownOpen ? "bg-[#252525] text-white" : "text-foreground")}>
+            <button
+              type="button"
+              className={cn(
+                "flex items-center gap-0.5 text-xs font-medium rounded-sm border border-transparent px-2.5 py-1.5 -ml-2.5 gap-1.5 hover:border-[#373737]",
+                eventDropdownOpen
+                  ? "bg-[#252525] text-white"
+                  : "text-foreground",
+              )}
+            >
               {eventType}
-              <ChevronDown className={cn("size-3.5", eventDropdownOpen ? "text-[#595959]" : "text-[#C7C5C1] dark:text-[#595959]")} />
+              <ChevronDown
+                className={cn(
+                  "size-3.5",
+                  eventDropdownOpen
+                    ? "text-[#595959]"
+                    : "text-[#C7C5C1] dark:text-[#595959]",
+                )}
+              />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="left" sideOffset={12} alignOffset={-4} className="min-w-[180px] bg-[#252525] border-[#303030]" onMouseLeave={() => setHoveredOther(false)}>
+          <DropdownMenuContent
+            align="start"
+            side="left"
+            sideOffset={12}
+            alignOffset={-4}
+            className="min-w-[180px] bg-[#252525] border-[#303030]"
+            onMouseLeave={() => setHoveredOther(false)}
+          >
             <DropdownMenuItem
-              className={cn("group/item text-xs text-white focus:bg-[#303030] focus:text-white", !hoveredOther && "bg-[#303030]")}
+              className={cn(
+                "group/item text-xs text-white focus:bg-[#303030] focus:text-white",
+                !hoveredOther && "bg-[#303030]",
+              )}
               onSelect={() => setEventType(eventType)}
               onMouseEnter={() => setHoveredOther(false)}
             >
@@ -713,31 +781,47 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
         <div className="flex items-center gap-0.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-7 border border-transparent hover:border-[#242424] hover:bg-[#242424] text-[#C7C5C1] dark:text-[#595959]">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 border border-transparent hover:border-[#242424] hover:bg-[#242424] text-[#C7C5C1] dark:text-[#595959]"
+              >
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="left" className="min-w-[180px] bg-[#252525] border-[#303030]">
+            <DropdownMenuContent
+              align="start"
+              side="left"
+              className="min-w-[180px] bg-[#252525] border-[#303030]"
+            >
               <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
                 <SquareDashed className="size-3.5" />
                 Cut
-                <DropdownMenuShortcut className="text-white/40">⌘X</DropdownMenuShortcut>
+                <DropdownMenuShortcut className="text-white/40">
+                  ⌘X
+                </DropdownMenuShortcut>
               </DropdownMenuItem>
               <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
                 <TabletSmartphone className="size-3.5" />
                 Copy
-                <DropdownMenuShortcut className="text-white/40">⌘C</DropdownMenuShortcut>
+                <DropdownMenuShortcut className="text-white/40">
+                  ⌘C
+                </DropdownMenuShortcut>
               </DropdownMenuItem>
               <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
                 <Copy className="size-3.5" />
                 Duplicate
-                <DropdownMenuShortcut className="text-white/40">⌘D</DropdownMenuShortcut>
+                <DropdownMenuShortcut className="text-white/40">
+                  ⌘D
+                </DropdownMenuShortcut>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-[#303030]" />
               <DropdownMenuItem className="text-xs text-[#E56458] focus:!bg-[#DE5551] focus:!text-white focus:[&>svg]:!text-white focus:[&>[data-slot=dropdown-menu-shortcut]]:!text-white">
                 <Trash2 className="size-3.5 text-[#E56458]" />
                 Delete
-                <DropdownMenuShortcut className="text-white/40 tracking-normal">delete</DropdownMenuShortcut>
+                <DropdownMenuShortcut className="text-white/40 tracking-normal">
+                  delete
+                </DropdownMenuShortcut>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -762,15 +846,22 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
       <div className="border-border border-t" />
 
       {/* Time — muted and non-interactive for all-day events */}
-      {(event.start.getHours() !== 0 || event.start.getMinutes() !== 0 || event.end.getHours() !== 0 || event.end.getMinutes() !== 0) && (
+      {(event.start.getHours() !== 0 ||
+        event.start.getMinutes() !== 0 ||
+        event.end.getHours() !== 0 ||
+        event.end.getMinutes() !== 0) && (
         <div className="flex min-w-0 items-center gap-1 px-2 text-xs">
           {/* Start time group — Clock icon + input in one bordered container */}
           <div
             className={cn(
               "flex shrink-0 items-center gap-2 rounded-sm border border-transparent px-2 py-1.5",
-              event.isAllDay ? "cursor-default" : "cursor-text hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]",
+              event.isAllDay
+                ? "cursor-default"
+                : "cursor-text hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]",
             )}
-            onClick={event.isAllDay ? undefined : () => startTimeRef.current?.focus()}
+            onClick={
+              event.isAllDay ? undefined : () => startTimeRef.current?.focus()
+            }
           >
             <Clock className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
             <input
@@ -785,7 +876,9 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
               tabIndex={event.isAllDay ? -1 : undefined}
               className={cn(
                 "w-[8ch] font-medium text-xs bg-transparent outline-none border-none p-0",
-                event.isAllDay ? "text-[#C7C5C1] dark:text-[#595959] pointer-events-none" : "text-foreground",
+                event.isAllDay
+                  ? "text-[#C7C5C1] dark:text-[#595959] pointer-events-none"
+                  : "text-foreground",
               )}
             />
           </div>
@@ -793,11 +886,17 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
           <div
             className={cn(
               "flex min-w-0 flex-1 items-center rounded-sm border border-transparent px-2 py-1.5",
-              event.isAllDay ? "cursor-default" : "cursor-text hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]",
+              event.isAllDay
+                ? "cursor-default"
+                : "cursor-text hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]",
             )}
-            onClick={event.isAllDay ? undefined : () => endTimeRef.current?.focus()}
+            onClick={
+              event.isAllDay ? undefined : () => endTimeRef.current?.focus()
+            }
           >
-            <span className="mr-2 shrink-0 text-base leading-4 text-[#C7C5C1] dark:text-[#595959]">→</span>
+            <span className="mr-2 shrink-0 text-base leading-4 text-[#C7C5C1] dark:text-[#595959]">
+              →
+            </span>
             <input
               ref={endTimeRef}
               type="text"
@@ -810,17 +909,31 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
               tabIndex={event.isAllDay ? -1 : undefined}
               className={cn(
                 "min-w-0 font-medium text-xs bg-transparent outline-none border-none p-0",
-                event.isAllDay ? "text-[#C7C5C1] dark:text-[#595959] pointer-events-none" : "text-foreground",
+                event.isAllDay
+                  ? "text-[#C7C5C1] dark:text-[#595959] pointer-events-none"
+                  : "text-foreground",
               )}
               size={endTimeValue.length}
             />
-            <span className="shrink-0 text-[#C7C5C1] dark:text-[#595959]">{formatDuration(event.start, event.end)}</span>
+            <span className="shrink-0 text-[#C7C5C1] dark:text-[#595959]">
+              {formatDuration(event.start, event.end)}
+            </span>
           </div>
         </div>
       )}
 
       {/* Date — editable inline input(s), indented to align with time text */}
-      <div className={cn("flex items-center gap-2 -mt-2", (event.start.getHours() !== 0 || event.start.getMinutes() !== 0 || event.end.getHours() !== 0 || event.end.getMinutes() !== 0) ? "ml-8" : "ml-4")}>
+      <div
+        className={cn(
+          "flex items-center gap-2 -mt-2",
+          event.start.getHours() !== 0 ||
+            event.start.getMinutes() !== 0 ||
+            event.end.getHours() !== 0 ||
+            event.end.getMinutes() !== 0
+            ? "ml-8"
+            : "ml-4",
+        )}
+      >
         {/* Start date */}
         <div
           className="mr-0 flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]"
@@ -891,10 +1004,20 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
               <div className="flex flex-1 items-center justify-between">
                 <RecurrenceDisplay recurrence={event.recurrence} />
                 <div className="flex items-center">
-                  <Button variant="ghost" size="icon" className="size-6 text-[#C7C5C1] dark:text-[#595959]" onClick={onPrevWeek}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-[#C7C5C1] dark:text-[#595959]"
+                    onClick={onPrevWeek}
+                  >
                     <ChevronLeft className="size-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="size-6 text-[#C7C5C1] dark:text-[#595959]" onClick={onNextWeek}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-[#C7C5C1] dark:text-[#595959]"
+                    onClick={onNextWeek}
+                  >
                     <ChevronRight className="size-3.5" />
                   </Button>
                 </div>
@@ -903,7 +1026,9 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
           ) : (
             <div className="flex items-center gap-3 px-4">
               <RefreshCcw className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-              <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">Repeat</span>
+              <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">
+                Repeat
+              </span>
             </div>
           )}
         </>
@@ -913,9 +1038,15 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
             className="group/options flex cursor-default items-center gap-4 rounded-sm px-2 py-1.5 hover:bg-[#E8E8E4] dark:hover:bg-[#242424]"
             onClick={() => setOptionsExpanded(true)}
           >
-            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">All-day</span>
-            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">Time zone</span>
-            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">Repeat</span>
+            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">
+              All-day
+            </span>
+            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">
+              Time zone
+            </span>
+            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">
+              Repeat
+            </span>
           </div>
         </div>
       )}
@@ -936,7 +1067,9 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
 
       {/* Description */}
       <div className="flex flex-col gap-1 px-4">
-        <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">Description</span>
+        <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">
+          Description
+        </span>
         {event.description && (
           <span className="text-foreground text-xs">{event.description}</span>
         )}
@@ -967,19 +1100,24 @@ export function EventDetailPanel({ event, onEventChange, onPrevWeek, onNextWeek,
       <div className="mt-1 flex flex-col gap-3 px-4">
         <div className="flex items-center gap-2">
           <Bell className="size-4 text-[#C7C5C1] dark:text-[#595959]" />
-          <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">Reminders</span>
+          <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">
+            Reminders
+          </span>
         </div>
-        {event.reminders && event.reminders.length > 0 && (
+        {event.reminders &&
+          event.reminders.length > 0 &&
           event.reminders.map((reminder) => (
             <span
               key={`${reminder.amount}-${reminder.unit}`}
               className="text-foreground pl-6 text-xs"
             >
-              <span className="font-medium">{reminder.amount}{reminder.unit.replace(/s$/, "")}</span>
-              {" "}before
+              <span className="font-medium">
+                {reminder.amount}
+                {reminder.unit.replace(/s$/, "")}
+              </span>{" "}
+              before
             </span>
-          ))
-        )}
+          ))}
       </div>
     </div>
   );

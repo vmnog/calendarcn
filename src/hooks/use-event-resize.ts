@@ -138,19 +138,22 @@ export function useEventResize({
     edgeNavDirectionRef.current = null;
   }, []);
 
-  const scheduleEdgeNav = useCallback((direction: number) => {
-    if (edgeNavDirectionRef.current === direction) return;
+  const scheduleEdgeNav = useCallback(
+    (direction: number) => {
+      if (edgeNavDirectionRef.current === direction) return;
 
-    cancelEdgeNav();
-    edgeNavDirectionRef.current = direction;
+      cancelEdgeNav();
+      edgeNavDirectionRef.current = direction;
 
-    const fireNav = () => {
-      onResizeNavigateRef.current?.(direction);
-      edgeNavTimerRef.current = setTimeout(fireNav, EDGE_NAV_REPEAT_MS);
-    };
+      const fireNav = () => {
+        onResizeNavigateRef.current?.(direction);
+        edgeNavTimerRef.current = setTimeout(fireNav, EDGE_NAV_REPEAT_MS);
+      };
 
-    edgeNavTimerRef.current = setTimeout(fireNav, EDGE_NAV_DELAY_MS);
-  }, [cancelEdgeNav]);
+      edgeNavTimerRef.current = setTimeout(fireNav, EDGE_NAV_DELAY_MS);
+    },
+    [cancelEdgeNav],
+  );
 
   const cleanup = useCallback(() => {
     if (handleMouseMoveRef.current) {
@@ -214,16 +217,22 @@ export function useEventResize({
       const visibleDays = daysRef.current;
       const gridLeftEdge = containerRect.left + timeAxisWidthRef.current;
       const cursorInGrid = e.clientX - gridLeftEdge;
-      const columnIndex = clamp(Math.floor(cursorInGrid / colWidth), 0, visibleDays.length - 1);
+      const columnIndex = clamp(
+        Math.floor(cursorInGrid / colWidth),
+        0,
+        visibleDays.length - 1,
+      );
       const targetDay = visibleDays[columnIndex];
 
       // Unified anchor model: anchor is the opposite end of the grabbed edge
-      const anchorDate = resize.edge === "bottom"
-        ? resize.originalStartDate
-        : resize.originalEndDate;
-      const anchorMinutes = resize.edge === "bottom"
-        ? resize.originalStartMinutes
-        : resize.originalEndMinutes;
+      const anchorDate =
+        resize.edge === "bottom"
+          ? resize.originalStartDate
+          : resize.originalEndDate;
+      const anchorMinutes =
+        resize.edge === "bottom"
+          ? resize.originalStartMinutes
+          : resize.originalEndMinutes;
 
       const cursorTimestamp = targetDay.getTime() + snappedMinutes * 60000;
       const anchorTimestamp = anchorDate.getTime() + anchorMinutes * 60000;
@@ -252,7 +261,11 @@ export function useEventResize({
 
         // Same-day: enforce min duration
         if (isSameDay(startDate, endDate)) {
-          newEndMinutes = clamp(newEndMinutes, anchorMinutes + MIN_DURATION_MINUTES, 1440);
+          newEndMinutes = clamp(
+            newEndMinutes,
+            anchorMinutes + MIN_DURATION_MINUTES,
+            1440,
+          );
         }
       } else if (cursorTimestamp < anchorTimestamp) {
         // Cursor is before anchor → effective top
@@ -276,7 +289,11 @@ export function useEventResize({
 
         // Same-day: enforce min duration
         if (isSameDay(startDate, endDate)) {
-          newStartMinutes = clamp(newStartMinutes, 0, anchorMinutes - MIN_DURATION_MINUTES);
+          newStartMinutes = clamp(
+            newStartMinutes,
+            0,
+            anchorMinutes - MIN_DURATION_MINUTES,
+          );
         }
       } else {
         // Cursor at anchor → keep minimum duration in original edge direction (no flip)
@@ -374,7 +391,14 @@ export function useEventResize({
 
       resizeRef.current = null;
     };
-  }, [scrollContainerRef, cleanup, cancelAutoScroll, startAutoScrollLoop, scheduleEdgeNav, cancelEdgeNav]);
+  }, [
+    scrollContainerRef,
+    cleanup,
+    cancelAutoScroll,
+    startAutoScrollLoop,
+    scheduleEdgeNav,
+    cancelEdgeNav,
+  ]);
 
   const handleResizeMouseDown = useCallback(
     (e: React.MouseEvent, event: CalendarEvent, edge: "top" | "bottom") => {

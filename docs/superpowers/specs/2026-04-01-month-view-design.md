@@ -8,16 +8,16 @@ Add a month view to CalendarCN, matching Notion Calendar's month view behavior. 
 
 ### New Files
 
-| File | Purpose |
-|---|---|
-| `src/components/calendar-types.ts` | Shared types extracted from `week-view-types.ts` (CalendarEvent, EventColor, ViewType, ViewSettings, etc.) |
-| `src/components/calendar-day-headers.tsx` | Renamed from `week-view-day-columns.tsx` — generic day-of-week header row used by both views |
-| `src/components/month-view.tsx` | Month view orchestrator — receives props from `page.tsx`, computes month grid, delegates to children |
-| `src/components/month-view-grid.tsx` | 7-column grid with 5-6 week rows, manages cell height measurement and slot count |
-| `src/components/month-view-day-cell.tsx` | Individual day cell — renders day number, event bars, event items, and "+N more" |
-| `src/components/month-view-event-bar.tsx` | All-day/multi-day colored bar spanning columns |
-| `src/components/month-view-event-item.tsx` | Timed event text line: colored dot + time + title |
-| `src/hooks/use-month-event-drag.ts` | Day-snapping drag for moving events in month view |
+| File                                       | Purpose                                                                                                    |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `src/components/calendar-types.ts`         | Shared types extracted from `week-view-types.ts` (CalendarEvent, EventColor, ViewType, ViewSettings, etc.) |
+| `src/components/calendar-day-headers.tsx`  | Renamed from `week-view-day-columns.tsx` — generic day-of-week header row used by both views               |
+| `src/components/month-view.tsx`            | Month view orchestrator — receives props from `page.tsx`, computes month grid, delegates to children       |
+| `src/components/month-view-grid.tsx`       | 7-column grid with 5-6 week rows, manages cell height measurement and slot count                           |
+| `src/components/month-view-day-cell.tsx`   | Individual day cell — renders day number, event bars, event items, and "+N more"                           |
+| `src/components/month-view-event-bar.tsx`  | All-day/multi-day colored bar spanning columns                                                             |
+| `src/components/month-view-event-item.tsx` | Timed event text line: colored dot + time + title                                                          |
+| `src/hooks/use-month-event-drag.ts`        | Day-snapping drag for moving events in month view                                                          |
 
 ### New Utility
 
@@ -166,11 +166,11 @@ Each cell has a maximum number of visible slots (default 6 at typical viewport).
 
 ### View Settings (Carried Over from Week View)
 
-| Setting | Month View Behavior |
-|---|---|
-| `showWeekends` | `false` → hide Sat/Sun columns, grid becomes 5-column. Multi-day bars spanning weekends skip hidden columns visually but preserve logical duration |
-| `showWeekNumbers` | `true` → add narrow left column showing ISO week number per row |
-| `showDeclinedEvents` | `false` → filter out declined events from cell layout calculation and rendering |
+| Setting              | Month View Behavior                                                                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `showWeekends`       | `false` → hide Sat/Sun columns, grid becomes 5-column. Multi-day bars spanning weekends skip hidden columns visually but preserve logical duration |
+| `showWeekNumbers`    | `true` → add narrow left column showing ISO week number per row                                                                                    |
+| `showDeclinedEvents` | `false` → filter out declined events from cell layout calculation and rendering                                                                    |
 
 ### Month Navigation
 

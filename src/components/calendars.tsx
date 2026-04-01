@@ -23,7 +23,6 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 
-
 const colorStyles: Record<CalendarColor, string> = {
   red: "bg-event-red",
   orange: "bg-event-orange",
@@ -125,7 +124,10 @@ export function Calendars({ accounts }: CalendarsProps) {
                                 if (e.key === "Enter" || e.key === " ") {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  toggleVisibility(account.email, calendar.name);
+                                  toggleVisibility(
+                                    account.email,
+                                    calendar.name,
+                                  );
                                 }
                               }}
                             >

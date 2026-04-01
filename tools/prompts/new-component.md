@@ -19,6 +19,7 @@ Requirements:
 The component should: {describe what it does}
 
 Props:
+
 - {prop1}: {type} — {description}
 - {prop2}: {type} — {description}
 

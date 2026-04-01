@@ -788,9 +788,7 @@ export function AllDayEventItem({
         )}
       >
         <div className="absolute inset-0 rounded-md bg-white dark:bg-[#191919]" />
-        <div
-          className={cn("absolute inset-0 rounded-md", styles.bg)}
-        />
+        <div className={cn("absolute inset-0 rounded-md", styles.bg)} />
         <div
           className={cn(
             "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-white dark:mix-blend-overlay",

@@ -116,7 +116,6 @@ export function WeekViewGrid({
               resizeState={resizeState}
               onEventResizeMouseDown={onEventResizeMouseDown}
               onEventChange={onEventChange}
-
               onContextMenuOpenChange={onContextMenuOpenChange}
               isSidebarOpen={isSidebarOpen}
               onDockToSidebar={onDockToSidebar}

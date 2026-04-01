@@ -30,7 +30,9 @@ Invoke when restructuring code, extracting components/hooks, or improving code q
 3. Follow the ref-sync pattern for all options:
    ```ts
    const optionRef = useRef(option);
-   useEffect(() => { optionRef.current = option; }, [option]);
+   useEffect(() => {
+     optionRef.current = option;
+   }, [option]);
    ```
 4. Store global event handlers in refs
 5. Return typed object matching `UseHookNameReturn`

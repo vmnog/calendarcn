@@ -23,7 +23,9 @@
   --color-calendar-weekend: var(--calendar-weekend);
   --color-calendar-current-week: var(--calendar-current-week);
   --color-calendar-day-hover: var(--calendar-day-hover);
-  --color-calendar-day-hover-current-week: var(--calendar-day-hover-current-week);
+  --color-calendar-day-hover-current-week: var(
+    --calendar-day-hover-current-week
+  );
 
   /* Event colors */
   --color-event-red: var(--event-red);
@@ -84,27 +86,27 @@
   --foreground: #32302c;
 
   /* Event colors - light mode */
-  --event-red: #B23E31;
-  --event-red-border: #EE000E;
-  --event-red-bg: #FFE1D4;
-  --event-orange: #AD4517;
-  --event-orange-border: #FE7132;
-  --event-orange-bg: #FFE3C8;
+  --event-red: #b23e31;
+  --event-red-border: #ee000e;
+  --event-red-bg: #ffe1d4;
+  --event-orange: #ad4517;
+  --event-orange-border: #fe7132;
+  --event-orange-bg: #ffe3c8;
   --event-yellow: #855100;
-  --event-yellow-border: #F2B827;
-  --event-yellow-bg: #FFF0BE;
-  --event-green: #027B27;
-  --event-green-border: #49CA81;
-  --event-green-bg: #DEFFE3;
-  --event-blue: #006CBF;
-  --event-blue-border: #32A5E5;
-  --event-blue-bg: #E2F9FF;
-  --event-purple: #7733D2;
-  --event-purple-border: #9950FF;
-  --event-purple-bg: #FEECFF;
-  --event-gray: #5F6061;
-  --event-gray-border: #B3B4B4;
-  --event-gray-bg: #F6F4F3;
+  --event-yellow-border: #f2b827;
+  --event-yellow-bg: #fff0be;
+  --event-green: #027b27;
+  --event-green-border: #49ca81;
+  --event-green-bg: #deffe3;
+  --event-blue: #006cbf;
+  --event-blue-border: #32a5e5;
+  --event-blue-bg: #e2f9ff;
+  --event-purple: #7733d2;
+  --event-purple-border: #9950ff;
+  --event-purple-bg: #feecff;
+  --event-gray: #5f6061;
+  --event-gray-border: #b3b4b4;
+  --event-gray-bg: #f6f4f3;
   --card: #ffffff;
   --card-foreground: #32302c;
   --popover: #ffffff;
@@ -127,9 +129,9 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --calendar-weekend: #fcfcfc;
-  --calendar-current-week: #EDECE9;
-  --calendar-day-hover: #EEECE8;
-  --calendar-day-hover-current-week: #E2E1DC;
+  --calendar-current-week: #edece9;
+  --calendar-day-hover: #eeece8;
+  --calendar-day-hover-current-week: #e2e1dc;
   --sidebar: #f8f8f7;
   --context-panel: #ffffff;
   --sidebar-foreground: #939391;
@@ -148,26 +150,26 @@ html.dark,
   --foreground: #d9d9d9;
 
   /* Event colors - dark mode */
-  --event-red: #D85140;
-  --event-red-border: #D85140;
-  --event-red-bg: #6C2920;
-  --event-orange: #E07040;
-  --event-orange-border: #E07040;
-  --event-orange-bg: #5F3524;
-  --event-yellow: #D4A83A;
-  --event-yellow-border: #D4A83A;
-  --event-yellow-bg: #4E3F1B;
-  --event-green: #52B577;
-  --event-green-border: #52B577;
-  --event-green-bg: #2D4935;
-  --event-blue: #4895C8;
-  --event-blue-border: #4895C8;
-  --event-blue-bg: #2F4656;
-  --event-purple: #8A5AD6;
-  --event-purple-border: #8A5AD6;
-  --event-purple-bg: #483A63;
-  --event-gray: #A0A0A0;
-  --event-gray-border: #A0A0A0;
+  --event-red: #d85140;
+  --event-red-border: #d85140;
+  --event-red-bg: #6c2920;
+  --event-orange: #e07040;
+  --event-orange-border: #e07040;
+  --event-orange-bg: #5f3524;
+  --event-yellow: #d4a83a;
+  --event-yellow-border: #d4a83a;
+  --event-yellow-bg: #4e3f1b;
+  --event-green: #52b577;
+  --event-green-border: #52b577;
+  --event-green-bg: #2d4935;
+  --event-blue: #4895c8;
+  --event-blue-border: #4895c8;
+  --event-blue-bg: #2f4656;
+  --event-purple: #8a5ad6;
+  --event-purple-border: #8a5ad6;
+  --event-purple-bg: #483a63;
+  --event-gray: #a0a0a0;
+  --event-gray-border: #a0a0a0;
   --event-gray-bg: #424242;
   --card: #202020;
   --card-foreground: #d9d9d9;
@@ -191,9 +193,9 @@ html.dark,
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
   --calendar-weekend: #181818;
-  --calendar-current-week: #2E2E2E;
-  --calendar-day-hover: #2E2E2E;
-  --calendar-day-hover-current-week: #3D3D3D;
+  --calendar-current-week: #2e2e2e;
+  --calendar-day-hover: #2e2e2e;
+  --calendar-day-hover-current-week: #3d3d3d;
   --sidebar: #202020;
   --context-panel: #191919;
   --sidebar-foreground: #868686;

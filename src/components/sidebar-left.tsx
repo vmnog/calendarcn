@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { CalendarSearch, PanelRightIcon } from "lucide-react"
+import * as React from "react";
+import { CalendarSearch, PanelRightIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
+import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Sidebar,
   SidebarContent,
@@ -13,14 +13,14 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { EventDetailPanel } from "./event-detail-panel"
-import type { CalendarEvent } from "./week-view-types"
+} from "@/components/ui/tooltip";
+import { EventDetailPanel } from "./event-detail-panel";
+import type { CalendarEvent } from "./week-view-types";
 
 interface SidebarLeftProps extends React.ComponentProps<typeof Sidebar> {
   selectedEvent?: CalendarEvent | null;
@@ -36,10 +36,15 @@ export function SidebarLeft({
   onNextWeek,
   ...props
 }: SidebarLeftProps) {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar } = useSidebar();
 
   return (
-    <Sidebar side="right" className="border-l !bg-context-panel [&_[data-slot=sidebar-inner]]:!bg-context-panel" style={{ "--muted-foreground": "#C7C5C1" } as React.CSSProperties} {...props}>
+    <Sidebar
+      side="right"
+      className="border-l !bg-context-panel [&_[data-slot=sidebar-inner]]:!bg-context-panel"
+      style={{ "--muted-foreground": "#C7C5C1" } as React.CSSProperties}
+      {...props}
+    >
       <SidebarHeader className="h-14 justify-center px-4">
         <div className="flex items-center gap-2">
           {!selectedEvent && (
@@ -72,7 +77,12 @@ export function SidebarLeft({
       </SidebarHeader>
       <SidebarContent>
         {selectedEvent ? (
-          <EventDetailPanel event={selectedEvent} onEventChange={onEventChange} onPrevWeek={onPrevWeek} onNextWeek={onNextWeek} />
+          <EventDetailPanel
+            event={selectedEvent}
+            onEventChange={onEventChange}
+            onPrevWeek={onPrevWeek}
+            onNextWeek={onNextWeek}
+          />
         ) : (
           <SidebarGroup className="px-3 pt-6">
             <SidebarGroupLabel className="text-foreground text-xs font-semibold px-0">
@@ -107,20 +117,20 @@ export function SidebarLeft({
         )}
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }
 
 function ShortcutRow({
   label,
   children,
 }: {
-  label: string
-  children: React.ReactNode
+  label: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className="text-muted-foreground flex items-center justify-between py-1 text-xs">
       <span>{label}</span>
       <div className="flex items-center gap-1">{children}</div>
     </div>
-  )
+  );
 }

@@ -68,7 +68,7 @@ export function useHorizontalScroll({
         accumulatedDelta.current = 0;
       }, SNAP_ANIMATION_MS);
     },
-    [dayColumnWidth]
+    [dayColumnWidth],
   );
 
   // Programmatic slide animation for button/keyboard navigation
@@ -93,7 +93,7 @@ export function useHorizontalScroll({
         });
       });
     },
-    [dayColumnWidth, isAnimating, isScrolling]
+    [dayColumnWidth, isAnimating, isScrolling],
   );
 
   useEffect(() => {
