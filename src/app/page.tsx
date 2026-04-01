@@ -494,6 +494,7 @@ function PageContent() {
               onClosePopover={() => setSelectedEventId(null)}
               onPrevWeek={goToPrev}
               onNextWeek={goToNext}
+              highlightedDate={highlightedDate}
             />
           )}
         </div>

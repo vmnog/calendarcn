@@ -229,3 +229,16 @@ html.dark,
     display: none;
   }
 }
+
+@keyframes column-highlight-fade {
+  from {
+    background-color: oklch(0.623 0.214 259.1 / 0.08);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.column-highlight {
+  animation: column-highlight-fade 2s ease-out forwards;
+}

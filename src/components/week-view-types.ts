@@ -62,6 +62,8 @@ export interface WeekViewProps {
   onPrevWeek?: () => void;
   /** Navigate to next week */
   onNextWeek?: () => void;
+  /** Date to highlight with a temporary background animation (for "+N more" navigation) */
+  highlightedDate?: Date | null;
   /** Optional className for the root element */
   className?: string;
 }
@@ -132,6 +134,8 @@ export interface WeekViewGridProps {
   onPrevWeek?: () => void;
   /** Navigate to next week */
   onNextWeek?: () => void;
+  /** Date to highlight with a temporary background animation (for "+N more" navigation) */
+  highlightedDate?: Date | null;
   /** Optional className */
   className?: string;
 }

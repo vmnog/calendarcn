@@ -153,6 +153,7 @@ export function WeekView({
   onClosePopover,
   onPrevWeek,
   onNextWeek,
+  highlightedDate,
   className,
 }: WeekViewProps) {
   const VISIBLE_DAYS = VISIBLE_DAYS_BY_VIEW[view];
@@ -444,6 +445,7 @@ export function WeekView({
                   onClosePopover={onClosePopover}
                   onPrevWeek={onPrevWeek}
                   onNextWeek={onNextWeek}
+                  highlightedDate={highlightedDate}
                 />
               </div>
             </div>
