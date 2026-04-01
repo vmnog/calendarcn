@@ -665,13 +665,18 @@ export function calculateMonthCellLayout(
       const remainingSlots = maxSlots - usedSlots;
       const timedEvents = timedByCol[col];
 
-      if (timedEvents.length <= remainingSlots) {
-        // All timed events fit in the remaining space
+      // Reserve the LAST slot for "+N more" whenever timed events fill all
+      // remaining space.  Notion always keeps breathing room at the bottom —
+      // only skip the "+N more" row when events genuinely under-fill the cell.
+      if (timedEvents.length < remainingSlots) {
+        // Room to spare — render all timed events without an overflow row
         for (const ev of timedEvents) {
           slots.push({ type: "event-item", event: ev });
         }
+      } else if (timedEvents.length === 0) {
+        // Nothing to render
       } else {
-        // Need "+N more" in the last remaining slot
+        // Events fill or exceed remaining space — show N-1 events + "+N more"
         const availableForTimed = Math.max(0, remainingSlots - 1);
         const timedToShow = timedEvents.slice(0, availableForTimed);
         for (const ev of timedToShow) {
