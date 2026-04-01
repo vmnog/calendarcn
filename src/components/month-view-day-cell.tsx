@@ -108,7 +108,7 @@ export function MonthViewDayCell({
       </div>
 
       {/* Slots list — overflow-visible so multi-day bars can extend across columns */}
-      <div className="flex flex-col gap-0.5 px-0.5 pb-1 overflow-visible">
+      <div className="flex flex-col gap-px px-0.5 pb-0.5 overflow-visible">
         {slots.map((slot, index) => {
           if (slot.type === "event-bar") {
             if (slot.isStart) {

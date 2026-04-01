@@ -377,7 +377,7 @@ function PageContent() {
               <span className="text-muted-foreground text-xs">
                 {view === "day" && format(currentDate, "EEEE, MMM d")}
                 {view === "week" && `Week ${weekNumber}`}
-                {view === "month" && format(currentDate, "MMMM")}
+                {view === "month" && ""}
               </span>
             </h1>
           </div>

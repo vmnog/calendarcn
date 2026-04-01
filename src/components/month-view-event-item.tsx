@@ -154,7 +154,7 @@ export function MonthViewEventItem({
       {/* Time + Title */}
       <span
         className={cn(
-          "relative text-xs leading-tight truncate pl-1.5 pr-1",
+          "relative text-[0.6875rem] leading-tight truncate pl-1.5 pr-1",
           isSelected
             ? "text-white dark:text-white"
             : cn(styles.text, "dark:text-white/80"),
