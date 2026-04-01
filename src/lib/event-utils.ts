@@ -658,25 +658,29 @@ export function calculateMonthCellLayout(
         }
       }
 
-      // Fill remaining slots with timed events
+      // Fill remaining slots with timed events.
+      // usedSlots includes bars AND spacers from spanning events — both consume
+      // visual space, so remaining room is maxSlots minus everything already placed.
       const usedSlots = slots.length;
       const remainingSlots = maxSlots - usedSlots;
       const timedEvents = timedByCol[col];
 
-      if (totalEvents <= maxSlots) {
-        // Everything fits
+      if (timedEvents.length <= remainingSlots) {
+        // All timed events fit in the remaining space
         for (const ev of timedEvents) {
           slots.push({ type: "event-item", event: ev });
         }
       } else {
-        // Need "+N more" in the last slot
+        // Need "+N more" in the last remaining slot
         const availableForTimed = Math.max(0, remainingSlots - 1);
         const timedToShow = timedEvents.slice(0, availableForTimed);
         for (const ev of timedToShow) {
           slots.push({ type: "event-item", event: ev });
         }
-        const hiddenCount = totalEvents - (usedSlots + timedToShow.length);
-        slots.push({ type: "more", count: hiddenCount });
+        const hiddenCount = timedEvents.length - timedToShow.length;
+        if (hiddenCount > 0) {
+          slots.push({ type: "more", count: hiddenCount });
+        }
       }
 
       result.set(key, {
