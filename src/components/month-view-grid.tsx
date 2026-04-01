@@ -93,7 +93,7 @@ export function MonthViewGrid({
         return (
           <div
             key={weekRow.weekNumber}
-            className="grid min-h-0"
+            className="grid min-h-0 overflow-hidden"
             style={{ gridTemplateColumns }}
           >
             {showWeekNumbers && (

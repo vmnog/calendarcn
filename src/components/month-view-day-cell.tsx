@@ -52,7 +52,7 @@ export function MonthViewDayCell({
       data-date={date.toISOString()}
       onClick={handleBackgroundClick}
       className={cn(
-        "flex flex-col overflow-hidden border-b border-r border-border",
+        "flex flex-col border-b border-r border-border",
         isAdjacentMonth && "opacity-50",
         isWeekend && "bg-calendar-weekend",
         className,
@@ -71,11 +71,31 @@ export function MonthViewDayCell({
         </span>
       </div>
 
-      {/* Slots list */}
-      <div className="flex flex-col gap-0.5 px-0.5 pb-1">
+      {/* Slots list — overflow-visible so multi-day bars can extend across columns */}
+      <div className="flex flex-col gap-0.5 px-0.5 pb-1 overflow-visible">
         {slots.map((slot, index) => {
           if (slot.type === "event-bar") {
             if (slot.isStart) {
+              if (slot.colSpan > 1) {
+                return (
+                  <div
+                    key={`${slot.event.id}-${index}`}
+                    className="relative"
+                    style={{ width: `${slot.colSpan * 100}%`, zIndex: 1 }}
+                  >
+                    <MonthViewEventBar
+                      event={slot.event}
+                      colSpan={slot.colSpan}
+                      roundedLeft={slot.roundedLeft}
+                      roundedRight={slot.roundedRight}
+                      isSelected={selectedEventId === slot.event.id}
+                      onClick={onEventClick}
+                      onContextMenu={onContextMenu}
+                      onDragMouseDown={onDragMouseDown}
+                    />
+                  </div>
+                );
+              }
               return (
                 <MonthViewEventBar
                   key={`${slot.event.id}-${index}`}
