@@ -8,7 +8,15 @@ import {
   PanelRightIcon,
 } from "lucide-react";
 
-import { addDays, addWeeks, format, startOfDay, startOfWeek } from "date-fns";
+import {
+  addDays,
+  addMonths,
+  addWeeks,
+  format,
+  startOfDay,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
 import { useTheme } from "next-themes";
 import { generateMockEvents } from "@/lib/mock-events";
 import { CommandMenu } from "@/components/command-menu";
@@ -19,6 +27,7 @@ import type {
   ViewType,
 } from "@/components/week-view-types";
 import { SidebarRight } from "@/components/sidebar-right";
+import { MonthView } from "@/components/month-view";
 import {
   WeekView,
   getCalendarHeaderInfo,
@@ -58,6 +67,9 @@ function PageContent() {
     showDeclinedEvents: true,
     showWeekNumbers: true,
   });
+  const [highlightedDate, setHighlightedDate] = React.useState<Date | null>(
+    null,
+  );
   const selectedEvent = React.useMemo(
     () => events.find((e) => e.id === selectedEventId) ?? null,
     [events, selectedEventId],
@@ -72,6 +84,8 @@ function PageContent() {
   const goToToday = React.useCallback(() => {
     if (view === "day") {
       setCurrentDate(startOfDay(new Date()));
+    } else if (view === "month") {
+      setCurrentDate(startOfMonth(new Date()));
     } else {
       setCurrentDate(startOfWeek(new Date(), { weekStartsOn: 0 }));
     }
@@ -80,6 +94,8 @@ function PageContent() {
   const goToPrev = React.useCallback(() => {
     if (view === "day") {
       setCurrentDate((prev) => addDays(prev, -1));
+    } else if (view === "month") {
+      setCurrentDate((prev) => addMonths(prev, -1));
     } else {
       setCurrentDate((prev) => addWeeks(prev, -1));
     }
@@ -88,6 +104,8 @@ function PageContent() {
   const goToNext = React.useCallback(() => {
     if (view === "day") {
       setCurrentDate((prev) => addDays(prev, 1));
+    } else if (view === "month") {
+      setCurrentDate((prev) => addMonths(prev, 1));
     } else {
       setCurrentDate((prev) => addWeeks(prev, 1));
     }
@@ -114,11 +132,26 @@ function PageContent() {
         setCurrentDate(startOfDay(new Date()));
         return;
       }
-      // Week or Month: snap to week containing the current day
+      if (newView === "month") {
+        setCurrentDate((prev) => startOfMonth(prev));
+        return;
+      }
       setCurrentDate((prev) => startOfWeek(prev, { weekStartsOn: 0 }));
     },
     [view],
   );
+
+  const handleMoreClick = React.useCallback((date: Date) => {
+    setView("week");
+    setCurrentDate(startOfWeek(date, { weekStartsOn: 0 }));
+    setHighlightedDate(date);
+  }, []);
+
+  React.useEffect(() => {
+    if (!highlightedDate) return;
+    const timer = setTimeout(() => setHighlightedDate(null), 2000);
+    return () => clearTimeout(timer);
+  }, [highlightedDate]);
 
   const toggleWeekends = React.useCallback(() => {
     setViewSettings((prev) => ({ ...prev, showWeekends: !prev.showWeekends }));
@@ -156,10 +189,9 @@ function PageContent() {
     getVisibleDays(currentDate, view),
   );
 
-  const { monthName, year, weekNumber } = getCalendarHeaderInfo(
-    visibleDays[0],
-    0,
-  );
+  const headerDate =
+    view === "month" ? currentDate : (visibleDays[0] ?? currentDate);
+  const { monthName, year, weekNumber } = getCalendarHeaderInfo(headerDate, 0);
 
   // Keyboard shortcuts
   React.useEffect(() => {
@@ -384,7 +416,11 @@ function PageContent() {
               >
                 <ChevronLeftIcon className="size-4" />
                 <span className="sr-only">
-                  {view === "day" ? "Previous day" : "Previous week"}
+                  {view === "day"
+                    ? "Previous day"
+                    : view === "month"
+                      ? "Previous month"
+                      : "Previous week"}
                 </span>
               </Button>
               <Button
@@ -395,7 +431,11 @@ function PageContent() {
               >
                 <ChevronRightIcon className="size-4" />
                 <span className="sr-only">
-                  {view === "day" ? "Next day" : "Next week"}
+                  {view === "day"
+                    ? "Next day"
+                    : view === "month"
+                      ? "Next month"
+                      : "Next week"}
                 </span>
               </Button>
             </div>
@@ -420,24 +460,42 @@ function PageContent() {
           </div>
         </header>
         <div className="flex flex-1 flex-col overflow-hidden">
-          <WeekView
-            view={view}
-            currentDate={currentDate}
-            events={events}
-            onEventClick={(e) => setSelectedEventId(e.id)}
-            selectedEventId={selectedEvent?.id}
-            onBackgroundClick={() => setSelectedEventId(null)}
-            onDateChange={goToDate}
-            onVisibleDaysChange={setVisibleDays}
-            onEventChange={handleEventChange}
-            isSidebarOpen={rightSidebarOpen}
-            onDockToSidebar={() => {
-              if (!rightSidebarOpen) toggleSidebar();
-            }}
-            onClosePopover={() => setSelectedEventId(null)}
-            onPrevWeek={goToPrev}
-            onNextWeek={goToNext}
-          />
+          {view === "month" ? (
+            <MonthView
+              currentDate={currentDate}
+              events={events}
+              viewSettings={viewSettings}
+              onEventClick={(e) => setSelectedEventId(e.id)}
+              selectedEventId={selectedEvent?.id}
+              onBackgroundClick={() => setSelectedEventId(null)}
+              onEventChange={handleEventChange}
+              onMoreClick={handleMoreClick}
+              isSidebarOpen={rightSidebarOpen}
+              onDockToSidebar={() => {
+                if (!rightSidebarOpen) toggleSidebar();
+              }}
+              onClosePopover={() => setSelectedEventId(null)}
+            />
+          ) : (
+            <WeekView
+              view={view}
+              currentDate={currentDate}
+              events={events}
+              onEventClick={(e) => setSelectedEventId(e.id)}
+              selectedEventId={selectedEvent?.id}
+              onBackgroundClick={() => setSelectedEventId(null)}
+              onDateChange={goToDate}
+              onVisibleDaysChange={setVisibleDays}
+              onEventChange={handleEventChange}
+              isSidebarOpen={rightSidebarOpen}
+              onDockToSidebar={() => {
+                if (!rightSidebarOpen) toggleSidebar();
+              }}
+              onClosePopover={() => setSelectedEventId(null)}
+              onPrevWeek={goToPrev}
+              onNextWeek={goToNext}
+            />
+          )}
         </div>
       </SidebarInset>
       <SidebarLeft
