@@ -10,6 +10,7 @@ export interface MonthViewEventBarProps {
   roundedLeft: boolean;
   roundedRight: boolean;
   isSelected?: boolean;
+  isGhost?: boolean;
   onClick?: (event: CalendarEvent) => void;
   onContextMenu?: (e: React.MouseEvent, event: CalendarEvent) => void;
   onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
@@ -69,6 +70,7 @@ export function MonthViewEventBar({
   roundedLeft,
   roundedRight,
   isSelected,
+  isGhost,
   onClick,
   onContextMenu,
   onDragMouseDown,
@@ -116,6 +118,8 @@ export function MonthViewEventBar({
         roundedLeft && "rounded-l-sm",
         roundedRight && "rounded-r-sm",
         isSelected && "z-20",
+        eventIsPast && !isGhost && "opacity-50",
+        isGhost && "opacity-30 pointer-events-none",
         className,
       )}
     >
@@ -135,7 +139,6 @@ export function MonthViewEventBar({
           roundedLeft && "rounded-l-sm",
           roundedRight && "rounded-r-sm",
           isSelected ? styles.border : cn(styles.bg, styles.bgHover),
-          eventIsPast && !isSelected && "opacity-60",
         )}
       />
 
@@ -146,7 +149,6 @@ export function MonthViewEventBar({
             "absolute left-0 top-0 bottom-0 w-[3px] dark:bg-white dark:mix-blend-overlay",
             "rounded-l-sm",
             styles.border,
-            eventIsPast && "opacity-60",
           )}
         />
       )}
@@ -160,7 +162,6 @@ export function MonthViewEventBar({
           isSelected
             ? "text-white dark:text-white"
             : cn(styles.text, "dark:text-white/80"),
-          eventIsPast && !isSelected && "opacity-60",
         )}
       >
         {event.title}

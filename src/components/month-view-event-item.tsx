@@ -7,59 +7,44 @@ import type { CalendarEvent, EventColor } from "./calendar-types";
 export interface MonthViewEventItemProps {
   event: CalendarEvent;
   isSelected?: boolean;
+  isGhost?: boolean;
   onClick?: (event: CalendarEvent) => void;
   onContextMenu?: (e: React.MouseEvent, event: CalendarEvent) => void;
   onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
   className?: string;
 }
 
-/** Color styles matching the event bar palette */
-const itemColorStyles: Record<
-  EventColor,
-  { bg: string; bgHover: string; border: string; text: string }
-> = {
-  red: {
-    bg: "bg-event-red-bg",
-    bgHover: "hover:bg-event-red-bg/70",
-    border: "bg-event-red-border",
-    text: "text-event-red",
-  },
-  orange: {
-    bg: "bg-event-orange-bg",
-    bgHover: "hover:bg-event-orange-bg/70",
-    border: "bg-event-orange-border",
-    text: "text-event-orange",
-  },
-  yellow: {
-    bg: "bg-event-yellow-bg",
-    bgHover: "hover:bg-event-yellow-bg/70",
-    border: "bg-event-yellow-border",
-    text: "text-event-yellow",
-  },
-  green: {
-    bg: "bg-event-green-bg",
-    bgHover: "hover:bg-event-green-bg/70",
-    border: "bg-event-green-border",
-    text: "text-event-green",
-  },
-  blue: {
-    bg: "bg-event-blue-bg",
-    bgHover: "hover:bg-event-blue-bg/70",
-    border: "bg-event-blue-border",
-    text: "text-event-blue",
-  },
-  purple: {
-    bg: "bg-event-purple-bg",
-    bgHover: "hover:bg-event-purple-bg/70",
-    border: "bg-event-purple-border",
-    text: "text-event-purple",
-  },
-  gray: {
-    bg: "bg-event-gray-bg",
-    bgHover: "hover:bg-event-gray-bg/70",
-    border: "bg-event-gray-border",
-    text: "text-event-gray",
-  },
+/** Left border color for each event color */
+const borderColorStyles: Record<EventColor, string> = {
+  red: "bg-event-red-border",
+  orange: "bg-event-orange-border",
+  yellow: "bg-event-yellow-border",
+  green: "bg-event-green-border",
+  blue: "bg-event-blue-border",
+  purple: "bg-event-purple-border",
+  gray: "bg-event-gray-border",
+};
+
+/** Darker, more saturated color for event start time */
+const timeColorStyles: Record<EventColor, string> = {
+  red: "text-[#8C3030] dark:text-[#CC8585]",
+  orange: "text-[#8C4420] dark:text-[#CC9575]",
+  yellow: "text-[#8C6A1A] dark:text-[#CCAB65]",
+  green: "text-[#2A6640] dark:text-[#75A090]",
+  blue: "text-[#2A5080] dark:text-[#75A5CC]",
+  purple: "text-[#5A3080] dark:text-[#A585CC]",
+  gray: "text-[#505050] dark:text-[#AAAAAA]",
+};
+
+/** Light tinted title color — near-white with a hint of the event color */
+const titleColorStyles: Record<EventColor, string> = {
+  red: "text-[#5C1A1A] dark:text-[#F0C4C4]",
+  orange: "text-[#5C2E14] dark:text-[#F0D4BE]",
+  yellow: "text-[#5C4410] dark:text-[#F0E0A8]",
+  green: "text-[#1A4D26] dark:text-[#C4E8D0]",
+  blue: "text-[#1A3A5C] dark:text-[#C4DAF0]",
+  purple: "text-[#3D1F5C] dark:text-[#DCC8F0]",
+  gray: "text-[#3A3A3A] dark:text-[#D8D8D8]",
 };
 
 /**
@@ -74,19 +59,22 @@ function formatEventTime(date: Date): string {
 }
 
 /**
- * Timed event rendered as a colored bar (matching all-day style) in a month day cell.
- * Shows: [left border] [time] [title] — same visual treatment as all-day bars.
+ * Timed event in month view — transparent bg with colored dot, like Notion Calendar.
+ * Hover shows muted gray background.
  */
 export function MonthViewEventItem({
   event,
   isSelected,
+  isGhost,
   onClick,
   onContextMenu,
   onDragMouseDown,
   className,
 }: MonthViewEventItemProps) {
   const color = event.color ?? "blue";
-  const styles = itemColorStyles[color];
+  const borderColor = borderColorStyles[color];
+  const timeColor = timeColorStyles[color];
+  const titleColor = titleColorStyles[color];
   const eventIsPast = isPast(event.end);
 
   function handleClick(e: React.MouseEvent) {
@@ -121,47 +109,28 @@ export function MonthViewEventItem({
       onMouseDown={handleMouseDown}
       onKeyDown={handleKeyDown}
       className={cn(
-        "relative h-5 flex items-center overflow-hidden rounded-sm",
+        "h-5 flex items-center overflow-hidden rounded-sm",
         "cursor-pointer select-none",
+        "hover:bg-accent",
         "focus:outline-none focus-visible:outline-none",
-        isSelected && "z-20",
+        isSelected && "bg-accent z-20",
+        eventIsPast && "opacity-50",
+        isGhost && "opacity-30 pointer-events-none",
         className,
       )}
     >
-      {/* Solid background layer */}
-      <div className="absolute inset-0 rounded-sm bg-white dark:bg-[#191919]" />
-
-      {/* Colored background layer */}
+      {/* Colored left border */}
       <div
         className={cn(
-          "absolute inset-0 rounded-sm",
-          isSelected ? styles.border : cn(styles.bg, styles.bgHover),
-          eventIsPast && !isSelected && "opacity-60",
+          "w-[3px] self-stretch shrink-0 rounded-l-sm",
+          borderColor,
         )}
       />
 
-      {/* Left border accent */}
-      {!isSelected && (
-        <div
-          className={cn(
-            "absolute left-0 top-0 bottom-0 w-[3px] rounded-l-sm dark:bg-white dark:mix-blend-overlay",
-            styles.border,
-            eventIsPast && "opacity-60",
-          )}
-        />
-      )}
-
       {/* Time + Title */}
-      <span
-        className={cn(
-          "relative text-[0.6875rem] leading-tight truncate pl-1.5 pr-1",
-          isSelected
-            ? "text-white dark:text-white"
-            : cn(styles.text, "dark:text-white/80"),
-          eventIsPast && !isSelected && "opacity-60",
-        )}
-      >
-        {formatEventTime(event.start)} {event.title}
+      <span className="text-[0.6875rem] leading-tight truncate pl-1 pr-1">
+        <span className={timeColor}>{formatEventTime(event.start)}</span>{" "}
+        <span className={cn("font-bold", titleColor)}>{event.title}</span>
       </span>
     </div>
   );

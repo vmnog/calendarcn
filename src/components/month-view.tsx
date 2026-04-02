@@ -1,12 +1,16 @@
 "use client";
 
 import { useRef, useMemo, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import { startOfMonth } from "date-fns";
 
 import { cn } from "@/lib/utils";
 import { useMonthEventDrag } from "@/hooks/use-month-event-drag";
 import { generateMonthGrid } from "@/lib/event-utils";
+import { isMultiDayEvent } from "@/lib/event-utils";
 import { MonthViewGrid } from "./month-view-grid";
+import { MonthViewEventBar } from "./month-view-event-bar";
+import { MonthViewEventItem } from "./month-view-event-item";
 import { EventContextMenu } from "./event-context-menu";
 import { CalendarPopoverBoundaryProvider } from "./calendar-popover-context";
 import type { CalendarEvent, ViewSettings } from "./calendar-types";
@@ -26,6 +30,7 @@ export interface MonthViewProps {
   onBackgroundClick?: () => void;
   onEventChange?: (event: CalendarEvent) => void;
   onMoreClick?: (date: Date) => void;
+  onDayNumberClick?: (date: Date) => void;
   isSidebarOpen?: boolean;
   onDockToSidebar?: () => void;
   onClosePopover?: () => void;
@@ -47,6 +52,7 @@ export function MonthView({
   onBackgroundClick,
   onEventChange,
   onMoreClick,
+  onDayNumberClick,
   className,
 }: MonthViewProps) {
   const boundaryRef = useRef<HTMLDivElement | null>(null);
@@ -67,8 +73,8 @@ export function MonthView({
 
   const colCount = dayNames.length;
   const gridTemplateColumns = showWeekNumbers
-    ? `2rem repeat(${colCount}, 1fr)`
-    : `repeat(${colCount}, 1fr)`;
+    ? `2rem repeat(${colCount}, minmax(0, 1fr))`
+    : `repeat(${colCount}, minmax(0, 1fr))`;
 
   const { dragState, handleDragMouseDown } = useMonthEventDrag({
     gridRef,
@@ -79,8 +85,8 @@ export function MonthView({
     rowCount: weekRows.length,
   });
 
-  // Suppress unused variable warning — dragState will be consumed in a follow-up task
-  void dragState;
+  const isDragging = dragState?.isDragging ?? false;
+  const dragEventId = isDragging ? dragState?.eventId : undefined;
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, event: CalendarEvent) => {
@@ -123,7 +129,7 @@ export function MonthView({
           style={{ display: "grid", gridTemplateColumns }}
         >
           {showWeekNumbers && (
-            <div className="py-2 text-center text-[11px] italic text-muted-foreground">
+            <div className="py-2 text-center text-[11px] text-muted-foreground">
               w
             </div>
           )}
@@ -148,9 +154,13 @@ export function MonthView({
             onEventClick={onEventClick}
             onContextMenu={handleContextMenu}
             onMoreClick={onMoreClick}
+            onDayNumberClick={onDayNumberClick}
             onBackgroundClick={onBackgroundClick}
             onDragMouseDown={handleDragMouseDown}
             selectedEventId={selectedEventId}
+            dragEventId={dragEventId}
+            dragTargetDate={isDragging ? dragState?.targetDate : undefined}
+            dragEvent={isDragging ? dragState?.event : undefined}
             gridRef={gridRef}
           />
         </div>
@@ -164,6 +174,31 @@ export function MonthView({
             onEventChange={onEventChange}
           />
         )}
+
+        {/* Floating drag copy — portaled to body, follows cursor */}
+        {isDragging &&
+          dragState &&
+          createPortal(
+            <div
+              className="pointer-events-none fixed z-[9999] w-48 opacity-80 shadow-lg"
+              style={{
+                left: dragState.clientX - 96,
+                top: dragState.clientY - 10,
+              }}
+            >
+              {dragState.event.isAllDay || isMultiDayEvent(dragState.event) ? (
+                <MonthViewEventBar
+                  event={dragState.event}
+                  colSpan={1}
+                  roundedLeft
+                  roundedRight
+                />
+              ) : (
+                <MonthViewEventItem event={dragState.event} />
+              )}
+            </div>,
+            document.body,
+          )}
       </div>
     </CalendarPopoverBoundaryProvider>
   );

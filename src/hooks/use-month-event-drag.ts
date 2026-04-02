@@ -20,6 +20,10 @@ export interface MonthDragState {
   targetDate: Date;
   /** Whether the drag threshold has been met */
   isDragging: boolean;
+  /** Viewport X for fixed-position floating copy */
+  clientX: number;
+  /** Viewport Y for fixed-position floating copy */
+  clientY: number;
 }
 
 interface UseMonthEventDragOptions {
@@ -152,6 +156,8 @@ export function useMonthEventDrag({
         originalDate: drag.originalDate,
         targetDate,
         isDragging: true,
+        clientX: e.clientX,
+        clientY: e.clientY,
       });
     };
 
@@ -213,6 +219,8 @@ export function useMonthEventDrag({
         originalDate: event.start,
         targetDate: event.start,
         isDragging: false,
+        clientX: e.clientX,
+        clientY: e.clientY,
       });
 
       if (handleMouseMoveRef.current) {

@@ -395,8 +395,8 @@ const MONTH_DAY_HEADER_HEIGHT = 28;
 /** Minimum visible event slots per month cell (just "+N more" at smallest) */
 const MIN_MONTH_SLOTS = 1;
 
-/** Maximum visible event slots per month cell */
-const MAX_MONTH_SLOTS = 8;
+/** Maximum visible event slots per month cell (matches Notion Calendar) */
+const MAX_MONTH_SLOTS = 6;
 
 /**
  * One week row inside the month grid.
@@ -429,10 +429,17 @@ export type MonthCellSlot =
 
 /**
  * Fully resolved layout for a single day cell in the month grid.
+ *
+ * `barSlots` — spanning (multi-day/all-day) event bars and alignment spacers.
+ *              Rendered in a non-clipping container so bars can overflow
+ *              horizontally to span adjacent columns.
+ * `eventSlots` — timed single-day events and the "+N more" indicator.
+ *               Rendered in an overflow-hidden container.
  */
 export interface MonthDayCellLayout {
   date: Date;
-  slots: MonthCellSlot[];
+  barSlots: MonthCellSlot[];
+  eventSlots: MonthCellSlot[];
   totalEvents: number;
 }
 
@@ -606,7 +613,8 @@ export function calculateMonthCellLayout(
       const day = row.days[col];
       const key = startOfDay(day.date).toISOString();
 
-      const slots: MonthCellSlot[] = [];
+      const barSlots: MonthCellSlot[] = [];
+      const eventSlots: MonthCellSlot[] = [];
 
       // Count total events touching this cell
       let totalEvents = timedByCol[col].length;
@@ -618,14 +626,28 @@ export function calculateMonthCellLayout(
         }
       }
 
-      // Fill spanning event slots
+      // Find the highest slot index that has a spanning event covering this column.
+      // Only iterate up to that index so days without certain spanning events
+      // don't get unnecessary spacer gaps.
+      let maxSpanSlotIdx = -1;
       for (let slotIdx = 0; slotIdx < slotAssignments.length; slotIdx++) {
+        const hasEvent = slotAssignments[slotIdx].some(
+          (a) => col >= a.startCol && col <= a.endCol,
+        );
+        if (hasEvent) {
+          maxSpanSlotIdx = slotIdx;
+        }
+      }
+
+      // Fill bar slots — start cells get the full colSpan for visual spanning,
+      // continuation cells get placeholders to maintain vertical alignment.
+      for (let slotIdx = 0; slotIdx <= maxSpanSlotIdx; slotIdx++) {
         const assignment = slotAssignments[slotIdx].find(
           (a) => col >= a.startCol && col <= a.endCol,
         );
 
         if (!assignment) {
-          slots.push({ type: "spacer" });
+          barSlots.push({ type: "spacer" });
           continue;
         }
 
@@ -638,13 +660,17 @@ export function calculateMonthCellLayout(
 
         const roundedLeft =
           isStart && (isSameDay(assignment.event.start, day.date) || col === 0);
+
+        // For roundedRight, check the END column of the assignment (not the
+        // current col) so spanning bars rendered from the start cell get the
+        // correct rounding on their trailing edge.
+        const endDay = row.days[assignment.endCol].date;
         const roundedRight =
-          col === assignment.endCol &&
-          (evEnd <= addDays(startOfDay(day.date), 1) ||
-            col === row.days.length - 1);
+          evEnd <= addDays(startOfDay(endDay), 1) ||
+          assignment.endCol === row.days.length - 1;
 
         if (isStart) {
-          slots.push({
+          barSlots.push({
             type: "event-bar",
             event: assignment.event,
             colSpan,
@@ -653,44 +679,38 @@ export function calculateMonthCellLayout(
             roundedRight,
           });
         } else {
-          // Continuation cell — spacer so rendering skips it (bar rendered from isStart cell)
-          slots.push({ type: "spacer" });
+          // Continuation — invisible placeholder (bar rendered from start cell)
+          barSlots.push({ type: "spacer" });
         }
       }
 
       // Fill remaining slots with timed events.
-      // usedSlots includes bars AND spacers from spanning events — both consume
-      // visual space, so remaining room is maxSlots minus everything already placed.
-      const usedSlots = slots.length;
+      const usedSlots = barSlots.length;
       const remainingSlots = maxSlots - usedSlots;
       const timedEvents = timedByCol[col];
 
-      // Reserve the LAST slot for "+N more" whenever timed events fill all
-      // remaining space.  Notion always keeps breathing room at the bottom —
-      // only skip the "+N more" row when events genuinely under-fill the cell.
       if (timedEvents.length < remainingSlots) {
-        // Room to spare — render all timed events without an overflow row
         for (const ev of timedEvents) {
-          slots.push({ type: "event-item", event: ev });
+          eventSlots.push({ type: "event-item", event: ev });
         }
       } else if (timedEvents.length === 0) {
         // Nothing to render
       } else {
-        // Events fill or exceed remaining space — show N-1 events + "+N more"
         const availableForTimed = Math.max(0, remainingSlots - 1);
         const timedToShow = timedEvents.slice(0, availableForTimed);
         for (const ev of timedToShow) {
-          slots.push({ type: "event-item", event: ev });
+          eventSlots.push({ type: "event-item", event: ev });
         }
         const hiddenCount = timedEvents.length - timedToShow.length;
         if (hiddenCount > 0) {
-          slots.push({ type: "more", count: hiddenCount });
+          eventSlots.push({ type: "more", count: hiddenCount });
         }
       }
 
       result.set(key, {
         date: day.date,
-        slots,
+        barSlots,
+        eventSlots,
         totalEvents,
       });
     }

@@ -12,6 +12,8 @@ import {
   addDays,
   addMonths,
   addWeeks,
+  eachDayOfInterval,
+  endOfMonth,
   format,
   startOfDay,
   startOfMonth,
@@ -188,6 +190,14 @@ function PageContent() {
   const [visibleDays, setVisibleDays] = React.useState<Date[]>(() =>
     getVisibleDays(currentDate, view),
   );
+
+  // Sync sidebar mini-calendar when in month view
+  React.useEffect(() => {
+    if (view !== "month") return;
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    setVisibleDays(eachDayOfInterval({ start: monthStart, end: monthEnd }));
+  }, [view, currentDate]);
 
   const headerDate =
     view === "month" ? currentDate : (visibleDays[0] ?? currentDate);
@@ -470,6 +480,7 @@ function PageContent() {
               onBackgroundClick={() => setSelectedEventId(null)}
               onEventChange={handleEventChange}
               onMoreClick={handleMoreClick}
+              onDayNumberClick={handleMoreClick}
               isSidebarOpen={rightSidebarOpen}
               onDockToSidebar={() => {
                 if (!rightSidebarOpen) toggleSidebar();

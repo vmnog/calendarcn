@@ -20,9 +20,16 @@ export interface MonthViewGridProps {
   onEventClick?: (event: CalendarEvent) => void;
   onContextMenu?: (e: React.MouseEvent, event: CalendarEvent) => void;
   onMoreClick?: (date: Date) => void;
+  onDayNumberClick?: (date: Date) => void;
   onBackgroundClick?: () => void;
   onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
   selectedEventId?: string;
+  /** ID of the event currently being dragged (renders as ghost) */
+  dragEventId?: string;
+  /** Target date for drag placeholder */
+  dragTargetDate?: Date;
+  /** The event being dragged (for placeholder rendering) */
+  dragEvent?: CalendarEvent;
   /** Forwarded ref for the grid container (used by drag hook) */
   gridRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
@@ -37,9 +44,13 @@ export function MonthViewGrid({
   onEventClick,
   onContextMenu,
   onMoreClick,
+  onDayNumberClick,
   onBackgroundClick,
   onDragMouseDown,
   selectedEventId,
+  dragEventId,
+  dragTargetDate,
+  dragEvent,
   gridRef,
   className,
 }: MonthViewGridProps) {
@@ -89,13 +100,13 @@ export function MonthViewGrid({
             );
 
         const weekNumberCol = showWeekNumbers ? "2rem " : "";
-        const dayCols = `repeat(${columnCount}, 1fr)`;
+        const dayCols = `repeat(${columnCount}, minmax(0, 1fr))`;
         const gridTemplateColumns = `${weekNumberCol}${dayCols}`;
 
         return (
           <div
             key={weekRow.weekNumber}
-            className="grid min-h-0 overflow-hidden"
+            className="grid min-h-0"
             style={{ gridTemplateColumns }}
           >
             {showWeekNumbers && (
@@ -113,14 +124,19 @@ export function MonthViewGrid({
                   key={key}
                   date={day.date}
                   currentMonth={currentMonth}
-                  slots={layout?.slots ?? []}
+                  barSlots={layout?.barSlots ?? []}
+                  eventSlots={layout?.eventSlots ?? []}
                   totalEvents={layout?.totalEvents ?? 0}
                   onEventClick={onEventClick}
                   onContextMenu={onContextMenu}
                   onMoreClick={onMoreClick}
+                  onDayNumberClick={onDayNumberClick}
                   onBackgroundClick={onBackgroundClick}
                   onDragMouseDown={onDragMouseDown}
                   selectedEventId={selectedEventId}
+                  dragEventId={dragEventId}
+                  dragTargetDate={dragTargetDate}
+                  dragEvent={dragEvent}
                 />
               );
             })}
