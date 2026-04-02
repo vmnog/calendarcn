@@ -23,9 +23,16 @@ export interface MonthViewGridProps {
   onDayNumberClick?: (date: Date) => void;
   onBackgroundClick?: () => void;
   onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  onResizeMouseDown?: (
+    e: React.MouseEvent,
+    event: CalendarEvent,
+    edge: "left" | "right",
+  ) => void;
   selectedEventId?: string;
   /** ID of the event currently being dragged (renders as ghost) */
   dragEventId?: string;
+  /** ID of the event currently being resized (renders as selected) */
+  resizeEventId?: string;
   /** Target date for drag placeholder */
   dragTargetDate?: Date;
   /** The event being dragged (for placeholder rendering) */
@@ -51,8 +58,10 @@ export function MonthViewGrid({
   onDayNumberClick,
   onBackgroundClick,
   onDragMouseDown,
+  onResizeMouseDown,
   selectedEventId,
   dragEventId,
+  resizeEventId,
   dragTargetDate,
   dragEvent,
   isSidebarOpen,
@@ -141,8 +150,10 @@ export function MonthViewGrid({
                   onDayNumberClick={onDayNumberClick}
                   onBackgroundClick={onBackgroundClick}
                   onDragMouseDown={onDragMouseDown}
+                  onResizeMouseDown={onResizeMouseDown}
                   selectedEventId={selectedEventId}
                   dragEventId={dragEventId}
+                  resizeEventId={resizeEventId}
                   dragTargetDate={dragTargetDate}
                   dragEvent={dragEvent}
                   isSidebarOpen={isSidebarOpen}

@@ -6,6 +6,7 @@ import { startOfMonth } from "date-fns";
 
 import { cn } from "@/lib/utils";
 import { useMonthEventDrag } from "@/hooks/use-month-event-drag";
+import { useMonthEventResize } from "@/hooks/use-month-event-resize";
 import { generateMonthGrid } from "@/lib/event-utils";
 import { isMultiDayEvent } from "@/lib/event-utils";
 import { MonthViewGrid } from "./month-view-grid";
@@ -88,8 +89,34 @@ export function MonthView({
     rowCount: weekRows.length,
   });
 
+  const { resizeState, handleResizeMouseDown } = useMonthEventResize({
+    gridRef,
+    events,
+    onEventChange,
+  });
+
   const isDragging = dragState?.isDragging ?? false;
   const dragEventId = isDragging ? dragState?.eventId : undefined;
+  const isResizing = resizeState?.isResizing ?? false;
+  const resizeEventId = isResizing ? resizeState?.eventId : undefined;
+
+  // During resize, substitute the resized event's dates so the grid
+  // recalculates layout in real-time (live preview with reflow).
+  // Keep isAllDay true so the event stays rendered as a bar even when
+  // resized down to a single day.
+  const displayEvents = useMemo(() => {
+    if (!isResizing || !resizeState) return events;
+    return events.map((ev) =>
+      ev.id === resizeState.eventId
+        ? {
+            ...ev,
+            start: resizeState.currentStart,
+            end: resizeState.currentEnd,
+            isAllDay: true,
+          }
+        : ev,
+    );
+  }, [events, isResizing, resizeState]);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, event: CalendarEvent) => {
@@ -150,7 +177,7 @@ export function MonthView({
         <div className="flex-1 overflow-hidden">
           <MonthViewGrid
             weekRows={weekRows}
-            events={events}
+            events={displayEvents}
             currentMonth={startOfMonth(currentDate)}
             showWeekNumbers={showWeekNumbers}
             showWeekends={showWeekends}
@@ -160,8 +187,10 @@ export function MonthView({
             onDayNumberClick={onDayNumberClick}
             onBackgroundClick={onBackgroundClick}
             onDragMouseDown={handleDragMouseDown}
+            onResizeMouseDown={handleResizeMouseDown}
             selectedEventId={selectedEventId}
             dragEventId={dragEventId}
+            resizeEventId={resizeEventId}
             dragTargetDate={isDragging ? dragState?.targetDate : undefined}
             dragEvent={isDragging ? dragState?.event : undefined}
             isSidebarOpen={isSidebarOpen}

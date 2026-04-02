@@ -4,6 +4,9 @@ import { isPast } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 
+/** Width in pixels of the resize hotzone at each edge */
+const RESIZE_HOTZONE_PX = 6;
+
 export interface MonthViewEventBarProps {
   event: CalendarEvent;
   colSpan: number;
@@ -14,6 +17,11 @@ export interface MonthViewEventBarProps {
   onClick?: (event: CalendarEvent) => void;
   onContextMenu?: (e: React.MouseEvent, event: CalendarEvent) => void;
   onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  onResizeMouseDown?: (
+    e: React.MouseEvent,
+    event: CalendarEvent,
+    edge: "left" | "right",
+  ) => void;
   className?: string;
 }
 
@@ -74,6 +82,7 @@ export function MonthViewEventBar({
   onClick,
   onContextMenu,
   onDragMouseDown,
+  onResizeMouseDown,
   className,
 }: MonthViewEventBarProps) {
   const color = event.color ?? "blue";
@@ -91,9 +100,44 @@ export function MonthViewEventBar({
     onContextMenu?.(e, event);
   }
 
+  function handleBarMouseMove(e: React.MouseEvent) {
+    if (!onResizeMouseDown) return;
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const width = rect.width;
+
+    if (roundedLeft && offsetX <= RESIZE_HOTZONE_PX) {
+      target.style.cursor = "ew-resize";
+      return;
+    }
+    if (roundedRight && offsetX >= width - RESIZE_HOTZONE_PX) {
+      target.style.cursor = "ew-resize";
+      return;
+    }
+    target.style.cursor = "";
+  }
+
   function handleMouseDown(e: React.MouseEvent) {
     if (e.button !== 0) return;
     e.stopPropagation();
+
+    if (onResizeMouseDown) {
+      const target = e.currentTarget as HTMLElement;
+      const rect = target.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const width = rect.width;
+
+      if (roundedLeft && offsetX <= RESIZE_HOTZONE_PX) {
+        onResizeMouseDown(e, event, "left");
+        return;
+      }
+      if (roundedRight && offsetX >= width - RESIZE_HOTZONE_PX) {
+        onResizeMouseDown(e, event, "right");
+        return;
+      }
+    }
+
     onDragMouseDown?.(e, event);
   }
 
@@ -110,6 +154,7 @@ export function MonthViewEventBar({
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onMouseDown={handleMouseDown}
+      onMouseMove={handleBarMouseMove}
       onKeyDown={handleKeyDown}
       className={cn(
         "relative h-5 flex items-center overflow-hidden",

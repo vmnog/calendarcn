@@ -30,8 +30,15 @@ export interface MonthViewDayCellProps {
   onDayNumberClick?: (date: Date) => void;
   onBackgroundClick?: () => void;
   onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  onResizeMouseDown?: (
+    e: React.MouseEvent,
+    event: CalendarEvent,
+    edge: "left" | "right",
+  ) => void;
   selectedEventId?: string;
   dragEventId?: string;
+  /** ID of the event currently being resized (renders as selected) */
+  resizeEventId?: string;
   dragTargetDate?: Date;
   dragEvent?: CalendarEvent;
   isSidebarOpen?: boolean;
@@ -68,8 +75,10 @@ export function MonthViewDayCell({
   onDayNumberClick,
   onBackgroundClick,
   onDragMouseDown,
+  onResizeMouseDown,
   selectedEventId,
   dragEventId,
+  resizeEventId,
   dragTargetDate,
   dragEvent,
   isSidebarOpen,
@@ -88,7 +97,7 @@ export function MonthViewDayCell({
   // For multi-day bars that span across week rows, only show the popover
   // on the cell matching the event's true start date to avoid duplicates.
   const selectedCellEvent =
-    selectedEventId && isSidebarOpen === false && !dragEventId
+    selectedEventId && isSidebarOpen === false && !dragEventId && !resizeEventId
       ? (() => {
           for (const slot of barSlots) {
             if (
@@ -203,11 +212,15 @@ export function MonthViewDayCell({
                         colSpan={slot.colSpan}
                         roundedLeft={slot.roundedLeft}
                         roundedRight={slot.roundedRight}
-                        isSelected={selectedEventId === slot.event.id}
+                        isSelected={
+                          selectedEventId === slot.event.id ||
+                          resizeEventId === slot.event.id
+                        }
                         isGhost={dragEventId === slot.event.id}
                         onClick={onEventClick}
                         onContextMenu={onContextMenu}
                         onDragMouseDown={onDragMouseDown}
+                        onResizeMouseDown={onResizeMouseDown}
                       />
                     </div>
                   );
@@ -224,6 +237,7 @@ export function MonthViewDayCell({
                       onClick={onEventClick}
                       onContextMenu={onContextMenu}
                       onDragMouseDown={onDragMouseDown}
+                      onResizeMouseDown={onResizeMouseDown}
                     />
                   </div>
                 );
