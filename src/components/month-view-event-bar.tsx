@@ -113,7 +113,7 @@ export function MonthViewEventBar({
       onKeyDown={handleKeyDown}
       className={cn(
         "relative h-5 flex items-center overflow-hidden",
-        "cursor-pointer select-none",
+        "cursor-default select-none",
         "focus:outline-none focus-visible:outline-none",
         roundedLeft && "rounded-l-sm",
         roundedRight && "rounded-r-sm",

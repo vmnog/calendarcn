@@ -53,6 +53,9 @@ export function MonthView({
   onEventChange,
   onMoreClick,
   onDayNumberClick,
+  isSidebarOpen,
+  onDockToSidebar,
+  onClosePopover,
   className,
 }: MonthViewProps) {
   const boundaryRef = useRef<HTMLDivElement | null>(null);
@@ -161,6 +164,10 @@ export function MonthView({
             dragEventId={dragEventId}
             dragTargetDate={isDragging ? dragState?.targetDate : undefined}
             dragEvent={isDragging ? dragState?.event : undefined}
+            isSidebarOpen={isSidebarOpen}
+            onEventChange={onEventChange}
+            onDockToSidebar={onDockToSidebar}
+            onClosePopover={onClosePopover}
             gridRef={gridRef}
           />
         </div>

@@ -187,10 +187,26 @@ export function useMonthEventDrag({
             });
           }
 
+          // Select the event after drop so the detail popover opens
+          onEventClickRef.current?.(drag.event);
+
           return null;
         });
       } else {
+        // No drag — select the event on mouseup (not mousedown) so the
+        // popover doesn't flash while the user is still holding the mouse.
+        onEventClickRef.current?.(drag.event);
         setDragState(null);
+
+        // Swallow the subsequent click event so the event item's onClick
+        // doesn't double-fire selection.
+        window.addEventListener(
+          "click",
+          (ev) => {
+            ev.stopPropagation();
+          },
+          { capture: true, once: true },
+        );
       }
 
       dragRef.current = null;
@@ -200,9 +216,6 @@ export function useMonthEventDrag({
   const handleDragMouseDown = useCallback(
     (e: React.MouseEvent, event: CalendarEvent) => {
       if (e.button !== 0) return;
-
-      // Select the event immediately
-      onEventClickRef.current?.(event);
 
       dragRef.current = {
         eventId: event.id,

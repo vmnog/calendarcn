@@ -110,7 +110,7 @@ export function MonthViewEventItem({
       onKeyDown={handleKeyDown}
       className={cn(
         "h-5 flex items-center overflow-hidden rounded-sm",
-        "cursor-pointer select-none",
+        "cursor-default select-none",
         "hover:bg-accent",
         "focus:outline-none focus-visible:outline-none",
         isSelected && "bg-accent z-20",

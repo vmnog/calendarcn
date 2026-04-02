@@ -355,7 +355,7 @@ function PageContent() {
         open={leftSidebarOpen}
         onDateSelect={goToDateWeek}
         currentDate={currentDate}
-        visibleDays={visibleDays}
+        visibleDays={view === "month" ? [] : visibleDays}
       />
       <SidebarInset className="flex flex-col overflow-hidden">
         <header className="bg-background sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2">

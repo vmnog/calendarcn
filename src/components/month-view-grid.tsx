@@ -30,6 +30,10 @@ export interface MonthViewGridProps {
   dragTargetDate?: Date;
   /** The event being dragged (for placeholder rendering) */
   dragEvent?: CalendarEvent;
+  isSidebarOpen?: boolean;
+  onEventChange?: (event: CalendarEvent) => void;
+  onDockToSidebar?: () => void;
+  onClosePopover?: () => void;
   /** Forwarded ref for the grid container (used by drag hook) */
   gridRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
@@ -51,6 +55,10 @@ export function MonthViewGrid({
   dragEventId,
   dragTargetDate,
   dragEvent,
+  isSidebarOpen,
+  onEventChange,
+  onDockToSidebar,
+  onClosePopover,
   gridRef,
   className,
 }: MonthViewGridProps) {
@@ -137,6 +145,10 @@ export function MonthViewGrid({
                   dragEventId={dragEventId}
                   dragTargetDate={dragTargetDate}
                   dragEvent={dragEvent}
+                  isSidebarOpen={isSidebarOpen}
+                  onEventChange={onEventChange}
+                  onDockToSidebar={onDockToSidebar}
+                  onClosePopover={onClosePopover}
                 />
               );
             })}

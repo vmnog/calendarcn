@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 import type { MonthCellSlot } from "@/lib/event-utils";
 import { isMultiDayEvent } from "@/lib/event-utils";
+import { Popover, PopoverAnchor } from "@/components/ui/popover";
+import { EventDetailPopover } from "./event-detail-popover";
 import { MonthViewEventItem } from "./month-view-event-item";
 import { MonthViewEventBar } from "./month-view-event-bar";
 
@@ -32,6 +34,10 @@ export interface MonthViewDayCellProps {
   dragEventId?: string;
   dragTargetDate?: Date;
   dragEvent?: CalendarEvent;
+  isSidebarOpen?: boolean;
+  onEventChange?: (event: CalendarEvent) => void;
+  onDockToSidebar?: () => void;
+  onClosePopover?: () => void;
   className?: string;
 }
 
@@ -66,6 +72,10 @@ export function MonthViewDayCell({
   dragEventId,
   dragTargetDate,
   dragEvent,
+  isSidebarOpen,
+  onEventChange,
+  onDockToSidebar,
+  onClosePopover,
   className,
 }: MonthViewDayCellProps) {
   const dayNumber = date.getDate();
@@ -73,6 +83,30 @@ export function MonthViewDayCell({
   const isAdjacentMonth = !isSameMonth(date, currentMonth);
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
   const isFirstOfMonth = dayNumber === 1;
+
+  // Find the selected event in this cell's slots (for cell-level popover).
+  // For multi-day bars that span across week rows, only show the popover
+  // on the cell matching the event's true start date to avoid duplicates.
+  const selectedCellEvent =
+    selectedEventId && isSidebarOpen === false && !dragEventId
+      ? (() => {
+          for (const slot of barSlots) {
+            if (
+              slot.type === "event-bar" &&
+              slot.isStart &&
+              slot.event.id === selectedEventId &&
+              isSameDay(startOfDay(slot.event.start), date)
+            )
+              return slot.event;
+          }
+          for (const slot of eventSlots) {
+            if (slot.type === "event-item" && slot.event.id === selectedEventId)
+              return slot.event;
+          }
+          return null;
+        })()
+      : null;
+
   const showPlaceholder =
     dragEventId &&
     dragTargetDate &&
@@ -106,7 +140,7 @@ export function MonthViewDayCell({
     onBackgroundClick?.();
   }
 
-  return (
+  const cellContent = (
     <div
       data-date={date.toISOString()}
       onClick={handleBackgroundClick}
@@ -117,22 +151,12 @@ export function MonthViewDayCell({
       )}
     >
       {/* Day number — right-aligned like Notion Calendar */}
-      <div className="flex justify-end items-center gap-1 px-2 pt-0.5 pb-0.5">
-        {isFirstOfMonth && !todayDate && (
-          <span
-            className={cn(
-              "text-[13px] font-semibold leading-none",
-              isAdjacentMonth ? "text-muted-foreground" : "text-foreground",
-            )}
-          >
-            {getMonthName(date)}
-          </span>
-        )}
+      <div className="flex justify-end items-center px-2 pt-0.5 pb-0.5">
         <button
           type="button"
           onClick={() => onDayNumberClick?.(date)}
           className={cn(
-            "flex h-6 min-w-6 items-center justify-center rounded-sm px-1 text-[13px] font-medium leading-none cursor-pointer select-none",
+            "flex h-6 min-w-6 items-center justify-center rounded-sm px-1 text-[13px] font-medium leading-none cursor-pointer select-none gap-1",
             todayDate
               ? "bg-primary text-primary-foreground hover:bg-primary/80"
               : cn(
@@ -141,7 +165,9 @@ export function MonthViewDayCell({
                 ),
           )}
         >
-          {isFirstOfMonth && todayDate && `${getMonthName(date)} `}
+          {isFirstOfMonth && (
+            <span className="font-semibold">{getMonthName(date)}</span>
+          )}
           {dayNumber}
         </button>
       </div>
@@ -166,7 +192,7 @@ export function MonthViewDayCell({
             if (slot.type === "event-bar") {
               if (slot.isStart) {
                 if (slot.colSpan > 1) {
-                  return (
+                  const barEl = (
                     <div
                       key={`${slot.event.id}-${index}`}
                       className="relative pl-0.5 pr-0.5"
@@ -185,6 +211,7 @@ export function MonthViewDayCell({
                       />
                     </div>
                   );
+                  return barEl;
                 }
                 return (
                   <div key={`${slot.event.id}-${index}`} className="px-0.5">
@@ -229,7 +256,7 @@ export function MonthViewDayCell({
         )}
         {eventSlots.map((slot, index) => {
           if (slot.type === "event-item") {
-            return (
+            const itemEl = (
               <MonthViewEventItem
                 key={`${slot.event.id}-${index}`}
                 event={slot.event}
@@ -240,6 +267,7 @@ export function MonthViewDayCell({
                 onDragMouseDown={onDragMouseDown}
               />
             );
+            return itemEl;
           }
 
           if (slot.type === "more") {
@@ -258,5 +286,26 @@ export function MonthViewDayCell({
         })}
       </div>
     </div>
+  );
+
+  if (!selectedCellEvent) return cellContent;
+
+  return (
+    <Popover
+      open
+      onOpenChange={(open) => {
+        if (!open) onClosePopover?.();
+      }}
+    >
+      <PopoverAnchor asChild>{cellContent}</PopoverAnchor>
+      <EventDetailPopover
+        event={selectedCellEvent}
+        onEventChange={onEventChange}
+        onClose={() => onClosePopover?.()}
+        onDockToSidebar={() => onDockToSidebar?.()}
+        side="right"
+        align="start"
+      />
+    </Popover>
   );
 }
