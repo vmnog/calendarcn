@@ -386,7 +386,11 @@ export function WeekView({
               </div>
               <div className="flex-1 overflow-hidden">
                 <div style={scrollStyle}>
-                  <CalendarDayHeaders days={bufferedDays} standalone />
+                  <CalendarDayHeaders
+                    days={bufferedDays}
+                    standalone
+                    highlightedDate={highlightedDate}
+                  />
                 </div>
               </div>
             </div>
@@ -411,6 +415,7 @@ export function WeekView({
               visibleStartIndex={dynamicBuffer}
               visibleCount={VISIBLE_DAYS}
               dayColumnWidth={dayColumnWidth}
+              highlightedDate={highlightedDate}
             />
           </div>
         </div>

@@ -25,6 +25,22 @@ export function DatePicker({
   // Track previous first visible day to determine scroll direction
   const prevFirstDayRef = React.useRef<Date | null>(null);
 
+  // Sync displayed month from currentDate when visibleDays is empty
+  // (e.g., month view where we don't highlight individual days)
+  React.useEffect(() => {
+    if (visibleDays && visibleDays.length > 0) return;
+    if (!currentDate) return;
+    setDisplayedMonth((prev) => {
+      if (
+        prev.getMonth() === currentDate.getMonth() &&
+        prev.getFullYear() === currentDate.getFullYear()
+      ) {
+        return prev;
+      }
+      return currentDate;
+    });
+  }, [currentDate, visibleDays]);
+
   // Auto-navigate datepicker month so highlighted days stay visible
   // Scrolling forward → keep last visible day's month shown
   // Scrolling backward → keep first visible day's month shown

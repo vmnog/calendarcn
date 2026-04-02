@@ -36,6 +36,7 @@ export function WeekViewAllDayRow({
   visibleStartIndex,
   visibleCount,
   dayColumnWidth,
+  highlightedDate,
   className,
 }: WeekViewAllDayRowProps) {
   const allEventRows = calculateAllDayEventRows(allDayEvents, days);
@@ -91,6 +92,9 @@ export function WeekViewAllDayRow({
                     className={cn(
                       "border-border border-l first:border-l-0 h-full",
                       isWeekend && "bg-calendar-weekend",
+                      highlightedDate &&
+                        isSameDay(day.date, highlightedDate) &&
+                        "column-highlight",
                     )}
                   />
                 );

@@ -76,6 +76,8 @@ export interface WeekViewDayColumnsProps {
   days: WeekDay[];
   /** When true, renders without the timezone/grid wrapper (used in scroll container) */
   standalone?: boolean;
+  /** Date to highlight with a temporary background animation */
+  highlightedDate?: Date | null;
   /** Optional className */
   className?: string;
 }
@@ -204,6 +206,8 @@ export interface WeekViewAllDayRowProps {
   visibleCount?: number;
   /** Width of a single day column in pixels (for floating drag copy sizing) */
   dayColumnWidth?: number;
+  /** Date to highlight with a temporary background animation */
+  highlightedDate?: Date | null;
   /** Optional className */
   className?: string;
 }

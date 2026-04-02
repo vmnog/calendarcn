@@ -232,7 +232,7 @@ html.dark,
 
 @keyframes column-highlight-fade {
   from {
-    background-color: oklch(0.623 0.214 259.1 / 0.08);
+    background-color: #602c2b;
   }
   to {
     background-color: transparent;
