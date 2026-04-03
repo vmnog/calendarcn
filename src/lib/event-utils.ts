@@ -484,6 +484,31 @@ export function generateMonthGrid(
 }
 
 /**
+ * Generates a single MonthWeekRow for the week containing the given date.
+ * Used by vertical scroll to extend the buffer one row at a time.
+ */
+export function generateWeekRow(
+  date: Date,
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 0,
+): MonthWeekRow {
+  const weekStart = startOfWeek(date, { weekStartsOn });
+  const weekEnd = endOfWeek(weekStart, { weekStartsOn });
+  const daysInWeek = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  const days: WeekDay[] = daysInWeek.map((day) => ({
+    date: day,
+    dayName: format(day, "EEE"),
+    dayNumber: day.getDate(),
+    isToday: isToday(day),
+  }));
+
+  return {
+    weekNumber: getWeek(weekStart, { weekStartsOn }),
+    days,
+  };
+}
+
+/**
  * Returns the number of visible event slots for a month cell given its
  * pixel height.
  *
