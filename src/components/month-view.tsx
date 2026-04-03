@@ -120,20 +120,48 @@ export function MonthView({
     return () => observer.disconnect();
   }, [visibleRowCount]);
 
+  const scrollNavigatedRef = useRef(false);
+
   const handleScrollNavigate = useCallback(
     (rowsDelta: number) => {
+      scrollNavigatedRef.current = true;
       const newDate = addWeeks(currentDate, rowsDelta);
       onDateChange?.(newDate);
     },
     [currentDate, onDateChange],
   );
 
-  const { scrollOffset, slideOffset, isAnimating } = useVerticalScroll({
-    containerRef: scrollContainerRef,
-    rowHeight,
-    onNavigate: handleScrollNavigate,
-    disabled: isDragging || isResizing,
-  });
+  const { scrollOffset, slideOffset, isAnimating, triggerSlideAnimation } =
+    useVerticalScroll({
+      containerRef: scrollContainerRef,
+      rowHeight,
+      onNavigate: handleScrollNavigate,
+      disabled: isDragging || isResizing,
+    });
+
+  // Detect external currentDate changes (button/keyboard nav) and trigger slide animation
+  const prevDateRef = useRef(currentDate);
+  useEffect(() => {
+    if (scrollNavigatedRef.current) {
+      scrollNavigatedRef.current = false;
+      prevDateRef.current = currentDate;
+      return;
+    }
+
+    const prevDate = prevDateRef.current;
+    prevDateRef.current = currentDate;
+
+    if (prevDate.getTime() === currentDate.getTime()) return;
+
+    // Calculate how many weeks changed
+    const weeksDelta = Math.round(
+      (currentDate.getTime() - prevDate.getTime()) / (7 * 24 * 60 * 60 * 1000),
+    );
+
+    if (weeksDelta !== 0) {
+      triggerSlideAnimation(weeksDelta);
+    }
+  }, [currentDate, triggerSlideAnimation]);
 
   // Compute buffer counts from scroll offset (no state needed)
   const bufferAbove =
