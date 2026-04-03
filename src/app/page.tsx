@@ -479,6 +479,7 @@ function PageContent() {
               selectedEventId={selectedEvent?.id}
               onBackgroundClick={() => setSelectedEventId(null)}
               onEventChange={handleEventChange}
+              onDateChange={goToDate}
               onMoreClick={handleMoreClick}
               onDayNumberClick={handleMoreClick}
               isSidebarOpen={rightSidebarOpen}

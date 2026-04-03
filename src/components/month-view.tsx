@@ -1,13 +1,14 @@
 "use client";
 
-import { useRef, useMemo, useCallback, useState } from "react";
+import { useRef, useMemo, useCallback, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { startOfMonth } from "date-fns";
+import { addWeeks, startOfMonth } from "date-fns";
 
 import { cn } from "@/lib/utils";
 import { useMonthEventDrag } from "@/hooks/use-month-event-drag";
 import { useMonthEventResize } from "@/hooks/use-month-event-resize";
-import { generateMonthGrid } from "@/lib/event-utils";
+import { useVerticalScroll } from "@/hooks/use-vertical-scroll";
+import { generateMonthGrid, generateWeekRow } from "@/lib/event-utils";
 import { isMultiDayEvent } from "@/lib/event-utils";
 import { MonthViewGrid } from "./month-view-grid";
 import { MonthViewEventBar } from "./month-view-event-bar";
@@ -15,6 +16,7 @@ import { MonthViewEventItem } from "./month-view-event-item";
 import { EventContextMenu } from "./event-context-menu";
 import { CalendarPopoverBoundaryProvider } from "./calendar-popover-context";
 import type { CalendarEvent, ViewSettings } from "./calendar-types";
+import type { MonthWeekRow } from "@/lib/event-utils";
 
 /** Day name labels for full weeks (Sun–Sat) */
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -30,6 +32,7 @@ export interface MonthViewProps {
   selectedEventId?: string;
   onBackgroundClick?: () => void;
   onEventChange?: (event: CalendarEvent) => void;
+  onDateChange?: (date: Date) => void;
   onMoreClick?: (date: Date) => void;
   onDayNumberClick?: (date: Date) => void;
   isSidebarOpen?: boolean;
@@ -52,6 +55,7 @@ export function MonthView({
   selectedEventId,
   onBackgroundClick,
   onEventChange,
+  onDateChange,
   onMoreClick,
   onDayNumberClick,
   isSidebarOpen,
@@ -99,6 +103,72 @@ export function MonthView({
   const dragEventId = isDragging ? dragState?.eventId : undefined;
   const isResizing = resizeState?.isResizing ?? false;
   const resizeEventId = isResizing ? resizeState?.eventId : undefined;
+
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const visibleRowCount = weekRows.length;
+
+  const [rowHeight, setRowHeight] = useState(0);
+
+  // Measure row height from container
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el || visibleRowCount === 0) return;
+    const observer = new ResizeObserver(() => {
+      setRowHeight(el.clientHeight / visibleRowCount);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visibleRowCount]);
+
+  const handleScrollNavigate = useCallback(
+    (rowsDelta: number) => {
+      const newDate = addWeeks(currentDate, rowsDelta);
+      onDateChange?.(newDate);
+    },
+    [currentDate, onDateChange],
+  );
+
+  const { scrollOffset, slideOffset, isAnimating } = useVerticalScroll({
+    containerRef: scrollContainerRef,
+    rowHeight,
+    onNavigate: handleScrollNavigate,
+    disabled: isDragging || isResizing,
+  });
+
+  // Compute buffer counts from scroll offset (no state needed)
+  const bufferAbove =
+    rowHeight > 0 && scrollOffset < 0
+      ? Math.ceil(Math.abs(scrollOffset) / rowHeight) + 2
+      : 0;
+  const bufferBelow =
+    rowHeight > 0 && scrollOffset > 0
+      ? Math.ceil(scrollOffset / rowHeight) + 2
+      : 0;
+
+  // Build buffered week rows
+  const bufferedWeekRows = useMemo(() => {
+    const rows: MonthWeekRow[] = [];
+    if (bufferAbove > 0 && weekRows.length > 0) {
+      const firstDate = weekRows[0].days[0].date;
+      for (let i = bufferAbove; i > 0; i--) {
+        rows.push(generateWeekRow(addWeeks(firstDate, -i)));
+      }
+    }
+    rows.push(...weekRows);
+    if (bufferBelow > 0 && weekRows.length > 0) {
+      const lastDate = weekRows[weekRows.length - 1].days[0].date;
+      for (let i = 1; i <= bufferBelow; i++) {
+        rows.push(generateWeekRow(addWeeks(lastDate, i)));
+      }
+    }
+    return rows;
+  }, [weekRows, bufferAbove, bufferBelow]);
+
+  const scrollTransformY = scrollOffset + slideOffset;
+  const scrollStyle: React.CSSProperties = {
+    transform: `translateY(${scrollTransformY}px)`,
+    transition: isAnimating ? "transform 200ms ease-out" : undefined,
+  };
 
   // During resize, substitute the resized event's dates so the grid
   // recalculates layout in real-time (live preview with reflow).
@@ -174,9 +244,9 @@ export function MonthView({
         </div>
 
         {/* Month grid — fills remaining space */}
-        <div className="flex-1 overflow-hidden">
+        <div ref={scrollContainerRef} className="flex-1 overflow-hidden">
           <MonthViewGrid
-            weekRows={weekRows}
+            weekRows={bufferedWeekRows}
             events={displayEvents}
             currentMonth={startOfMonth(currentDate)}
             showWeekNumbers={showWeekNumbers}
@@ -197,6 +267,9 @@ export function MonthView({
             onEventChange={onEventChange}
             onDockToSidebar={onDockToSidebar}
             onClosePopover={onClosePopover}
+            visibleRowCount={visibleRowCount}
+            bufferAbove={bufferAbove}
+            scrollStyle={scrollStyle}
             gridRef={gridRef}
           />
         </div>
