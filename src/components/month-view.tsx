@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useMonthEventDrag } from "@/hooks/use-month-event-drag";
 import { useMonthEventResize } from "@/hooks/use-month-event-resize";
 import { useVerticalScroll } from "@/hooks/use-vertical-scroll";
-import { generateMonthGrid, generateWeekRow } from "@/lib/event-utils";
+import { generateConsecutiveWeeks, generateWeekRow } from "@/lib/event-utils";
 import { isMultiDayEvent } from "@/lib/event-utils";
 import { MonthViewGrid } from "./month-view-grid";
 import { MonthViewEventBar } from "./month-view-event-bar";
@@ -24,6 +24,9 @@ const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 /** Day name labels for weekdays only (Mon–Fri) */
 const WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
+/** Base buffer rows on each side (extends dynamically with scroll distance) */
+const BUFFER_ROWS = 2;
+
 export interface MonthViewProps {
   currentDate: Date;
   events?: CalendarEvent[];
@@ -33,6 +36,8 @@ export interface MonthViewProps {
   onBackgroundClick?: () => void;
   onEventChange?: (event: CalendarEvent) => void;
   onDateChange?: (date: Date) => void;
+  /** Called when the display month changes (for header/sidebar sync) */
+  onDisplayMonthChange?: (month: Date) => void;
   onMoreClick?: (date: Date) => void;
   onDayNumberClick?: (date: Date) => void;
   isSidebarOpen?: boolean;
@@ -56,6 +61,7 @@ export function MonthView({
   onBackgroundClick,
   onEventChange,
   onDateChange,
+  onDisplayMonthChange,
   onMoreClick,
   onDayNumberClick,
   isSidebarOpen,
@@ -72,10 +78,28 @@ export function MonthView({
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
+  /** Number of week rows visible in the viewport */
+  const VISIBLE_ROWS = 6;
+
   const weekRows = useMemo(
-    () => generateMonthGrid(startOfMonth(currentDate)),
+    () => generateConsecutiveWeeks(currentDate, VISIBLE_ROWS),
     [currentDate],
   );
+
+  // Derive the display month from the center of the visible rows.
+  // This determines the header title and adjacent-month dimming.
+  const displayMonth = useMemo(() => {
+    const middleRow = weekRows[Math.floor(weekRows.length / 2)];
+    if (!middleRow) return startOfMonth(currentDate);
+    // Use the Thursday of the middle row (ISO convention for determining the week's month)
+    const midDate = middleRow.days[Math.min(4, middleRow.days.length - 1)].date;
+    return startOfMonth(midDate);
+  }, [weekRows, currentDate]);
+
+  // Notify parent when the display month changes
+  useEffect(() => {
+    onDisplayMonthChange?.(displayMonth);
+  }, [displayMonth, onDisplayMonthChange]);
 
   const dayNames = showWeekends ? DAY_NAMES : WEEKDAY_NAMES;
 
@@ -163,38 +187,32 @@ export function MonthView({
     }
   }, [currentDate, triggerSlideAnimation]);
 
-  // Compute buffer counts from scroll offset (no state needed)
-  const bufferAbove =
-    rowHeight > 0 && scrollOffset < 0
-      ? Math.ceil(Math.abs(scrollOffset) / rowHeight) + 2
-      : 0;
-  const bufferBelow =
-    rowHeight > 0 && scrollOffset > 0
-      ? Math.ceil(scrollOffset / rowHeight) + 2
-      : 0;
+  // Symmetric buffer: extends in both directions (mirrors week view's dynamicBuffer)
+  const extraScrollRows =
+    rowHeight > 0 ? Math.ceil(Math.abs(scrollOffset) / rowHeight) : 0;
+  const dynamicBuffer = BUFFER_ROWS + extraScrollRows;
 
-  // Build buffered week rows
+  // Build buffered week rows: dynamicBuffer above + VISIBLE_ROWS + dynamicBuffer below
   const bufferedWeekRows = useMemo(() => {
+    if (weekRows.length === 0) return weekRows;
     const rows: MonthWeekRow[] = [];
-    if (bufferAbove > 0 && weekRows.length > 0) {
-      const firstDate = weekRows[0].days[0].date;
-      for (let i = bufferAbove; i > 0; i--) {
-        rows.push(generateWeekRow(addWeeks(firstDate, -i)));
-      }
+    const firstDate = weekRows[0].days[0].date;
+    for (let i = dynamicBuffer; i > 0; i--) {
+      rows.push(generateWeekRow(addWeeks(firstDate, -i)));
     }
     rows.push(...weekRows);
-    if (bufferBelow > 0 && weekRows.length > 0) {
-      const lastDate = weekRows[weekRows.length - 1].days[0].date;
-      for (let i = 1; i <= bufferBelow; i++) {
-        rows.push(generateWeekRow(addWeeks(lastDate, i)));
-      }
+    const lastDate = weekRows[weekRows.length - 1].days[0].date;
+    for (let i = 1; i <= dynamicBuffer; i++) {
+      rows.push(generateWeekRow(addWeeks(lastDate, i)));
     }
     return rows;
-  }, [weekRows, bufferAbove, bufferBelow]);
+  }, [weekRows, dynamicBuffer]);
 
-  const scrollTransformY = scrollOffset + slideOffset;
+  // Base offset hides the top buffer; scrollOffset + slideOffset shift within
+  const baseTranslateY = -(dynamicBuffer * rowHeight);
+  const transformY = baseTranslateY + scrollOffset + slideOffset;
   const scrollStyle: React.CSSProperties = {
-    transform: `translateY(${scrollTransformY}px)`,
+    transform: `translateY(${transformY}px)`,
     transition: isAnimating ? "transform 200ms ease-out" : undefined,
   };
 
@@ -276,7 +294,7 @@ export function MonthView({
           <MonthViewGrid
             weekRows={bufferedWeekRows}
             events={displayEvents}
-            currentMonth={startOfMonth(currentDate)}
+            currentMonth={displayMonth}
             showWeekNumbers={showWeekNumbers}
             showWeekends={showWeekends}
             onEventClick={onEventClick}
@@ -296,7 +314,6 @@ export function MonthView({
             onDockToSidebar={onDockToSidebar}
             onClosePopover={onClosePopover}
             visibleRowCount={visibleRowCount}
-            bufferAbove={bufferAbove}
             scrollStyle={scrollStyle}
             gridRef={gridRef}
           />

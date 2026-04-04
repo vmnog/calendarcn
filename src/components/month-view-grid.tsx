@@ -43,8 +43,6 @@ export interface MonthViewGridProps {
   onClosePopover?: () => void;
   /** Number of rows visible in the viewport (for row height calculation) */
   visibleRowCount?: number;
-  /** Number of buffer rows above current month (for scroll offset) */
-  bufferAbove?: number;
   /** CSS style for scroll transform */
   scrollStyle?: React.CSSProperties;
   /** Forwarded ref for the grid container (used by drag hook) */
@@ -75,7 +73,6 @@ export function MonthViewGrid({
   onDockToSidebar,
   onClosePopover,
   visibleRowCount,
-  bufferAbove = 0,
   scrollStyle,
   gridRef,
   className,
@@ -116,12 +113,7 @@ export function MonthViewGrid({
       ref={containerRef}
       className={cn("relative h-full overflow-hidden", className)}
     >
-      <div
-        style={{
-          ...scrollStyle,
-          marginTop: `-${bufferAbove * (cellHeight || 0)}px`,
-        }}
-      >
+      <div style={scrollStyle}>
         <div
           className="grid"
           style={{

@@ -484,6 +484,22 @@ export function generateMonthGrid(
 }
 
 /**
+ * Generates `count` consecutive MonthWeekRows starting from the week
+ * containing `startDate`. Used as the base grid for the month view
+ * so it can scroll row-by-row without anchoring to a calendar month.
+ */
+export function generateConsecutiveWeeks(
+  startDate: Date,
+  count: number,
+  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 0,
+): MonthWeekRow[] {
+  const firstWeekStart = startOfWeek(startDate, { weekStartsOn });
+  return Array.from({ length: count }, (_, i) =>
+    generateWeekRow(addDays(firstWeekStart, i * 7), weekStartsOn),
+  );
+}
+
+/**
  * Generates a single MonthWeekRow for the week containing the given date.
  * Used by vertical scroll to extend the buffer one row at a time.
  */

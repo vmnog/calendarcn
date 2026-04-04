@@ -8,17 +8,7 @@ import {
   PanelRightIcon,
 } from "lucide-react";
 
-import {
-  addDays,
-  addMonths,
-  addWeeks,
-  eachDayOfInterval,
-  endOfMonth,
-  format,
-  startOfDay,
-  startOfMonth,
-  startOfWeek,
-} from "date-fns";
+import { addDays, addWeeks, format, startOfDay, startOfWeek } from "date-fns";
 import { useTheme } from "next-themes";
 import { generateMockEvents } from "@/lib/mock-events";
 import { CommandMenu } from "@/components/command-menu";
@@ -72,6 +62,8 @@ function PageContent() {
   const [highlightedDate, setHighlightedDate] = React.useState<Date | null>(
     null,
   );
+  const [monthViewDisplayMonth, setMonthViewDisplayMonth] =
+    React.useState<Date | null>(null);
   const selectedEvent = React.useMemo(
     () => events.find((e) => e.id === selectedEventId) ?? null,
     [events, selectedEventId],
@@ -87,7 +79,7 @@ function PageContent() {
     if (view === "day") {
       setCurrentDate(startOfDay(new Date()));
     } else if (view === "month") {
-      setCurrentDate(startOfMonth(new Date()));
+      setCurrentDate(startOfWeek(new Date(), { weekStartsOn: 0 }));
     } else {
       setCurrentDate(startOfWeek(new Date(), { weekStartsOn: 0 }));
     }
@@ -97,7 +89,7 @@ function PageContent() {
     if (view === "day") {
       setCurrentDate((prev) => addDays(prev, -1));
     } else if (view === "month") {
-      setCurrentDate((prev) => addMonths(prev, -1));
+      setCurrentDate((prev) => addWeeks(prev, -1));
     } else {
       setCurrentDate((prev) => addWeeks(prev, -1));
     }
@@ -107,7 +99,7 @@ function PageContent() {
     if (view === "day") {
       setCurrentDate((prev) => addDays(prev, 1));
     } else if (view === "month") {
-      setCurrentDate((prev) => addMonths(prev, 1));
+      setCurrentDate((prev) => addWeeks(prev, 1));
     } else {
       setCurrentDate((prev) => addWeeks(prev, 1));
     }
@@ -135,7 +127,7 @@ function PageContent() {
         return;
       }
       if (newView === "month") {
-        setCurrentDate((prev) => startOfMonth(prev));
+        setCurrentDate((prev) => startOfWeek(prev, { weekStartsOn: 0 }));
         return;
       }
       setCurrentDate((prev) => startOfWeek(prev, { weekStartsOn: 0 }));
@@ -194,13 +186,14 @@ function PageContent() {
   // Sync sidebar mini-calendar when in month view
   React.useEffect(() => {
     if (view !== "month") return;
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    setVisibleDays(eachDayOfInterval({ start: monthStart, end: monthEnd }));
-  }, [view, currentDate]);
+    // Pass empty array — sidebar mini-calendar syncs via monthViewDisplayMonth
+    setVisibleDays([]);
+  }, [view]);
 
   const headerDate =
-    view === "month" ? currentDate : (visibleDays[0] ?? currentDate);
+    view === "month"
+      ? (monthViewDisplayMonth ?? currentDate)
+      : (visibleDays[0] ?? currentDate);
   const { monthName, year, weekNumber } = getCalendarHeaderInfo(headerDate, 0);
 
   // Keyboard shortcuts
@@ -354,7 +347,11 @@ function PageContent() {
       <SidebarRight
         open={leftSidebarOpen}
         onDateSelect={goToDateWeek}
-        currentDate={currentDate}
+        currentDate={
+          view === "month" && monthViewDisplayMonth
+            ? monthViewDisplayMonth
+            : currentDate
+        }
         visibleDays={view === "month" ? [] : visibleDays}
       />
       <SidebarInset className="flex flex-col overflow-hidden">
@@ -480,6 +477,7 @@ function PageContent() {
               onBackgroundClick={() => setSelectedEventId(null)}
               onEventChange={handleEventChange}
               onDateChange={goToDate}
+              onDisplayMonthChange={setMonthViewDisplayMonth}
               onMoreClick={handleMoreClick}
               onDayNumberClick={handleMoreClick}
               isSidebarOpen={rightSidebarOpen}
