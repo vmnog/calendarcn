@@ -8,7 +8,14 @@ import {
   PanelRightIcon,
 } from "lucide-react";
 
-import { addDays, addWeeks, format, startOfDay, startOfWeek } from "date-fns";
+import {
+  addDays,
+  addMonths,
+  addWeeks,
+  format,
+  startOfDay,
+  startOfWeek,
+} from "date-fns";
 import { useTheme } from "next-themes";
 import { generateMockEvents } from "@/lib/mock-events";
 import { CommandMenu } from "@/components/command-menu";
@@ -89,7 +96,7 @@ function PageContent() {
     if (view === "day") {
       setCurrentDate((prev) => addDays(prev, -1));
     } else if (view === "month") {
-      setCurrentDate((prev) => addWeeks(prev, -1));
+      setCurrentDate((prev) => addMonths(prev, -1));
     } else {
       setCurrentDate((prev) => addWeeks(prev, -1));
     }
@@ -99,7 +106,7 @@ function PageContent() {
     if (view === "day") {
       setCurrentDate((prev) => addDays(prev, 1));
     } else if (view === "month") {
-      setCurrentDate((prev) => addWeeks(prev, 1));
+      setCurrentDate((prev) => addMonths(prev, 1));
     } else {
       setCurrentDate((prev) => addWeeks(prev, 1));
     }
