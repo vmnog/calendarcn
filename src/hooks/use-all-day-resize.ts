@@ -108,7 +108,7 @@ export function useAllDayResize({
       if (!resize.isResizing) {
         resize.isResizing = true;
         document.body.style.cursor =
-          resize.edge === "move" ? "grabbing" : "ew-resize";
+          resize.edge === "move" ? "grabbing" : "col-resize";
       }
 
       const container = allDayContainerRef.current;
