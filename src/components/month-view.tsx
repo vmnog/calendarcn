@@ -113,8 +113,6 @@ export function MonthView({
     events,
     onEventChange,
     onEventClick,
-    columnCount: colCount,
-    rowCount: weekRows.length,
   });
 
   const { resizeState, handleResizeMouseDown } = useMonthEventResize({

@@ -105,7 +105,7 @@ export function useMonthEventResize({
 
       if (!resize.isResizing) {
         resize.isResizing = true;
-        document.body.style.cursor = "ew-resize";
+        document.body.style.cursor = "col-resize";
       }
 
       const grid = gridRef.current;

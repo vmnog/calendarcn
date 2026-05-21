@@ -35,10 +35,6 @@ interface UseMonthEventDragOptions {
   onEventChange?: (event: CalendarEvent) => void;
   /** Called immediately on mousedown to select the event */
   onEventClick?: (event: CalendarEvent) => void;
-  /** Number of visible columns in the grid (5 or 7) */
-  columnCount: number;
-  /** Number of week rows in the grid */
-  rowCount: number;
 }
 
 interface UseMonthEventDragReturn {
@@ -50,6 +46,26 @@ interface UseMonthEventDragReturn {
 
 /** Minimum pixel distance before a click becomes a drag */
 const DRAG_THRESHOLD_PX = 4;
+
+/**
+ * Finds the date of the grid cell under the given viewport coordinates.
+ * Uses elementsFromPoint so the browser handles CSS transforms
+ * (vertical scroll offset, buffered rows) automatically.
+ */
+function getDateAtPoint(
+  gridEl: HTMLElement,
+  clientX: number,
+  clientY: number,
+): Date | null {
+  const elements = document.elementsFromPoint(clientX, clientY);
+  for (const el of elements) {
+    const dateAttr = el.getAttribute("data-date");
+    if (dateAttr && gridEl.contains(el)) {
+      return new Date(dateAttr);
+    }
+  }
+  return null;
+}
 
 interface DragInfo {
   eventId: string;
@@ -65,8 +81,6 @@ export function useMonthEventDrag({
   events,
   onEventChange,
   onEventClick,
-  columnCount,
-  rowCount,
 }: UseMonthEventDragOptions): UseMonthEventDragReturn {
   const [dragState, setDragState] = useState<MonthDragState | null>(null);
 
@@ -74,8 +88,6 @@ export function useMonthEventDrag({
   const onEventChangeRef = useRef(onEventChange);
   const onEventClickRef = useRef(onEventClick);
   const eventsRef = useRef(events);
-  const columnCountRef = useRef(columnCount);
-  const rowCountRef = useRef(rowCount);
 
   useEffect(() => {
     onEventChangeRef.current = onEventChange;
@@ -86,12 +98,6 @@ export function useMonthEventDrag({
   useEffect(() => {
     eventsRef.current = events;
   }, [events]);
-  useEffect(() => {
-    columnCountRef.current = columnCount;
-  }, [columnCount]);
-  useEffect(() => {
-    rowCountRef.current = rowCount;
-  }, [rowCount]);
 
   // Store handlers in refs to break circular dependency
   const handleMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
@@ -128,27 +134,8 @@ export function useMonthEventDrag({
       const grid = gridRef.current;
       if (!grid) return;
 
-      const rect = grid.getBoundingClientRect();
-      const cols = columnCountRef.current;
-      const rows = rowCountRef.current;
-      const cellWidth = rect.width / cols;
-      const cellHeight = rect.height / rows;
-
-      const col = Math.floor((e.clientX - rect.left) / cellWidth);
-      const row = Math.floor((e.clientY - rect.top) / cellHeight);
-
-      const clampedCol = Math.max(0, Math.min(col, cols - 1));
-      const clampedRow = Math.max(0, Math.min(row, rows - 1));
-      const cellIndex = clampedRow * cols + clampedCol;
-
-      // Look up target date from data-date attributes on day cells
-      const dateCells = grid.querySelectorAll("[data-date]");
-      if (cellIndex >= dateCells.length) return;
-
-      const dateAttr = dateCells[cellIndex].getAttribute("data-date");
-      if (!dateAttr) return;
-
-      const targetDate = new Date(dateAttr);
+      const targetDate = getDateAtPoint(grid, e.clientX, e.clientY);
+      if (!targetDate) return;
 
       setDragState({
         eventId: drag.eventId,

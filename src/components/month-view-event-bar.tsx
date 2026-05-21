@@ -108,11 +108,11 @@ export function MonthViewEventBar({
     const width = rect.width;
 
     if (roundedLeft && offsetX <= RESIZE_HOTZONE_PX) {
-      target.style.cursor = "ew-resize";
+      target.style.cursor = "col-resize";
       return;
     }
     if (roundedRight && offsetX >= width - RESIZE_HOTZONE_PX) {
-      target.style.cursor = "ew-resize";
+      target.style.cursor = "col-resize";
       return;
     }
     target.style.cursor = "";
