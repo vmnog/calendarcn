@@ -211,7 +211,11 @@ html.dark,
 @layer base {
   * {
     @apply border-border outline-ring/50 select-none;
-    cursor: default;
+    /* Inherit cursor through a custom property so a parent setting
+       `--cursor` propagates to descendants (CSS `cursor` declarations on
+       children would otherwise override inheritance). Defaults to
+       `default` when no parent sets the variable. */
+    cursor: var(--cursor, default);
   }
   input,
   textarea,

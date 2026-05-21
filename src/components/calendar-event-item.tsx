@@ -392,21 +392,21 @@ export function CalendarEventItem({
     const height = rect.height;
 
     if (showTopResize && showBottomResize && height < RESIZE_HOTZONE_PX * 2) {
-      target.style.cursor = "row-resize";
+      target.style.setProperty("--cursor", "row-resize");
       return;
     }
 
     if (showTopResize && offsetY <= RESIZE_HOTZONE_PX) {
-      target.style.cursor = "row-resize";
+      target.style.setProperty("--cursor", "row-resize");
       return;
     }
 
     if (showBottomResize && offsetY >= height - RESIZE_HOTZONE_PX) {
-      target.style.cursor = "row-resize";
+      target.style.setProperty("--cursor", "row-resize");
       return;
     }
 
-    target.style.cursor = "default";
+    target.style.removeProperty("--cursor");
   }
 
   function handleMouseDown(e: React.MouseEvent) {
@@ -835,16 +835,16 @@ export function AllDayEventItem({
     const width = rect.width;
 
     if (spanStart && offsetX <= ALL_DAY_RESIZE_HOTZONE_PX) {
-      target.style.cursor = "col-resize";
+      target.style.setProperty("--cursor", "col-resize");
       return;
     }
 
     if (spanEnd && offsetX >= width - ALL_DAY_RESIZE_HOTZONE_PX) {
-      target.style.cursor = "col-resize";
+      target.style.setProperty("--cursor", "col-resize");
       return;
     }
 
-    target.style.cursor = "default";
+    target.style.removeProperty("--cursor");
   }
 
   function handleAllDayMouseDown(e: React.MouseEvent) {

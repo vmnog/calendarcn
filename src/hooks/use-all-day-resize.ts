@@ -94,7 +94,7 @@ export function useAllDayResize({
     if (handleMouseUpRef.current) {
       window.removeEventListener("mouseup", handleMouseUpRef.current);
     }
-    document.body.style.cursor = "";
+    document.body.style.removeProperty("--cursor");
   }, []);
 
   useEffect(() => {
@@ -107,8 +107,10 @@ export function useAllDayResize({
 
       if (!resize.isResizing) {
         resize.isResizing = true;
-        document.body.style.cursor =
-          resize.edge === "move" ? "grabbing" : "col-resize";
+        document.body.style.setProperty(
+          "--cursor",
+          resize.edge === "move" ? "grabbing" : "col-resize",
+        );
       }
 
       const container = allDayContainerRef.current;

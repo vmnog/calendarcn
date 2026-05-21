@@ -92,7 +92,7 @@ export function useMonthEventResize({
     if (handleMouseUpRef.current) {
       window.removeEventListener("mouseup", handleMouseUpRef.current);
     }
-    document.body.style.cursor = "";
+    document.body.style.removeProperty("--cursor");
   }, []);
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export function useMonthEventResize({
 
       if (!resize.isResizing) {
         resize.isResizing = true;
-        document.body.style.cursor = "col-resize";
+        document.body.style.setProperty("--cursor", "col-resize");
       }
 
       const grid = gridRef.current;
