@@ -1,10 +1,10 @@
-import { ChevronRight, MoreHorizontal, Plus } from "lucide-react"
+import { ChevronRight, MoreHorizontal, Plus } from "lucide-react";
 
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+} from "@/components/ui/collapsible";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -16,19 +16,19 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 export function NavWorkspaces({
   workspaces,
 }: {
   workspaces: {
-    name: string
-    emoji: React.ReactNode
+    name: string;
+    emoji: React.ReactNode;
     pages: {
-      name: string
-      emoji: React.ReactNode
-    }[]
-  }[]
+      name: string;
+      emoji: React.ReactNode;
+    }[];
+  }[];
 }) {
   return (
     <SidebarGroup>
@@ -81,5 +81,5 @@ export function NavWorkspaces({
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-  )
+  );
 }

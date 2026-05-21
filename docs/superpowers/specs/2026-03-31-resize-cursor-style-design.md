@@ -10,11 +10,11 @@ Direct string replacement of cursor values — no new components, no new abstrac
 
 ### Changes
 
-| Location | Current | New |
-|---|---|---|
-| Timed event top/bottom edge hover | `ns-resize` | `row-resize` |
-| Timed event active resize (on `document.body`) | `ns-resize` | `row-resize` |
-| All-day event left/right edge hover | `ew-resize` | `col-resize` |
+| Location                                         | Current     | New          |
+| ------------------------------------------------ | ----------- | ------------ |
+| Timed event top/bottom edge hover                | `ns-resize` | `row-resize` |
+| Timed event active resize (on `document.body`)   | `ns-resize` | `row-resize` |
+| All-day event left/right edge hover              | `ew-resize` | `col-resize` |
 | All-day event active resize (on `document.body`) | `ew-resize` | `col-resize` |
 
 ### Files

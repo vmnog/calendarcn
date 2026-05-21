@@ -83,15 +83,15 @@ The event detail panel follows Notion Calendar's interaction patterns. Reuse the
 
 #### Color Tokens (hardcoded, not CSS variables)
 
-| Role | Value |
-|------|-------|
-| Muted text / icons (light) | `text-[#C7C5C1]` |
-| Muted text / icons (dark) | `dark:text-[#595959]` |
-| Hover border | `hover:border-[#373737]` |
-| Focus background | `focus:bg-[#242424]` or `has-[:focus]:bg-[#242424]` |
-| Focus border (matches bg) | `focus:border-[#242424]` or `has-[:focus]:border-[#242424]` |
-| Dropdown open bg | `bg-[#252525]` |
-| Dropdown border | `border-[#303030]` |
+| Role                       | Value                                                       |
+| -------------------------- | ----------------------------------------------------------- |
+| Muted text / icons (light) | `text-[#C7C5C1]`                                            |
+| Muted text / icons (dark)  | `dark:text-[#595959]`                                       |
+| Hover border               | `hover:border-[#373737]`                                    |
+| Focus background           | `focus:bg-[#242424]` or `has-[:focus]:bg-[#242424]`         |
+| Focus border (matches bg)  | `focus:border-[#242424]` or `has-[:focus]:border-[#242424]` |
+| Dropdown open bg           | `bg-[#252525]`                                              |
+| Dropdown border            | `border-[#303030]`                                          |
 
 #### Inline Editable Input Pattern
 
@@ -116,6 +116,7 @@ onKeyDown Escape → e.stopPropagation() + set escapePressedRef + restore origin
 ```
 
 Key details:
+
 - `e.stopPropagation()` on Escape prevents the global keydown handler from deselecting the event
 - `escapePressedRef` prevents the blur handler from committing stale state after Escape
 - For title: call `onEventChange` on every keystroke for real-time calendar preview
@@ -125,6 +126,7 @@ Key details:
 #### Editable Input Styling
 
 **Standalone input** (e.g., title):
+
 ```
 rounded-sm border border-transparent bg-transparent outline-none
 hover:border-[#373737]
@@ -132,6 +134,7 @@ focus:border-[#242424] focus:bg-[#242424]
 ```
 
 **Grouped input** (e.g., icon + input, or arrow + input + label in one bordered container):
+
 - Wrapper div gets the border/hover/focus styling using `has-[:focus]`:
   ```
   rounded-sm border border-transparent cursor-text
@@ -144,14 +147,17 @@ focus:border-[#242424] focus:bg-[#242424]
 #### Non-Input Interactive Elements
 
 **Dropdown trigger buttons** (e.g., event type selector):
+
 ```
 rounded-sm border border-transparent hover:border-[#373737]
 ```
 
 **Icon buttons** (e.g., "..." more menu):
+
 ```
 border border-transparent hover:border-[#242424] hover:bg-[#242424]
 ```
+
 This makes the hover border blend with the hover background (invisible border effect).
 
 ### Hooks Pattern

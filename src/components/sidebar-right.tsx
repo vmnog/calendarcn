@@ -176,8 +176,7 @@ export function SidebarRight({
                 <ThemeToggle className="text-sidebar-foreground" />
               </TooltipTrigger>
               <TooltipContent side="top">
-                Toggle theme <Kbd className="ml-1">shift</Kbd>{" "}
-                <Kbd>M</Kbd>
+                Toggle theme <Kbd className="ml-1">shift</Kbd> <Kbd>M</Kbd>
               </TooltipContent>
             </Tooltip>
           </div>

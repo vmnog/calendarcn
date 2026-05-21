@@ -13,7 +13,9 @@ Requirements:
 3. Sync all options to refs via useEffect:
    ```ts
    const optionRef = useRef(option);
-   useEffect(() => { optionRef.current = option; }, [option]);
+   useEffect(() => {
+     optionRef.current = option;
+   }, [option]);
    ```
 4. If using global event listeners (mousemove, mouseup, keydown):
    - Store handler in a ref
@@ -25,10 +27,12 @@ Requirements:
 The hook should: {describe what it does}
 
 Inputs:
+
 - {option1}: {type} — {description}
 - {option2}: {type} — {description}
 
 Returns:
+
 - {field1}: {type} — {description}
 - {field2}: {type} — {description}
 

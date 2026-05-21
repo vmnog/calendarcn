@@ -17,15 +17,15 @@ Invoke when tracking down bugs, unexpected behavior, or rendering issues in Cale
 
 Narrow down the bug to one of these areas:
 
-| Area | Key Files | Common Issues |
-|------|-----------|---------------|
-| **Positioning** | `event-utils.ts` | Wrong top/height/left/width calculations |
-| **Drag** | `use-event-drag.ts` | Snap math, cross-day boundaries, auto-scroll |
-| **Resize** | `use-event-resize.ts` | Anchor model, edge flipping, min duration |
-| **All-day** | `use-all-day-resize.ts` | Column span calculation, row stacking |
-| **Rendering** | `week-view-*.tsx` | Z-index, overflow, conditional classes |
-| **State** | `page.tsx` | Event updates, selection, dirty tracking |
-| **Styling** | `globals.css` | CSS variables, dark mode, color tokens |
+| Area            | Key Files               | Common Issues                                |
+| --------------- | ----------------------- | -------------------------------------------- |
+| **Positioning** | `event-utils.ts`        | Wrong top/height/left/width calculations     |
+| **Drag**        | `use-event-drag.ts`     | Snap math, cross-day boundaries, auto-scroll |
+| **Resize**      | `use-event-resize.ts`   | Anchor model, edge flipping, min duration    |
+| **All-day**     | `use-all-day-resize.ts` | Column span calculation, row stacking        |
+| **Rendering**   | `week-view-*.tsx`       | Z-index, overflow, conditional classes       |
+| **State**       | `page.tsx`              | Event updates, selection, dirty tracking     |
+| **Styling**     | `globals.css`           | CSS variables, dark mode, color tokens       |
 
 ### Step 3: Diagnose
 

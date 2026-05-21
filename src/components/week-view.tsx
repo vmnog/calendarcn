@@ -23,7 +23,7 @@ import type {
   WeekViewProps,
 } from "./week-view-types";
 import { WeekViewAllDayRow } from "./week-view-all-day-row";
-import { WeekViewDayColumns } from "./week-view-day-columns";
+import { CalendarDayHeaders } from "./calendar-day-headers";
 import { WeekViewGrid } from "./week-view-grid";
 import { WeekViewTimeAxis } from "./week-view-time-axis";
 import { WeekViewTimeIndicator } from "./week-view-time-indicator";
@@ -153,6 +153,7 @@ export function WeekView({
   onClosePopover,
   onPrevWeek,
   onNextWeek,
+  highlightedDate,
   className,
 }: WeekViewProps) {
   const VISIBLE_DAYS = VISIBLE_DAYS_BY_VIEW[view];
@@ -385,7 +386,11 @@ export function WeekView({
               </div>
               <div className="flex-1 overflow-hidden">
                 <div style={scrollStyle}>
-                  <WeekViewDayColumns days={bufferedDays} standalone />
+                  <CalendarDayHeaders
+                    days={bufferedDays}
+                    standalone
+                    highlightedDate={highlightedDate}
+                  />
                 </div>
               </div>
             </div>
@@ -410,6 +415,7 @@ export function WeekView({
               visibleStartIndex={dynamicBuffer}
               visibleCount={VISIBLE_DAYS}
               dayColumnWidth={dayColumnWidth}
+              highlightedDate={highlightedDate}
             />
           </div>
         </div>
@@ -444,6 +450,7 @@ export function WeekView({
                   onClosePopover={onClosePopover}
                   onPrevWeek={onPrevWeek}
                   onNextWeek={onNextWeek}
+                  highlightedDate={highlightedDate}
                 />
               </div>
             </div>

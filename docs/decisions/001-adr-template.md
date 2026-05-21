@@ -32,12 +32,15 @@ What did we decide? Be specific about the chosen approach.
 ## Consequences
 
 ### Positive
+
 - What benefits does this bring?
 
 ### Negative
+
 - What tradeoffs or risks come with this?
 
 ### Neutral
+
 - Any neutral observations?
 ```
 

@@ -69,7 +69,9 @@ export function WeekViewTimeIndicator({
           <div
             className={cn(
               "flex-1 bg-primary",
-              day.isToday ? "h-[3px] rounded-r-full shadow-[0_0_0_1px_white] dark:shadow-[0_0_0_1px_black]" : "h-[0.5px]"
+              day.isToday
+                ? "h-[3px] rounded-r-full shadow-[0_0_0_1px_white] dark:shadow-[0_0_0_1px_black]"
+                : "h-[0.5px]",
             )}
           />
         </React.Fragment>
@@ -79,7 +81,11 @@ export function WeekViewTimeIndicator({
 
   return (
     <div
-      className={cn("pointer-events-none absolute left-0 right-0", behindSelection ? "z-10" : "z-20", className)}
+      className={cn(
+        "pointer-events-none absolute left-0 right-0",
+        behindSelection ? "z-10" : "z-20",
+        className,
+      )}
       style={{ top: topPosition }}
     >
       <div className="flex -translate-y-1/2 items-center">

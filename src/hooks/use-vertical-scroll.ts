@@ -2,30 +2,42 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-interface UseHorizontalScrollOptions {
+interface UseVerticalScrollOptions {
+  /** Ref to the scrollable container element */
   containerRef: React.RefObject<HTMLDivElement | null>;
-  dayColumnWidth: number;
-  onNavigate: (daysDelta: number) => void;
+  /** Height of a single row in pixels */
+  rowHeight: number;
+  /** Called when scroll settles — receives the number of rows scrolled */
+  onNavigate: (rowsDelta: number) => void;
+  /** Disable scroll handling (e.g., during drag) */
   disabled?: boolean;
 }
 
-interface UseHorizontalScrollReturn {
+interface UseVerticalScrollReturn {
+  /** Current scroll offset in pixels (for translateY) */
   scrollOffset: number;
+  /** Slide animation offset in pixels (for button/keyboard nav) */
   slideOffset: number;
+  /** Whether the user is actively scrolling */
   isScrolling: boolean;
+  /** Whether a snap/slide animation is in progress */
   isAnimating: boolean;
-  triggerSlideAnimation: (daysDelta: number) => void;
+  /** Trigger a slide animation for programmatic navigation */
+  triggerSlideAnimation: (rowsDelta: number) => void;
 }
 
+/** Debounce time after last wheel event before snapping */
 const SCROLL_END_DEBOUNCE_MS = 150;
+
+/** Duration of snap/slide CSS transition */
 const SNAP_ANIMATION_MS = 200;
 
-export function useHorizontalScroll({
+export function useVerticalScroll({
   containerRef,
-  dayColumnWidth,
+  rowHeight,
   onNavigate,
   disabled,
-}: UseHorizontalScrollOptions): UseHorizontalScrollReturn {
+}: UseVerticalScrollOptions): UseVerticalScrollReturn {
   const [scrollOffset, setScrollOffset] = useState(0);
   const [slideOffset, setSlideOffset] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
@@ -40,12 +52,12 @@ export function useHorizontalScroll({
 
   const snapAndNavigate = useCallback(
     (offset: number) => {
-      if (dayColumnWidth <= 0) return;
+      if (rowHeight <= 0) return;
 
-      const daysDelta = Math.round(offset / dayColumnWidth);
+      const rowsDelta = Math.round(offset / rowHeight);
 
-      // If scroll distance < half a day-column width, snap back
-      if (daysDelta === 0) {
+      // If scroll distance < half a row, snap back
+      if (rowsDelta === 0) {
         setIsAnimating(true);
         setScrollOffset(0);
         setTimeout(() => {
@@ -55,34 +67,30 @@ export function useHorizontalScroll({
         return;
       }
 
-      // Snap to exact day boundary then navigate
-      const targetOffset = daysDelta * dayColumnWidth;
+      // Snap to exact row boundary then navigate
+      const targetOffset = rowsDelta * rowHeight;
       setIsAnimating(true);
       setScrollOffset(targetOffset);
 
       setTimeout(() => {
-        onNavigateRef.current(-daysDelta);
+        onNavigateRef.current(-rowsDelta);
         setScrollOffset(0);
         setIsAnimating(false);
         setIsScrolling(false);
         accumulatedDelta.current = 0;
       }, SNAP_ANIMATION_MS);
     },
-    [dayColumnWidth],
+    [rowHeight],
   );
 
   // Programmatic slide animation for button/keyboard navigation
-  // Uses slideOffset (not scrollOffset) so dynamicBuffer isn't affected
-  // Does NOT call onNavigate — caller is responsible for having already changed the date
   const triggerSlideAnimation = useCallback(
-    (daysDelta: number) => {
-      if (dayColumnWidth <= 0 || isAnimating || isScrolling) return;
+    (rowsDelta: number) => {
+      if (rowHeight <= 0 || isAnimating || isScrolling) return;
 
-      // Start from the opposite direction to create slide effect
-      const startOffset = daysDelta * dayColumnWidth;
+      const startOffset = rowsDelta * rowHeight;
       setSlideOffset(startOffset);
 
-      // Force a reflow then animate to 0
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setIsAnimating(true);
@@ -93,7 +101,7 @@ export function useHorizontalScroll({
         });
       });
     },
-    [dayColumnWidth, isAnimating, isScrolling],
+    [rowHeight, isAnimating, isScrolling],
   );
 
   useEffect(() => {
@@ -103,15 +111,15 @@ export function useHorizontalScroll({
     const handleWheel = (e: WheelEvent) => {
       if (disabled) return;
 
-      // Only handle horizontal-dominant scrolls
-      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      // Only handle vertical-dominant scrolls
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
 
       e.preventDefault();
 
       setIsScrolling(true);
 
-      // Negate deltaX: scroll right (positive deltaX) = move calendar left = navigate forward
-      accumulatedDelta.current += -e.deltaX;
+      // Negate deltaY: scroll down (positive deltaY) = move calendar up = navigate forward
+      accumulatedDelta.current += -e.deltaY;
       setScrollOffset(accumulatedDelta.current);
 
       // Reset debounce timer

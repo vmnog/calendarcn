@@ -102,7 +102,9 @@ export function ViewDropdown({
 
         {/* Number of days submenu */}
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="pl-8">Number of days</DropdownMenuSubTrigger>
+          <DropdownMenuSubTrigger className="pl-8">
+            Number of days
+          </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             {DAYS_OPTIONS.map((n) => (
               <DropdownMenuItem key={n} onClick={() => onSetNumberOfDays(n)}>
@@ -127,7 +129,9 @@ export function ViewDropdown({
 
         {/* View settings submenu */}
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="pl-8">View settings</DropdownMenuSubTrigger>
+          <DropdownMenuSubTrigger className="pl-8">
+            View settings
+          </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-56">
             <DropdownMenuCheckboxItem
               checked={viewSettings.showWeekends}

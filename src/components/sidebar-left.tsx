@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { ArrowLeft, CalendarSearch, PanelRightIcon, X } from "lucide-react"
+import * as React from "react";
+import { ArrowLeft, CalendarSearch, PanelRightIcon, X } from "lucide-react";
 import {
   differenceInMinutes,
   format,
@@ -10,10 +10,10 @@ import {
   isToday,
   isTomorrow,
   startOfDay,
-} from "date-fns"
+} from "date-fns";
 
-import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
+import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Sidebar,
   SidebarContent,
@@ -22,15 +22,15 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { eventColorStyles } from "./calendar-event-item"
-import { EventDetailPanel } from "./event-detail-panel"
-import type { CalendarEvent } from "./week-view-types"
+} from "@/components/ui/tooltip";
+import { eventColorStyles } from "./calendar-event-item";
+import { EventDetailPanel } from "./event-detail-panel";
+import type { CalendarEvent } from "./week-view-types";
 
 interface SidebarLeftProps extends React.ComponentProps<typeof Sidebar> {
   events?: CalendarEvent[];
@@ -48,71 +48,76 @@ interface DateGroup {
 }
 
 function formatDuration(start: Date, end: Date): string {
-  const totalMinutes = differenceInMinutes(end, start)
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
+  const totalMinutes = differenceInMinutes(end, start);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
 
   if (hours === 0) {
-    return `${minutes}min`
+    return `${minutes}min`;
   }
   if (minutes === 0) {
-    return `${hours}h`
+    return `${hours}h`;
   }
-  return `${hours}h ${minutes}min`
+  return `${hours}h ${minutes}min`;
 }
 
 function formatTimeRange(event: CalendarEvent): string {
   if (event.isAllDay) {
-    return "All day"
+    return "All day";
   }
-  const startPeriod = format(event.start, "a")
-  const endPeriod = format(event.end, "a")
-  const endStr = format(event.end, "h:mm a").replace(":00 ", " ")
+  const startPeriod = format(event.start, "a");
+  const endPeriod = format(event.end, "a");
+  const endStr = format(event.end, "h:mm a").replace(":00 ", " ");
 
   if (startPeriod === endPeriod) {
-    const startStr = format(event.start, "h:mm").replace(":00", "")
-    return `${startStr}\u2013${endStr}`
+    const startStr = format(event.start, "h:mm").replace(":00", "");
+    return `${startStr}\u2013${endStr}`;
   }
 
-  const startStr = format(event.start, "h:mm a").replace(":00 ", " ")
-  return `${startStr}\u2013${endStr}`
+  const startStr = format(event.start, "h:mm a").replace(":00 ", " ");
+  return `${startStr}\u2013${endStr}`;
 }
 
-function formatDateHeader(date: Date): { label: string; isTodayGroup: boolean } {
+function formatDateHeader(date: Date): {
+  label: string;
+  isTodayGroup: boolean;
+} {
   if (isToday(date)) {
-    return { label: "Today", isTodayGroup: true }
+    return { label: "Today", isTodayGroup: true };
   }
   if (isTomorrow(date)) {
-    return { label: "Tomorrow", isTodayGroup: false }
+    return { label: "Tomorrow", isTodayGroup: false };
   }
   if (isSameYear(date, new Date())) {
-    return { label: format(date, "EEE MMM d"), isTodayGroup: false }
+    return { label: format(date, "EEE MMM d"), isTodayGroup: false };
   }
-  return { label: format(date, "EEE MMM d, yyyy"), isTodayGroup: false }
+  return { label: format(date, "EEE MMM d, yyyy"), isTodayGroup: false };
 }
 
 function groupEventsByDate(events: CalendarEvent[]): DateGroup[] {
-  const grouped = new Map<string, CalendarEvent[]>()
+  const grouped = new Map<string, CalendarEvent[]>();
 
   for (const event of events) {
-    const dayKey = format(startOfDay(event.start), "yyyy-MM-dd")
-    const existing = grouped.get(dayKey)
+    const dayKey = format(startOfDay(event.start), "yyyy-MM-dd");
+    const existing = grouped.get(dayKey);
     if (existing) {
-      existing.push(event)
+      existing.push(event);
     } else {
-      grouped.set(dayKey, [event])
+      grouped.set(dayKey, [event]);
     }
   }
 
-  const groups: DateGroup[] = []
+  const groups: DateGroup[] = [];
   for (const [key, groupEvents] of grouped) {
-    const date = groupEvents[0].start
-    const { label, isTodayGroup } = formatDateHeader(date)
-    const sorted = groupEvents.sort((a, b) => a.start.getTime() - b.start.getTime())
-    groups.push({ key, label, isToday: isTodayGroup, events: sorted })
+    const date = groupEvents[0].start;
+    const { label, isTodayGroup } = formatDateHeader(date);
+    const sorted = groupEvents.sort(
+      (a, b) => a.start.getTime() - b.start.getTime(),
+    );
+    groups.push({ key, label, isToday: isTodayGroup, events: sorted });
   }
 
-  return groups.sort((a, b) => a.key.localeCompare(b.key))
+  return groups.sort((a, b) => a.key.localeCompare(b.key));
 }
 
 export function SidebarLeft({
@@ -123,76 +128,82 @@ export function SidebarLeft({
   onNextWeek,
   ...props
 }: SidebarLeftProps) {
-  const { toggleSidebar } = useSidebar()
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [debouncedQuery, setDebouncedQuery] = React.useState("")
-  const [searchSelectedEvent, setSearchSelectedEvent] = React.useState<CalendarEvent | null>(null)
-  const inputRef = React.useRef<HTMLInputElement>(null)
+  const { toggleSidebar } = useSidebar();
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [debouncedQuery, setDebouncedQuery] = React.useState("");
+  const [searchSelectedEvent, setSearchSelectedEvent] =
+    React.useState<CalendarEvent | null>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const isSearching = searchQuery.trim().length > 0
-  const isLoadingResults = isSearching && searchQuery !== debouncedQuery
+  const isSearching = searchQuery.trim().length > 0;
+  const isLoadingResults = isSearching && searchQuery !== debouncedQuery;
 
   React.useEffect(() => {
     if (!isSearching) {
-      setDebouncedQuery("")
-      return
+      setDebouncedQuery("");
+      return;
     }
     const timer = setTimeout(() => {
-      setDebouncedQuery(searchQuery)
-    }, 400)
-    return () => clearTimeout(timer)
-  }, [searchQuery, isSearching])
+      setDebouncedQuery(searchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery, isSearching]);
 
   const resolvedSearchEvent = React.useMemo(() => {
-    if (!searchSelectedEvent) return null
-    return events.find((e) => e.id === searchSelectedEvent.id) ?? searchSelectedEvent
-  }, [events, searchSelectedEvent])
+    if (!searchSelectedEvent) return null;
+    return (
+      events.find((e) => e.id === searchSelectedEvent.id) ?? searchSelectedEvent
+    );
+  }, [events, searchSelectedEvent]);
 
   React.useEffect(() => {
     if (selectedEvent) {
-      setSearchSelectedEvent(null)
+      setSearchSelectedEvent(null);
     }
-  }, [selectedEvent])
+  }, [selectedEvent]);
 
   const searchResults = React.useMemo(() => {
     if (!debouncedQuery.trim()) {
-      return []
+      return [];
     }
-    const query = debouncedQuery.trim().toLowerCase()
-    return events.filter((event) =>
-      event.title.toLowerCase().includes(query),
-    )
-  }, [events, debouncedQuery])
+    const query = debouncedQuery.trim().toLowerCase();
+    return events.filter((event) => event.title.toLowerCase().includes(query));
+  }, [events, debouncedQuery]);
 
   const { pastGroups, todayGroup, futureGroups } = React.useMemo(() => {
-    const allGroups = groupEventsByDate(searchResults)
-    const now = new Date()
-    const todayStart = startOfDay(now)
+    const allGroups = groupEventsByDate(searchResults);
+    const now = new Date();
+    const todayStart = startOfDay(now);
 
-    const past: DateGroup[] = []
-    let today: DateGroup | null = null
-    const future: DateGroup[] = []
+    const past: DateGroup[] = [];
+    let today: DateGroup | null = null;
+    const future: DateGroup[] = [];
 
     for (const group of allGroups) {
       if (group.isToday) {
-        today = group
-        continue
+        today = group;
+        continue;
       }
-      const groupDate = new Date(group.key)
+      const groupDate = new Date(group.key);
       if (isBefore(groupDate, todayStart)) {
-        past.push(group)
-        continue
+        past.push(group);
+        continue;
       }
-      future.push(group)
+      future.push(group);
     }
 
-    return { pastGroups: past, todayGroup: today, futureGroups: future }
-  }, [searchResults])
+    return { pastGroups: past, todayGroup: today, futureGroups: future };
+  }, [searchResults]);
 
-  const hasUpcomingResults = todayGroup !== null || futureGroups.length > 0
+  const hasUpcomingResults = todayGroup !== null || futureGroups.length > 0;
 
   return (
-    <Sidebar side="right" className="border-l !bg-context-panel [&_[data-slot=sidebar-inner]]:!bg-context-panel" style={{ "--muted-foreground": "#C7C5C1" } as React.CSSProperties} {...props}>
+    <Sidebar
+      side="right"
+      className="border-l !bg-context-panel [&_[data-slot=sidebar-inner]]:!bg-context-panel"
+      style={{ "--muted-foreground": "#C7C5C1" } as React.CSSProperties}
+      {...props}
+    >
       <SidebarHeader className="h-14 justify-center px-4">
         <div className="flex items-center gap-2">
           {selectedEvent ? (
@@ -229,9 +240,9 @@ export function SidebarLeft({
                   size="icon"
                   className="size-7 shrink-0 opacity-0 transition-opacity group-hover/search:opacity-100 group-has-[:focus]/search:opacity-100"
                   onClick={(e) => {
-                    e.stopPropagation()
-                    setSearchQuery("")
-                    inputRef.current?.focus()
+                    e.stopPropagation();
+                    setSearchQuery("");
+                    inputRef.current?.focus();
                   }}
                 >
                   <X className="size-4" />
@@ -258,35 +269,63 @@ export function SidebarLeft({
       </SidebarHeader>
       <SidebarContent>
         {selectedEvent ? (
-          <EventDetailPanel event={selectedEvent} onEventChange={onEventChange} onPrevWeek={onPrevWeek} onNextWeek={onNextWeek} />
+          <EventDetailPanel
+            event={selectedEvent}
+            onEventChange={onEventChange}
+            onPrevWeek={onPrevWeek}
+            onNextWeek={onNextWeek}
+          />
         ) : resolvedSearchEvent ? (
-          <EventDetailPanel event={resolvedSearchEvent} onEventChange={onEventChange} onPrevWeek={onPrevWeek} onNextWeek={onNextWeek} />
+          <EventDetailPanel
+            event={resolvedSearchEvent}
+            onEventChange={onEventChange}
+            onPrevWeek={onPrevWeek}
+            onNextWeek={onNextWeek}
+          />
         ) : isLoadingResults ? (
           <div className="px-4 pl-8 pt-8">
             <p className="text-[#ABABA9] dark:text-[#7C7C7C] text-xs">
-              Searching<AnimatedDots />
+              Searching
+              <AnimatedDots />
             </p>
           </div>
         ) : isSearching ? (
           <div className="flex flex-col pb-16">
             {pastGroups.map((group) => (
-              <DateGroupSection key={group.key} group={group} isPast onEventClick={setSearchSelectedEvent} />
+              <DateGroupSection
+                key={group.key}
+                group={group}
+                isPast
+                onEventClick={setSearchSelectedEvent}
+              />
             ))}
             <div className="px-4 pt-5">
-              <p className="-ml-1 text-[#E8533E] text-xs font-semibold pb-3">Today</p>
+              <p className="-ml-1 text-[#E8533E] text-xs font-semibold pb-3">
+                Today
+              </p>
               {todayGroup && (
                 <div className="flex flex-col">
                   {todayGroup.events.map((event) => (
-                    <SearchResultItem key={event.id} event={event} onClick={setSearchSelectedEvent} />
+                    <SearchResultItem
+                      key={event.id}
+                      event={event}
+                      onClick={setSearchSelectedEvent}
+                    />
                   ))}
                 </div>
               )}
               {!hasUpcomingResults && (
-                <p className="text-[#ABABA9] dark:text-[#7F7F7F] pl-4 pt-1 text-xs">No upcoming results</p>
+                <p className="text-[#ABABA9] dark:text-[#7F7F7F] pl-4 pt-1 text-xs">
+                  No upcoming results
+                </p>
               )}
             </div>
             {futureGroups.map((group) => (
-              <DateGroupSection key={group.key} group={group} onEventClick={setSearchSelectedEvent} />
+              <DateGroupSection
+                key={group.key}
+                group={group}
+                onEventClick={setSearchSelectedEvent}
+              />
             ))}
           </div>
         ) : (
@@ -323,22 +362,37 @@ export function SidebarLeft({
         )}
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }
 
-function DateGroupSection({ group, isPast = false, onEventClick }: { group: DateGroup; isPast?: boolean; onEventClick?: (event: CalendarEvent) => void }) {
+function DateGroupSection({
+  group,
+  isPast = false,
+  onEventClick,
+}: {
+  group: DateGroup;
+  isPast?: boolean;
+  onEventClick?: (event: CalendarEvent) => void;
+}) {
   return (
     <div className="px-4 pt-5">
-      <p className={`-ml-1 text-xs font-semibold pb-3 ${group.isToday ? "text-[#E8533E]" : "text-foreground"}`}>
+      <p
+        className={`-ml-1 text-xs font-semibold pb-3 ${group.isToday ? "text-[#E8533E]" : "text-foreground"}`}
+      >
         {group.label}
       </p>
       <div className="flex flex-col">
         {group.events.map((event) => (
-          <SearchResultItem key={event.id} event={event} isPast={isPast} onClick={onEventClick} />
+          <SearchResultItem
+            key={event.id}
+            event={event}
+            isPast={isPast}
+            onClick={onEventClick}
+          />
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 /** Color tokens for search result items by temporal state */
@@ -355,14 +409,14 @@ const SEARCH_RESULT_COLORS = {
     duration: "text-[#D5D5D4] dark:text-[#3A3A3A]",
     hover: "hover:bg-[#FAFAFA] dark:hover:bg-[#1F1F1F]",
   },
-} as const
+} as const;
 
 /**
  * Sequential dot fill animation.
  * Steps: fill dot 0 → fill dot 1 → fill dot 2 → unfill dot 0 → unfill dot 1 → unfill dot 2
  * Each dot is either 10% or 100% opacity based on the current step.
  */
-const DOT_STEP_INTERVAL_MS = 300
+const DOT_STEP_INTERVAL_MS = 300;
 const DOT_STEPS = [
   [false, false, false],
   [true, false, false],
@@ -370,19 +424,19 @@ const DOT_STEPS = [
   [true, true, true],
   [false, true, true],
   [false, false, true],
-] as const
+] as const;
 
 function AnimatedDots() {
-  const [step, setStep] = React.useState(0)
+  const [step, setStep] = React.useState(0);
 
   React.useEffect(() => {
     const interval = setInterval(() => {
-      setStep((prev) => (prev + 1) % DOT_STEPS.length)
-    }, DOT_STEP_INTERVAL_MS)
-    return () => clearInterval(interval)
-  }, [])
+      setStep((prev) => (prev + 1) % DOT_STEPS.length);
+    }, DOT_STEP_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, []);
 
-  const filled = DOT_STEPS[step]
+  const filled = DOT_STEPS[step];
 
   return (
     <span className="ml-1 inline-flex items-center gap-0.5">
@@ -394,39 +448,58 @@ function AnimatedDots() {
         />
       ))}
     </span>
-  )
+  );
 }
 
-function SearchResultItem({ event, isPast = false, onClick }: { event: CalendarEvent; isPast?: boolean; onClick?: (event: CalendarEvent) => void }) {
-  const timeRange = formatTimeRange(event)
-  const duration = event.isAllDay ? "" : formatDuration(event.start, event.end)
-  const colors = isPast ? SEARCH_RESULT_COLORS.past : SEARCH_RESULT_COLORS.future
+function SearchResultItem({
+  event,
+  isPast = false,
+  onClick,
+}: {
+  event: CalendarEvent;
+  isPast?: boolean;
+  onClick?: (event: CalendarEvent) => void;
+}) {
+  const timeRange = formatTimeRange(event);
+  const duration = event.isAllDay ? "" : formatDuration(event.start, event.end);
+  const colors = isPast
+    ? SEARCH_RESULT_COLORS.past
+    : SEARCH_RESULT_COLORS.future;
 
   return (
-    <div className={`-mx-1 flex cursor-default items-start gap-2.5 rounded-sm px-1 py-2 ${colors.hover}`} onClick={() => onClick?.(event)}>
-      <div className={`-mt-1 -mb-1 w-1 shrink-0 self-stretch rounded-full ${eventColorStyles[event.color ?? "blue"].border} ${isPast ? "opacity-40" : ""}`} />
+    <div
+      className={`-mx-1 flex cursor-default items-start gap-2.5 rounded-sm px-1 py-2 ${colors.hover}`}
+      onClick={() => onClick?.(event)}
+    >
+      <div
+        className={`-mt-1 -mb-1 w-1 shrink-0 self-stretch rounded-full ${eventColorStyles[event.color ?? "blue"].border} ${isPast ? "opacity-40" : ""}`}
+      />
       <div className="flex min-w-0 flex-col gap-0.5">
-        <p className={`truncate text-sm font-medium leading-snug ${colors.title}`}>{event.title}</p>
+        <p
+          className={`truncate text-sm font-medium leading-snug ${colors.title}`}
+        >
+          {event.title}
+        </p>
         <p className="text-sm">
           <span className={colors.time}>{timeRange}</span>
           {duration && <span className={colors.duration}> {duration}</span>}
         </p>
       </div>
     </div>
-  )
+  );
 }
 
 function ShortcutRow({
   label,
   children,
 }: {
-  label: string
-  children: React.ReactNode
+  label: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className="text-muted-foreground flex items-center justify-between py-1 text-xs">
       <span>{label}</span>
       <div className="flex items-center gap-1">{children}</div>
     </div>
-  )
+  );
 }

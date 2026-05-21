@@ -75,13 +75,13 @@ src/
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `T` | Go to today |
-| `J` / `ArrowLeft` | Previous week |
-| `K` / `ArrowRight` | Next week |
-| `/` | Toggle context panel |
-| `⌘ + /` | Toggle calendar sidebar |
+| Shortcut           | Action                  |
+| ------------------ | ----------------------- |
+| `T`                | Go to today             |
+| `J` / `ArrowLeft`  | Previous week           |
+| `K` / `ArrowRight` | Next week               |
+| `/`                | Toggle context panel    |
+| `⌘ + /`            | Toggle calendar sidebar |
 
 ## Contributing
 

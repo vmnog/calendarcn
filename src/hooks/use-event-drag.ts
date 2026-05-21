@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CalendarEvent, EventDragState } from "@/components/week-view-types";
+import type {
+  CalendarEvent,
+  EventDragState,
+} from "@/components/week-view-types";
 
 interface UseEventDragOptions {
   hourHeight: number;
@@ -79,14 +82,30 @@ export function useEventDrag({
   const dayColumnWidthRef = useRef(dayColumnWidth);
   const timeAxisWidthRef = useRef(timeAxisWidth);
 
-  useEffect(() => { onEventChangeRef.current = onEventChange; }, [onEventChange]);
-  useEffect(() => { onEventClickRef.current = onEventClick; }, [onEventClick]);
-  useEffect(() => { onDragNavigateRef.current = onDragNavigate; }, [onDragNavigate]);
-  useEffect(() => { eventsRef.current = events; }, [events]);
-  useEffect(() => { hourHeightRef.current = hourHeight; }, [hourHeight]);
-  useEffect(() => { daysRef.current = days; }, [days]);
-  useEffect(() => { dayColumnWidthRef.current = dayColumnWidth; }, [dayColumnWidth]);
-  useEffect(() => { timeAxisWidthRef.current = timeAxisWidth; }, [timeAxisWidth]);
+  useEffect(() => {
+    onEventChangeRef.current = onEventChange;
+  }, [onEventChange]);
+  useEffect(() => {
+    onEventClickRef.current = onEventClick;
+  }, [onEventClick]);
+  useEffect(() => {
+    onDragNavigateRef.current = onDragNavigate;
+  }, [onDragNavigate]);
+  useEffect(() => {
+    eventsRef.current = events;
+  }, [events]);
+  useEffect(() => {
+    hourHeightRef.current = hourHeight;
+  }, [hourHeight]);
+  useEffect(() => {
+    daysRef.current = days;
+  }, [days]);
+  useEffect(() => {
+    dayColumnWidthRef.current = dayColumnWidth;
+  }, [dayColumnWidth]);
+  useEffect(() => {
+    timeAxisWidthRef.current = timeAxisWidth;
+  }, [timeAxisWidth]);
 
   // Edge navigation timer refs
   const edgeNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -148,19 +167,22 @@ export function useEventDrag({
     autoScrollRAFRef.current = requestAnimationFrame(tick);
   }, [scrollContainerRef]);
 
-  const scheduleEdgeNav = useCallback((direction: number) => {
-    if (edgeNavDirectionRef.current === direction) return;
+  const scheduleEdgeNav = useCallback(
+    (direction: number) => {
+      if (edgeNavDirectionRef.current === direction) return;
 
-    cancelEdgeNav();
-    edgeNavDirectionRef.current = direction;
+      cancelEdgeNav();
+      edgeNavDirectionRef.current = direction;
 
-    const fireNav = () => {
-      onDragNavigateRef.current?.(direction);
-      edgeNavTimerRef.current = setTimeout(fireNav, EDGE_NAV_REPEAT_MS);
-    };
+      const fireNav = () => {
+        onDragNavigateRef.current?.(direction);
+        edgeNavTimerRef.current = setTimeout(fireNav, EDGE_NAV_REPEAT_MS);
+      };
 
-    edgeNavTimerRef.current = setTimeout(fireNav, EDGE_NAV_DELAY_MS);
-  }, [cancelEdgeNav]);
+      edgeNavTimerRef.current = setTimeout(fireNav, EDGE_NAV_DELAY_MS);
+    },
+    [cancelEdgeNav],
+  );
 
   // Initialize the handlers once (stable references via refs)
   useEffect(() => {
@@ -170,7 +192,12 @@ export function useEventDrag({
 
       const deltaY = Math.abs(e.clientY - drag.startClientY);
       const deltaX = Math.abs(e.clientX - drag.startClientX);
-      if (!drag.isDragging && deltaY < DRAG_THRESHOLD_PX && deltaX < DRAG_THRESHOLD_PX) return;
+      if (
+        !drag.isDragging &&
+        deltaY < DRAG_THRESHOLD_PX &&
+        deltaX < DRAG_THRESHOLD_PX
+      )
+        return;
 
       if (!drag.isDragging) {
         drag.isDragging = true;
@@ -181,22 +208,34 @@ export function useEventDrag({
 
       const containerRect = container.getBoundingClientRect();
       const scrollTop = container.scrollTop;
-      const absoluteY = e.clientY - containerRect.top + scrollTop - drag.offsetWithinEvent;
-      const absoluteX = e.clientX - containerRect.left - drag.offsetWithinEventX;
+      const absoluteY =
+        e.clientY - containerRect.top + scrollTop - drag.offsetWithinEvent;
+      const absoluteX =
+        e.clientX - containerRect.left - drag.offsetWithinEventX;
       const rawMinutes = (absoluteY / hourHeightRef.current) * 60;
       const snappedStartMinutes = snapToGrid(rawMinutes);
-      const clampedStart = Math.max(0, Math.min(snappedStartMinutes, 1440 - drag.durationMinutes));
+      const clampedStart = Math.max(
+        0,
+        Math.min(snappedStartMinutes, 1440 - drag.durationMinutes),
+      );
 
       // Column detection — based on raw cursor position over the grid
       const colWidth = dayColumnWidthRef.current;
       const visibleDays = daysRef.current;
       const gridLeftEdge = containerRect.left + timeAxisWidthRef.current;
       const cursorInGrid = e.clientX - gridLeftEdge;
-      const columnIndex = clamp(Math.floor(cursorInGrid / colWidth), 0, visibleDays.length - 1);
+      const columnIndex = clamp(
+        Math.floor(cursorInGrid / colWidth),
+        0,
+        visibleDays.length - 1,
+      );
       const targetDay = visibleDays[columnIndex];
 
       const currentStart = addMinutesToDate(targetDay, clampedStart);
-      const currentEnd = addMinutesToDate(targetDay, clampedStart + drag.durationMinutes);
+      const currentEnd = addMinutesToDate(
+        targetDay,
+        clampedStart + drag.durationMinutes,
+      );
 
       setDragState({
         eventId: drag.eventId,
@@ -232,11 +271,13 @@ export function useEventDrag({
 
       if (cursorYInContainer < AUTO_SCROLL_ZONE_PX) {
         const dist = cursorYInContainer;
-        autoScrollSpeedRef.current = -AUTO_SCROLL_MAX_SPEED * (1 - dist / AUTO_SCROLL_ZONE_PX);
+        autoScrollSpeedRef.current =
+          -AUTO_SCROLL_MAX_SPEED * (1 - dist / AUTO_SCROLL_ZONE_PX);
         startAutoScrollLoop();
       } else if (cursorYInContainer > containerHeight - AUTO_SCROLL_ZONE_PX) {
         const dist = containerHeight - cursorYInContainer;
-        autoScrollSpeedRef.current = AUTO_SCROLL_MAX_SPEED * (1 - dist / AUTO_SCROLL_ZONE_PX);
+        autoScrollSpeedRef.current =
+          AUTO_SCROLL_MAX_SPEED * (1 - dist / AUTO_SCROLL_ZONE_PX);
         startAutoScrollLoop();
       } else {
         cancelAutoScroll();
@@ -270,7 +311,14 @@ export function useEventDrag({
 
       dragRef.current = null;
     };
-  }, [scrollContainerRef, cleanup, scheduleEdgeNav, cancelEdgeNav, cancelAutoScroll, startAutoScrollLoop]);
+  }, [
+    scrollContainerRef,
+    cleanup,
+    scheduleEdgeNav,
+    cancelEdgeNav,
+    cancelAutoScroll,
+    startAutoScrollLoop,
+  ]);
 
   const handleEventMouseDown = useCallback(
     (e: React.MouseEvent, event: CalendarEvent) => {
@@ -288,7 +336,8 @@ export function useEventDrag({
       const offsetWithinEvent = e.clientY - targetRect.top;
       const offsetWithinEventX = e.clientX - targetRect.left;
 
-      const startMinutes = event.start.getHours() * 60 + event.start.getMinutes();
+      const startMinutes =
+        event.start.getHours() * 60 + event.start.getMinutes();
       const endMinutes = event.end.getHours() * 60 + event.end.getMinutes();
       const durationMinutes = endMinutes - startMinutes;
 

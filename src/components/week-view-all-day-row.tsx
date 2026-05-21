@@ -36,6 +36,7 @@ export function WeekViewAllDayRow({
   visibleStartIndex,
   visibleCount,
   dayColumnWidth,
+  highlightedDate,
   className,
 }: WeekViewAllDayRowProps) {
   const allEventRows = calculateAllDayEventRows(allDayEvents, days);
@@ -91,6 +92,9 @@ export function WeekViewAllDayRow({
                     className={cn(
                       "border-border border-l first:border-l-0 h-full",
                       isWeekend && "bg-calendar-weekend",
+                      highlightedDate &&
+                        isSameDay(day.date, highlightedDate) &&
+                        "column-highlight",
                     )}
                   />
                 );
@@ -178,8 +182,7 @@ export function WeekViewAllDayRow({
             (r) => r.event.id === allDayResizeState.eventId,
           );
           if (!movedRow) return null;
-          const span =
-            movedRow.endColumn - movedRow.startColumn + 1;
+          const span = movedRow.endColumn - movedRow.startColumn + 1;
           const colWidthPx = dayColumnWidth ?? 100;
           const floatingWidth = span * colWidthPx;
           const offsetX = allDayResizeState.cursorOffsetX ?? 0;
@@ -376,8 +379,7 @@ function AllDayPlaceholderRow({
   const columnWidth = 100 / totalColumns;
   const left = (startColumn / totalColumns) * 100;
   const rightGap = columnWidth * 0.08;
-  const width =
-    ((endColumn - startColumn + 1) / totalColumns) * 100 - rightGap;
+  const width = ((endColumn - startColumn + 1) / totalColumns) * 100 - rightGap;
   const top = row * (ALL_DAY_EVENT_HEIGHT + ALL_DAY_ROW_GAP);
 
   return (
@@ -392,7 +394,12 @@ function AllDayPlaceholderRow({
         zIndex: 25,
       }}
     >
-      <AllDayEventItem event={event} spanStart spanEnd dragVariant="placeholder" />
+      <AllDayEventItem
+        event={event}
+        spanStart
+        spanEnd
+        dragVariant="placeholder"
+      />
     </div>
   );
 }

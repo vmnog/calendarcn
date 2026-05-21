@@ -86,9 +86,7 @@ function MenuItem({
 }
 
 function Shortcut({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="ml-auto text-xs text-white/40">{children}</span>
-  );
+  return <span className="ml-auto text-xs text-white/40">{children}</span>;
 }
 
 function Separator() {
@@ -235,9 +233,7 @@ export function EventContextMenu({
             )}
             onClick={() => handleColorSelect(color)}
           >
-            {color === currentColor && (
-              <Check className="size-2 text-white" />
-            )}
+            {color === currentColor && <Check className="size-2 text-white" />}
           </button>
         ))}
       </div>

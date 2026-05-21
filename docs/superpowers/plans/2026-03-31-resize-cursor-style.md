@@ -13,6 +13,7 @@
 ### Task 1: Update timed event resize cursors
 
 **Files:**
+
 - Modify: `src/components/calendar-event-item.tsx:395,400,405`
 
 - [ ] **Step 1: Replace `ns-resize` with `row-resize` in `handleMouseMove`**
@@ -47,6 +48,7 @@ git commit -m "feat: use row-resize cursor for timed event vertical edges"
 ### Task 2: Update all-day event resize cursors
 
 **Files:**
+
 - Modify: `src/components/calendar-event-item.tsx:840,845`
 - Modify: `src/hooks/use-all-day-resize.ts:111`
 
@@ -67,8 +69,7 @@ target.style.cursor = "col-resize";
 In `src/hooks/use-all-day-resize.ts` line 111, replace the cursor set during active resize:
 
 ```typescript
-document.body.style.cursor =
-  resize.edge === "move" ? "grabbing" : "col-resize";
+document.body.style.cursor = resize.edge === "move" ? "grabbing" : "col-resize";
 ```
 
 - [ ] **Step 3: Verify the changes**
@@ -92,6 +93,7 @@ git commit -m "feat: use col-resize cursor for all-day event horizontal edges"
 Run: `pnpm dev`
 
 Verify:
+
 1. Hover over a timed event's top/bottom edges — cursor should show `row-resize` (↕ with double bar)
 2. Hover over an all-day/multi-day event's left/right edges — cursor should show `col-resize` (↔ with double bar)
 3. During active vertical resize, cursor remains `row-resize`

@@ -38,6 +38,7 @@ export function WeekViewGrid({
   onClosePopover,
   onPrevWeek,
   onNextWeek,
+  highlightedDate,
   className,
 }: WeekViewGridProps) {
   const { view } = useCalendarPopoverBoundary();
@@ -85,6 +86,23 @@ export function WeekViewGrid({
         )}
       </div>
 
+      {/* Column highlight layer — brief background fade for "+N more" navigation */}
+      {highlightedDate && (
+        <div
+          className="absolute inset-0 grid pointer-events-none"
+          style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
+        >
+          {days.map((day) => (
+            <div
+              key={day.date.toISOString()}
+              className={cn(
+                isSameDay(day.date, highlightedDate) && "column-highlight",
+              )}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Events layer */}
       <div
         className="absolute inset-0 grid pointer-events-none"
@@ -116,7 +134,6 @@ export function WeekViewGrid({
               resizeState={resizeState}
               onEventResizeMouseDown={onEventResizeMouseDown}
               onEventChange={onEventChange}
-
               onContextMenuOpenChange={onContextMenuOpenChange}
               isSidebarOpen={isSidebarOpen}
               onDockToSidebar={onDockToSidebar}

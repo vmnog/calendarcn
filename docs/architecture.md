@@ -90,12 +90,12 @@ Renders a single event segment. Handles:
 
 ### Custom Hooks
 
-| Hook | Purpose | Key Pattern |
-|------|---------|-------------|
-| `useEventDrag` | Drag events across time/days | Ref-based intermediate state, snap-to-grid, auto-scroll |
-| `useEventResize` | Resize event duration | Anchor model, edge flipping, min duration enforcement |
-| `useAllDayResize` | Resize all-day event span | Column-based calculation, row re-stacking |
-| `useHorizontalScroll` | Smooth scroll in grid | Scroll container ref, buffer management |
+| Hook                  | Purpose                      | Key Pattern                                             |
+| --------------------- | ---------------------------- | ------------------------------------------------------- |
+| `useEventDrag`        | Drag events across time/days | Ref-based intermediate state, snap-to-grid, auto-scroll |
+| `useEventResize`      | Resize event duration        | Anchor model, edge flipping, min duration enforcement   |
+| `useAllDayResize`     | Resize all-day event span    | Column-based calculation, row re-stacking               |
+| `useHorizontalScroll` | Smooth scroll in grid        | Scroll container ref, buffer management                 |
 
 ## Styling Architecture
 
@@ -120,14 +120,14 @@ Components access colors via the `eventColorStyles` map, never hardcoded.
 
 ### Z-Index Scale
 
-| Layer | Z-Index | Usage |
-|-------|---------|-------|
-| Grid background | 0 | Base grid lines |
-| Events | 0–2 | Column index determines stacking |
-| Selected event | 20 | Elevated above peers |
-| Drag placeholder | 25 | Shows drop target |
-| Dragging copy | 30 | Follows cursor |
-| Portal overlay | 9999 | Popover/context menu |
+| Layer            | Z-Index | Usage                            |
+| ---------------- | ------- | -------------------------------- |
+| Grid background  | 0       | Base grid lines                  |
+| Events           | 0–2     | Column index determines stacking |
+| Selected event   | 20      | Elevated above peers             |
+| Drag placeholder | 25      | Shows drop target                |
+| Dragging copy    | 30      | Follows cursor                   |
+| Portal overlay   | 9999    | Popover/context menu             |
 
 ## Technology Decisions
 

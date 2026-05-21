@@ -1,5 +1,6 @@
 "use client";
 
+import { isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { WeekViewDayColumnsProps } from "./week-view-types";
 
@@ -29,9 +30,10 @@ function getTimezoneAbbreviation(): string {
  * Includes timezone label on the left (unless standalone mode)
  * Highlights the current day
  */
-export function WeekViewDayColumns({
+export function CalendarDayHeaders({
   days,
   standalone,
+  highlightedDate,
   className,
 }: WeekViewDayColumnsProps) {
   const timezone = getTimezoneAbbreviation();
@@ -49,6 +51,9 @@ export function WeekViewDayColumns({
             className={cn(
               "flex items-center justify-center py-2 text-sm",
               day.isToday ? "gap-0.5 " : "gap-0",
+              highlightedDate &&
+                isSameDay(day.date, highlightedDate) &&
+                "column-highlight",
             )}
           >
             <span
@@ -97,6 +102,9 @@ export function WeekViewDayColumns({
             className={cn(
               "flex items-center justify-center py-2 text-sm",
               day.isToday ? "gap-0.5 " : "gap-0",
+              highlightedDate &&
+                isSameDay(day.date, highlightedDate) &&
+                "column-highlight",
             )}
           >
             <span

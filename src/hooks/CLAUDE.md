@@ -13,6 +13,7 @@ Options interface → Return interface → Constants → Helper functions → Ho
 ```
 
 Inside the hook:
+
 1. React state for the "public" state consumers see
 2. Refs for all options/props (synced via `useEffect`)
 3. Refs for intermediate state during interactions
@@ -39,7 +40,9 @@ Every prop/option must be synced to a ref so that global event handlers (which a
 
 ```ts
 const onEventChangeRef = useRef(onEventChange);
-useEffect(() => { onEventChangeRef.current = onEventChange; }, [onEventChange]);
+useEffect(() => {
+  onEventChangeRef.current = onEventChange;
+}, [onEventChange]);
 ```
 
 Without this, the handler would capture a stale `onEventChange` from when the effect first ran.
@@ -55,7 +58,7 @@ Every `window.addEventListener` MUST have a corresponding `removeEventListener` 
 `snapToGrid(minutes)` rounds to `SNAP_MINUTES` (15 by default). Always apply snapping before committing to state. The formula:
 
 ```ts
-Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES
+Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
 ```
 
 ### Cross-Day Boundaries
