@@ -43,4 +43,6 @@ cn("base-class", isActive && "active-class")
 
 Sample data for development. Events here should cover all edge cases: single-day, multi-day, all-day, overlapping, different colors. Update when adding new event properties to `CalendarEvent`.
 
-Dates are relative to today. `generateMockEvents(today)` builds `rel(dayOffset, hour, minute)`, where `dayOffset` counts days from the Sunday that starts the current week (0 = this Sunday, 4 = this Thursday, negative = earlier weeks). Holidays use `onDate()` with absolute dates.
+Dates are relative to today. `generateMockEvents(today)` builds `rel(dayOffset, hour, minute)`, where `dayOffset` counts days from the Sunday that starts the current week (0 = this Sunday, 4 = this Thursday, negative = earlier weeks). Add new one-off events with `rel()`, never with absolute dates.
+
+Holidays are the exception: they live in `HOLIDAYS` with real-world rules (`fixedDay(month, day)` or `nthWeekday(month, weekday, n)`) and are generated for the previous, current and next year, with ids like `holiday-labor-day-2026`. The two historical Sprint events sit more than a year back so search shows them with a year label.

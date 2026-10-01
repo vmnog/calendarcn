@@ -1,4 +1,5 @@
 import { addDays, startOfWeek } from "date-fns";
+import type { Day } from "date-fns";
 
 import type {
   CalendarEvent,
@@ -30,17 +31,6 @@ function createRelativeDate(today: Date): RelativeDate {
   };
 }
 
-/** Builds an absolute local date, for events tied to real calendar dates. */
-function onDate(
-  year: number,
-  month: number,
-  day: number,
-  hour: number,
-  minute = 0,
-): Date {
-  return new Date(year, month - 1, day, hour, minute);
-}
-
 interface EventOpts {
   isAllDay?: boolean;
   description?: string;
@@ -65,10 +55,157 @@ function ev(
   return { id, title, start, end, color, calendarId, ...opts };
 }
 
+/** Calendar that holds the public holidays (shown as a subscribed calendar). */
+const HOLIDAY_CALENDAR_ID = "Holidays in Brazil";
+
+/**
+ * How many years before and after today's year get holidays (1 = previous,
+ * current and next year). Covers every other demo event around today.
+ */
+const HOLIDAY_YEAR_SPAN = 1;
+
+/** Resolves a holiday to its date in a given year. */
+type HolidayDate = (year: number) => Date;
+
+interface Holiday {
+  /** Stable slug, combined with the year into the event id. */
+  key: string;
+  title: string;
+  date: HolidayDate;
+  opts?: EventOpts;
+}
+
+/** A holiday on the same month and day every year (month is 1-based). */
+function fixedDay(month: number, day: number): HolidayDate {
+  return (year) => new Date(year, month - 1, day);
+}
+
+/** A holiday on the nth `weekday` of a month, e.g. the third Monday of January. */
+function nthWeekday(month: number, weekday: Day, n: number): HolidayDate {
+  return (year) => {
+    const firstOfMonth = new Date(year, month - 1, 1);
+    const firstMatch = addDays(
+      firstOfMonth,
+      (weekday - firstOfMonth.getDay() + 7) % 7,
+    );
+    return addDays(firstMatch, (n - 1) * 7);
+  };
+}
+
+/**
+ * Public holidays and observances on their real-world dates. Unlike the rest
+ * of the demo data they never move with `today`.
+ */
+const HOLIDAYS: readonly Holiday[] = [
+  {
+    key: "new-years-day",
+    title: "New Year's Day",
+    date: fixedDay(1, 1),
+    opts: { description: "Confraternização Universal — national holiday" },
+  },
+  { key: "mlk-day", title: "MLK Day", date: nthWeekday(1, 1, 3) },
+  { key: "valentines-day", title: "Valentine's Day", date: fixedDay(2, 14) },
+  {
+    key: "presidents-day",
+    title: "Presidents' Day",
+    date: nthWeekday(2, 1, 3),
+  },
+  { key: "st-patricks-day", title: "St. Patrick's Day", date: fixedDay(3, 17) },
+  {
+    key: "company-holiday",
+    title: "Company Holiday",
+    date: fixedDay(3, 17),
+    opts: { description: "St. Patrick's Day — office closed" },
+  },
+  {
+    key: "tiradentes",
+    title: "Tiradentes Day",
+    date: fixedDay(4, 21),
+    opts: { description: "Tiradentes — national holiday" },
+  },
+  {
+    key: "labor-day",
+    title: "Labor Day",
+    date: fixedDay(5, 1),
+    opts: { description: "Dia do Trabalhador — national holiday" },
+  },
+  {
+    key: "mothers-day",
+    title: "Mother's Day",
+    date: nthWeekday(5, 0, 2),
+    opts: {
+      description: "Dia das Mães — call mom and send flowers",
+      reminders: [{ amount: 1, unit: "days" }],
+    },
+  },
+  {
+    key: "independence-day",
+    title: "Independence Day",
+    date: fixedDay(9, 7),
+    opts: { description: "Independência do Brasil — national holiday" },
+  },
+  {
+    key: "our-lady-of-aparecida",
+    title: "Our Lady of Aparecida",
+    date: fixedDay(10, 12),
+    opts: { description: "Nossa Senhora Aparecida — national holiday" },
+  },
+  {
+    key: "all-souls-day",
+    title: "All Souls' Day",
+    date: fixedDay(11, 2),
+    opts: { description: "Finados — national holiday" },
+  },
+  {
+    key: "republic-day",
+    title: "Republic Proclamation Day",
+    date: fixedDay(11, 15),
+    opts: { description: "Proclamação da República — national holiday" },
+  },
+  {
+    key: "black-consciousness-day",
+    title: "Black Consciousness Day",
+    date: fixedDay(11, 20),
+    opts: {
+      description:
+        "Dia Nacional de Zumbi e da Consciência Negra — national holiday",
+    },
+  },
+  {
+    key: "christmas-day",
+    title: "Christmas Day",
+    date: fixedDay(12, 25),
+    opts: { description: "Natal — national holiday" },
+  },
+];
+
+/** All-day holiday events for the years around `today` (ids like `holiday-labor-day-2026`). */
+function holidayEvents(today: Date): CalendarEvent[] {
+  const year = today.getFullYear();
+  const events: CalendarEvent[] = [];
+  for (let y = year - HOLIDAY_YEAR_SPAN; y <= year + HOLIDAY_YEAR_SPAN; y++) {
+    for (const holiday of HOLIDAYS) {
+      const date = holiday.date(y);
+      events.push(
+        ev(
+          `holiday-${holiday.key}-${y}`,
+          holiday.title,
+          date,
+          date,
+          "green",
+          HOLIDAY_CALENDAR_ID,
+          { isAllDay: true, calendarEmail: "me@vmnog.com", ...holiday.opts },
+        ),
+      );
+    }
+  }
+  return events;
+}
+
 /**
  * Demo events, placed relative to the current week with `rel(dayOffset, …)`
  * (0 = this Sunday, 4 = this Thursday, negative = earlier weeks). Holidays
- * use `onDate()` because they sit on real calendar dates.
+ * live in `HOLIDAYS` because they sit on real calendar dates.
  *
  * Calendar mapping:
  *   me@vmnog.com       → red     (main email)
@@ -281,15 +418,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         reminders: [{ amount: 30, unit: "minutes" }],
         calendarEmail: "me@vmnog.com",
       },
-    ),
-    ev(
-      "j13",
-      "MLK Day",
-      onDate(2026, 1, 19, 0),
-      onDate(2026, 1, 19, 0),
-      "green",
-      "Holidays in Brazil",
-      { isAllDay: true, calendarEmail: "me@vmnog.com" },
     ),
 
     // Week -17 (days -119 to -113)
@@ -776,15 +904,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev(
-      "f14",
-      "Valentine's Day",
-      onDate(2026, 2, 14, 0),
-      onDate(2026, 2, 14, 0),
-      "green",
-      "Holidays in Brazil",
-      { isAllDay: true, calendarEmail: "me@vmnog.com" },
-    ),
 
     // Week -13 (days -91 to -85)
     ev(
@@ -856,15 +975,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev(
-      "f21",
-      "Presidents' Day",
-      onDate(2026, 2, 16, 0),
-      onDate(2026, 2, 16, 0),
-      "green",
-      "Holidays in Brazil",
-      { isAllDay: true, calendarEmail: "me@vmnog.com" },
-    ),
     ev("f22", "Brunch", rel(-85, 11), rel(-85, 13), "orange", "Family", {
       description: "Sister's visiting from out of town",
       location: "The Breakfast Club",
@@ -1448,15 +1558,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev(
-      "m21",
-      "St. Patrick's Day",
-      onDate(2026, 3, 17, 0),
-      onDate(2026, 3, 17, 0),
-      "green",
-      "Holidays in Brazil",
-      { isAllDay: true, calendarEmail: "me@vmnog.com" },
-    ),
 
     // Week -8 (days -56 to -50)
     ev(
@@ -1647,21 +1748,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       calendarEmail: "me@vmnog.com",
     }),
 
-    // Single-day all-day event
-    ev(
-      "mv02",
-      "Company Holiday",
-      onDate(2026, 3, 17, 0),
-      onDate(2026, 3, 17, 0),
-      "green",
-      "Holidays in Brazil",
-      {
-        isAllDay: true,
-        description: "St. Patrick's Day — office closed",
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-
     // 3-day all-day event within a single week: Tue (day -68) – Thu (day -66)
     ev(
       "mv03",
@@ -1824,20 +1910,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       "Personal",
     ),
 
-    // Week 3 spanning event: Tue (day -61) – Thu (day -59)
-    ev(
-      "mv04",
-      "St. Patrick's Day",
-      onDate(2026, 3, 17, 0),
-      onDate(2026, 3, 17, 0),
-      "green",
-      "Holidays in Brazil",
-      {
-        isAllDay: true,
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-
     // Day -62 (Mon) — add more events
     ev("dense20", "Weekly Planning", rel(-62, 9), rel(-62, 10), "blue", "Work"),
     ev(
@@ -1882,6 +1954,7 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     ),
 
     // ── Historical Sprint events (for search testing) ──
+    // Over a year back, so search results always show them with a year.
     ev(
       "h01",
       "Sprint Kickoff — Q2 Platform Migration Initiative",
@@ -1968,21 +2041,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
 
     // ── Recent weeks, this week and next week ──
 
-    // Labor Day (Brazil national holiday, fixed date)
-    ev(
-      "may01",
-      "Labor Day",
-      onDate(2026, 5, 1, 0),
-      onDate(2026, 5, 1, 0),
-      "green",
-      "Holidays in Brazil",
-      {
-        isAllDay: true,
-        description: "Dia do Trabalhador — national holiday",
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-
     // Week -2 (days -14 to -8) — offsite week
     ev(
       "may02",
@@ -2053,21 +2111,7 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       },
     ),
 
-    // Week -1 (days -7 to -1) — Mother's Day week
-    ev(
-      "may08",
-      "Mother's Day",
-      onDate(2026, 5, 10, 0),
-      onDate(2026, 5, 10, 0),
-      "green",
-      "Holidays in Brazil",
-      {
-        isAllDay: true,
-        description: "Dia das Mães — call mom and send flowers",
-        reminders: [{ amount: 1, unit: "days" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
+    // Week -1 (days -7 to -1) — brunch with Mom on Sunday
     ev(
       "may09",
       "Brunch with Mom",
@@ -2477,11 +2521,13 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     ),
   ];
 }
+
 /**
  * Generates the demo events relative to `today`, so the current week always
  * has the same layout. Weekday-specific events (gym splits, weekend runs)
  * keep their weekdays because offsets are counted from the week's Sunday.
+ * Holidays are added on their real dates for the years around `today`.
  */
 export function generateMockEvents(today: Date = new Date()): CalendarEvent[] {
-  return demoEvents(createRelativeDate(today));
+  return [...demoEvents(createRelativeDate(today)), ...holidayEvents(today)];
 }
