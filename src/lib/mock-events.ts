@@ -1,4 +1,4 @@
-import { addDays, startOfWeek } from "date-fns";
+import { addDays, addMinutes, format, startOfWeek } from "date-fns";
 import type { Day } from "date-fns";
 
 import type {
@@ -203,9 +203,247 @@ function holidayEvents(today: Date): CalendarEvent[] {
 }
 
 /**
- * Demo events, placed relative to the current week with `rel(dayOffset, …)`
- * (0 = this Sunday, 4 = this Thursday, negative = earlier weeks). Holidays
- * live in `HOLIDAYS` because they sit on real calendar dates.
+ * Weeks before the current week that get routine events. Reaches back past
+ * the oldest one-off event (19 weeks ago), so every authored week keeps its
+ * standup, 1:1, gym and Friday events.
+ */
+const ROUTINE_WEEKS_BEFORE = 20;
+
+/**
+ * Weeks after the current week that get routine events. Mirrors the history
+ * so roughly 4–5 months ahead never look empty, while keeping the total
+ * event count in the low hundreds.
+ */
+const ROUTINE_WEEKS_AFTER = 20;
+
+/** Short weekday names, used to build each routine's recurrence label. */
+const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** Changes one week's occurrence of a routine; omitted fields keep defaults. */
+interface RoutineException {
+  hour?: number;
+  minute?: number;
+  opts?: EventOpts;
+}
+
+/** Marks a week where a routine does not happen (offsite, conference, trip). */
+const SKIP = "skip";
+
+interface WeeklyRoutine {
+  /** Stable slug, combined with the date into each occurrence's id. */
+  key: string;
+  title: string;
+  weekday: Day;
+  hour: number;
+  minute?: number;
+  durationMinutes: number;
+  color: EventColor;
+  calendarId: string;
+  opts?: EventOpts;
+  /** Per-week changes keyed by week offset (0 = this week, -1 = last week). */
+  exceptions?: Readonly<Record<number, RoutineException | typeof SKIP>>;
+}
+
+/**
+ * Events that happen every week at the same weekday and time. They are
+ * generated for every week in the routine window instead of being authored
+ * one by one, so navigating far ahead or back still shows a lived-in week.
+ */
+const WEEKLY_ROUTINES: readonly WeeklyRoutine[] = [
+  {
+    key: "team-standup",
+    title: "Team Standup",
+    weekday: 1,
+    hour: 9,
+    durationMinutes: 30,
+    color: "red",
+    calendarId: "me@vmnog.com",
+    opts: {
+      description: "Daily sync — blockers, progress, priorities",
+      reminders: [{ amount: 5, unit: "minutes" }],
+      status: "busy",
+    },
+    exceptions: {
+      [-19]: { hour: 10, minute: 30 },
+      [-2]: SKIP,
+    },
+  },
+  {
+    key: "manager-1-1",
+    title: "1:1 with Manager",
+    weekday: 3,
+    hour: 15,
+    durationMinutes: 30,
+    color: "red",
+    calendarId: "me@vmnog.com",
+    opts: {
+      description: "Weekly check-in",
+      reminders: [{ amount: 10, unit: "minutes" }],
+    },
+    exceptions: {
+      [-19]: {
+        minute: 30,
+        opts: { description: "First 1:1 of the year — set annual goals" },
+      },
+      [-18]: {
+        opts: { description: "Career growth discussion, Q1 goals check-in" },
+      },
+      [-17]: {
+        opts: {
+          description: "Weekly sync — project assignments and growth plan",
+        },
+      },
+      [-16]: { opts: { description: "Quarterly review prep discussion" } },
+      [-14]: {
+        opts: {
+          description: "Mid-quarter check-in, discuss promotion timeline",
+        },
+      },
+      [-12]: {
+        opts: { description: "Weekly sync — promotion timeline update" },
+      },
+      [-11]: { opts: { description: "Q2 role expectations discussion" } },
+      [-10]: {
+        opts: {
+          description:
+            "Discuss tech lead role transition and team restructuring",
+        },
+      },
+      [-9]: { opts: { description: "Annual review prep discussion" } },
+      [-8]: { opts: { description: "Q1 wrap-up and Q2 expectations" } },
+      [-7]: { opts: { description: "Q2 kickoff goals alignment" } },
+      [-1]: {
+        opts: { description: "Weekly check-in — career growth and priorities" },
+      },
+      [1]: { opts: { description: "Async — reschedule from conference" } },
+    },
+  },
+  {
+    key: "gym",
+    title: "Gym",
+    weekday: 4,
+    hour: 18,
+    durationMinutes: 90,
+    color: "green",
+    calendarId: "Fitness",
+    opts: { reminders: [{ amount: 30, unit: "minutes" }] },
+    exceptions: {
+      [-16]: { opts: { description: "Full body circuit training" } },
+      [-13]: { opts: { description: "HIIT class + core work" } },
+      [-12]: { opts: { description: "Yoga + meditation session" } },
+      [-9]: { opts: { description: "Spin class + abs" } },
+      [-8]: { opts: { description: "Boxing class + cool down" } },
+      [1]: SKIP,
+    },
+  },
+  {
+    key: "friday-wrap-up",
+    title: "Friday Wrap-up",
+    weekday: 5,
+    hour: 16,
+    durationMinutes: 60,
+    color: "blue",
+    calendarId: "Work",
+    opts: {
+      description: "Review weekly accomplishments and set Monday priorities",
+      reminders: [{ amount: 10, unit: "minutes" }],
+    },
+    exceptions: {
+      [1]: { opts: { description: "Travel-day wrap from the airport" } },
+    },
+  },
+  {
+    key: "happy-hour",
+    title: "Happy Hour",
+    weekday: 5,
+    hour: 17,
+    durationMinutes: 120,
+    color: "purple",
+    calendarId: "Personal",
+    opts: {
+      location: "The Draft House",
+      reminders: [{ amount: 30, unit: "minutes" }],
+    },
+    exceptions: {
+      [-17]: {
+        opts: { description: "Drinks with the team at the usual spot" },
+      },
+      [-15]: { opts: { location: "The Brewery" } },
+      [-14]: { opts: { location: "Wine Bar" } },
+      [-13]: {
+        opts: {
+          description: "Celebrating Jake's promotion",
+          location: "Rooftop Bar",
+        },
+      },
+      [-12]: { opts: { description: "End-of-sprint celebration" } },
+      [-10]: {
+        opts: {
+          description: "Post-offsite drinks to unwind",
+          location: "The Pub",
+        },
+      },
+      [-9]: { opts: { location: "Irish Pub" } },
+      [-8]: {
+        opts: {
+          description: "End-of-quarter celebration drinks",
+          location: "The Rooftop",
+        },
+      },
+      [-2]: { minute: 30 },
+      [0]: SKIP,
+      [1]: SKIP,
+    },
+  },
+];
+
+/**
+ * One event per routine per week in the routine window, with ids like
+ * `team-standup-2026-10-05` (unique per routine and day, stable across
+ * renders, and never shaped like a `crypto.randomUUID()` id).
+ */
+function routineEvents(rel: RelativeDate): CalendarEvent[] {
+  const events: CalendarEvent[] = [];
+  for (const routine of WEEKLY_ROUTINES) {
+    for (
+      let week = -ROUTINE_WEEKS_BEFORE;
+      week <= ROUTINE_WEEKS_AFTER;
+      week++
+    ) {
+      const exception = routine.exceptions?.[week];
+      if (exception === SKIP) continue;
+
+      const dayOffset = week * 7 + routine.weekday;
+      const start = rel(
+        dayOffset,
+        exception?.hour ?? routine.hour,
+        exception?.minute ?? routine.minute ?? 0,
+      );
+      events.push(
+        ev(
+          `${routine.key}-${format(start, "yyyy-MM-dd")}`,
+          routine.title,
+          start,
+          addMinutes(start, routine.durationMinutes),
+          routine.color,
+          routine.calendarId,
+          {
+            recurrence: `Every week on ${WEEKDAY_NAMES[routine.weekday]}`,
+            calendarEmail: "me@vmnog.com",
+            ...routine.opts,
+            ...exception?.opts,
+          },
+        ),
+      );
+    }
+  }
+  return events;
+}
+
+/**
+ * One-off demo events, placed relative to the current week with `rel(dayOffset, …)`
+ * (0 = this Sunday, 4 = this Thursday, negative = earlier weeks). Weekly
+ * routines live in `WEEKLY_ROUTINES` and holidays in `HOLIDAYS`.
  *
  * Calendar mapping:
  *   me@vmnog.com       → red     (main email)
@@ -236,21 +474,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       },
     ),
     ev(
-      "j02",
-      "Team Standup",
-      rel(-132, 10, 30),
-      rel(-132, 11),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-        status: "busy",
-      },
-    ),
-    ev(
       "j03",
       "Lunch with Alex",
       rel(-131, 12),
@@ -277,62 +500,8 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         status: "busy",
       },
     ),
-    ev(
-      "j04b",
-      "1:1 with Manager",
-      rel(-130, 15, 30),
-      rel(-130, 16),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "First 1:1 of the year — set annual goals",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev("j05", "Gym", rel(-129, 18), rel(-129, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("j06", "Friday Wrap-up", rel(-128, 16), rel(-128, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev(
-      "j06b",
-      "Happy Hour",
-      rel(-128, 17),
-      rel(-128, 19),
-      "purple",
-      "Personal",
-      {
-        recurrence: "Every week on Fri",
-        location: "The Draft House",
-        reminders: [{ amount: 30, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
 
     // Week -18 (days -126 to -120)
-    ev(
-      "j07",
-      "Team Standup",
-      rel(-125, 9),
-      rel(-125, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-        status: "busy",
-      },
-    ),
     ev(
       "j08",
       "Product Roadmap Review",
@@ -356,25 +525,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       "Side Projects",
       { calendarEmail: "me@vmnog.com" },
     ),
-    ev(
-      "j10",
-      "1:1 with Manager",
-      rel(-123, 15),
-      rel(-123, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Career growth discussion, Q1 goals check-in",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev("j10b", "Gym", rel(-122, 18), rel(-122, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
     ev("j11", "Dentist", rel(-122, 10), rel(-122, 11), "purple", "Personal", {
       description: "Regular cleaning + check-up. Bring insurance card.",
       location: "SmileCare Dental",
@@ -399,43 +549,8 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("j12b", "Friday Wrap-up", rel(-121, 16), rel(-121, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev(
-      "j12c",
-      "Happy Hour",
-      rel(-121, 17),
-      rel(-121, 19),
-      "purple",
-      "Personal",
-      {
-        recurrence: "Every week on Fri",
-        location: "The Draft House",
-        reminders: [{ amount: 30, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
 
     // Week -17 (days -119 to -113)
-    ev(
-      "j14",
-      "Team Standup",
-      rel(-118, 9),
-      rel(-118, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-        status: "busy",
-      },
-    ),
     ev(
       "j15",
       "Sprint Planning",
@@ -473,46 +588,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev(
-      "j17b",
-      "1:1 with Manager",
-      rel(-116, 15),
-      rel(-116, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Weekly sync — project assignments and growth plan",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev("j18", "Gym", rel(-115, 18), rel(-115, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("j18b", "Friday Wrap-up", rel(-114, 16), rel(-114, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev(
-      "j19",
-      "Happy Hour",
-      rel(-114, 17),
-      rel(-114, 19),
-      "purple",
-      "Personal",
-      {
-        recurrence: "Every week on Fri",
-        description: "Drinks with the team at the usual spot",
-        location: "The Draft House",
-        reminders: [{ amount: 30, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev("j20", "Brunch", rel(-113, 11), rel(-113, 13), "orange", "Family", {
       description: "Monthly family brunch — Mom's picking the place",
       location: "Café Lola",
@@ -521,21 +596,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     }),
 
     // Week -16 (days -112 to -106)
-    ev(
-      "j21",
-      "Team Standup",
-      rel(-111, 9),
-      rel(-111, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-        status: "busy",
-      },
-    ),
     ev(
       "j22",
       "Quarterly Review Prep",
@@ -575,52 +635,12 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       "Side Projects",
       { calendarEmail: "me@vmnog.com" },
     ),
-    ev(
-      "j24b",
-      "1:1 with Manager",
-      rel(-109, 15),
-      rel(-109, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Quarterly review prep discussion",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev("j25", "Retro", rel(-108, 14), rel(-108, 15), "blue", "Work", {
       recurrence: "Every 2 weeks on Thu",
       description: "Sprint 2 retrospective — what went well, what to improve",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("j26", "Gym", rel(-108, 18), rel(-108, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      description: "Full body circuit training",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("j26b", "Friday Wrap-up", rel(-107, 16), rel(-107, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev(
-      "j26c",
-      "Happy Hour",
-      rel(-107, 17),
-      rel(-107, 19),
-      "purple",
-      "Personal",
-      {
-        recurrence: "Every week on Fri",
-        location: "The Draft House",
-        reminders: [{ amount: 30, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev(
       "j27",
       "Month-End Report",
@@ -638,21 +658,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     // ── 15 to 12 weeks ago ──
 
     // Week -15 (days -105 to -99)
-    ev(
-      "f01",
-      "Team Standup",
-      rel(-104, 9),
-      rel(-104, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-        status: "busy",
-      },
-    ),
     ev("f02", "Q1 Kickoff", rel(-104, 10), rel(-104, 12), "blue", "Work", {
       description: "Company-wide Q1 kickoff. CEO presenting vision and OKRs.",
       location: "Conference Room A",
@@ -679,19 +684,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       },
     ),
     ev(
-      "f03b",
-      "1:1 with Manager",
-      rel(-102, 15),
-      rel(-102, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev(
       "f04",
       "Design Review",
       rel(-102, 14),
@@ -714,31 +706,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       status: "busy",
       visibility: "public",
     }),
-    ev("f06", "Gym", rel(-101, 18), rel(-101, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("f06b", "Friday Wrap-up", rel(-100, 16), rel(-100, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev(
-      "f06c",
-      "Happy Hour",
-      rel(-100, 17),
-      rel(-100, 19),
-      "purple",
-      "Personal",
-      {
-        recurrence: "Every week on Fri",
-        location: "The Brewery",
-        reminders: [{ amount: 30, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev(
       "f07",
       "Family Dinner",
@@ -758,21 +725,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     ),
 
     // Week -14 (days -98 to -92)
-    ev(
-      "f08",
-      "Team Standup",
-      rel(-97, 9),
-      rel(-97, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-        status: "busy",
-      },
-    ),
     ev(
       "f09",
       "Project Planning",
@@ -824,20 +776,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       calendarEmail: "me@vmnog.com",
     }),
     ev(
-      "f11",
-      "1:1 with Manager",
-      rel(-95, 15),
-      rel(-95, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Mid-quarter check-in, discuss promotion timeline",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev(
       "f11b",
       "Security Review",
       rel(-95, 14),
@@ -869,23 +807,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("f12c", "Gym", rel(-94, 18), rel(-94, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("f12d", "Friday Wrap-up", rel(-93, 16), rel(-93, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("f12e", "Happy Hour", rel(-93, 17), rel(-93, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      location: "Wine Bar",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
     ev(
       "f13",
       "Valentine's Dinner",
@@ -906,21 +827,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     ),
 
     // Week -13 (days -91 to -85)
-    ev(
-      "f15",
-      "Team Standup",
-      rel(-90, 9),
-      rel(-90, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-        status: "busy",
-      },
-    ),
     ev("f16", "Roadmap Sync", rel(-90, 11), rel(-90, 12), "blue", "Work", {
       description:
         "Align engineering and product on H1 priorities and delivery dates",
@@ -956,25 +862,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("f19", "Gym", rel(-87, 18), rel(-87, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      description: "HIIT class + core work",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("f19b", "Friday Wrap-up", rel(-86, 16), rel(-86, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("f20", "Happy Hour", rel(-86, 17), rel(-86, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      description: "Celebrating Jake's promotion",
-      location: "Rooftop Bar",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
     ev("f22", "Brunch", rel(-85, 11), rel(-85, 13), "orange", "Family", {
       description: "Sister's visiting from out of town",
       location: "The Breakfast Club",
@@ -995,21 +882,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     ),
 
     // Week -12 (days -84 to -78) — busy week with overlaps
-    ev(
-      "f24",
-      "Team Standup",
-      rel(-83, 9),
-      rel(-83, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-        status: "busy",
-      },
-    ),
     ev(
       "f25",
       "Sprint Planning",
@@ -1110,20 +982,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev(
-      "f27e",
-      "1:1 with Manager",
-      rel(-81, 15),
-      rel(-81, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Weekly sync — promotion timeline update",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev("f28", "Demo Day", rel(-80, 14), rel(-80, 16), "red", "me@vmnog.com", {
       description: "Present Q1 progress to leadership — bring laptop charger",
       location: "Auditorium",
@@ -1179,43 +1037,10 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("f29c", "Friday Wrap-up", rel(-79, 16), rel(-79, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("f29d", "Happy Hour", rel(-79, 17), rel(-79, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      description: "End-of-sprint celebration",
-      location: "The Draft House",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("f30", "Gym", rel(-80, 18), rel(-80, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      description: "Yoga + meditation session",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
 
     // ── 11 to 7 weeks ago ──
 
     // Week -11 (days -77 to -71)
-    ev(
-      "m01",
-      "Team Standup",
-      rel(-76, 9),
-      rel(-76, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev(
       "m02",
       "March Priorities",
@@ -1243,20 +1068,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       },
     ),
     ev(
-      "m03b",
-      "1:1 with Manager",
-      rel(-74, 15),
-      rel(-74, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Q2 role expectations discussion",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev(
       "m04",
       "Lunch with Sarah",
       rel(-74, 12),
@@ -1277,23 +1088,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m06", "Gym", rel(-73, 18), rel(-73, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("m06b", "Friday Wrap-up", rel(-72, 16), rel(-72, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("m06c", "Happy Hour", rel(-72, 17), rel(-72, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      location: "The Draft House",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
     ev("m07", "Game Night", rel(-72, 19), rel(-72, 22), "orange", "Family", {
       description:
         "Board games at our place — picking up snacks on the way home",
@@ -1302,20 +1096,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     }),
 
     // Week -10 (days -70 to -64) — triple-booked Tuesday
-    ev(
-      "m08",
-      "Team Standup",
-      rel(-69, 9),
-      rel(-69, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev("m09", "OKR Review", rel(-69, 10), rel(-69, 11, 30), "blue", "Work", {
       description: "Mid-quarter OKR progress review with leadership",
       reminders: [{ amount: 15, unit: "minutes" }],
@@ -1379,20 +1159,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       },
     ),
     ev(
-      "m11",
-      "1:1 with Manager",
-      rel(-67, 15),
-      rel(-67, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Discuss tech lead role transition and team restructuring",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev(
       "m11b",
       "Incident Post-mortem",
       rel(-67, 14, 30),
@@ -1433,45 +1199,13 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("m12b", "Gym", rel(-66, 18), rel(-66, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
     ev("m13", "Team Offsite", rel(-66, 0), rel(-65, 0), "blue", "Work", {
       isAllDay: true,
       description: "Annual team offsite — team building and strategy sessions",
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m13b", "Friday Wrap-up", rel(-65, 16), rel(-65, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("m14", "Happy Hour", rel(-65, 17), rel(-65, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      description: "Post-offsite drinks to unwind",
-      location: "The Pub",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
 
     // Week -9 (days -63 to -57)
-    ev(
-      "m15",
-      "Team Standup",
-      rel(-62, 9),
-      rel(-62, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev(
       "m16",
       "Sprint Planning",
@@ -1501,20 +1235,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       },
     ),
     ev(
-      "m17b",
-      "1:1 with Manager",
-      rel(-60, 15),
-      rel(-60, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Annual review prep discussion",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev(
       "m18",
       "Perf Review Prep",
       rel(-60, 14),
@@ -1540,40 +1260,8 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("m20", "Gym", rel(-59, 18), rel(-59, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      description: "Spin class + abs",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("m20b", "Friday Wrap-up", rel(-58, 16), rel(-58, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("m20c", "Happy Hour", rel(-58, 17), rel(-58, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      location: "Irish Pub",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
 
     // Week -8 (days -56 to -50)
-    ev(
-      "m22",
-      "Team Standup",
-      rel(-55, 9),
-      rel(-55, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev("m23", "Q1 Wrap-up", rel(-55, 10), rel(-55, 12), "blue", "Work", {
       description:
         "Final Q1 summary meeting — present achievements, lessons learned, and Q2 outlook",
@@ -1595,20 +1283,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         reminders: [{ amount: 30, unit: "minutes" }],
         calendarEmail: "me@vmnog.com",
         status: "busy",
-      },
-    ),
-    ev(
-      "m24b",
-      "1:1 with Manager",
-      rel(-53, 15),
-      rel(-53, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Q1 wrap-up and Q2 expectations",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
       },
     ),
     ev(
@@ -1637,25 +1311,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m27b", "Friday Wrap-up", rel(-51, 16), rel(-51, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("m27c", "Happy Hour", rel(-51, 17), rel(-51, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      description: "End-of-quarter celebration drinks",
-      location: "The Rooftop",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("m28", "Gym", rel(-52, 18), rel(-52, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      description: "Boxing class + cool down",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
     ev(
       "m29",
       "Birthday Party",
@@ -1675,20 +1330,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     ),
 
     // Week -7 (days -49 to -43)
-    ev(
-      "m30",
-      "Team Standup",
-      rel(-48, 9),
-      rel(-48, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev("m31", "Q2 Planning", rel(-48, 10), rel(-48, 12), "blue", "Work", {
       description:
         "Kick off Q2 planning — define themes, allocate resources, set milestones",
@@ -1696,31 +1337,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         { amount: 15, unit: "minutes" },
         { amount: 1, unit: "days" },
       ],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev(
-      "m31b",
-      "1:1 with Manager",
-      rel(-46, 15),
-      rel(-46, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Q2 kickoff goals alignment",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev("m31c", "Gym", rel(-45, 18), rel(-45, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("m31d", "Friday Wrap-up", rel(-44, 16), rel(-44, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
     ev(
@@ -2085,31 +1701,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("may05", "Gym", rel(-10, 18), rel(-10, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("may06", "Friday Wrap-up", rel(-9, 16), rel(-9, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev(
-      "may07",
-      "Happy Hour",
-      rel(-9, 17, 30),
-      rel(-9, 19, 30),
-      "purple",
-      "Personal",
-      {
-        recurrence: "Every week on Fri",
-        location: "The Draft House",
-        reminders: [{ amount: 30, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
 
     // Week -1 (days -7 to -1) — brunch with Mom on Sunday
     ev(
@@ -2124,21 +1715,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         location: "Balthazar",
         reminders: [{ amount: 1, unit: "hours" }],
         calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev(
-      "may10",
-      "Team Standup",
-      rel(-6, 9),
-      rel(-6, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-        status: "busy",
       },
     ),
     ev(
@@ -2185,20 +1761,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       },
     ),
     ev(
-      "may14",
-      "1:1 with Manager",
-      rel(-4, 15),
-      rel(-4, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Weekly check-in — career growth and priorities",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev(
       "may15",
       "Calendar Demo to Stakeholders",
       rel(-3, 11),
@@ -2213,17 +1775,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("may16", "Gym", rel(-3, 18), rel(-3, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("may17", "Friday Wrap-up", rel(-2, 16), rel(-2, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
     ev(
       "may18",
       "Movie Night",
@@ -2253,21 +1804,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     ),
 
     // Week 0 (days 0 to 6) — current week (today is day 4, Thu)
-    ev(
-      "may20",
-      "Team Standup",
-      rel(1, 9),
-      rel(1, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-        status: "busy",
-      },
-    ),
     ev("may21", "Sprint Planning", rel(1, 10), rel(1, 12), "blue", "Work", {
       description:
         "Sprint 6 planning — story estimation, capacity check, commitments",
@@ -2296,20 +1832,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev(
-      "may24",
-      "1:1 with Manager",
-      rel(3, 15),
-      rel(3, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Weekly check-in",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev(
       "may25",
       "Tech Talk: React Server Components",
@@ -2350,17 +1872,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("may28", "Gym", rel(4, 18), rel(4, 19, 30), "green", "Fitness", {
-      recurrence: "Every week on Thu",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("may29", "Friday Wrap-up", rel(5, 16), rel(5, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Review weekly accomplishments and set Monday priorities",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
 
     // Multi-day weekend trip: Fri (day 5) – Sun (day 7)
     ev(
@@ -2381,20 +1892,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
     ),
 
     // Week 1 (days 7 to 13)
-    ev(
-      "may31",
-      "Team Standup",
-      rel(8, 9),
-      rel(8, 9, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Mon",
-        description: "Daily sync — blockers, progress, priorities",
-        reminders: [{ amount: 5, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
     ev("may32", "Roadmap Sync", rel(8, 14), rel(8, 15), "blue", "Work", {
       description: "Align on Q3 roadmap themes before exec review",
       reminders: [{ amount: 10, unit: "minutes" }],
@@ -2444,20 +1941,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
       },
     ),
     ev(
-      "may36",
-      "1:1 with Manager",
-      rel(10, 15),
-      rel(10, 15, 30),
-      "red",
-      "me@vmnog.com",
-      {
-        recurrence: "Every week on Wed",
-        description: "Async — reschedule from conference",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
-    ev(
       "may37",
       "Conference Dinner",
       rel(10, 19),
@@ -2471,12 +1954,6 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("may38", "Friday Wrap-up", rel(12, 16), rel(12, 17), "blue", "Work", {
-      recurrence: "Every week on Fri",
-      description: "Travel-day wrap from the airport",
-      reminders: [{ amount: 10, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
     ev(
       "may39",
       "Dinner with Parents",
@@ -2526,8 +2003,10 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
  * Generates the demo events relative to `today`, so the current week always
  * has the same layout. Weekday-specific events (gym splits, weekend runs)
  * keep their weekdays because offsets are counted from the week's Sunday.
- * Holidays are added on their real dates for the years around `today`.
+ * Weekly routines repeat across a window of weeks around today, and holidays
+ * are added on their real dates for the years around `today`.
  */
 export function generateMockEvents(today: Date = new Date()): CalendarEvent[] {
-  return [...demoEvents(createRelativeDate(today)), ...holidayEvents(today)];
+  const rel = createRelativeDate(today);
+  return [...demoEvents(rel), ...routineEvents(rel), ...holidayEvents(today)];
 }

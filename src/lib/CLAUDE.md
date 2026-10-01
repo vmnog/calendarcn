@@ -43,6 +43,10 @@ cn("base-class", isActive && "active-class")
 
 Sample data for development. Events here should cover all edge cases: single-day, multi-day, all-day, overlapping, different colors. Update when adding new event properties to `CalendarEvent`.
 
-Dates are relative to today. `generateMockEvents(today)` builds `rel(dayOffset, hour, minute)`, where `dayOffset` counts days from the Sunday that starts the current week (0 = this Sunday, 4 = this Thursday, negative = earlier weeks). Add new one-off events with `rel()`, never with absolute dates.
+Dates are relative to today, and `generateMockEvents(today)` stays pure (pass a fixed `today` to test it). The data comes from three sources:
 
-Holidays are the exception: they live in `HOLIDAYS` with real-world rules (`fixedDay(month, day)` or `nthWeekday(month, weekday, n)`) and are generated for the previous, current and next year, with ids like `holiday-labor-day-2026`. The two historical Sprint events sit more than a year back so search shows them with a year label.
+- **One-off events** (`demoEvents`): written with `rel(dayOffset, hour, minute)`, where `dayOffset` counts days from the Sunday that starts the current week (0 = this Sunday, 4 = this Thursday, negative = earlier weeks). Add new one-offs with `rel()`, never with absolute dates.
+- **Weekly routines** (`WEEKLY_ROUTINES`): standup, 1:1, gym, Friday wrap-up and happy hour are generated for every week from `ROUTINE_WEEKS_BEFORE` weeks ago to `ROUTINE_WEEKS_AFTER` weeks ahead, so far-off weeks are never empty. Per-week variations (other time, description or location, or a skipped week) go in the routine's `exceptions`, keyed by week offset. Ids look like `team-standup-2026-10-05`.
+- **Holidays** (`HOLIDAYS`): real-world rules (`fixedDay(month, day)` or `nthWeekday(month, weekday, n)`) generated for the previous, current and next year, with ids like `holiday-labor-day-2026`. They never move with today.
+
+The two historical Sprint events sit more than a year back so search shows them with a year label.
