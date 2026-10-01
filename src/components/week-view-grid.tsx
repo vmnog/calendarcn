@@ -4,7 +4,6 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { isSameDay, startOfDay, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { isPast } from "date-fns";
 import { calculatePositionedEvents, getNewEventRange } from "@/lib/event-utils";
 import { CalendarEventItem } from "./calendar-event-item";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
@@ -658,7 +657,6 @@ function DayEventsColumn({
                 key={`${eventId}-resizing`}
                 positionedEvent={resizePositioned}
                 hourHeight={hourHeight}
-                isPast={isPast(positionedEvent.event.end)}
                 isSelected={isCrossDay || eventId === selectedEventId}
                 overrideStart={displayStart}
                 overrideEnd={displayEnd}
@@ -673,7 +671,6 @@ function DayEventsColumn({
             key={eventId}
             positionedEvent={positionedEvent}
             hourHeight={hourHeight}
-            isPast={isPast(positionedEvent.event.end)}
             isSelected={eventId === selectedEventId}
             onClick={onEventClick}
             onDragMouseDown={onEventDragMouseDown}

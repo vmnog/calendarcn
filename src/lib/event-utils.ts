@@ -16,6 +16,7 @@ import {
   getWeek,
   format,
   isToday,
+  parse,
 } from "date-fns";
 import type {
   CalendarEvent,
@@ -31,6 +32,23 @@ export const NEW_EVENT_DURATION_MINUTES = 60;
 
 /** Minutes in a full day, used to keep created events inside their column */
 const MINUTES_PER_DAY = 24 * 60;
+
+/**
+ * Format of a month cell's `data-date` attribute. A calendar date with no
+ * time or offset, so it reads the same in every timezone and server-rendered
+ * markup matches the client's.
+ */
+const CELL_DATE_FORMAT = "yyyy-MM-dd";
+
+/** Formats a day as a month cell's `data-date` value ("2026-10-01"). */
+export function formatCellDate(date: Date): string {
+  return format(date, CELL_DATE_FORMAT);
+}
+
+/** Parses a month cell's `data-date` value into local midnight of that day. */
+export function parseCellDate(value: string): Date {
+  return parse(value, CELL_DATE_FORMAT, new Date());
+}
 
 /** Rounds a minute offset to the nearest SNAP_MINUTES increment. */
 export function snapToGrid(minutes: number): number {

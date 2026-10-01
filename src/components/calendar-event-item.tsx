@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { format, isPast } from "date-fns";
+import { useIsPast } from "@/hooks/use-now";
 import {
   Popover,
   PopoverAnchor,
@@ -163,7 +164,9 @@ export function CalendarEventItem({
   const { event, segmentPosition = "full" } = positionedEvent;
   const color = event.color ?? "blue";
   const styles = eventColorStyles[color];
-  const eventIsPast = isPastProp ?? isPast(event.end);
+  // `false` on the server and during hydration, so the markup matches
+  const endIsPast = useIsPast(event.end);
+  const eventIsPast = isPastProp ?? endIsPast;
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
   const isDayView = view === "day";
 
@@ -628,6 +631,7 @@ export type AllDayDragVariant = "ghost" | "placeholder" | "dragging";
 
 export interface AllDayEventItemProps {
   event: CalendarEvent;
+  /** Overrides whether the event renders as past (defaults to `useIsPast`) */
   isPast?: boolean;
   isSelected?: boolean;
   onClick?: (event: CalendarEvent) => void;
@@ -701,7 +705,9 @@ export function AllDayEventItem({
   const styles = eventColorStyles[color];
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
   const isDayView = view === "day";
-  const eventIsPast = isPastProp ?? isPast(event.end);
+  // `false` on the server and during hydration, so the markup matches
+  const endIsPast = useIsPast(event.end);
+  const eventIsPast = isPastProp ?? endIsPast;
 
   const [contextMenu, setContextMenu] = React.useState<{
     x: number;

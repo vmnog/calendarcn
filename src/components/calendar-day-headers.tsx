@@ -2,28 +2,8 @@
 
 import { isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useTimeZoneLabel } from "@/hooks/use-timezone-label";
 import type { WeekViewDayColumnsProps } from "./week-view-types";
-
-/**
- * Gets the browser's timezone abbreviation
- */
-function getTimezoneAbbreviation(): string {
-  const date = new Date();
-  const timeZoneString = date.toLocaleTimeString("en-US", {
-    timeZoneName: "short",
-  });
-  const match = timeZoneString.match(/\s([A-Z]{2,5})$/);
-
-  if (match) {
-    return match[1];
-  }
-
-  // Fallback to offset format
-  const offset = -date.getTimezoneOffset();
-  const hours = Math.floor(Math.abs(offset) / 60);
-  const sign = offset >= 0 ? "+" : "-";
-  return `GMT${sign}${hours}`;
-}
 
 /**
  * Day column headers showing day names and date numbers
@@ -36,7 +16,8 @@ export function CalendarDayHeaders({
   highlightedDate,
   className,
 }: WeekViewDayColumnsProps) {
-  const timezone = getTimezoneAbbreviation();
+  // Empty on the server and during hydration, the viewer's zone afterwards
+  const timezone = useTimeZoneLabel();
 
   // Standalone mode: just render the day columns (used inside scroll container)
   if (standalone) {

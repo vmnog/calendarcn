@@ -6,7 +6,7 @@ import {
   eachDayOfInterval,
   format,
   getWeek,
-  isToday,
+  isSameDay,
 } from "date-fns";
 import * as React from "react";
 
@@ -16,11 +16,13 @@ import { useHorizontalScroll } from "@/hooks/use-horizontal-scroll";
 import { useEventDrag } from "@/hooks/use-event-drag";
 import { useEventResize } from "@/hooks/use-event-resize";
 import { useAllDayResize } from "@/hooks/use-all-day-resize";
+import { useToday } from "@/hooks/use-now";
 import { useTimeZoneLabel } from "@/hooks/use-timezone-label";
 import type {
   HourSlot,
   ViewType,
   WeekDay,
+  WeekViewContentProps,
   WeekViewProps,
 } from "./week-view-types";
 import { WeekViewAllDayRow } from "./week-view-all-day-row";
@@ -59,7 +61,8 @@ const BUFFER_STEP_BY_VIEW: Record<ViewType, number> = {
 
 /**
  * Generates an array of WeekDay objects starting from the given date.
- * Note: isToday is computed dynamically, not cached, to handle overnight page views
+ * Note: isToday is added separately from the shared `useToday` clock, so it
+ * stays correct across midnight and is never computed on the server
  */
 function generateWeekDays(
   startDate: Date,
@@ -96,17 +99,38 @@ function generateBufferedDays(
 }
 
 /**
+ * Formats an hour of the day (0-23) as "12 AM", "1 AM", ... "11 PM".
+ *
+ * Computed from the number alone, not from a Date on today's date: on a
+ * daylight-saving transition day, setting the hour that is skipped would
+ * yield the next hour, so the labels would depend on the runtime's timezone
+ * and date and could differ between server and client.
+ */
+function formatHourLabel(hour: number): string {
+  const hourOnClock = hour % 12 === 0 ? 12 : hour % 12;
+  const period = hour < 12 ? "AM" : "PM";
+  return `${hourOnClock} ${period}`;
+}
+
+/**
  * Generates an array of HourSlot objects for all 24 hours
  */
 function generateHours(): HourSlot[] {
-  return Array.from({ length: 24 }, (_, i) => {
-    const dateWithHour = new Date();
-    dateWithHour.setHours(i, 0, 0, 0);
-    return {
-      hour: i,
-      label: format(dateWithHour, "h a"),
-    };
-  });
+  return Array.from({ length: 24 }, (_, i) => ({
+    hour: i,
+    label: formatHourLabel(i),
+  }));
+}
+
+/** Marks the day matching `today` (none while `today` is unknown). */
+function withIsToday(
+  days: Omit<WeekDay, "isToday">[],
+  today: Date | null,
+): WeekDay[] {
+  return days.map((day) => ({
+    ...day,
+    isToday: today !== null && isSameDay(day.date, today),
+  }));
 }
 
 /**
@@ -149,10 +173,31 @@ export function getVisibleDays(
 /**
  * Main Week View calendar component
  * Displays a week grid with time slots and supports horizontal scroll navigation
+ *
+ * Renders the same markup on the server and during hydration: everything that
+ * depends on the viewer's clock (today, the current-time line, past events)
+ * reads the shared `useNow` clock, which is unknown until hydration finishes.
  */
-export function WeekView({
+export function WeekView({ currentDate, ...props }: WeekViewProps) {
+  // `null` on the server and during hydration
+  const today = useToday();
+  const firstDay = currentDate ?? today;
+
+  // No `currentDate` and today is unknown yet: render the empty frame only
+  if (!firstDay) {
+    return <div className={cn("flex h-full flex-col", props.className)} />;
+  }
+
+  return <WeekViewContent {...props} currentDate={firstDay} today={today} />;
+}
+
+/**
+ * Week View body, rendered once the first visible day is known
+ */
+function WeekViewContent({
   view = "week",
-  currentDate = new Date(),
+  currentDate,
+  today,
   events = [],
   onEventClick,
   selectedEventId,
@@ -168,7 +213,7 @@ export function WeekView({
   onNextWeek,
   highlightedDate,
   className,
-}: WeekViewProps) {
+}: WeekViewContentProps) {
   const VISIBLE_DAYS = VISIBLE_DAYS_BY_VIEW[view];
   const BUFFER_DAYS = BUFFER_DAYS_BY_VIEW[view];
   const BUFFER_STEP = BUFFER_STEP_BY_VIEW[view];
@@ -183,10 +228,7 @@ export function WeekView({
     [currentDate, VISIBLE_DAYS],
   );
 
-  const days: WeekDay[] = baseDays.map((day) => ({
-    ...day,
-    isToday: isToday(day.date),
-  }));
+  const days = withIsToday(baseDays, today);
 
   const hours = React.useMemo(() => generateHours(), []);
 
@@ -309,10 +351,7 @@ export function WeekView({
     [currentDate, dynamicBuffer, VISIBLE_DAYS],
   );
 
-  const bufferedDays: WeekDay[] = bufferedBaseDays.map((day) => ({
-    ...day,
-    isToday: isToday(day.date),
-  }));
+  const bufferedDays = withIsToday(bufferedBaseDays, today);
 
   const bufferedDayDates = React.useMemo(
     () => bufferedBaseDays.map((d) => d.date),

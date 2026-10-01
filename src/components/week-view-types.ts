@@ -44,7 +44,11 @@ export interface NewEventRange {
 export interface WeekViewProps {
   /** Calendar view mode. Defaults to "week" */
   view?: ViewType;
-  /** Reference date to show the week for. Defaults to today */
+  /**
+   * First visible day. Defaults to today. Without it, nothing date-dependent
+   * is rendered on the server or during hydration (today is not known there);
+   * the days appear right after hydration.
+   */
   currentDate?: Date;
   /** Day the week starts on. Defaults to 0 (Sunday) */
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
@@ -81,6 +85,19 @@ export interface WeekViewProps {
   highlightedDate?: Date | null;
   /** Optional className for the root element */
   className?: string;
+}
+
+/**
+ * Props for the WeekView body, rendered once the first visible day is known
+ */
+export interface WeekViewContentProps extends Omit<
+  WeekViewProps,
+  "currentDate"
+> {
+  /** First visible day */
+  currentDate: Date;
+  /** Start of the viewer's current day, or `null` during SSR and hydration */
+  today: Date | null;
 }
 
 /**
@@ -237,7 +254,11 @@ export interface CalendarEventItemProps {
   positionedEvent: PositionedEvent;
   /** Height of each hour in pixels */
   hourHeight: number;
-  /** Whether the event is in the past */
+  /**
+   * Overrides whether the event renders as past. Defaults to comparing
+   * `event.end` with the shared clock (`useIsPast`), which is `false` during
+   * server rendering and hydration.
+   */
   isPast?: boolean;
   /** Whether the event is currently selected */
   isSelected?: boolean;
