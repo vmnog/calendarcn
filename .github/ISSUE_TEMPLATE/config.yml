@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Live demo
+    url: https://calendarcn.vercel.app
+    about: Check whether the behavior reproduces on the latest deployed version before reporting.

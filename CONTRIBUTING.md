@@ -70,4 +70,14 @@ src/
 
 ## Reporting Issues
 
-Use the [issue templates](https://github.com/vmnog/calendarcn/issues/new/choose) to report bugs or request features.
+[Open a new issue](https://github.com/vmnog/calendarcn/issues/new/choose) and pick a template:
+
+- **Bug report** — what happened, steps to reproduce, browser/OS, and timezone.
+- **Feature request** — the problem you're solving and your proposed solution.
+
+For anything else, open a blank issue.
+
+## Working on an Issue
+
+- **You can't self-assign.** GitHub only lets collaborators be assigned to issues. Comment on the issue saying you'd like to work on it, and a maintainer will assign you.
+- **Forks have Issues disabled by default.** To track work on your fork, enable them under **Settings → General → Features → Issues**.

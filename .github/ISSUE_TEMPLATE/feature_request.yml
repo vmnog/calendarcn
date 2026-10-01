@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a new feature or improvement for CalendarCN.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do, and what makes it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like it to work? References to Notion Calendar behavior are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches or workarounds you have thought about.
+    validations:
+      required: false
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you like to work on this?
+      description: External contributors can't self-assign on GitHub. If you pick "Yes", a maintainer will assign the issue to you.
+      options:
+        - "Yes, I'd like to open a PR"
+        - Maybe, with some guidance
+        - "No"
+    validations:
+      required: true
