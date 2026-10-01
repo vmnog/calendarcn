@@ -1,4 +1,4 @@
-import { addWeeks, differenceInCalendarWeeks } from "date-fns";
+import { addDays, startOfWeek } from "date-fns";
 
 import type {
   CalendarEvent,
@@ -6,11 +6,32 @@ import type {
   EventReminder,
 } from "@/components/week-view-types";
 
-function d(month: number, day: number, hour: number, minute = 0): Date {
-  return new Date(2026, month - 1, day, hour, minute);
+/** Weekday the demo weeks start on (Sunday), matching the calendar views. */
+const WEEK_STARTS_ON = 0;
+
+/**
+ * Builds a date relative to the current week: `dayOffset` days after the
+ * Sunday that starts the week containing `today`, at `hour:minute` local time.
+ * Offset 0 is this week's Sunday, 4 is this Thursday, -7 is last Sunday.
+ */
+type RelativeDate = (dayOffset: number, hour: number, minute?: number) => Date;
+
+function createRelativeDate(today: Date): RelativeDate {
+  const weekStart = startOfWeek(today, { weekStartsOn: WEEK_STARTS_ON });
+  return (dayOffset, hour, minute = 0) => {
+    const day = addDays(weekStart, dayOffset);
+    return new Date(
+      day.getFullYear(),
+      day.getMonth(),
+      day.getDate(),
+      hour,
+      minute,
+    );
+  };
 }
 
-function dy(
+/** Builds an absolute local date, for events tied to real calendar dates. */
+function onDate(
   year: number,
   month: number,
   day: number,
@@ -44,28 +65,10 @@ function ev(
   return { id, title, start, end, color, calendarId, ...opts };
 }
 
-/** Weekday the demo weeks start on (Sunday), matching the calendar views. */
-const WEEK_STARTS_ON = 0;
-
 /**
- * Start of the week the demo data was authored around (Sun May 17 2026, the
- * week containing the authored "today", Thu May 21). This week is mapped onto
- * the real current week.
- */
-const AUTHORED_WEEK_START = new Date(2026, 4, 17);
-
-/**
- * Calendars whose events sit on fixed real-world dates (public holidays).
- * Their events are never shifted, since a moved holiday would be wrong.
- */
-const FIXED_DATE_CALENDAR_IDS: ReadonlySet<string> = new Set([
-  "Holidays in Brazil",
-]);
-
-/**
- * Demo events as authored, on fixed dates across January–May 2026 (plus a
- * few historical events in 2024–2025). The data was written as if today were
- * Thu May 21 2026. `generateMockEvents()` shifts it relative to the real today.
+ * Demo events, placed relative to the current week with `rel(dayOffset, …)`
+ * (0 = this Sunday, 4 = this Thursday, negative = earlier weeks). Holidays
+ * use `onDate()` because they sit on real calendar dates.
  *
  * Calendar mapping:
  *   me@vmnog.com       → red     (main email)
@@ -76,16 +79,16 @@ const FIXED_DATE_CALENDAR_IDS: ReadonlySet<string> = new Set([
  *   Fitness            → green   (gym/sports)
  *   Holidays in Brazil → green   (subscribed)
  */
-function authoredMockEvents(): CalendarEvent[] {
+function demoEvents(rel: RelativeDate): CalendarEvent[] {
   return [
-    // ── January 2026 ──
+    // ── 19 to 16 weeks ago ──
 
-    // Week of Jan 4 (Sun Jan 4 – Sat Jan 10)
+    // Week -19 (days -133 to -127)
     ev(
       "j01",
       "New Year Planning",
-      d(1, 5, 9),
-      d(1, 5, 10, 30),
+      rel(-132, 9),
+      rel(-132, 10, 30),
       "blue",
       "Work",
       {
@@ -98,8 +101,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j02",
       "Team Standup",
-      d(1, 5, 10, 30),
-      d(1, 5, 11),
+      rel(-132, 10, 30),
+      rel(-132, 11),
       "red",
       "me@vmnog.com",
       {
@@ -113,8 +116,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j03",
       "Lunch with Alex",
-      d(1, 6, 12),
-      d(1, 6, 13),
+      rel(-131, 12),
+      rel(-131, 13),
       "purple",
       "Personal",
       { location: "Ichiran Ramen", calendarEmail: "me@vmnog.com" },
@@ -122,8 +125,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j04",
       "Client Onboarding",
-      d(1, 7, 14),
-      d(1, 7, 15, 30),
+      rel(-130, 14),
+      rel(-130, 15, 30),
       "blue",
       "Work",
       {
@@ -140,8 +143,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j04b",
       "1:1 with Manager",
-      d(1, 7, 15, 30),
-      d(1, 7, 16),
+      rel(-130, 15, 30),
+      rel(-130, 16),
       "red",
       "me@vmnog.com",
       {
@@ -151,30 +154,38 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("j05", "Gym", d(1, 8, 18), d(1, 8, 19, 30), "green", "Fitness", {
+    ev("j05", "Gym", rel(-129, 18), rel(-129, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("j06", "Friday Wrap-up", d(1, 9, 16), d(1, 9, 17), "blue", "Work", {
+    ev("j06", "Friday Wrap-up", rel(-128, 16), rel(-128, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("j06b", "Happy Hour", d(1, 9, 17), d(1, 9, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      location: "The Draft House",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
+    ev(
+      "j06b",
+      "Happy Hour",
+      rel(-128, 17),
+      rel(-128, 19),
+      "purple",
+      "Personal",
+      {
+        recurrence: "Every week on Fri",
+        location: "The Draft House",
+        reminders: [{ amount: 30, unit: "minutes" }],
+        calendarEmail: "me@vmnog.com",
+      },
+    ),
 
-    // Week of Jan 11 (Sun Jan 11 – Sat Jan 17)
+    // Week -18 (days -126 to -120)
     ev(
       "j07",
       "Team Standup",
-      d(1, 12, 9),
-      d(1, 12, 9, 30),
+      rel(-125, 9),
+      rel(-125, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -188,8 +199,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j08",
       "Product Roadmap Review",
-      d(1, 12, 10),
-      d(1, 12, 11, 30),
+      rel(-125, 10),
+      rel(-125, 11, 30),
       "blue",
       "Work",
       {
@@ -202,8 +213,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j09",
       "Design Sync",
-      d(1, 13, 11),
-      d(1, 13, 12),
+      rel(-124, 11),
+      rel(-124, 12),
       "yellow",
       "Side Projects",
       { calendarEmail: "me@vmnog.com" },
@@ -211,8 +222,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j10",
       "1:1 with Manager",
-      d(1, 14, 15),
-      d(1, 14, 15, 30),
+      rel(-123, 15),
+      rel(-123, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -222,12 +233,12 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("j10b", "Gym", d(1, 15, 18), d(1, 15, 19, 30), "green", "Fitness", {
+    ev("j10b", "Gym", rel(-122, 18), rel(-122, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("j11", "Dentist", d(1, 15, 10), d(1, 15, 11), "purple", "Personal", {
+    ev("j11", "Dentist", rel(-122, 10), rel(-122, 11), "purple", "Personal", {
       description: "Regular cleaning + check-up. Bring insurance card.",
       location: "SmileCare Dental",
       reminders: [
@@ -239,8 +250,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j12",
       "Movie Night",
-      d(1, 16, 19),
-      d(1, 16, 21, 30),
+      rel(-121, 19),
+      rel(-121, 21, 30),
       "orange",
       "Family",
       {
@@ -251,34 +262,42 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("j12b", "Friday Wrap-up", d(1, 16, 16), d(1, 16, 17), "blue", "Work", {
+    ev("j12b", "Friday Wrap-up", rel(-121, 16), rel(-121, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("j12c", "Happy Hour", d(1, 16, 17), d(1, 16, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      location: "The Draft House",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
+    ev(
+      "j12c",
+      "Happy Hour",
+      rel(-121, 17),
+      rel(-121, 19),
+      "purple",
+      "Personal",
+      {
+        recurrence: "Every week on Fri",
+        location: "The Draft House",
+        reminders: [{ amount: 30, unit: "minutes" }],
+        calendarEmail: "me@vmnog.com",
+      },
+    ),
     ev(
       "j13",
       "MLK Day",
-      d(1, 19, 0),
-      d(1, 19, 0),
+      onDate(2026, 1, 19, 0),
+      onDate(2026, 1, 19, 0),
       "green",
       "Holidays in Brazil",
       { isAllDay: true, calendarEmail: "me@vmnog.com" },
     ),
 
-    // Week of Jan 18 (Sun Jan 18 – Sat Jan 24)
+    // Week -17 (days -119 to -113)
     ev(
       "j14",
       "Team Standup",
-      d(1, 19, 9),
-      d(1, 19, 9, 30),
+      rel(-118, 9),
+      rel(-118, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -292,8 +311,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j15",
       "Sprint Planning",
-      d(1, 19, 10),
-      d(1, 19, 11, 30),
+      rel(-118, 10),
+      rel(-118, 11, 30),
       "blue",
       "Work",
       {
@@ -306,8 +325,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j16",
       "Coffee Chat",
-      d(1, 20, 14),
-      d(1, 20, 14, 30),
+      rel(-117, 14),
+      rel(-117, 14, 30),
       "purple",
       "Personal",
       { location: "Blue Bottle Coffee", calendarEmail: "me@vmnog.com" },
@@ -315,8 +334,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j17",
       "Architecture Review",
-      d(1, 21, 13),
-      d(1, 21, 14, 30),
+      rel(-116, 13),
+      rel(-116, 14, 30),
       "blue",
       "Work",
       {
@@ -329,8 +348,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j17b",
       "1:1 with Manager",
-      d(1, 21, 15),
-      d(1, 21, 15, 30),
+      rel(-116, 15),
+      rel(-116, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -340,37 +359,45 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("j18", "Gym", d(1, 22, 18), d(1, 22, 19, 30), "green", "Fitness", {
+    ev("j18", "Gym", rel(-115, 18), rel(-115, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("j18b", "Friday Wrap-up", d(1, 23, 16), d(1, 23, 17), "blue", "Work", {
+    ev("j18b", "Friday Wrap-up", rel(-114, 16), rel(-114, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("j19", "Happy Hour", d(1, 23, 17), d(1, 23, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      description: "Drinks with the team at the usual spot",
-      location: "The Draft House",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
-    ev("j20", "Brunch", d(1, 24, 11), d(1, 24, 13), "orange", "Family", {
+    ev(
+      "j19",
+      "Happy Hour",
+      rel(-114, 17),
+      rel(-114, 19),
+      "purple",
+      "Personal",
+      {
+        recurrence: "Every week on Fri",
+        description: "Drinks with the team at the usual spot",
+        location: "The Draft House",
+        reminders: [{ amount: 30, unit: "minutes" }],
+        calendarEmail: "me@vmnog.com",
+      },
+    ),
+    ev("j20", "Brunch", rel(-113, 11), rel(-113, 13), "orange", "Family", {
       description: "Monthly family brunch — Mom's picking the place",
       location: "Café Lola",
       reminders: [{ amount: 1, unit: "hours" }],
       calendarEmail: "me@vmnog.com",
     }),
 
-    // Week of Jan 25 (Sun Jan 25 – Sat Jan 31)
+    // Week -16 (days -112 to -106)
     ev(
       "j21",
       "Team Standup",
-      d(1, 26, 9),
-      d(1, 26, 9, 30),
+      rel(-111, 9),
+      rel(-111, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -384,8 +411,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j22",
       "Quarterly Review Prep",
-      d(1, 26, 11),
-      d(1, 26, 12, 30),
+      rel(-111, 11),
+      rel(-111, 12, 30),
       "blue",
       "Work",
       {
@@ -397,8 +424,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j23",
       "Client Demo",
-      d(1, 27, 14),
-      d(1, 27, 15),
+      rel(-110, 14),
+      rel(-110, 15),
       "red",
       "me@vmnog.com",
       {
@@ -414,8 +441,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j24",
       "Open Source Contrib",
-      d(1, 28, 13),
-      d(1, 28, 14),
+      rel(-109, 13),
+      rel(-109, 14),
       "yellow",
       "Side Projects",
       { calendarEmail: "me@vmnog.com" },
@@ -423,8 +450,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "j24b",
       "1:1 with Manager",
-      d(1, 28, 15),
-      d(1, 28, 15, 30),
+      rel(-109, 15),
+      rel(-109, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -434,35 +461,43 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("j25", "Retro", d(1, 29, 14), d(1, 29, 15), "blue", "Work", {
+    ev("j25", "Retro", rel(-108, 14), rel(-108, 15), "blue", "Work", {
       recurrence: "Every 2 weeks on Thu",
       description: "Sprint 2 retrospective — what went well, what to improve",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("j26", "Gym", d(1, 29, 18), d(1, 29, 19, 30), "green", "Fitness", {
+    ev("j26", "Gym", rel(-108, 18), rel(-108, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       description: "Full body circuit training",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("j26b", "Friday Wrap-up", d(1, 30, 16), d(1, 30, 17), "blue", "Work", {
+    ev("j26b", "Friday Wrap-up", rel(-107, 16), rel(-107, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("j26c", "Happy Hour", d(1, 30, 17), d(1, 30, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      location: "The Draft House",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
+    ev(
+      "j26c",
+      "Happy Hour",
+      rel(-107, 17),
+      rel(-107, 19),
+      "purple",
+      "Personal",
+      {
+        recurrence: "Every week on Fri",
+        location: "The Draft House",
+        reminders: [{ amount: 30, unit: "minutes" }],
+        calendarEmail: "me@vmnog.com",
+      },
+    ),
     ev(
       "j27",
       "Month-End Report",
-      d(1, 30, 10),
-      d(1, 30, 11, 30),
+      rel(-107, 10),
+      rel(-107, 11, 30),
       "red",
       "me@vmnog.com",
       {
@@ -472,14 +507,14 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // ── February 2026 ──
+    // ── 15 to 12 weeks ago ──
 
-    // Week of Feb 1 (Sun Feb 1 – Sat Feb 7)
+    // Week -15 (days -105 to -99)
     ev(
       "f01",
       "Team Standup",
-      d(2, 2, 9),
-      d(2, 2, 9, 30),
+      rel(-104, 9),
+      rel(-104, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -490,7 +525,7 @@ function authoredMockEvents(): CalendarEvent[] {
         status: "busy",
       },
     ),
-    ev("f02", "Q1 Kickoff", d(2, 2, 10), d(2, 2, 12), "blue", "Work", {
+    ev("f02", "Q1 Kickoff", rel(-104, 10), rel(-104, 12), "blue", "Work", {
       description: "Company-wide Q1 kickoff. CEO presenting vision and OKRs.",
       location: "Conference Room A",
       reminders: [
@@ -504,8 +539,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f03",
       "Lunch with Sarah",
-      d(2, 3, 12),
-      d(2, 3, 13),
+      rel(-103, 12),
+      rel(-103, 13),
       "purple",
       "Personal",
       {
@@ -518,8 +553,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f03b",
       "1:1 with Manager",
-      d(2, 4, 15),
-      d(2, 4, 15, 30),
+      rel(-102, 15),
+      rel(-102, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -531,8 +566,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f04",
       "Design Review",
-      d(2, 4, 14),
-      d(2, 4, 15, 30),
+      rel(-102, 14),
+      rel(-102, 15, 30),
       "yellow",
       "Side Projects",
       {
@@ -542,7 +577,7 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("f05", "Workshop", d(2, 5, 9), d(2, 5, 12), "blue", "Work", {
+    ev("f05", "Workshop", rel(-101, 9), rel(-101, 12), "blue", "Work", {
       description:
         "React Patterns Workshop — advanced hooks, composition, and performance",
       location: "Main Hall",
@@ -551,28 +586,36 @@ function authoredMockEvents(): CalendarEvent[] {
       status: "busy",
       visibility: "public",
     }),
-    ev("f06", "Gym", d(2, 5, 18), d(2, 5, 19, 30), "green", "Fitness", {
+    ev("f06", "Gym", rel(-101, 18), rel(-101, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("f06b", "Friday Wrap-up", d(2, 6, 16), d(2, 6, 17), "blue", "Work", {
+    ev("f06b", "Friday Wrap-up", rel(-100, 16), rel(-100, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("f06c", "Happy Hour", d(2, 6, 17), d(2, 6, 19), "purple", "Personal", {
-      recurrence: "Every week on Fri",
-      location: "The Brewery",
-      reminders: [{ amount: 30, unit: "minutes" }],
-      calendarEmail: "me@vmnog.com",
-    }),
+    ev(
+      "f06c",
+      "Happy Hour",
+      rel(-100, 17),
+      rel(-100, 19),
+      "purple",
+      "Personal",
+      {
+        recurrence: "Every week on Fri",
+        location: "The Brewery",
+        reminders: [{ amount: 30, unit: "minutes" }],
+        calendarEmail: "me@vmnog.com",
+      },
+    ),
     ev(
       "f07",
       "Family Dinner",
-      d(2, 6, 12),
-      d(2, 6, 13, 30),
+      rel(-100, 12),
+      rel(-100, 13, 30),
       "orange",
       "Family",
       {
@@ -586,12 +629,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // Week of Feb 8 (Sun Feb 8 – Sat Feb 14)
+    // Week -14 (days -98 to -92)
     ev(
       "f08",
       "Team Standup",
-      d(2, 9, 9),
-      d(2, 9, 9, 30),
+      rel(-97, 9),
+      rel(-97, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -605,8 +648,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f09",
       "Project Planning",
-      d(2, 9, 10),
-      d(2, 9, 11, 30),
+      rel(-97, 10),
+      rel(-97, 11, 30),
       "blue",
       "Work",
       {
@@ -620,8 +663,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f09b",
       "Budget Review",
-      d(2, 9, 10, 30),
-      d(2, 9, 11),
+      rel(-97, 10, 30),
+      rel(-97, 11),
       "red",
       "me@vmnog.com",
       {
@@ -632,8 +675,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f10",
       "Client Call",
-      d(2, 10, 14, 30),
-      d(2, 10, 15, 30),
+      rel(-96, 14, 30),
+      rel(-96, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -648,15 +691,15 @@ function authoredMockEvents(): CalendarEvent[] {
         status: "busy",
       },
     ),
-    ev("f10b", "Infra Sync", d(2, 10, 14), d(2, 10, 15), "blue", "Work", {
+    ev("f10b", "Infra Sync", rel(-96, 14), rel(-96, 15), "blue", "Work", {
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
     ev(
       "f11",
       "1:1 with Manager",
-      d(2, 11, 15),
-      d(2, 11, 15, 30),
+      rel(-95, 15),
+      rel(-95, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -669,8 +712,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f11b",
       "Security Review",
-      d(2, 11, 14),
-      d(2, 11, 15, 30),
+      rel(-95, 14),
+      rel(-95, 15, 30),
       "blue",
       "Work",
       {
@@ -679,7 +722,7 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("f12", "Sprint Review", d(2, 12, 10), d(2, 12, 11), "blue", "Work", {
+    ev("f12", "Sprint Review", rel(-94, 10), rel(-94, 11), "blue", "Work", {
       recurrence: "Every 2 weeks on Thu",
       description: "Demo sprint 3 deliverables to stakeholders",
       reminders: [{ amount: 10, unit: "minutes" }],
@@ -688,8 +731,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f12b",
       "Perf Monitoring Setup",
-      d(2, 12, 10, 30),
-      d(2, 12, 11, 30),
+      rel(-94, 10, 30),
+      rel(-94, 11, 30),
       "yellow",
       "Side Projects",
       {
@@ -698,18 +741,18 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("f12c", "Gym", d(2, 12, 18), d(2, 12, 19, 30), "green", "Fitness", {
+    ev("f12c", "Gym", rel(-94, 18), rel(-94, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("f12d", "Friday Wrap-up", d(2, 13, 16), d(2, 13, 17), "blue", "Work", {
+    ev("f12d", "Friday Wrap-up", rel(-93, 16), rel(-93, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("f12e", "Happy Hour", d(2, 13, 17), d(2, 13, 19), "purple", "Personal", {
+    ev("f12e", "Happy Hour", rel(-93, 17), rel(-93, 19), "purple", "Personal", {
       recurrence: "Every week on Fri",
       location: "Wine Bar",
       reminders: [{ amount: 30, unit: "minutes" }],
@@ -718,8 +761,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f13",
       "Valentine's Dinner",
-      d(2, 14, 19),
-      d(2, 14, 21),
+      rel(-92, 19),
+      rel(-92, 21),
       "purple",
       "Personal",
       {
@@ -736,19 +779,19 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f14",
       "Valentine's Day",
-      d(2, 14, 0),
-      d(2, 14, 0),
+      onDate(2026, 2, 14, 0),
+      onDate(2026, 2, 14, 0),
       "green",
       "Holidays in Brazil",
       { isAllDay: true, calendarEmail: "me@vmnog.com" },
     ),
 
-    // Week of Feb 15 (Sun Feb 15 – Sat Feb 21)
+    // Week -13 (days -91 to -85)
     ev(
       "f15",
       "Team Standup",
-      d(2, 16, 9),
-      d(2, 16, 9, 30),
+      rel(-90, 9),
+      rel(-90, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -759,7 +802,7 @@ function authoredMockEvents(): CalendarEvent[] {
         status: "busy",
       },
     ),
-    ev("f16", "Roadmap Sync", d(2, 16, 11), d(2, 16, 12), "blue", "Work", {
+    ev("f16", "Roadmap Sync", rel(-90, 11), rel(-90, 12), "blue", "Work", {
       description:
         "Align engineering and product on H1 priorities and delivery dates",
       reminders: [{ amount: 15, unit: "minutes" }],
@@ -768,8 +811,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f17",
       "Lunch with Alex",
-      d(2, 17, 12),
-      d(2, 17, 13),
+      rel(-89, 12),
+      rel(-89, 13),
       "purple",
       "Personal",
       {
@@ -783,8 +826,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f18",
       "Architecture Deep Dive",
-      d(2, 18, 13),
-      d(2, 18, 15),
+      rel(-88, 13),
+      rel(-88, 15),
       "blue",
       "Work",
       {
@@ -794,19 +837,19 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("f19", "Gym", d(2, 19, 18), d(2, 19, 19, 30), "green", "Fitness", {
+    ev("f19", "Gym", rel(-87, 18), rel(-87, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       description: "HIIT class + core work",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("f19b", "Friday Wrap-up", d(2, 20, 16), d(2, 20, 17), "blue", "Work", {
+    ev("f19b", "Friday Wrap-up", rel(-86, 16), rel(-86, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("f20", "Happy Hour", d(2, 20, 17), d(2, 20, 19), "purple", "Personal", {
+    ev("f20", "Happy Hour", rel(-86, 17), rel(-86, 19), "purple", "Personal", {
       recurrence: "Every week on Fri",
       description: "Celebrating Jake's promotion",
       location: "Rooftop Bar",
@@ -816,13 +859,13 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f21",
       "Presidents' Day",
-      d(2, 16, 0),
-      d(2, 16, 0),
+      onDate(2026, 2, 16, 0),
+      onDate(2026, 2, 16, 0),
       "green",
       "Holidays in Brazil",
       { isAllDay: true, calendarEmail: "me@vmnog.com" },
     ),
-    ev("f22", "Brunch", d(2, 21, 11), d(2, 21, 13), "orange", "Family", {
+    ev("f22", "Brunch", rel(-85, 11), rel(-85, 13), "orange", "Family", {
       description: "Sister's visiting from out of town",
       location: "The Breakfast Club",
       reminders: [{ amount: 1, unit: "hours" }],
@@ -831,8 +874,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f23",
       "Blog Post Draft",
-      d(2, 18, 10),
-      d(2, 18, 11),
+      rel(-88, 10),
+      rel(-88, 11),
       "yellow",
       "Side Projects",
       {
@@ -841,12 +884,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // Week of Feb 22 (Sun Feb 22 – Sat Feb 28) — busy week with overlaps
+    // Week -12 (days -84 to -78) — busy week with overlaps
     ev(
       "f24",
       "Team Standup",
-      d(2, 23, 9),
-      d(2, 23, 9, 30),
+      rel(-83, 9),
+      rel(-83, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -860,8 +903,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f25",
       "Sprint Planning",
-      d(2, 23, 10),
-      d(2, 23, 11, 30),
+      rel(-83, 10),
+      rel(-83, 11, 30),
       "blue",
       "Work",
       {
@@ -874,8 +917,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f25b",
       "Investor Update Call",
-      d(2, 23, 10, 30),
-      d(2, 23, 11),
+      rel(-83, 10, 30),
+      rel(-83, 11),
       "red",
       "me@vmnog.com",
       {
@@ -888,8 +931,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f26",
       "UX Research Debrief",
-      d(2, 24, 14),
-      d(2, 24, 15),
+      rel(-82, 14),
+      rel(-82, 15),
       "blue",
       "Work",
       {
@@ -902,8 +945,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f26b",
       "Design Critique",
-      d(2, 24, 14, 30),
-      d(2, 24, 15, 30),
+      rel(-82, 14, 30),
+      rel(-82, 15, 30),
       "yellow",
       "Side Projects",
       {
@@ -915,8 +958,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f26c",
       "Candidate Interview",
-      d(2, 24, 15),
-      d(2, 24, 16),
+      rel(-82, 15),
+      rel(-82, 16),
       "red",
       "me@vmnog.com",
       {
@@ -929,17 +972,17 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f27",
       "Coffee Chat",
-      d(2, 25, 9, 30),
-      d(2, 25, 10),
+      rel(-81, 9, 30),
+      rel(-81, 10),
       "purple",
       "Personal",
       { location: "Starbucks Reserve", calendarEmail: "me@vmnog.com" },
     ),
-    ev("f27b", "Platform Sync", d(2, 25, 9), d(2, 25, 10, 30), "blue", "Work", {
+    ev("f27b", "Platform Sync", rel(-81, 9), rel(-81, 10, 30), "blue", "Work", {
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("f27c", "API Review", d(2, 25, 10), d(2, 25, 11), "blue", "Work", {
+    ev("f27c", "API Review", rel(-81, 10), rel(-81, 11), "blue", "Work", {
       description: "Review REST→GraphQL migration proposal",
       reminders: [{ amount: 5, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
@@ -947,8 +990,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f27d",
       "Hiring Debrief",
-      d(2, 25, 14),
-      d(2, 25, 15),
+      rel(-81, 14),
+      rel(-81, 15),
       "red",
       "me@vmnog.com",
       {
@@ -960,8 +1003,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f27e",
       "1:1 with Manager",
-      d(2, 25, 15),
-      d(2, 25, 15, 30),
+      rel(-81, 15),
+      rel(-81, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -971,7 +1014,7 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("f28", "Demo Day", d(2, 26, 14), d(2, 26, 16), "red", "me@vmnog.com", {
+    ev("f28", "Demo Day", rel(-80, 14), rel(-80, 16), "red", "me@vmnog.com", {
       description: "Present Q1 progress to leadership — bring laptop charger",
       location: "Auditorium",
       reminders: [
@@ -985,8 +1028,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f28b",
       "Stakeholder Check-in",
-      d(2, 26, 14, 30),
-      d(2, 26, 15, 30),
+      rel(-80, 14, 30),
+      rel(-80, 15, 30),
       "blue",
       "Work",
       {
@@ -998,8 +1041,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f28c",
       "Side Project Standup",
-      d(2, 26, 15),
-      d(2, 26, 15, 30),
+      rel(-80, 15),
+      rel(-80, 15, 30),
       "yellow",
       "Side Projects",
       {
@@ -1007,7 +1050,7 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("f29", "Retro", d(2, 27, 14), d(2, 27, 15), "blue", "Work", {
+    ev("f29", "Retro", rel(-79, 14), rel(-79, 15), "blue", "Work", {
       recurrence: "Every 2 weeks on Fri",
       description: "Sprint 3 retro — focus on deployment pipeline improvements",
       reminders: [{ amount: 10, unit: "minutes" }],
@@ -1016,8 +1059,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f29b",
       "Tech Talk",
-      d(2, 27, 14, 30),
-      d(2, 27, 15, 30),
+      rel(-79, 14, 30),
+      rel(-79, 15, 30),
       "yellow",
       "Side Projects",
       {
@@ -1026,34 +1069,34 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("f29c", "Friday Wrap-up", d(2, 27, 16), d(2, 27, 17), "blue", "Work", {
+    ev("f29c", "Friday Wrap-up", rel(-79, 16), rel(-79, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("f29d", "Happy Hour", d(2, 27, 17), d(2, 27, 19), "purple", "Personal", {
+    ev("f29d", "Happy Hour", rel(-79, 17), rel(-79, 19), "purple", "Personal", {
       recurrence: "Every week on Fri",
       description: "End-of-sprint celebration",
       location: "The Draft House",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("f30", "Gym", d(2, 26, 18), d(2, 26, 19, 30), "green", "Fitness", {
+    ev("f30", "Gym", rel(-80, 18), rel(-80, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       description: "Yoga + meditation session",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
 
-    // ── March 2026 ──
+    // ── 11 to 7 weeks ago ──
 
-    // Week of Mar 1 (Sun Mar 1 – Sat Mar 7)
+    // Week -11 (days -77 to -71)
     ev(
       "m01",
       "Team Standup",
-      d(3, 2, 9),
-      d(3, 2, 9, 30),
+      rel(-76, 9),
+      rel(-76, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1066,8 +1109,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m02",
       "March Priorities",
-      d(3, 2, 10),
-      d(3, 2, 11, 30),
+      rel(-76, 10),
+      rel(-76, 11, 30),
       "blue",
       "Work",
       {
@@ -1080,8 +1123,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m03",
       "Vendor Meeting",
-      d(3, 3, 13),
-      d(3, 3, 14),
+      rel(-75, 13),
+      rel(-75, 14),
       "red",
       "me@vmnog.com",
       {
@@ -1092,8 +1135,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m03b",
       "1:1 with Manager",
-      d(3, 4, 15),
-      d(3, 4, 15, 30),
+      rel(-74, 15),
+      rel(-74, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1106,8 +1149,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m04",
       "Lunch with Sarah",
-      d(3, 4, 12),
-      d(3, 4, 13),
+      rel(-74, 12),
+      rel(-74, 13),
       "purple",
       "Personal",
       {
@@ -1117,43 +1160,43 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("m05", "Workshop: Testing", d(3, 5, 9), d(3, 5, 12), "blue", "Work", {
+    ev("m05", "Workshop: Testing", rel(-73, 9), rel(-73, 12), "blue", "Work", {
       description:
         "Testing Best Practices — unit tests, integration tests, E2E with Playwright",
       location: "Room 4B",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m06", "Gym", d(3, 5, 18), d(3, 5, 19, 30), "green", "Fitness", {
+    ev("m06", "Gym", rel(-73, 18), rel(-73, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m06b", "Friday Wrap-up", d(3, 6, 16), d(3, 6, 17), "blue", "Work", {
+    ev("m06b", "Friday Wrap-up", rel(-72, 16), rel(-72, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m06c", "Happy Hour", d(3, 6, 17), d(3, 6, 19), "purple", "Personal", {
+    ev("m06c", "Happy Hour", rel(-72, 17), rel(-72, 19), "purple", "Personal", {
       recurrence: "Every week on Fri",
       location: "The Draft House",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m07", "Game Night", d(3, 6, 19), d(3, 6, 22), "orange", "Family", {
+    ev("m07", "Game Night", rel(-72, 19), rel(-72, 22), "orange", "Family", {
       description:
         "Board games at our place — picking up snacks on the way home",
       reminders: [{ amount: 2, unit: "hours" }],
       calendarEmail: "me@vmnog.com",
     }),
 
-    // Week of Mar 8 (Sun Mar 8 – Sat Mar 14) — triple-booked Tuesday
+    // Week -10 (days -70 to -64) — triple-booked Tuesday
     ev(
       "m08",
       "Team Standup",
-      d(3, 9, 9),
-      d(3, 9, 9, 30),
+      rel(-69, 9),
+      rel(-69, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1163,7 +1206,7 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("m09", "OKR Review", d(3, 9, 10), d(3, 9, 11, 30), "blue", "Work", {
+    ev("m09", "OKR Review", rel(-69, 10), rel(-69, 11, 30), "blue", "Work", {
       description: "Mid-quarter OKR progress review with leadership",
       reminders: [{ amount: 15, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
@@ -1171,8 +1214,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m09b",
       "Eng All-Hands",
-      d(3, 9, 10),
-      d(3, 9, 11),
+      rel(-69, 10),
+      rel(-69, 11),
       "red",
       "me@vmnog.com",
       {
@@ -1185,8 +1228,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m10",
       "Client Call",
-      d(3, 10, 14),
-      d(3, 10, 15),
+      rel(-68, 14),
+      rel(-68, 15),
       "red",
       "me@vmnog.com",
       {
@@ -1203,8 +1246,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m10b",
       "Sales Enablement",
-      d(3, 10, 13, 30),
-      d(3, 10, 14, 30),
+      rel(-68, 13, 30),
+      rel(-68, 14, 30),
       "orange",
       "Family",
       {
@@ -1215,8 +1258,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m10c",
       "Database Migration Plan",
-      d(3, 10, 14),
-      d(3, 10, 16),
+      rel(-68, 14),
+      rel(-68, 16),
       "blue",
       "Work",
       {
@@ -1228,8 +1271,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m11",
       "1:1 with Manager",
-      d(3, 11, 15),
-      d(3, 11, 15, 30),
+      rel(-67, 15),
+      rel(-67, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1242,8 +1285,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m11b",
       "Incident Post-mortem",
-      d(3, 11, 14, 30),
-      d(3, 11, 15, 30),
+      rel(-67, 14, 30),
+      rel(-67, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1256,8 +1299,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m11c",
       "Frontend Guild",
-      d(3, 11, 15),
-      d(3, 11, 16),
+      rel(-67, 15),
+      rel(-67, 16),
       "yellow",
       "Side Projects",
       {
@@ -1269,8 +1312,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m12",
       "Design Review",
-      d(3, 12, 11),
-      d(3, 12, 12, 30),
+      rel(-66, 11),
+      rel(-66, 12, 30),
       "yellow",
       "Side Projects",
       {
@@ -1280,23 +1323,23 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("m12b", "Gym", d(3, 12, 18), d(3, 12, 19, 30), "green", "Fitness", {
+    ev("m12b", "Gym", rel(-66, 18), rel(-66, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m13", "Team Offsite", d(3, 12, 0), d(3, 13, 0), "blue", "Work", {
+    ev("m13", "Team Offsite", rel(-66, 0), rel(-65, 0), "blue", "Work", {
       isAllDay: true,
       description: "Annual team offsite — team building and strategy sessions",
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m13b", "Friday Wrap-up", d(3, 13, 16), d(3, 13, 17), "blue", "Work", {
+    ev("m13b", "Friday Wrap-up", rel(-65, 16), rel(-65, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m14", "Happy Hour", d(3, 13, 17), d(3, 13, 19), "purple", "Personal", {
+    ev("m14", "Happy Hour", rel(-65, 17), rel(-65, 19), "purple", "Personal", {
       recurrence: "Every week on Fri",
       description: "Post-offsite drinks to unwind",
       location: "The Pub",
@@ -1304,12 +1347,12 @@ function authoredMockEvents(): CalendarEvent[] {
       calendarEmail: "me@vmnog.com",
     }),
 
-    // Week of Mar 15 (Sun Mar 15 – Sat Mar 21)
+    // Week -9 (days -63 to -57)
     ev(
       "m15",
       "Team Standup",
-      d(3, 16, 9),
-      d(3, 16, 9, 30),
+      rel(-62, 9),
+      rel(-62, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1322,8 +1365,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m16",
       "Sprint Planning",
-      d(3, 16, 10),
-      d(3, 16, 11, 30),
+      rel(-62, 10),
+      rel(-62, 11, 30),
       "blue",
       "Work",
       {
@@ -1336,8 +1379,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m17",
       "Lunch with Alex",
-      d(3, 17, 12),
-      d(3, 17, 13),
+      rel(-61, 12),
+      rel(-61, 13),
       "purple",
       "Personal",
       {
@@ -1350,8 +1393,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m17b",
       "1:1 with Manager",
-      d(3, 18, 15),
-      d(3, 18, 15, 30),
+      rel(-60, 15),
+      rel(-60, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1364,8 +1407,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m18",
       "Perf Review Prep",
-      d(3, 18, 14),
-      d(3, 18, 15, 30),
+      rel(-60, 14),
+      rel(-60, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1378,8 +1421,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m19",
       "Side Project Sync",
-      d(3, 19, 13),
-      d(3, 19, 14),
+      rel(-59, 13),
+      rel(-59, 14),
       "yellow",
       "Side Projects",
       {
@@ -1387,19 +1430,19 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("m20", "Gym", d(3, 19, 18), d(3, 19, 19, 30), "green", "Fitness", {
+    ev("m20", "Gym", rel(-59, 18), rel(-59, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       description: "Spin class + abs",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m20b", "Friday Wrap-up", d(3, 20, 16), d(3, 20, 17), "blue", "Work", {
+    ev("m20b", "Friday Wrap-up", rel(-58, 16), rel(-58, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m20c", "Happy Hour", d(3, 20, 17), d(3, 20, 19), "purple", "Personal", {
+    ev("m20c", "Happy Hour", rel(-58, 17), rel(-58, 19), "purple", "Personal", {
       recurrence: "Every week on Fri",
       location: "Irish Pub",
       reminders: [{ amount: 30, unit: "minutes" }],
@@ -1408,19 +1451,19 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m21",
       "St. Patrick's Day",
-      d(3, 17, 0),
-      d(3, 17, 0),
+      onDate(2026, 3, 17, 0),
+      onDate(2026, 3, 17, 0),
       "green",
       "Holidays in Brazil",
       { isAllDay: true, calendarEmail: "me@vmnog.com" },
     ),
 
-    // Week of Mar 22 (Sun Mar 22 – Sat Mar 28)
+    // Week -8 (days -56 to -50)
     ev(
       "m22",
       "Team Standup",
-      d(3, 23, 9),
-      d(3, 23, 9, 30),
+      rel(-55, 9),
+      rel(-55, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1430,7 +1473,7 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("m23", "Q1 Wrap-up", d(3, 23, 10), d(3, 23, 12), "blue", "Work", {
+    ev("m23", "Q1 Wrap-up", rel(-55, 10), rel(-55, 12), "blue", "Work", {
       description:
         "Final Q1 summary meeting — present achievements, lessons learned, and Q2 outlook",
       reminders: [
@@ -1442,8 +1485,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m24",
       "Client Demo",
-      d(3, 24, 14),
-      d(3, 24, 15, 30),
+      rel(-54, 14),
+      rel(-54, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1456,8 +1499,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m24b",
       "1:1 with Manager",
-      d(3, 25, 15),
-      d(3, 25, 15, 30),
+      rel(-53, 15),
+      rel(-53, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1470,8 +1513,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m25",
       "Architecture Review",
-      d(3, 25, 13),
-      d(3, 25, 14, 30),
+      rel(-53, 13),
+      rel(-53, 14, 30),
       "blue",
       "Work",
       {
@@ -1480,33 +1523,33 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("m26", "Sprint Review", d(3, 26, 10), d(3, 26, 11), "blue", "Work", {
+    ev("m26", "Sprint Review", rel(-52, 10), rel(-52, 11), "blue", "Work", {
       recurrence: "Every 2 weeks on Thu",
       description: "Demo sprint 5 features — focus on performance improvements",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m27", "Retro", d(3, 27, 14), d(3, 27, 15), "blue", "Work", {
+    ev("m27", "Retro", rel(-51, 14), rel(-51, 15), "blue", "Work", {
       recurrence: "Every 2 weeks on Fri",
       description:
         "Q1 final retro — what worked, what didn't, action items for Q2",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m27b", "Friday Wrap-up", d(3, 27, 16), d(3, 27, 17), "blue", "Work", {
+    ev("m27b", "Friday Wrap-up", rel(-51, 16), rel(-51, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m27c", "Happy Hour", d(3, 27, 17), d(3, 27, 19), "purple", "Personal", {
+    ev("m27c", "Happy Hour", rel(-51, 17), rel(-51, 19), "purple", "Personal", {
       recurrence: "Every week on Fri",
       description: "End-of-quarter celebration drinks",
       location: "The Rooftop",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m28", "Gym", d(3, 26, 18), d(3, 26, 19, 30), "green", "Fitness", {
+    ev("m28", "Gym", rel(-52, 18), rel(-52, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       description: "Boxing class + cool down",
       reminders: [{ amount: 30, unit: "minutes" }],
@@ -1515,8 +1558,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m29",
       "Birthday Party",
-      d(3, 28, 15),
-      d(3, 28, 18),
+      rel(-50, 15),
+      rel(-50, 18),
       "orange",
       "Family",
       {
@@ -1530,12 +1573,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // Week of Mar 29 (Sun Mar 29 – Sat Apr 4)
+    // Week -7 (days -49 to -43)
     ev(
       "m30",
       "Team Standup",
-      d(3, 30, 9),
-      d(3, 30, 9, 30),
+      rel(-48, 9),
+      rel(-48, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1545,7 +1588,7 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("m31", "Q2 Planning", d(3, 30, 10), d(3, 30, 12), "blue", "Work", {
+    ev("m31", "Q2 Planning", rel(-48, 10), rel(-48, 12), "blue", "Work", {
       description:
         "Kick off Q2 planning — define themes, allocate resources, set milestones",
       reminders: [
@@ -1557,8 +1600,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m31b",
       "1:1 with Manager",
-      d(4, 1, 15),
-      d(4, 1, 15, 30),
+      rel(-46, 15),
+      rel(-46, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1568,12 +1611,12 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("m31c", "Gym", d(4, 2, 18), d(4, 2, 19, 30), "green", "Fitness", {
+    ev("m31c", "Gym", rel(-45, 18), rel(-45, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("m31d", "Friday Wrap-up", d(4, 3, 16), d(4, 3, 17), "blue", "Work", {
+    ev("m31d", "Friday Wrap-up", rel(-44, 16), rel(-44, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
@@ -1582,8 +1625,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m32",
       "Month-End Report",
-      d(3, 31, 10),
-      d(3, 31, 11, 30),
+      rel(-47, 10),
+      rel(-47, 11, 30),
       "red",
       "me@vmnog.com",
       {
@@ -1596,8 +1639,8 @@ function authoredMockEvents(): CalendarEvent[] {
 
     // ── Month-view test events (all-day, spanning week boundaries) ──
 
-    // Multi-day all-day event crossing a weekend boundary: Thu Mar 26 – Mon Mar 30
-    ev("mv01", "Q1 Wrap Week", d(3, 26, 0), d(3, 30, 0), "purple", "Personal", {
+    // Multi-day all-day event crossing a weekend boundary: Thu (day -52) – Mon (day -48)
+    ev("mv01", "Q1 Wrap Week", rel(-52, 0), rel(-48, 0), "purple", "Personal", {
       isAllDay: true,
       description:
         "End-of-quarter wrap-up period spanning the weekend — cross-week boundary test",
@@ -1608,8 +1651,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "mv02",
       "Company Holiday",
-      d(3, 17, 0),
-      d(3, 17, 0),
+      onDate(2026, 3, 17, 0),
+      onDate(2026, 3, 17, 0),
       "green",
       "Holidays in Brazil",
       {
@@ -1619,12 +1662,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // 3-day all-day event within a single week: Tue Mar 10 – Thu Mar 12
+    // 3-day all-day event within a single week: Tue (day -68) – Thu (day -66)
     ev(
       "mv03",
       "Offsite Prep Days",
-      d(3, 10, 0),
-      d(3, 12, 0),
+      rel(-68, 0),
+      rel(-66, 0),
       "orange",
       "Work",
       {
@@ -1637,156 +1680,156 @@ function authoredMockEvents(): CalendarEvent[] {
 
     // ── Dense days for month-view overflow testing ──
 
-    // Mar 9 (Mon) — stack 10+ events to trigger "+N more" at all viewport sizes
+    // Day -69 (Mon) — stack 10+ events to trigger "+N more" at all viewport sizes
     ev(
       "dense01",
       "Morning Standup",
-      d(3, 9, 8),
-      d(3, 9, 8, 30),
+      rel(-69, 8),
+      rel(-69, 8, 30),
       "red",
       "me@vmnog.com",
     ),
     ev(
       "dense02",
       "Backlog Grooming",
-      d(3, 9, 8, 30),
-      d(3, 9, 9, 30),
+      rel(-69, 8, 30),
+      rel(-69, 9, 30),
       "blue",
       "Work",
     ),
     ev(
       "dense03",
       "Design Sync",
-      d(3, 9, 10),
-      d(3, 9, 10, 30),
+      rel(-69, 10),
+      rel(-69, 10, 30),
       "purple",
       "Personal",
     ),
     ev(
       "dense04",
       "Lunch with Sarah",
-      d(3, 9, 12),
-      d(3, 9, 13),
+      rel(-69, 12),
+      rel(-69, 13),
       "orange",
       "Family",
     ),
     ev(
       "dense05",
       "Code Review Session",
-      d(3, 9, 14),
-      d(3, 9, 15),
+      rel(-69, 14),
+      rel(-69, 15),
       "blue",
       "Work",
     ),
     ev(
       "dense06",
       "Product Roadmap",
-      d(3, 9, 15),
-      d(3, 9, 16),
+      rel(-69, 15),
+      rel(-69, 16),
       "yellow",
       "Side Projects",
     ),
     ev(
       "dense07",
       "Gym — Upper Body",
-      d(3, 9, 17),
-      d(3, 9, 18),
+      rel(-69, 17),
+      rel(-69, 18),
       "green",
       "Fitness",
     ),
     ev(
       "dense08",
       "Dinner Plans",
-      d(3, 9, 19),
-      d(3, 9, 20, 30),
+      rel(-69, 19),
+      rel(-69, 20, 30),
       "orange",
       "Family",
     ),
     ev(
       "dense09",
       "Side Project Work",
-      d(3, 9, 20, 30),
-      d(3, 9, 22),
+      rel(-69, 20, 30),
+      rel(-69, 22),
       "yellow",
       "Side Projects",
     ),
 
-    // Mar 5 (Thu) — stack 8+ events
-    ev("dense10", "Sprint Review", d(3, 5, 9), d(3, 5, 10), "blue", "Work"),
-    ev("dense11", "Retrospective", d(3, 5, 10), d(3, 5, 11), "blue", "Work"),
+    // Day -73 (Thu) — stack 8+ events
+    ev("dense10", "Sprint Review", rel(-73, 9), rel(-73, 10), "blue", "Work"),
+    ev("dense11", "Retrospective", rel(-73, 10), rel(-73, 11), "blue", "Work"),
     ev(
       "dense12",
       "Lunch Run",
-      d(3, 5, 12),
-      d(3, 5, 12, 45),
+      rel(-73, 12),
+      rel(-73, 12, 45),
       "green",
       "Fitness",
     ),
     ev(
       "dense13",
       "Interview — Frontend",
-      d(3, 5, 14),
-      d(3, 5, 15),
+      rel(-73, 14),
+      rel(-73, 15),
       "red",
       "me@vmnog.com",
     ),
     ev(
       "dense14",
       "Mentoring Session",
-      d(3, 5, 16),
-      d(3, 5, 16, 30),
+      rel(-73, 16),
+      rel(-73, 16, 30),
       "purple",
       "Personal",
     ),
 
-    // Mar 12 (Thu) — add more to create overflow
+    // Day -66 (Thu) — add more to create overflow
     ev(
       "dense15",
       "Quarterly Business Review",
-      d(3, 12, 9),
-      d(3, 12, 10, 30),
+      rel(-66, 9),
+      rel(-66, 10, 30),
       "red",
       "me@vmnog.com",
     ),
     ev(
       "dense16",
       "Investor Update Prep",
-      d(3, 12, 11),
-      d(3, 12, 12),
+      rel(-66, 11),
+      rel(-66, 12),
       "blue",
       "Work",
     ),
     ev(
       "dense17",
       "Lunch & Learn",
-      d(3, 12, 12),
-      d(3, 12, 13),
+      rel(-66, 12),
+      rel(-66, 13),
       "yellow",
       "Side Projects",
     ),
     ev(
       "dense18",
       "Platform Migration",
-      d(3, 12, 14),
-      d(3, 12, 15, 30),
+      rel(-66, 14),
+      rel(-66, 15, 30),
       "blue",
       "Work",
     ),
     ev(
       "dense19",
       "Team Happy Hour",
-      d(3, 12, 17),
-      d(3, 12, 18, 30),
+      rel(-66, 17),
+      rel(-66, 18, 30),
       "purple",
       "Personal",
     ),
 
-    // Week 3 spanning event: Tue Mar 17 – Thu Mar 19
+    // Week 3 spanning event: Tue (day -61) – Thu (day -59)
     ev(
       "mv04",
       "St. Patrick's Day",
-      d(3, 17, 0),
-      d(3, 17, 0),
+      onDate(2026, 3, 17, 0),
+      onDate(2026, 3, 17, 0),
       "green",
       "Holidays in Brazil",
       {
@@ -1795,45 +1838,45 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // Mar 16 (Mon) — add more events
-    ev("dense20", "Weekly Planning", d(3, 16, 9), d(3, 16, 10), "blue", "Work"),
+    // Day -62 (Mon) — add more events
+    ev("dense20", "Weekly Planning", rel(-62, 9), rel(-62, 10), "blue", "Work"),
     ev(
       "dense21",
       "1:1 with Director",
-      d(3, 16, 11),
-      d(3, 16, 11, 45),
+      rel(-62, 11),
+      rel(-62, 11, 45),
       "red",
       "me@vmnog.com",
     ),
     ev(
       "dense22",
       "Cross-team Sync",
-      d(3, 16, 14),
-      d(3, 16, 15),
+      rel(-62, 14),
+      rel(-62, 15),
       "blue",
       "Work",
     ),
     ev(
       "dense23",
       "Gym — Cardio",
-      d(3, 16, 17, 30),
-      d(3, 16, 18, 30),
+      rel(-62, 17, 30),
+      rel(-62, 18, 30),
       "green",
       "Fitness",
     ),
     ev(
       "dense24",
       "Book Club",
-      d(3, 16, 19),
-      d(3, 16, 20, 30),
+      rel(-62, 19),
+      rel(-62, 20, 30),
       "purple",
       "Personal",
     ),
     ev(
       "dense25",
       "Meal Prep",
-      d(3, 16, 20, 30),
-      d(3, 16, 21, 30),
+      rel(-62, 20, 30),
+      rel(-62, 21, 30),
       "orange",
       "Family",
     ),
@@ -1842,8 +1885,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "h01",
       "Sprint Kickoff — Q2 Platform Migration Initiative",
-      dy(2024, 6, 10, 9),
-      dy(2024, 6, 10, 10, 30),
+      rel(-706, 9),
+      rel(-706, 10, 30),
       "blue",
       "Work",
       {
@@ -1855,8 +1898,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "h02",
       "Sprint Retrospective — Process Improvements and Velocity Analysis",
-      dy(2025, 3, 14, 14),
-      dy(2025, 3, 14, 15),
+      rel(-429, 14),
+      rel(-429, 15),
       "blue",
       "Work",
       {
@@ -1866,12 +1909,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // ── Extra Sprint events on Mon Feb 23 2026 ──
+    // ── Extra Sprint events on day -83 (Mon) ──
     ev(
       "f25c",
       "Sprint Demo — Presenting New Dashboard Features to Stakeholders",
-      d(2, 23, 14),
-      d(2, 23, 15),
+      rel(-83, 14),
+      rel(-83, 15),
       "red",
       "me@vmnog.com",
       {
@@ -1883,8 +1926,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "f25d",
       "Sprint Retro",
-      d(2, 23, 15, 30),
-      d(2, 23, 16, 30),
+      rel(-83, 15, 30),
+      rel(-83, 16, 30),
       "yellow",
       "Side Projects",
       {
@@ -1894,12 +1937,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // ── Sprint events on Mar 18 and Mar 19 2026 ──
+    // ── Sprint events on days -60 (Wed) and -59 (Thu) ──
     ev(
       "m17c",
       "Sprint Standup",
-      d(3, 18, 9, 30),
-      d(3, 18, 10),
+      rel(-60, 9, 30),
+      rel(-60, 10),
       "red",
       "me@vmnog.com",
       {
@@ -1911,8 +1954,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "m19b",
       "Sprint Grooming — Backlog Refinement and Story Estimation Session",
-      d(3, 19, 10),
-      d(3, 19, 11),
+      rel(-59, 10),
+      rel(-59, 11),
       "blue",
       "Work",
       {
@@ -1923,14 +1966,14 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // ── May 2026 ──
+    // ── Recent weeks, this week and next week ──
 
-    // Labor Day (Brazil national holiday)
+    // Labor Day (Brazil national holiday, fixed date)
     ev(
       "may01",
       "Labor Day",
-      d(5, 1, 0),
-      d(5, 1, 0),
+      onDate(2026, 5, 1, 0),
+      onDate(2026, 5, 1, 0),
       "green",
       "Holidays in Brazil",
       {
@@ -1940,12 +1983,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // Week of May 3 (Sun May 3 – Sat May 9) — offsite week
+    // Week -2 (days -14 to -8) — offsite week
     ev(
       "may02",
       "Company Offsite",
-      d(5, 4, 0),
-      d(5, 6, 0),
+      rel(-13, 0),
+      rel(-11, 0),
       "purple",
       "Personal",
       {
@@ -1960,8 +2003,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may03",
       "Offsite Travel Day",
-      d(5, 3, 13),
-      d(5, 3, 18),
+      rel(-14, 13),
+      rel(-14, 18),
       "blue",
       "Work",
       {
@@ -1973,8 +2016,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may04",
       "Offsite Welcome Dinner",
-      d(5, 3, 19),
-      d(5, 3, 21, 30),
+      rel(-14, 19),
+      rel(-14, 21, 30),
       "orange",
       "Family",
       {
@@ -1984,12 +2027,12 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("may05", "Gym", d(5, 7, 18), d(5, 7, 19, 30), "green", "Fitness", {
+    ev("may05", "Gym", rel(-10, 18), rel(-10, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("may06", "Friday Wrap-up", d(5, 8, 16), d(5, 8, 17), "blue", "Work", {
+    ev("may06", "Friday Wrap-up", rel(-9, 16), rel(-9, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
@@ -1998,8 +2041,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may07",
       "Happy Hour",
-      d(5, 8, 17, 30),
-      d(5, 8, 19, 30),
+      rel(-9, 17, 30),
+      rel(-9, 19, 30),
       "purple",
       "Personal",
       {
@@ -2010,12 +2053,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // Week of May 10 (Sun May 10 – Sat May 16) — Mother's Day week
+    // Week -1 (days -7 to -1) — Mother's Day week
     ev(
       "may08",
       "Mother's Day",
-      d(5, 10, 0),
-      d(5, 10, 0),
+      onDate(2026, 5, 10, 0),
+      onDate(2026, 5, 10, 0),
       "green",
       "Holidays in Brazil",
       {
@@ -2028,8 +2071,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may09",
       "Brunch with Mom",
-      d(5, 10, 11),
-      d(5, 10, 13),
+      rel(-7, 11),
+      rel(-7, 13),
       "orange",
       "Family",
       {
@@ -2042,8 +2085,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may10",
       "Team Standup",
-      d(5, 11, 9),
-      d(5, 11, 9, 30),
+      rel(-6, 9),
+      rel(-6, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -2057,8 +2100,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may11",
       "Post-Offsite Recap",
-      d(5, 11, 10),
-      d(5, 11, 11, 30),
+      rel(-6, 10),
+      rel(-6, 11, 30),
       "blue",
       "Work",
       {
@@ -2071,8 +2114,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may12",
       "Dentist",
-      d(5, 12, 8, 30),
-      d(5, 12, 9, 30),
+      rel(-5, 8, 30),
+      rel(-5, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -2088,8 +2131,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may13",
       "Lunch with Alex",
-      d(5, 12, 12, 30),
-      d(5, 12, 13, 30),
+      rel(-5, 12, 30),
+      rel(-5, 13, 30),
       "purple",
       "Personal",
       {
@@ -2100,8 +2143,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may14",
       "1:1 with Manager",
-      d(5, 13, 15),
-      d(5, 13, 15, 30),
+      rel(-4, 15),
+      rel(-4, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -2114,8 +2157,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may15",
       "Calendar Demo to Stakeholders",
-      d(5, 14, 11),
-      d(5, 14, 12),
+      rel(-3, 11),
+      rel(-3, 12),
       "yellow",
       "Side Projects",
       {
@@ -2126,12 +2169,12 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("may16", "Gym", d(5, 14, 18), d(5, 14, 19, 30), "green", "Fitness", {
+    ev("may16", "Gym", rel(-3, 18), rel(-3, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("may17", "Friday Wrap-up", d(5, 15, 16), d(5, 15, 17), "blue", "Work", {
+    ev("may17", "Friday Wrap-up", rel(-2, 16), rel(-2, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
@@ -2140,8 +2183,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may18",
       "Movie Night",
-      d(5, 15, 20),
-      d(5, 15, 22, 30),
+      rel(-2, 20),
+      rel(-2, 22, 30),
       "orange",
       "Family",
       {
@@ -2153,8 +2196,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may19",
       "Saturday Long Run",
-      d(5, 16, 8),
-      d(5, 16, 10),
+      rel(-1, 8),
+      rel(-1, 10),
       "green",
       "Fitness",
       {
@@ -2165,12 +2208,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // Week of May 17 (Sun May 17 – Sat May 23) — current week (today is Thu May 21)
+    // Week 0 (days 0 to 6) — current week (today is day 4, Thu)
     ev(
       "may20",
       "Team Standup",
-      d(5, 18, 9),
-      d(5, 18, 9, 30),
+      rel(1, 9),
+      rel(1, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -2181,7 +2224,7 @@ function authoredMockEvents(): CalendarEvent[] {
         status: "busy",
       },
     ),
-    ev("may21", "Sprint Planning", d(5, 18, 10), d(5, 18, 12), "blue", "Work", {
+    ev("may21", "Sprint Planning", rel(1, 10), rel(1, 12), "blue", "Work", {
       description:
         "Sprint 6 planning — story estimation, capacity check, commitments",
       reminders: [
@@ -2193,8 +2236,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may22",
       "Coffee with Recruiter",
-      d(5, 19, 9, 30),
-      d(5, 19, 10, 15),
+      rel(2, 9, 30),
+      rel(2, 10, 15),
       "yellow",
       "Side Projects",
       {
@@ -2203,25 +2246,17 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev(
-      "may23",
-      "Design Critique",
-      d(5, 19, 14),
-      d(5, 19, 15, 30),
-      "blue",
-      "Work",
-      {
-        description: "Review week-view drag interactions and edge cases",
-        location: "Room 3A",
-        reminders: [{ amount: 10, unit: "minutes" }],
-        calendarEmail: "me@vmnog.com",
-      },
-    ),
+    ev("may23", "Design Critique", rel(2, 14), rel(2, 15, 30), "blue", "Work", {
+      description: "Review week-view drag interactions and edge cases",
+      location: "Room 3A",
+      reminders: [{ amount: 10, unit: "minutes" }],
+      calendarEmail: "me@vmnog.com",
+    }),
     ev(
       "may24",
       "1:1 with Manager",
-      d(5, 20, 15),
-      d(5, 20, 15, 30),
+      rel(3, 15),
+      rel(3, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -2234,8 +2269,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may25",
       "Tech Talk: React Server Components",
-      d(5, 20, 17),
-      d(5, 20, 18),
+      rel(3, 17),
+      rel(3, 18),
       "yellow",
       "Side Projects",
       {
@@ -2248,8 +2283,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may26",
       "Architecture Review",
-      d(5, 21, 10),
-      d(5, 21, 11, 30),
+      rel(4, 10),
+      rel(4, 11, 30),
       "blue",
       "Work",
       {
@@ -2262,8 +2297,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may27",
       "Lunch with Sarah",
-      d(5, 21, 12, 30),
-      d(5, 21, 13, 30),
+      rel(4, 12, 30),
+      rel(4, 13, 30),
       "purple",
       "Personal",
       {
@@ -2271,24 +2306,24 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("may28", "Gym", d(5, 21, 18), d(5, 21, 19, 30), "green", "Fitness", {
+    ev("may28", "Gym", rel(4, 18), rel(4, 19, 30), "green", "Fitness", {
       recurrence: "Every week on Thu",
       reminders: [{ amount: 30, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
-    ev("may29", "Friday Wrap-up", d(5, 22, 16), d(5, 22, 17), "blue", "Work", {
+    ev("may29", "Friday Wrap-up", rel(5, 16), rel(5, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Review weekly accomplishments and set Monday priorities",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
     }),
 
-    // Multi-day weekend trip: Fri May 22 – Sun May 24
+    // Multi-day weekend trip: Fri (day 5) – Sun (day 7)
     ev(
       "may30",
       "Weekend in Hudson Valley",
-      d(5, 22, 0),
-      d(5, 24, 0),
+      rel(5, 0),
+      rel(7, 0),
       "orange",
       "Family",
       {
@@ -2301,12 +2336,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // Week of May 24 (Sun May 24 – Sat May 30)
+    // Week 1 (days 7 to 13)
     ev(
       "may31",
       "Team Standup",
-      d(5, 25, 9),
-      d(5, 25, 9, 30),
+      rel(8, 9),
+      rel(8, 9, 30),
       "red",
       "me@vmnog.com",
       {
@@ -2316,7 +2351,7 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("may32", "Roadmap Sync", d(5, 25, 14), d(5, 25, 15), "blue", "Work", {
+    ev("may32", "Roadmap Sync", rel(8, 14), rel(8, 15), "blue", "Work", {
       description: "Align on Q3 roadmap themes before exec review",
       reminders: [{ amount: 10, unit: "minutes" }],
       calendarEmail: "me@vmnog.com",
@@ -2324,8 +2359,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may33",
       "React Conf 2026",
-      d(5, 26, 0),
-      d(5, 28, 0),
+      rel(9, 0),
+      rel(11, 0),
       "yellow",
       "Side Projects",
       {
@@ -2340,8 +2375,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may34",
       "Conference Opening Keynote",
-      d(5, 26, 9),
-      d(5, 26, 10, 30),
+      rel(9, 9),
+      rel(9, 10, 30),
       "yellow",
       "Side Projects",
       {
@@ -2353,8 +2388,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may35",
       "Workshop: Concurrent Rendering",
-      d(5, 27, 13),
-      d(5, 27, 16),
+      rel(10, 13),
+      rel(10, 16),
       "yellow",
       "Side Projects",
       {
@@ -2367,8 +2402,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may36",
       "1:1 with Manager",
-      d(5, 27, 15),
-      d(5, 27, 15, 30),
+      rel(10, 15),
+      rel(10, 15, 30),
       "red",
       "me@vmnog.com",
       {
@@ -2381,8 +2416,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may37",
       "Conference Dinner",
-      d(5, 27, 19),
-      d(5, 27, 22),
+      rel(10, 19),
+      rel(10, 22),
       "purple",
       "Personal",
       {
@@ -2392,7 +2427,7 @@ function authoredMockEvents(): CalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
-    ev("may38", "Friday Wrap-up", d(5, 29, 16), d(5, 29, 17), "blue", "Work", {
+    ev("may38", "Friday Wrap-up", rel(12, 16), rel(12, 17), "blue", "Work", {
       recurrence: "Every week on Fri",
       description: "Travel-day wrap from the airport",
       reminders: [{ amount: 10, unit: "minutes" }],
@@ -2401,8 +2436,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may39",
       "Dinner with Parents",
-      d(5, 30, 19),
-      d(5, 30, 21, 30),
+      rel(13, 19),
+      rel(13, 21, 30),
       "orange",
       "Family",
       {
@@ -2413,12 +2448,12 @@ function authoredMockEvents(): CalendarEvent[] {
       },
     ),
 
-    // Last day of May
+    // Sunday after next
     ev(
       "may40",
       "Side Project: CalendarCN v1.0 polish",
-      d(5, 31, 10),
-      d(5, 31, 13),
+      rel(14, 10),
+      rel(14, 13),
       "yellow",
       "Side Projects",
       {
@@ -2429,8 +2464,8 @@ function authoredMockEvents(): CalendarEvent[] {
     ev(
       "may41",
       "Sunday Long Run",
-      d(5, 31, 8),
-      d(5, 31, 10),
+      rel(14, 8),
+      rel(14, 10),
       "green",
       "Fitness",
       {
@@ -2442,30 +2477,11 @@ function authoredMockEvents(): CalendarEvent[] {
     ),
   ];
 }
-
 /**
  * Generates the demo events relative to `today`, so the current week always
- * shows the same layout the authored week (May 17–23 2026) had.
- *
- * Events move by whole weeks, never by days, so weekday-specific events
- * (gym splits, Wednesday church, weekend runs) stay on their weekdays.
- * Holiday events keep their real dates.
+ * has the same layout. Weekday-specific events (gym splits, weekend runs)
+ * keep their weekdays because offsets are counted from the week's Sunday.
  */
 export function generateMockEvents(today: Date = new Date()): CalendarEvent[] {
-  const weekOffset = differenceInCalendarWeeks(today, AUTHORED_WEEK_START, {
-    weekStartsOn: WEEK_STARTS_ON,
-  });
-  const events = authoredMockEvents();
-  if (weekOffset === 0) return events;
-
-  return events.map((event) => {
-    if (event.calendarId && FIXED_DATE_CALENDAR_IDS.has(event.calendarId)) {
-      return event;
-    }
-    return {
-      ...event,
-      start: addWeeks(event.start, weekOffset),
-      end: addWeeks(event.end, weekOffset),
-    };
-  });
+  return demoEvents(createRelativeDate(today));
 }
