@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { isSameDay } from "date-fns";
+import { isSameDay, isSameMonth } from "date-fns";
 
 import { Calendar } from "@/components/ui/calendar";
 import { SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
@@ -12,6 +12,22 @@ interface DatePickerProps {
   visibleDays?: Date[];
 }
 
+/**
+ * Month the mini calendar should display for the current navigation state.
+ * Week and day views anchor to the LAST visible day, matching the header
+ * (a week crossing into a new month shows the new month, like Notion
+ * Calendar). Month view passes no visible days and anchors to `currentDate`.
+ */
+function getAnchorMonth(
+  currentDate: Date | undefined,
+  visibleDays: Date[] | undefined,
+): Date | undefined {
+  if (visibleDays && visibleDays.length > 0) {
+    return visibleDays[visibleDays.length - 1];
+  }
+  return currentDate;
+}
+
 export function DatePicker({
   onDateSelect,
   currentDate,
@@ -19,64 +35,19 @@ export function DatePicker({
 }: DatePickerProps) {
   const [today] = React.useState(() => new Date());
   const [displayedMonth, setDisplayedMonth] = React.useState<Date>(
-    currentDate ?? today,
+    () => getAnchorMonth(currentDate, visibleDays) ?? today,
   );
 
-  // Track previous first visible day to determine scroll direction
-  const prevFirstDayRef = React.useRef<Date | null>(null);
-
-  // Sync displayed month from currentDate when visibleDays is empty
-  // (e.g., month view where we don't highlight individual days)
+  // Re-sync the displayed month whenever the calendar navigates. The user can
+  // browse months freely with the chevrons; the next navigation (keyboard,
+  // header buttons, horizontal scroll, day click, view switch) snaps it back.
   React.useEffect(() => {
-    if (visibleDays && visibleDays.length > 0) return;
-    if (!currentDate) return;
-    setDisplayedMonth((prev) => {
-      if (
-        prev.getMonth() === currentDate.getMonth() &&
-        prev.getFullYear() === currentDate.getFullYear()
-      ) {
-        return prev;
-      }
-      return currentDate;
-    });
+    const anchor = getAnchorMonth(currentDate, visibleDays);
+    if (!anchor) return;
+    setDisplayedMonth((prev) => (isSameMonth(prev, anchor) ? prev : anchor));
   }, [currentDate, visibleDays]);
 
-  // Auto-navigate datepicker month so highlighted days stay visible
-  // Scrolling forward → keep last visible day's month shown
-  // Scrolling backward → keep first visible day's month shown
-  React.useEffect(() => {
-    if (!visibleDays || visibleDays.length === 0) return;
-
-    const firstDay = visibleDays[0];
-    const lastDay = visibleDays[visibleDays.length - 1];
-    const prevFirstDay = prevFirstDayRef.current;
-    prevFirstDayRef.current = firstDay;
-
-    const setMonthIfChanged = (anchor: Date) => {
-      setDisplayedMonth((prev) => {
-        if (
-          prev.getMonth() === anchor.getMonth() &&
-          prev.getFullYear() === anchor.getFullYear()
-        ) {
-          return prev;
-        }
-        return anchor;
-      });
-    };
-
-    // Scrolling forward → ensure last visible day's month is displayed
-    if (prevFirstDay && firstDay.getTime() > prevFirstDay.getTime()) {
-      setMonthIfChanged(lastDay);
-      return;
-    }
-
-    // Scrolling backward or initial render → ensure first visible day's month is displayed
-    setMonthIfChanged(firstDay);
-  }, [visibleDays]);
-
-  const isSameMonth =
-    displayedMonth.getMonth() === today.getMonth() &&
-    displayedMonth.getFullYear() === today.getFullYear();
+  const isTodayMonth = isSameMonth(displayedMonth, today);
 
   const monthYearLabel = displayedMonth.toLocaleDateString("default", {
     month: "long",
@@ -119,9 +90,9 @@ export function DatePicker({
           }}
           showWeekNumber
           fixedWeeks
-          showBackToToday={!isSameMonth}
+          showBackToToday={!isTodayMonth}
           onBackToToday={goBackToToday}
-          monthLabel={!isSameMonth ? monthYearLabel : undefined}
+          monthLabel={!isTodayMonth ? monthYearLabel : undefined}
           modifiers={modifiers}
           modifiersClassNames={modifiersClassNames}
           className="bg-transparent [&_[role=gridcell].bg-accent]:bg-sidebar-primary [&_[role=gridcell].bg-accent]:text-sidebar-primary-foreground"
