@@ -43,4 +43,10 @@ cn("base-class", isActive && "active-class")
 
 Sample data for development. Events here should cover all edge cases: single-day, multi-day, all-day, overlapping, different colors. Update when adding new event properties to `CalendarEvent`.
 
-Dates are authored as if today were Thu May 21 2026. `generateMockEvents()` shifts every event by whole weeks so that week lands on the real current week (weekdays stay put). Events on the "Holidays in Brazil" calendar keep their fixed dates. Keep new events in the authored 2026 timeline.
+Dates are relative to today, and `generateMockEvents(today)` stays pure (pass a fixed `today` to test it). The data comes from three sources:
+
+- **One-off events** (`demoEvents`): written with `rel(dayOffset, hour, minute)`, where `dayOffset` counts days from the Sunday that starts the current week (0 = this Sunday, 4 = this Thursday, negative = earlier weeks). Add new one-offs with `rel()`, never with absolute dates.
+- **Weekly routines** (`WEEKLY_ROUTINES`): standup, 1:1, gym, Friday wrap-up and happy hour are generated for every week from `ROUTINE_WEEKS_BEFORE` weeks ago to `ROUTINE_WEEKS_AFTER` weeks ahead, so far-off weeks are never empty. Per-week variations (other time, description or location, or a skipped week) go in the routine's `exceptions`, keyed by week offset. Ids look like `team-standup-2026-10-05`.
+- **Holidays** (`HOLIDAYS`): real-world rules (`fixedDay(month, day)` or `nthWeekday(month, weekday, n)`) generated for the previous, current and next year, with ids like `holiday-labor-day-2026`. They never move with today.
+
+The two historical Sprint events sit more than a year back so search shows them with a year label.
