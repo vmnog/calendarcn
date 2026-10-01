@@ -17,6 +17,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { useTheme } from "next-themes";
+import { useIsClient } from "@/hooks/use-is-client";
 import { generateMockEvents } from "@/lib/mock-events";
 import { CommandMenu } from "@/components/command-menu";
 import { SidebarLeft } from "@/components/sidebar-left";
@@ -537,9 +538,14 @@ function PageContent() {
 }
 
 export default function Page() {
+  // Calendar state depends on the viewer's "today" and timezone, so it is
+  // rendered only in the browser. Server and prerender output would bake in
+  // the build date and the server's UTC timezone (React error #418).
+  const isClient = useIsClient();
+
   return (
     <SidebarProvider className="h-screen">
-      <PageContent />
+      {isClient && <PageContent />}
     </SidebarProvider>
   );
 }

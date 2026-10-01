@@ -1,3 +1,5 @@
+import { addWeeks, differenceInCalendarWeeks } from "date-fns";
+
 import type {
   CalendarEvent,
   EventColor,
@@ -42,8 +44,28 @@ function ev(
   return { id, title, start, end, color, calendarId, ...opts };
 }
 
+/** Weekday the demo weeks start on (Sunday), matching the calendar views. */
+const WEEK_STARTS_ON = 0;
+
 /**
- * Generates mock events with fixed dates across January–March 2026.
+ * Start of the week the demo data was authored around (Sun May 17 2026, the
+ * week containing the authored "today", Thu May 21). This week is mapped onto
+ * the real current week.
+ */
+const AUTHORED_WEEK_START = new Date(2026, 4, 17);
+
+/**
+ * Calendars whose events sit on fixed real-world dates (public holidays).
+ * Their events are never shifted, since a moved holiday would be wrong.
+ */
+const FIXED_DATE_CALENDAR_IDS: ReadonlySet<string> = new Set([
+  "Holidays in Brazil",
+]);
+
+/**
+ * Demo events as authored, on fixed dates across January–May 2026 (plus a
+ * few historical events in 2024–2025). The data was written as if today were
+ * Thu May 21 2026. `generateMockEvents()` shifts it relative to the real today.
  *
  * Calendar mapping:
  *   me@vmnog.com       → red     (main email)
@@ -54,7 +76,7 @@ function ev(
  *   Fitness            → green   (gym/sports)
  *   Holidays in Brazil → green   (subscribed)
  */
-export function generateMockEvents(): CalendarEvent[] {
+function authoredMockEvents(): CalendarEvent[] {
   return [
     // ── January 2026 ──
 
@@ -2419,4 +2441,31 @@ export function generateMockEvents(): CalendarEvent[] {
       },
     ),
   ];
+}
+
+/**
+ * Generates the demo events relative to `today`, so the current week always
+ * shows the same layout the authored week (May 17–23 2026) had.
+ *
+ * Events move by whole weeks, never by days, so weekday-specific events
+ * (gym splits, Wednesday church, weekend runs) stay on their weekdays.
+ * Holiday events keep their real dates.
+ */
+export function generateMockEvents(today: Date = new Date()): CalendarEvent[] {
+  const weekOffset = differenceInCalendarWeeks(today, AUTHORED_WEEK_START, {
+    weekStartsOn: WEEK_STARTS_ON,
+  });
+  const events = authoredMockEvents();
+  if (weekOffset === 0) return events;
+
+  return events.map((event) => {
+    if (event.calendarId && FIXED_DATE_CALENDAR_IDS.has(event.calendarId)) {
+      return event;
+    }
+    return {
+      ...event,
+      start: addWeeks(event.start, weekOffset),
+      end: addWeeks(event.end, weekOffset),
+    };
+  });
 }

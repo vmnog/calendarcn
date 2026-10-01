@@ -42,3 +42,5 @@ cn("base-class", isActive && "active-class")
 ### mock-events.ts
 
 Sample data for development. Events here should cover all edge cases: single-day, multi-day, all-day, overlapping, different colors. Update when adding new event properties to `CalendarEvent`.
+
+Dates are authored as if today were Thu May 21 2026. `generateMockEvents()` shifts every event by whole weeks so that week lands on the real current week (weekdays stay put). Events on the "Holidays in Brazil" calendar keep their fixed dates. Keep new events in the authored 2026 timeline.
