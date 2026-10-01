@@ -18,6 +18,7 @@ import {
 } from "date-fns";
 import { useTheme } from "next-themes";
 import { useIsClient } from "@/hooks/use-is-client";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { generateMockEvents } from "@/lib/mock-events";
 import { CommandMenu } from "@/components/command-menu";
 import { SidebarLeft } from "@/components/sidebar-left";
@@ -61,9 +62,41 @@ const PRIMARY_CALENDAR_ID = "me@vmnog.com";
 /** Color of the primary calendar, matching its entry in the calendar list */
 const PRIMARY_CALENDAR_COLOR: EventColor = "red";
 
-function PageContent() {
+/**
+ * Viewports at least this wide keep both sidebars inline (Tailwind `xl`).
+ * Narrower ones show the context panel as an overlay: inline, it would leave
+ * the calendar under ~500px at 1024px (240px left + 288px right).
+ */
+const WIDE_LAYOUT_QUERY = "(min-width: 1280px)";
+
+interface PageContentProps {
+  /** Whether the context panel sits inline (true) or opens as an overlay */
+  isWideLayout: boolean;
+}
+
+function PageContent({ isWideLayout }: PageContentProps) {
   const { theme, setTheme } = useTheme();
+  const {
+    toggleSidebar,
+    open: contextPanelOpen,
+    openMobile: contextPanelOpenMobile,
+    setOpenMobile: setContextPanelOpenMobile,
+    isMobile,
+  } = useSidebar();
+  // shadcn tracks the panel's phone state separately; read whichever is active
+  const rightSidebarOpen = isMobile ? contextPanelOpenMobile : contextPanelOpen;
+  /** Inline calendar sidebar state (tablet and desktop) */
   const [leftSidebarOpen, setLeftSidebarOpen] = React.useState(true);
+  /** Calendar sidebar overlay state (phones); starts closed */
+  const [leftOverlayOpen, setLeftOverlayOpen] = React.useState(false);
+  // Close the overlay when leaving the phone layout, so it doesn't pop back
+  // open the next time the viewport narrows
+  const [prevIsMobile, setPrevIsMobile] = React.useState(isMobile);
+  if (isMobile !== prevIsMobile) {
+    setPrevIsMobile(isMobile);
+    setLeftOverlayOpen(false);
+  }
+  const leftSidebarVisible = isMobile ? leftOverlayOpen : leftSidebarOpen;
   const [view, setView] = React.useState<ViewType>("week");
   const [currentDate, setCurrentDate] = React.useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 0 }),
@@ -89,6 +122,18 @@ function PageContent() {
     [events, selectedEventId],
   );
 
+  // Phones show event details in the context panel sheet: the 320px popover
+  // doesn't fit beside an event on a ~390px screen
+  const showDetailsInPanel = isMobile || rightSidebarOpen;
+
+  const selectEvent = React.useCallback(
+    (eventId: string) => {
+      setSelectedEventId(eventId);
+      if (isMobile) setContextPanelOpenMobile(true);
+    },
+    [isMobile, setContextPanelOpenMobile],
+  );
+
   const handleEventChange = React.useCallback((updatedEvent: CalendarEvent) => {
     setEvents((prev) =>
       prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)),
@@ -107,20 +152,23 @@ function PageContent() {
     setTitleFocusEventId(null);
   }, []);
 
-  const handleEventCreate = React.useCallback((range: NewEventRange) => {
-    const newEvent: CalendarEvent = {
-      id: crypto.randomUUID(),
-      title: NEW_EVENT_TITLE,
-      start: range.start,
-      end: range.end,
-      color: PRIMARY_CALENDAR_COLOR,
-      calendarId: PRIMARY_CALENDAR_ID,
-      calendarEmail: PRIMARY_CALENDAR_ID,
-    };
-    setEvents((prev) => [...prev, newEvent]);
-    setSelectedEventId(newEvent.id);
-    setTitleFocusEventId(newEvent.id);
-  }, []);
+  const handleEventCreate = React.useCallback(
+    (range: NewEventRange) => {
+      const newEvent: CalendarEvent = {
+        id: crypto.randomUUID(),
+        title: NEW_EVENT_TITLE,
+        start: range.start,
+        end: range.end,
+        color: PRIMARY_CALENDAR_COLOR,
+        calendarId: PRIMARY_CALENDAR_ID,
+        calendarEmail: PRIMARY_CALENDAR_ID,
+      };
+      setEvents((prev) => [...prev, newEvent]);
+      selectEvent(newEvent.id);
+      setTitleFocusEventId(newEvent.id);
+    },
+    [selectEvent],
+  );
 
   const goToToday = React.useCallback(() => {
     if (view === "day") {
@@ -154,6 +202,14 @@ function PageContent() {
 
   const goToDate = React.useCallback((date: Date) => setCurrentDate(date), []);
 
+  const toggleLeftSidebar = React.useCallback(() => {
+    if (isMobile) {
+      setLeftOverlayOpen((prev) => !prev);
+      return;
+    }
+    setLeftSidebarOpen((prev) => !prev);
+  }, [isMobile]);
+
   const goToDateWeek = React.useCallback(
     (date: Date) => {
       if (view === "day") {
@@ -163,6 +219,15 @@ function PageContent() {
       }
     },
     [view],
+  );
+
+  /** Mini calendar day pick: navigate, and get the overlay out of the way on phones */
+  const handleCalendarDateSelect = React.useCallback(
+    (date: Date) => {
+      goToDateWeek(date);
+      setLeftOverlayOpen(false);
+    },
+    [goToDateWeek],
   );
 
   const switchView = React.useCallback(
@@ -224,8 +289,6 @@ function PageContent() {
     setTheme("system");
   }, [theme, setTheme]);
 
-  const { toggleSidebar, open: rightSidebarOpen } = useSidebar();
-
   const [visibleDays, setVisibleDays] = React.useState<Date[]>(() =>
     getVisibleDays(currentDate, view),
   );
@@ -264,7 +327,7 @@ function PageContent() {
       // Command + / for left sidebar
       if (e.metaKey && e.key === "/") {
         e.preventDefault();
-        setLeftSidebarOpen((prev) => !prev);
+        toggleLeftSidebar();
         return;
       }
       // Shift+Cmd+E for toggle weekends
@@ -378,6 +441,7 @@ function PageContent() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     toggleSidebar,
+    toggleLeftSidebar,
     goToToday,
     goToPrev,
     goToNext,
@@ -399,13 +463,15 @@ function PageContent() {
         onGoToPrev={goToPrev}
         onGoToNext={goToNext}
         onSwitchView={switchView}
-        onToggleLeftSidebar={() => setLeftSidebarOpen((prev) => !prev)}
+        onToggleLeftSidebar={toggleLeftSidebar}
         onToggleRightSidebar={toggleSidebar}
         onCycleTheme={cycleTheme}
       />
       <SidebarRight
-        open={leftSidebarOpen}
-        onDateSelect={goToDateWeek}
+        open={leftSidebarVisible}
+        onOpenChange={setLeftOverlayOpen}
+        overlay={isMobile}
+        onDateSelect={handleCalendarDateSelect}
         currentDate={
           view === "month" && monthViewDisplayMonth
             ? monthViewDisplayMonth
@@ -422,14 +488,14 @@ function PageContent() {
                   variant="ghost"
                   size="icon"
                   className="size-7 text-muted-foreground"
-                  onClick={() => setLeftSidebarOpen((prev) => !prev)}
+                  onClick={toggleLeftSidebar}
                 >
                   <PanelLeftIcon />
                   <span className="sr-only">Toggle Calendar Sidebar</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                {leftSidebarOpen ? "Close" : "Open"} sidebar{" "}
+                {leftSidebarVisible ? "Close" : "Open"} sidebar{" "}
                 <Kbd className="ml-1">⌘</Kbd> <Kbd>/</Kbd>
               </TooltipContent>
             </Tooltip>
@@ -539,7 +605,7 @@ function PageContent() {
               currentDate={currentDate}
               events={events}
               viewSettings={viewSettings}
-              onEventClick={(e) => setSelectedEventId(e.id)}
+              onEventClick={(e) => selectEvent(e.id)}
               selectedEventId={selectedEvent?.id}
               onBackgroundClick={() => setSelectedEventId(null)}
               onEventChange={handleEventChange}
@@ -547,7 +613,7 @@ function PageContent() {
               onDisplayMonthChange={setMonthViewDisplayMonth}
               onMoreClick={handleMoreClick}
               onDayNumberClick={handleMoreClick}
-              isSidebarOpen={rightSidebarOpen}
+              isSidebarOpen={showDetailsInPanel}
               onDockToSidebar={() => {
                 if (!rightSidebarOpen) toggleSidebar();
               }}
@@ -558,14 +624,14 @@ function PageContent() {
               view={view}
               currentDate={currentDate}
               events={events}
-              onEventClick={(e) => setSelectedEventId(e.id)}
+              onEventClick={(e) => selectEvent(e.id)}
               selectedEventId={selectedEvent?.id}
               onBackgroundClick={() => setSelectedEventId(null)}
               onEventCreate={handleEventCreate}
               onDateChange={goToDate}
               onVisibleDaysChange={setVisibleDays}
               onEventChange={handleEventChange}
-              isSidebarOpen={rightSidebarOpen}
+              isSidebarOpen={showDetailsInPanel}
               onDockToSidebar={() => {
                 if (!rightSidebarOpen) toggleSidebar();
               }}
@@ -578,6 +644,7 @@ function PageContent() {
         </div>
       </SidebarInset>
       <SidebarLeft
+        overlay={!isWideLayout}
         events={events}
         selectedEvent={selectedEvent}
         onEventChange={handleEventChange}
@@ -593,10 +660,24 @@ export default function Page() {
   // rendered only in the browser. Server and prerender output would bake in
   // the build date and the server's UTC timezone (React error #418).
   const isClient = useIsClient();
+  const isWideLayout = useMediaQuery(WIDE_LAYOUT_QUERY);
+
+  // The context panel starts open where it sits inline (wide screens) and
+  // closed where it would cover the calendar. Crossing the breakpoint resets it.
+  const [contextPanelOpen, setContextPanelOpen] = React.useState(isWideLayout);
+  const [prevIsWideLayout, setPrevIsWideLayout] = React.useState(isWideLayout);
+  if (isWideLayout !== prevIsWideLayout) {
+    setPrevIsWideLayout(isWideLayout);
+    setContextPanelOpen(isWideLayout);
+  }
 
   return (
-    <SidebarProvider className="h-screen">
-      {isClient && <PageContent />}
+    <SidebarProvider
+      className="h-screen"
+      open={contextPanelOpen}
+      onOpenChange={setContextPanelOpen}
+    >
+      {isClient && <PageContent isWideLayout={isWideLayout} />}
     </SidebarProvider>
   );
 }

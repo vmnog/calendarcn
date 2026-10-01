@@ -28,12 +28,21 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { SidebarOverlay } from "@/components/sidebar-overlay";
 import { eventColorStyles } from "./calendar-event-item";
 import { EventDetailPanel } from "./event-detail-panel";
 import { useEventTitleFocus } from "./event-title-focus-context";
 import type { CalendarEvent } from "./week-view-types";
 
+/** Width of the context panel when it renders as an overlay (shadcn sidebar default) */
+const OVERLAY_WIDTH = "18rem";
+
+/** Muted text color the context panel uses for labels and placeholders */
+const PANEL_MUTED_FOREGROUND = "#C7C5C1";
+
 interface SidebarLeftProps extends React.ComponentProps<typeof Sidebar> {
+  /** Render as a modal sheet instead of an inline column (phones and tablets) */
+  overlay?: boolean;
   events?: CalendarEvent[];
   selectedEvent?: CalendarEvent | null;
   onEventChange?: (event: CalendarEvent) => void;
@@ -122,6 +131,7 @@ function groupEventsByDate(events: CalendarEvent[]): DateGroup[] {
 }
 
 export function SidebarLeft({
+  overlay = false,
   events = [],
   selectedEvent,
   onEventChange,
@@ -129,7 +139,11 @@ export function SidebarLeft({
   onNextWeek,
   ...props
 }: SidebarLeftProps) {
-  const { toggleSidebar, open } = useSidebar();
+  const { toggleSidebar, open, setOpen, openMobile, setOpenMobile, isMobile } =
+    useSidebar();
+  // shadcn keeps a separate open state for phones; follow whichever is active
+  const panelOpen = isMobile ? openMobile : open;
+  const setPanelOpen = isMobile ? setOpenMobile : setOpen;
   const { pendingEventId, clearPending } = useEventTitleFocus();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
@@ -199,13 +213,8 @@ export function SidebarLeft({
 
   const hasUpcomingResults = todayGroup !== null || futureGroups.length > 0;
 
-  return (
-    <Sidebar
-      side="right"
-      className="border-l !bg-context-panel [&_[data-slot=sidebar-inner]]:!bg-context-panel"
-      style={{ "--muted-foreground": "#C7C5C1" } as React.CSSProperties}
-      {...props}
-    >
+  const panel = (
+    <>
       <SidebarHeader className="h-14 justify-center px-4">
         <div className="flex items-center gap-2">
           {selectedEvent ? (
@@ -276,7 +285,7 @@ export function SidebarLeft({
             onEventChange={onEventChange}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
-            autoFocusTitle={open && pendingEventId === selectedEvent.id}
+            autoFocusTitle={panelOpen && pendingEventId === selectedEvent.id}
             onTitleAutoFocused={clearPending}
           />
         ) : resolvedSearchEvent ? (
@@ -365,6 +374,40 @@ export function SidebarLeft({
           </SidebarGroup>
         )}
       </SidebarContent>
+    </>
+  );
+
+  if (overlay) {
+    return (
+      <SidebarOverlay
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+        side="right"
+        title="Context panel"
+        description="Event details, event search and useful shortcuts."
+        className="!bg-context-panel"
+        style={
+          {
+            "--sidebar-width": OVERLAY_WIDTH,
+            "--muted-foreground": PANEL_MUTED_FOREGROUND,
+          } as React.CSSProperties
+        }
+      >
+        {panel}
+      </SidebarOverlay>
+    );
+  }
+
+  return (
+    <Sidebar
+      side="right"
+      className="border-l !bg-context-panel [&_[data-slot=sidebar-inner]]:!bg-context-panel"
+      style={
+        { "--muted-foreground": PANEL_MUTED_FOREGROUND } as React.CSSProperties
+      }
+      {...props}
+    >
+      {panel}
     </Sidebar>
   );
 }
