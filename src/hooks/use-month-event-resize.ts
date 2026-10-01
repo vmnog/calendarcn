@@ -26,6 +26,10 @@ interface ResizeInfo {
   edge: "left" | "right";
   startClientX: number;
   isResizing: boolean;
+  /** Latest start date, committed to the parent on mouseup */
+  currentStart: Date;
+  /** Latest end date, committed to the parent on mouseup */
+  currentEnd: Date;
 }
 
 interface UseMonthEventResizeOptions {
@@ -145,6 +149,9 @@ export function useMonthEventResize({
         }
       }
 
+      resize.currentStart = newStart;
+      resize.currentEnd = newEnd;
+
       setResizeState({
         eventId: resize.eventId,
         event: resize.event,
@@ -160,27 +167,22 @@ export function useMonthEventResize({
       if (!resize) return;
 
       cleanup();
-
-      if (resize.isResizing) {
-        setResizeState((prev) => {
-          if (!prev) return null;
-
-          const event = eventsRef.current.find((e) => e.id === resize.eventId);
-          if (!event) return null;
-
-          onEventChangeRef.current?.({
-            ...event,
-            start: prev.currentStart,
-            end: prev.currentEnd,
-          });
-
-          return null;
-        });
-      } else {
-        setResizeState(null);
-      }
-
       resizeRef.current = null;
+      setResizeState(null);
+
+      if (!resize.isResizing) return;
+
+      // Commit from the handler, never from inside a state updater:
+      // updaters run during render, and calling the parent's setState
+      // there triggers "Cannot update a component while rendering".
+      const event = eventsRef.current.find((e) => e.id === resize.eventId);
+      if (!event) return;
+
+      onEventChangeRef.current?.({
+        ...event,
+        start: resize.currentStart,
+        end: resize.currentEnd,
+      });
     };
   }, [gridRef, cleanup]);
 
@@ -195,6 +197,8 @@ export function useMonthEventResize({
         edge,
         startClientX: e.clientX,
         isResizing: false,
+        currentStart: event.start,
+        currentEnd: event.end,
       };
 
       setResizeState({

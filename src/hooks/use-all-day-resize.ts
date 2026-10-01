@@ -48,6 +48,10 @@ interface ResizeInfo {
   cursorOffsetX: number;
   /** Offset from cursor to event top edge at mousedown (px) */
   cursorOffsetY: number;
+  /** Latest start column, committed to the parent on mouseup */
+  currentStartColumn: number;
+  /** Latest end column, committed to the parent on mouseup */
+  currentEndColumn: number;
 }
 
 export function useAllDayResize({
@@ -143,6 +147,9 @@ export function useAllDayResize({
         newStartColumn = Math.min(columnIndex, resize.originalEndColumn);
       }
 
+      resize.currentStartColumn = newStartColumn;
+      resize.currentEndColumn = newEndColumn;
+
       setAllDayResizeState({
         eventId: resize.eventId,
         event: resize.event,
@@ -168,59 +175,53 @@ export function useAllDayResize({
       if (!resize) return;
 
       cleanup();
-
-      if (resize.isResizing) {
-        setAllDayResizeState((prev) => {
-          if (!prev) return null;
-
-          const event = eventsRef.current.find((e) => e.id === resize.eventId);
-          if (!event) return null;
-
-          const currentDays = daysRef.current;
-          const newStartDate = currentDays[prev.currentStartColumn];
-          const newEndDate = currentDays[prev.currentEndColumn];
-
-          if (!newStartDate || !newEndDate) return null;
-
-          // Preserve time-of-day from original event
-          const newStart = new Date(newStartDate);
-          newStart.setHours(
-            event.start.getHours(),
-            event.start.getMinutes(),
-            event.start.getSeconds(),
-            event.start.getMilliseconds(),
-          );
-
-          const newEnd = new Date(newEndDate);
-          newEnd.setHours(
-            event.end.getHours(),
-            event.end.getMinutes(),
-            event.end.getSeconds(),
-            event.end.getMilliseconds(),
-          );
-
-          // Move preserves the original isAllDay flag (duration unchanged).
-          // Resize determines isAllDay by whether the span exceeds 24h.
-          const isMove = resize.edge === "move";
-          const MS_IN_24H = 24 * 60 * 60 * 1000;
-          const isLongerThan24h =
-            newEnd.getTime() - newStart.getTime() > MS_IN_24H;
-          const isAllDay = isMove ? event.isAllDay === true : isLongerThan24h;
-
-          onEventChangeRef.current?.({
-            ...event,
-            start: newStart,
-            end: newEnd,
-            isAllDay,
-          });
-
-          return null;
-        });
-      } else {
-        setAllDayResizeState(null);
-      }
-
       resizeRef.current = null;
+      setAllDayResizeState(null);
+
+      if (!resize.isResizing) return;
+
+      // Commit from the handler, never from inside a state updater:
+      // updaters run during render, and calling the parent's setState
+      // there triggers "Cannot update a component while rendering".
+      const event = eventsRef.current.find((e) => e.id === resize.eventId);
+      if (!event) return;
+
+      const currentDays = daysRef.current;
+      const newStartDate = currentDays[resize.currentStartColumn];
+      const newEndDate = currentDays[resize.currentEndColumn];
+
+      if (!newStartDate || !newEndDate) return;
+
+      // Preserve time-of-day from original event
+      const newStart = new Date(newStartDate);
+      newStart.setHours(
+        event.start.getHours(),
+        event.start.getMinutes(),
+        event.start.getSeconds(),
+        event.start.getMilliseconds(),
+      );
+
+      const newEnd = new Date(newEndDate);
+      newEnd.setHours(
+        event.end.getHours(),
+        event.end.getMinutes(),
+        event.end.getSeconds(),
+        event.end.getMilliseconds(),
+      );
+
+      // Move preserves the original isAllDay flag (duration unchanged).
+      // Resize determines isAllDay by whether the span exceeds 24h.
+      const isMove = resize.edge === "move";
+      const MS_IN_24H = 24 * 60 * 60 * 1000;
+      const isLongerThan24h = newEnd.getTime() - newStart.getTime() > MS_IN_24H;
+      const isAllDay = isMove ? event.isAllDay === true : isLongerThan24h;
+
+      onEventChangeRef.current?.({
+        ...event,
+        start: newStart,
+        end: newEnd,
+        isAllDay,
+      });
     };
   }, [allDayContainerRef, cleanup]);
 
@@ -267,6 +268,8 @@ export function useAllDayResize({
         startColumnIndex,
         cursorOffsetX,
         cursorOffsetY,
+        currentStartColumn: startColumn,
+        currentEndColumn: endColumn,
       };
 
       setAllDayResizeState({

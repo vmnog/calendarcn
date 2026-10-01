@@ -74,6 +74,8 @@ interface DragInfo {
   startClientX: number;
   startClientY: number;
   isDragging: boolean;
+  /** Latest date under the cursor, committed to the parent on mouseup */
+  targetDate: Date;
 }
 
 export function useMonthEventDrag({
@@ -137,6 +139,8 @@ export function useMonthEventDrag({
       const targetDate = getDateAtPoint(grid, e.clientX, e.clientY);
       if (!targetDate) return;
 
+      drag.targetDate = targetDate;
+
       setDragState({
         eventId: drag.eventId,
         event: drag.event,
@@ -153,37 +157,13 @@ export function useMonthEventDrag({
       if (!drag) return;
 
       cleanup();
+      dragRef.current = null;
+      setDragState(null);
 
-      if (drag.isDragging) {
-        setDragState((prev) => {
-          if (!prev) return null;
-
-          const event = eventsRef.current.find((e) => e.id === drag.eventId);
-          if (!event) return null;
-
-          const daysDelta = differenceInCalendarDays(
-            prev.targetDate,
-            prev.originalDate,
-          );
-
-          if (daysDelta !== 0) {
-            onEventChangeRef.current?.({
-              ...event,
-              start: addDays(event.start, daysDelta),
-              end: addDays(event.end, daysDelta),
-            });
-          }
-
-          // Select the event after drop so the detail popover opens
-          onEventClickRef.current?.(drag.event);
-
-          return null;
-        });
-      } else {
+      if (!drag.isDragging) {
         // No drag — select the event on mouseup (not mousedown) so the
         // popover doesn't flash while the user is still holding the mouse.
         onEventClickRef.current?.(drag.event);
-        setDragState(null);
 
         // Swallow the subsequent click event so the event item's onClick
         // doesn't double-fire selection.
@@ -194,9 +174,30 @@ export function useMonthEventDrag({
           },
           { capture: true, once: true },
         );
+        return;
       }
 
-      dragRef.current = null;
+      // Commit from the handler, never from inside a state updater:
+      // updaters run during render, and calling the parent's setState
+      // there triggers "Cannot update a component while rendering".
+      const event = eventsRef.current.find((e) => e.id === drag.eventId);
+      if (!event) return;
+
+      const daysDelta = differenceInCalendarDays(
+        drag.targetDate,
+        drag.originalDate,
+      );
+
+      if (daysDelta !== 0) {
+        onEventChangeRef.current?.({
+          ...event,
+          start: addDays(event.start, daysDelta),
+          end: addDays(event.end, daysDelta),
+        });
+      }
+
+      // Select the event after drop so the detail popover opens
+      onEventClickRef.current?.(drag.event);
     };
   }, [gridRef, cleanup]);
 
@@ -211,6 +212,7 @@ export function useMonthEventDrag({
         startClientX: e.clientX,
         startClientY: e.clientY,
         isDragging: false,
+        targetDate: event.start,
       };
 
       setDragState({

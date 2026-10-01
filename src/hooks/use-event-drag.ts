@@ -53,6 +53,10 @@ interface DragInfo {
   offsetWithinEventX: number;
   isDragging: boolean;
   durationMinutes: number;
+  /** Latest snapped start, committed to the parent on mouseup */
+  currentStart: Date;
+  /** Latest snapped end, committed to the parent on mouseup */
+  currentEnd: Date;
 }
 
 export function useEventDrag({
@@ -233,6 +237,9 @@ export function useEventDrag({
         clampedStart + drag.durationMinutes,
       );
 
+      drag.currentStart = currentStart;
+      drag.currentEnd = currentEnd;
+
       setDragState({
         eventId: drag.eventId,
         event: drag.event,
@@ -285,27 +292,22 @@ export function useEventDrag({
       if (!drag) return;
 
       cleanup();
-
-      if (drag.isDragging) {
-        setDragState((prev) => {
-          if (!prev) return null;
-
-          const event = eventsRef.current.find((e) => e.id === drag.eventId);
-          if (!event) return null;
-
-          onEventChangeRef.current?.({
-            ...event,
-            start: prev.currentStart,
-            end: prev.currentEnd,
-          });
-
-          return null;
-        });
-      } else {
-        setDragState(null);
-      }
-
       dragRef.current = null;
+      setDragState(null);
+
+      if (!drag.isDragging) return;
+
+      // Commit from the handler, never from inside a state updater:
+      // updaters run during render, and calling the parent's setState
+      // there triggers "Cannot update a component while rendering".
+      const event = eventsRef.current.find((e) => e.id === drag.eventId);
+      if (!event) return;
+
+      onEventChangeRef.current?.({
+        ...event,
+        start: drag.currentStart,
+        end: drag.currentEnd,
+      });
     };
   }, [
     scrollContainerRef,
@@ -346,6 +348,8 @@ export function useEventDrag({
         offsetWithinEventX,
         isDragging: false,
         durationMinutes,
+        currentStart: event.start,
+        currentEnd: event.end,
       };
 
       setDragState({
