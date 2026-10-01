@@ -16,6 +16,7 @@ import { useHorizontalScroll } from "@/hooks/use-horizontal-scroll";
 import { useEventDrag } from "@/hooks/use-event-drag";
 import { useEventResize } from "@/hooks/use-event-resize";
 import { useAllDayResize } from "@/hooks/use-all-day-resize";
+import { useTimeZoneLabel } from "@/hooks/use-timezone-label";
 import type {
   HourSlot,
   ViewType,
@@ -204,6 +205,8 @@ export function WeekView({
   const [hourHeight, setHourHeight] = React.useState(MIN_HOUR_HEIGHT);
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
   const [isAllDayResizing, setIsAllDayResizing] = React.useState(false);
+  // Empty on the server and during hydration, the viewer's zone afterwards
+  const timeZoneLabel = useTimeZoneLabel();
 
   React.useEffect(() => {
     const updateDimensions = () => {
@@ -392,9 +395,7 @@ export function WeekView({
             <div className="flex bg-background">
               {/* Timezone label - rendered outside scroll container */}
               <div className="text-muted-foreground flex w-16 flex-shrink-0 items-center justify-end pr-2 text-xxs">
-                {new Date()
-                  .toLocaleTimeString("en-US", { timeZoneName: "short" })
-                  .match(/\s([A-Z]{2,5})$/)?.[1] ?? ""}
+                {timeZoneLabel}
               </div>
               <div className="flex-1 overflow-hidden">
                 <div style={scrollStyle}>
