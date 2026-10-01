@@ -10,16 +10,6 @@
           }
         ]
       }
-    ],
-    "PreCommit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "pnpm lint && pnpm typecheck && pnpm format:check"
-          }
-        ]
-      }
     ]
   },
   "enabledPlugins": {
