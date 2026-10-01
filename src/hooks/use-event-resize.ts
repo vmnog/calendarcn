@@ -60,6 +60,10 @@ interface ResizeInfo {
   originalEndMinutes: number;
   originalStartDate: Date;
   originalEndDate: Date;
+  /** Latest snapped start, committed to the parent on mouseup */
+  currentStart: Date;
+  /** Latest snapped end, committed to the parent on mouseup */
+  currentEnd: Date;
 }
 
 export function useEventResize({
@@ -310,6 +314,9 @@ export function useEventResize({
       const currentStart = addMinutesToDate(startDate, newStartMinutes);
       const currentEnd = addMinutesToDate(endDate, newEndMinutes);
 
+      resize.currentStart = currentStart;
+      resize.currentEnd = currentEnd;
+
       setResizeState({
         eventId: resize.eventId,
         event: resize.event,
@@ -360,32 +367,27 @@ export function useEventResize({
       if (!resize) return;
 
       cleanup();
-
-      if (resize.isResizing) {
-        setResizeState((prev) => {
-          if (!prev) return null;
-
-          const event = eventsRef.current.find((e) => e.id === resize.eventId);
-          if (!event) return null;
-
-          const MS_IN_24H = 24 * 60 * 60 * 1000;
-          const isLongerThan24h =
-            prev.currentEnd.getTime() - prev.currentStart.getTime() > MS_IN_24H;
-
-          onEventChangeRef.current?.({
-            ...event,
-            start: prev.currentStart,
-            end: prev.currentEnd,
-            isAllDay: isLongerThan24h,
-          });
-
-          return null;
-        });
-      } else {
-        setResizeState(null);
-      }
-
       resizeRef.current = null;
+      setResizeState(null);
+
+      if (!resize.isResizing) return;
+
+      // Commit from the handler, never from inside a state updater:
+      // updaters run during render, and calling the parent's setState
+      // there triggers "Cannot update a component while rendering".
+      const event = eventsRef.current.find((e) => e.id === resize.eventId);
+      if (!event) return;
+
+      const MS_IN_24H = 24 * 60 * 60 * 1000;
+      const isLongerThan24h =
+        resize.currentEnd.getTime() - resize.currentStart.getTime() > MS_IN_24H;
+
+      onEventChangeRef.current?.({
+        ...event,
+        start: resize.currentStart,
+        end: resize.currentEnd,
+        isAllDay: isLongerThan24h,
+      });
     };
   }, [
     scrollContainerRef,
@@ -422,6 +424,8 @@ export function useEventResize({
         originalEndMinutes,
         originalStartDate,
         originalEndDate,
+        currentStart: event.start,
+        currentEnd: event.end,
       };
 
       setResizeState({
