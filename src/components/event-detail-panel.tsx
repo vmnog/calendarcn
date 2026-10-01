@@ -50,6 +50,10 @@ interface EventDetailPanelProps {
   onNextWeek?: () => void;
   /** Extra action buttons rendered in the header row (after the "..." menu). */
   headerActions?: React.ReactNode;
+  /** When true, focuses and selects the title input once (e.g. for a just-created event). */
+  autoFocusTitle?: boolean;
+  /** Called after the title input was auto-focused, so the request is not repeated. */
+  onTitleAutoFocused?: () => void;
 }
 
 const colorDotClass: Record<EventColor, string> = {
@@ -333,6 +337,8 @@ export function EventDetailPanel({
   onPrevWeek,
   onNextWeek,
   headerActions,
+  autoFocusTitle,
+  onTitleAutoFocused,
 }: EventDetailPanelProps) {
   const color = event.color ?? "blue";
   const [eventType, setEventType] = React.useState<EventType>("Event");
@@ -354,6 +360,18 @@ export function EventDetailPanel({
   React.useEffect(() => {
     setOptionsExpanded(false);
   }, [event.id]);
+
+  // Focus + select the title on request so a new event can be named right away.
+  // Deferred a frame so a popover host has been positioned before focusing.
+  React.useEffect(() => {
+    if (!autoFocusTitle) return;
+    const frame = requestAnimationFrame(() => {
+      titleRef.current?.focus({ preventScroll: true });
+      titleRef.current?.select();
+      onTitleAutoFocused?.();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [autoFocusTitle, onTitleAutoFocused]);
 
   const handleTitleChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

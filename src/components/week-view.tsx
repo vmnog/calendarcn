@@ -156,6 +156,7 @@ export function WeekView({
   onEventClick,
   selectedEventId,
   onBackgroundClick,
+  onEventCreate,
   onDateChange,
   onVisibleDaysChange,
   onEventChange,
@@ -450,6 +451,7 @@ export function WeekView({
                   events={timedEvents}
                   onEventClick={onEventClick}
                   selectedEventId={selectedEventId}
+                  onEventCreate={onEventCreate}
                   dragState={dragState ?? undefined}
                   onEventDragMouseDown={handleEventMouseDown}
                   resizeState={resizeState ?? undefined}

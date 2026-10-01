@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { PopoverContent } from "@/components/ui/popover";
 import { EventDetailPanel } from "./event-detail-panel";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
+import { useEventTitleFocus } from "./event-title-focus-context";
 import type { CalendarEvent } from "./week-view-types";
 
 interface EventDetailPopoverProps {
@@ -41,6 +42,7 @@ export function EventDetailPopover({
   collisionPaddingTop,
 }: EventDetailPopoverProps) {
   const { boundary, headerHeight, view } = useCalendarPopoverBoundary();
+  const { pendingEventId, clearPending } = useEventTitleFocus();
 
   /**
    * In day view the event trigger spans the full grid width, leaving no room
@@ -111,6 +113,8 @@ export function EventDetailPopover({
         onPrevWeek={onPrevWeek}
         onNextWeek={onNextWeek}
         headerActions={popoverHeaderActions}
+        autoFocusTitle={pendingEventId === event.id}
+        onTitleAutoFocused={clearPending}
       />
     </PopoverContent>
   );

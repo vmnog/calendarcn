@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/tooltip";
 import { eventColorStyles } from "./calendar-event-item";
 import { EventDetailPanel } from "./event-detail-panel";
+import { useEventTitleFocus } from "./event-title-focus-context";
 import type { CalendarEvent } from "./week-view-types";
 
 interface SidebarLeftProps extends React.ComponentProps<typeof Sidebar> {
@@ -128,7 +129,8 @@ export function SidebarLeft({
   onNextWeek,
   ...props
 }: SidebarLeftProps) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, open } = useSidebar();
+  const { pendingEventId, clearPending } = useEventTitleFocus();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [searchSelectedEvent, setSearchSelectedEvent] =
@@ -274,6 +276,8 @@ export function SidebarLeft({
             onEventChange={onEventChange}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
+            autoFocusTitle={open && pendingEventId === selectedEvent.id}
+            onTitleAutoFocused={clearPending}
           />
         ) : resolvedSearchEvent ? (
           <EventDetailPanel

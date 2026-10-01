@@ -29,6 +29,16 @@ export type {
 } from "./calendar-types";
 
 /**
+ * Start and end of a new event created by clicking an empty time slot
+ */
+export interface NewEventRange {
+  /** Snapped start time of the clicked slot */
+  start: Date;
+  /** End time (start + NEW_EVENT_DURATION_MINUTES, capped at end of day) */
+  end: Date;
+}
+
+/**
  * Props for the main WeekView component
  */
 export interface WeekViewProps {
@@ -46,6 +56,11 @@ export interface WeekViewProps {
   selectedEventId?: string;
   /** Callback when clicking empty calendar space (not on an event) */
   onBackgroundClick?: () => void;
+  /**
+   * Callback when an empty timed-grid slot is clicked while no event is
+   * selected. Receives the snapped range for the new event.
+   */
+  onEventCreate?: (range: NewEventRange) => void;
   /** Callback when the displayed date changes (via scroll navigation) */
   onDateChange?: (date: Date) => void;
   /** Callback when the visible days change during scroll (real-time updates) */
@@ -110,6 +125,8 @@ export interface WeekViewGridProps {
   onEventClick?: (event: CalendarEvent) => void;
   /** ID of the currently selected event */
   selectedEventId?: string;
+  /** Callback when an empty slot is clicked while no event is selected */
+  onEventCreate?: (range: NewEventRange) => void;
   /** Current drag state if an event is being dragged */
   dragState?: EventDragState;
   /** Mousedown handler to initiate event drag */

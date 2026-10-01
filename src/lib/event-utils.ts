@@ -1,4 +1,5 @@
 import {
+  addMinutes,
   isSameDay,
   startOfDay,
   addDays,
@@ -6,6 +7,7 @@ import {
   isWithinInterval,
   areIntervalsOverlapping,
   startOfMonth,
+  endOfDay,
   endOfMonth,
   startOfWeek,
   endOfWeek,
@@ -20,6 +22,45 @@ import type {
   PositionedEvent,
   WeekDay,
 } from "@/components/week-view-types";
+
+/** Minute increment that timed-event drag, resize, and click-to-create snap to */
+export const SNAP_MINUTES = 15;
+
+/** Duration in minutes of an event created by clicking an empty time slot */
+export const NEW_EVENT_DURATION_MINUTES = 60;
+
+/** Minutes in a full day, used to keep created events inside their column */
+const MINUTES_PER_DAY = 24 * 60;
+
+/** Rounds a minute offset to the nearest SNAP_MINUTES increment. */
+export function snapToGrid(minutes: number): number {
+  return Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+}
+
+/**
+ * Returns the start/end of a new event created by clicking a day column at
+ * `minutesFromMidnight`. The start snaps down to the SNAP_MINUTES slot that
+ * contains the click, so the new event always covers the clicked point.
+ * Near midnight the start is clamped to the last full slot and the end is
+ * capped at the end of the day, because an event ending at the next day's
+ * 00:00 counts as multi-day (see isMultiDayEvent) and would render in the
+ * all-day row instead of the clicked column.
+ */
+export function getNewEventRange(
+  day: Date,
+  minutesFromMidnight: number,
+): { start: Date; end: Date } {
+  const slotStart =
+    Math.floor(minutesFromMidnight / SNAP_MINUTES) * SNAP_MINUTES;
+  const startMinutes = Math.max(
+    0,
+    Math.min(slotStart, MINUTES_PER_DAY - NEW_EVENT_DURATION_MINUTES),
+  );
+  const start = addMinutes(startOfDay(day), startMinutes);
+  const end = addMinutes(start, NEW_EVENT_DURATION_MINUTES);
+  if (isSameDay(start, end)) return { start, end };
+  return { start, end: endOfDay(start) };
+}
 
 /** Returns true when a timed event spans across midnight into a different day. */
 export function isMultiDayEvent(event: CalendarEvent): boolean {

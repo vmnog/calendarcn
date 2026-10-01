@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { snapToGrid } from "@/lib/event-utils";
 import type {
   CalendarEvent,
   EventDragState,
@@ -24,16 +25,11 @@ interface UseEventDragReturn {
 }
 
 const DRAG_THRESHOLD_PX = 4;
-const SNAP_MINUTES = 15;
 const EDGE_ZONE_PX = 40;
 const EDGE_NAV_DELAY_MS = 500;
 const EDGE_NAV_REPEAT_MS = 800;
 const AUTO_SCROLL_ZONE_PX = 60;
 const AUTO_SCROLL_MAX_SPEED = 12;
-
-function snapToGrid(minutes: number): number {
-  return Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
-}
 
 function addMinutesToDate(date: Date, minutes: number): Date {
   const result = new Date(date);

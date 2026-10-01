@@ -23,9 +23,12 @@ import { CommandMenu } from "@/components/command-menu";
 import { SidebarLeft } from "@/components/sidebar-left";
 import type {
   CalendarEvent,
+  EventColor,
+  NewEventRange,
   ViewSettings,
   ViewType,
 } from "@/components/week-view-types";
+import { EventTitleFocusProvider } from "@/components/event-title-focus-context";
 import { SidebarRight } from "@/components/sidebar-right";
 import { MonthView } from "@/components/month-view";
 import {
@@ -48,6 +51,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
+
+/** Title given to an event created by clicking an empty time slot */
+const NEW_EVENT_TITLE = "New event";
+
+/** Primary calendar (and its account email) that click-created events belong to */
+const PRIMARY_CALENDAR_ID = "me@vmnog.com";
+
+/** Color of the primary calendar, matching its entry in the calendar list */
+const PRIMARY_CALENDAR_COLOR: EventColor = "red";
 
 function PageContent() {
   const { theme, setTheme } = useTheme();
@@ -81,6 +93,33 @@ function PageContent() {
     setEvents((prev) =>
       prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)),
     );
+  }, []);
+
+  /** ID of a just-created event whose title input should be focused once */
+  const [titleFocusEventId, setTitleFocusEventId] = React.useState<
+    string | null
+  >(null);
+  // Only honor the focus request while that event is still the selected one
+  const pendingTitleFocusId =
+    titleFocusEventId === selectedEventId ? titleFocusEventId : null;
+
+  const clearTitleFocus = React.useCallback(() => {
+    setTitleFocusEventId(null);
+  }, []);
+
+  const handleEventCreate = React.useCallback((range: NewEventRange) => {
+    const newEvent: CalendarEvent = {
+      id: crypto.randomUUID(),
+      title: NEW_EVENT_TITLE,
+      start: range.start,
+      end: range.end,
+      color: PRIMARY_CALENDAR_COLOR,
+      calendarId: PRIMARY_CALENDAR_ID,
+      calendarEmail: PRIMARY_CALENDAR_ID,
+    };
+    setEvents((prev) => [...prev, newEvent]);
+    setSelectedEventId(newEvent.id);
+    setTitleFocusEventId(newEvent.id);
   }, []);
 
   const goToToday = React.useCallback(() => {
@@ -349,7 +388,10 @@ function PageContent() {
   ]);
 
   return (
-    <>
+    <EventTitleFocusProvider
+      pendingEventId={pendingTitleFocusId}
+      clearPending={clearTitleFocus}
+    >
       <CommandMenu
         open={commandMenuOpen}
         onOpenChange={setCommandMenuOpen}
@@ -511,6 +553,7 @@ function PageContent() {
               onEventClick={(e) => setSelectedEventId(e.id)}
               selectedEventId={selectedEvent?.id}
               onBackgroundClick={() => setSelectedEventId(null)}
+              onEventCreate={handleEventCreate}
               onDateChange={goToDate}
               onVisibleDaysChange={setVisibleDays}
               onEventChange={handleEventChange}
@@ -533,7 +576,7 @@ function PageContent() {
         onPrevWeek={goToPrev}
         onNextWeek={goToNext}
       />
-    </>
+    </EventTitleFocusProvider>
   );
 }
 
