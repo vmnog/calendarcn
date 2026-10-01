@@ -414,8 +414,8 @@ function PageContent() {
         visibleDays={view === "month" ? [] : visibleDays}
       />
       <SidebarInset className="flex flex-col overflow-hidden">
-        <header className="bg-background sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2">
-          <div className="flex flex-1 items-center gap-2 px-4">
+        <header className="@container/header bg-background sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1 pl-2 @md/header:gap-2 @xl/header:px-4">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -435,40 +435,48 @@ function PageContent() {
             </Tooltip>
             <Separator
               orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
+              className="mr-2 hidden data-[orientation=vertical]:h-4 @md/header:block"
             />
-            <h1 className="text-xl">
-              <span className="font-extrabold">{monthName}</span>{" "}
+            <h1 className="min-w-0 truncate text-sm @xs/header:text-base @xl/header:text-xl">
+              {/* Narrow headers use the short month ("Sep"); en-US "MMMM" names abbreviate to their first three letters */}
+              <span className="font-extrabold @md/header:hidden">
+                {monthName.slice(0, 3)}
+              </span>
+              <span className="hidden font-extrabold @md/header:inline">
+                {monthName}
+              </span>{" "}
               <span className="font-extrabold">{year}</span>{" "}
-              <span className="text-muted-foreground text-xs">
+              <span className="text-muted-foreground hidden text-xs @xl/header:inline">
                 {view === "day" && format(currentDate, "EEEE, MMM d")}
                 {view === "week" && `Week ${weekNumber}`}
                 {view === "month" && ""}
               </span>
             </h1>
           </div>
-          <div className="flex items-center gap-2 px-4">
-            <Avatar className="size-7">
+          <div className="flex shrink-0 items-center gap-1 pr-2 @md/header:gap-2 @xl/header:px-4">
+            <Avatar className="hidden size-7 @xl/header:flex">
               <AvatarImage
                 src="https://github.com/vmnog.png"
                 alt="Victor Nogueira"
               />
               <AvatarFallback>VN</AvatarFallback>
             </Avatar>
-            <ViewDropdown
-              view={view}
-              numberOfDays={numberOfDays}
-              viewSettings={viewSettings}
-              onSwitchView={switchView}
-              onSetNumberOfDays={setNumberOfDays}
-              onToggleWeekends={toggleWeekends}
-              onToggleDeclinedEvents={toggleDeclinedEvents}
-              onToggleWeekNumbers={toggleWeekNumbers}
-            />
+            <div className="hidden @xs/header:block">
+              <ViewDropdown
+                view={view}
+                numberOfDays={numberOfDays}
+                viewSettings={viewSettings}
+                onSwitchView={switchView}
+                onSetNumberOfDays={setNumberOfDays}
+                onToggleWeekends={toggleWeekends}
+                onToggleDeclinedEvents={toggleDeclinedEvents}
+                onToggleWeekNumbers={toggleWeekNumbers}
+              />
+            </div>
             <Button
               variant="secondary"
               size="sm"
-              className="px-3"
+              className="px-2 @md/header:px-3"
               onClick={goToToday}
             >
               Today
@@ -477,7 +485,7 @@ function PageContent() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 text-muted-foreground"
+                className="size-7 text-muted-foreground @2xs/header:size-8"
                 onClick={goToPrev}
               >
                 <ChevronLeftIcon className="size-4" />
@@ -492,7 +500,7 @@ function PageContent() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 text-muted-foreground"
+                className="size-7 text-muted-foreground @2xs/header:size-8"
                 onClick={goToNext}
               >
                 <ChevronRightIcon className="size-4" />
