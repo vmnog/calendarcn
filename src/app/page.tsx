@@ -201,7 +201,16 @@ function PageContent() {
     view === "month"
       ? (monthViewDisplayMonth ?? currentDate)
       : (visibleDays[0] ?? currentDate);
-  const { monthName, year, weekNumber } = getCalendarHeaderInfo(headerDate, 0);
+  // Week/day views name the month after the LAST visible day, so a week
+  // crossing into the next month is labeled with the later month (Notion
+  // Calendar's behavior). Month view labels its own month instead.
+  const headerRangeEnd =
+    view === "month" ? undefined : visibleDays[visibleDays.length - 1];
+  const { monthName, year, weekNumber } = getCalendarHeaderInfo(
+    headerDate,
+    0,
+    headerRangeEnd,
+  );
 
   // Keyboard shortcuts
   React.useEffect(() => {
