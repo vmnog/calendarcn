@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { isSameDay, startOfDay, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { isPast } from "date-fns";
-import { calculatePositionedEvents } from "@/lib/event-utils";
+import { calculatePositionedEvents, getNewEventRange } from "@/lib/event-utils";
 import { CalendarEventItem } from "./calendar-event-item";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
 import type {
@@ -15,6 +15,19 @@ import type {
   PositionedEvent,
   WeekViewGridProps,
 } from "./week-view-types";
+
+/**
+ * Max pointer travel (px) between mousedown and click for a click on an empty
+ * slot to create an event. Matches the drag threshold in use-event-drag so a
+ * press that moves far enough to count as a drag never also creates an event.
+ */
+const CREATE_CLICK_TOLERANCE_PX = 4;
+
+/** Pointer position recorded when a mousedown lands on an empty day column */
+interface PendingCreateClick {
+  clientX: number;
+  clientY: number;
+}
 
 /**
  * Main grid displaying hour/day intersection cells with events
@@ -27,6 +40,7 @@ export function WeekViewGrid({
   events = [],
   onEventClick,
   selectedEventId,
+  onEventCreate,
   dragState,
   onEventDragMouseDown,
   resizeState,
@@ -44,6 +58,8 @@ export function WeekViewGrid({
   const { view } = useCalendarPopoverBoundary();
   const isDayView = view === "day";
   const gridRef = React.useRef<HTMLDivElement>(null);
+  /** Set only by a mousedown directly on empty column space */
+  const pendingCreateRef = React.useRef<PendingCreateClick | null>(null);
   const [gridWidth, setGridWidth] = React.useState(0);
 
   React.useEffect(() => {
@@ -58,6 +74,56 @@ export function WeekViewGrid({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  /**
+   * Capture phase runs before event items stop mousedown propagation, so a
+   * press that starts on an event (drag, resize, select) always clears any
+   * pending create left over from an earlier press.
+   */
+  const handleColumnMouseDownCapture = React.useCallback(() => {
+    pendingCreateRef.current = null;
+  }, []);
+
+  const handleColumnMouseDown = React.useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      if (e.target !== e.currentTarget) return;
+      pendingCreateRef.current = { clientX: e.clientX, clientY: e.clientY };
+    },
+    [],
+  );
+
+  /**
+   * Creates an event when a press started and ended on empty space in the
+   * same column without moving. With an event selected the click is left to
+   * bubble so WeekView's onBackgroundClick deselects instead.
+   */
+  const handleColumnClick = React.useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, columnDate: Date) => {
+      const pending = pendingCreateRef.current;
+      pendingCreateRef.current = null;
+
+      if (!pending || !onEventCreate) return;
+      if (e.target !== e.currentTarget) return;
+      if (selectedEventId) return;
+
+      const movedX = Math.abs(e.clientX - pending.clientX);
+      const movedY = Math.abs(e.clientY - pending.clientY);
+      if (
+        movedX > CREATE_CLICK_TOLERANCE_PX ||
+        movedY > CREATE_CLICK_TOLERANCE_PX
+      ) {
+        return;
+      }
+
+      const columnTop = e.currentTarget.getBoundingClientRect().top;
+      const minutesFromMidnight = ((e.clientY - columnTop) / hourHeight) * 60;
+
+      e.stopPropagation();
+      onEventCreate(getNewEventRange(columnDate, minutesFromMidnight));
+    },
+    [onEventCreate, selectedEventId, hourHeight],
+  );
 
   return (
     <div ref={gridRef} className={cn("relative", className)}>
@@ -140,6 +206,9 @@ export function WeekViewGrid({
               onClosePopover={onClosePopover}
               onPrevWeek={onPrevWeek}
               onNextWeek={onNextWeek}
+              onColumnMouseDownCapture={handleColumnMouseDownCapture}
+              onColumnMouseDown={handleColumnMouseDown}
+              onColumnClick={handleColumnClick}
             />
           );
         })}
@@ -473,6 +542,12 @@ interface DayEventsColumnProps {
   onClosePopover?: () => void;
   onPrevWeek?: () => void;
   onNextWeek?: () => void;
+  onColumnMouseDownCapture?: () => void;
+  onColumnMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onColumnClick?: (
+    e: React.MouseEvent<HTMLDivElement>,
+    columnDate: Date,
+  ) => void;
 }
 
 function renderColumnGhost(
@@ -506,9 +581,17 @@ function DayEventsColumn({
   onClosePopover,
   onPrevWeek,
   onNextWeek,
+  onColumnMouseDownCapture,
+  onColumnMouseDown,
+  onColumnClick,
 }: DayEventsColumnProps) {
   return (
-    <div className="relative h-full pointer-events-auto">
+    <div
+      className="relative h-full pointer-events-auto"
+      onMouseDownCapture={onColumnMouseDownCapture}
+      onMouseDown={onColumnMouseDown}
+      onClick={(e) => onColumnClick?.(e, columnDate)}
+    >
       {events.map((positionedEvent) => {
         const eventId = positionedEvent.event.id;
         const isBeingDragged =
