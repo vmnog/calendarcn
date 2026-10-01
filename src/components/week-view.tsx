@@ -109,15 +109,26 @@ function generateHours(): HourSlot[] {
 }
 
 /**
- * Returns the month name, year, and week number for the current date
+ * Returns the month name, year, and week number for the visible range.
+ *
+ * `rangeEnd` is the last visible day, and it is what names the month. A week
+ * straddling a month boundary is labeled with the later month — Notion Calendar
+ * shows "October 2026" for Sep 27 - Oct 3 — rather than the month of the first
+ * day, which would label that week "September". Omitting `rangeEnd` labels
+ * `currentDate` alone, which is what month view wants.
+ *
+ * The week number stays derived from `currentDate` (the week's first day).
  */
 export function getCalendarHeaderInfo(
   currentDate: Date,
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6,
+  rangeEnd?: Date,
 ) {
+  const labelDate = rangeEnd ?? currentDate;
+
   return {
-    monthName: format(currentDate, "MMMM"),
-    year: format(currentDate, "yyyy"),
+    monthName: format(labelDate, "MMMM"),
+    year: format(labelDate, "yyyy"),
     weekNumber: getWeek(currentDate, { weekStartsOn }),
   };
 }
