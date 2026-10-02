@@ -745,7 +745,7 @@ export function EventDetailPanel({
             <button
               type="button"
               className={cn(
-                "flex items-center gap-0.5 text-xs font-medium rounded-sm border border-transparent px-2.5 py-1.5 -ml-2.5 gap-1.5 hover:border-[#373737]",
+                "flex items-center gap-0.5 text-xs font-medium rounded-sm border border-transparent px-2.5 py-1.5 -ml-2.5 gap-1.5 hover:border-[#E8E8E4] dark:hover:border-[#373737]",
                 eventDropdownOpen
                   ? "bg-[#252525] text-white"
                   : "text-foreground",
@@ -802,7 +802,7 @@ export function EventDetailPanel({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 border border-transparent hover:border-[#242424] hover:bg-[#242424] text-[#C7C5C1] dark:text-[#595959]"
+                className="size-7 border border-transparent hover:border-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:border-[#242424] dark:hover:bg-[#242424] text-[#C7C5C1] dark:text-[#595959]"
               >
                 <MoreHorizontal className="size-4" />
               </Button>
@@ -857,7 +857,7 @@ export function EventDetailPanel({
         onBlur={commitTitle}
         onKeyDown={handleTitleKeyDown}
         placeholder="Title"
-        className="text-foreground placeholder:text-[#C7C5C1] dark:placeholder:text-[#595959] mx-2 rounded-sm border border-transparent bg-transparent px-2 py-1.5 text-xs outline-none hover:border-[#373737] focus:border-[#242424] focus:bg-[#242424]"
+        className="text-foreground placeholder:text-[#C7C5C1] dark:placeholder:text-[#595959] mx-2 rounded-sm border border-transparent bg-transparent px-2 py-1.5 text-xs outline-none hover:border-[#E8E8E4] dark:hover:border-[#373737] focus:border-[#F5F5F5] focus:bg-[#F5F5F5] dark:focus:border-[#242424] dark:focus:bg-[#242424]"
       />
 
       {/* Divider */}
@@ -875,7 +875,7 @@ export function EventDetailPanel({
               "flex shrink-0 items-center gap-2 rounded-sm border border-transparent px-2 py-1.5",
               event.isAllDay
                 ? "cursor-default"
-                : "cursor-text hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]",
+                : "cursor-text hover:border-[#E8E8E4] dark:hover:border-[#373737] has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]",
             )}
             onClick={
               event.isAllDay ? undefined : () => startTimeRef.current?.focus()
@@ -906,7 +906,7 @@ export function EventDetailPanel({
               "flex min-w-0 flex-1 items-center rounded-sm border border-transparent px-2 py-1.5",
               event.isAllDay
                 ? "cursor-default"
-                : "cursor-text hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]",
+                : "cursor-text hover:border-[#E8E8E4] dark:hover:border-[#373737] has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]",
             )}
             onClick={
               event.isAllDay ? undefined : () => endTimeRef.current?.focus()
@@ -954,7 +954,7 @@ export function EventDetailPanel({
       >
         {/* Start date */}
         <div
-          className="mr-0 flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]"
+          className="mr-0 flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#E8E8E4] dark:hover:border-[#373737] has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]"
           onClick={() => dateRef.current?.focus()}
         >
           <input
@@ -972,7 +972,7 @@ export function EventDetailPanel({
         {/* End date — only visible for all-day events */}
         {event.isAllDay && (
           <div
-            className="flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#373737] has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]"
+            className="flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#E8E8E4] dark:hover:border-[#373737] has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]"
             onClick={() => endDateRef.current?.focus()}
           >
             <input
