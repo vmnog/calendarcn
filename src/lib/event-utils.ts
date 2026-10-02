@@ -20,9 +20,32 @@ import {
 } from "date-fns";
 import type {
   CalendarEvent,
+  EventColor,
   PositionedEvent,
   WeekDay,
 } from "@/components/week-view-types";
+
+/** Every event color, in the order the color pickers list them */
+export const EVENT_COLORS: readonly EventColor[] = [
+  "red",
+  "orange",
+  "yellow",
+  "green",
+  "blue",
+  "purple",
+  "gray",
+];
+
+/**
+ * Picks a random event color. When `previous` is given it is excluded, so
+ * two picks in a row always differ (each click-created event looks new).
+ */
+export function pickRandomEventColor(
+  previous: EventColor | null = null,
+): EventColor {
+  const choices = EVENT_COLORS.filter((color) => color !== previous);
+  return choices[Math.floor(Math.random() * choices.length)];
+}
 
 /** Minute increment that timed-event drag, resize, and click-to-create snap to */
 export const SNAP_MINUTES = 15;

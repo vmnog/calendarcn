@@ -20,6 +20,7 @@ import { useTheme } from "next-themes";
 import { useIsClient } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { generateMockEvents } from "@/lib/mock-events";
+import { pickRandomEventColor } from "@/lib/event-utils";
 import { CommandMenu } from "@/components/command-menu";
 import { SidebarLeft } from "@/components/sidebar-left";
 import type {
@@ -58,9 +59,6 @@ const NEW_EVENT_TITLE = "New event";
 
 /** Primary calendar (and its account email) that click-created events belong to */
 const PRIMARY_CALENDAR_ID = "me@vmnog.com";
-
-/** Color of the primary calendar, matching its entry in the calendar list */
-const PRIMARY_CALENDAR_COLOR: EventColor = "red";
 
 /**
  * Viewports at least this wide keep both sidebars inline (Tailwind `xl`).
@@ -152,14 +150,21 @@ function PageContent({ isWideLayout }: PageContentProps) {
     setTitleFocusEventId(null);
   }, []);
 
+  /** Color given to the last click-created event, so the next one differs */
+  const lastCreatedColorRef = React.useRef<EventColor | null>(null);
+
   const handleEventCreate = React.useCallback(
     (range: NewEventRange) => {
+      // Demo choice: a random color per created event makes each click visibly
+      // new. A real app would use the target calendar's color instead.
+      const color = pickRandomEventColor(lastCreatedColorRef.current);
+      lastCreatedColorRef.current = color;
       const newEvent: CalendarEvent = {
         id: crypto.randomUUID(),
         title: NEW_EVENT_TITLE,
         start: range.start,
         end: range.end,
-        color: PRIMARY_CALENDAR_COLOR,
+        color,
         calendarId: PRIMARY_CALENDAR_ID,
         calendarEmail: PRIMARY_CALENDAR_ID,
       };

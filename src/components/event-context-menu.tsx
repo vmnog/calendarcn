@@ -12,17 +12,8 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { EVENT_COLORS } from "@/lib/event-utils";
 import type { CalendarEvent, EventColor } from "./week-view-types";
-
-const EVENT_COLORS: EventColor[] = [
-  "red",
-  "orange",
-  "yellow",
-  "green",
-  "blue",
-  "purple",
-  "gray",
-];
 
 const colorSwatchClass: Record<EventColor, string> = {
   red: "bg-event-red-border",
