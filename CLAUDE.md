@@ -83,15 +83,16 @@ The event detail panel follows Notion Calendar's interaction patterns. Reuse the
 
 #### Color Tokens (hardcoded, not CSS variables)
 
-| Role                       | Value                                                       |
-| -------------------------- | ----------------------------------------------------------- |
-| Muted text / icons (light) | `text-[#C7C5C1]`                                            |
-| Muted text / icons (dark)  | `dark:text-[#595959]`                                       |
-| Hover border               | `hover:border-[#373737]`                                    |
-| Focus background           | `focus:bg-[#242424]` or `has-[:focus]:bg-[#242424]`         |
-| Focus border (matches bg)  | `focus:border-[#242424]` or `has-[:focus]:border-[#242424]` |
-| Dropdown open bg           | `bg-[#252525]`                                              |
-| Dropdown border            | `border-[#303030]`                                          |
+Every interactive color needs BOTH a light value and a `dark:` value. The dark values alone are near-black and break light mode (e.g. a focused input becomes unreadable).
+
+| Role                      | Light                                                       | Dark                                                                  |
+| ------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
+| Muted text / icons        | `text-[#C7C5C1]`                                            | `dark:text-[#595959]`                                                 |
+| Hover border              | `hover:border-[#E8E8E4]`                                    | `dark:hover:border-[#373737]`                                         |
+| Focus background          | `focus:bg-[#F5F5F5]` or `has-[:focus]:bg-[#F5F5F5]`         | `dark:focus:bg-[#242424]` or `dark:has-[:focus]:bg-[#242424]`         |
+| Focus border (matches bg) | `focus:border-[#F5F5F5]` or `has-[:focus]:border-[#F5F5F5]` | `dark:focus:border-[#242424]` or `dark:has-[:focus]:border-[#242424]` |
+| Dropdown open bg          | `bg-[#252525]` (menus are dark in both themes today)        | same                                                                  |
+| Dropdown border           | `border-[#303030]` (menus are dark in both themes today)    | same                                                                  |
 
 #### Inline Editable Input Pattern
 
@@ -129,8 +130,9 @@ Key details:
 
 ```
 rounded-sm border border-transparent bg-transparent outline-none
-hover:border-[#373737]
-focus:border-[#242424] focus:bg-[#242424]
+hover:border-[#E8E8E4] dark:hover:border-[#373737]
+focus:border-[#F5F5F5] focus:bg-[#F5F5F5]
+dark:focus:border-[#242424] dark:focus:bg-[#242424]
 ```
 
 **Grouped input** (e.g., icon + input, or arrow + input + label in one bordered container):
@@ -138,8 +140,9 @@ focus:border-[#242424] focus:bg-[#242424]
 - Wrapper div gets the border/hover/focus styling using `has-[:focus]`:
   ```
   rounded-sm border border-transparent cursor-text
-  hover:border-[#373737]
-  has-[:focus]:border-[#242424] has-[:focus]:bg-[#242424]
+  hover:border-[#E8E8E4] dark:hover:border-[#373737]
+  has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5]
+  dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]
   ```
 - Wrapper gets `onClick={() => inputRef.current?.focus()}` so clicking anywhere focuses the input
 - Inner input gets `border-none p-0 bg-transparent outline-none` (no border, wrapper handles it)
@@ -149,13 +152,14 @@ focus:border-[#242424] focus:bg-[#242424]
 **Dropdown trigger buttons** (e.g., event type selector):
 
 ```
-rounded-sm border border-transparent hover:border-[#373737]
+rounded-sm border border-transparent hover:border-[#E8E8E4] dark:hover:border-[#373737]
 ```
 
 **Icon buttons** (e.g., "..." more menu):
 
 ```
-border border-transparent hover:border-[#242424] hover:bg-[#242424]
+border border-transparent hover:border-[#F5F5F5] hover:bg-[#F5F5F5]
+dark:hover:border-[#242424] dark:hover:bg-[#242424]
 ```
 
 This makes the hover border blend with the hover background (invisible border effect).
