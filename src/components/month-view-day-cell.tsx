@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  isToday,
   isSameMonth,
   isSameDay,
   format,
@@ -10,9 +9,10 @@ import {
   startOfDay,
 } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useToday } from "@/hooks/use-now";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 import type { MonthCellSlot } from "@/lib/event-utils";
-import { isMultiDayEvent } from "@/lib/event-utils";
+import { formatCellDate, isMultiDayEvent } from "@/lib/event-utils";
 import { Popover, PopoverAnchor } from "@/components/ui/popover";
 import { EventDetailPopover } from "./event-detail-popover";
 import { MonthViewEventItem } from "./month-view-event-item";
@@ -88,7 +88,9 @@ export function MonthViewDayCell({
   className,
 }: MonthViewDayCellProps) {
   const dayNumber = date.getDate();
-  const todayDate = isToday(date);
+  // `null` on the server and during hydration, so no cell is marked as today
+  const today = useToday();
+  const todayDate = today !== null && isSameDay(date, today);
   const isAdjacentMonth = !isSameMonth(date, currentMonth);
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
   const isFirstOfMonth = dayNumber === 1;
@@ -151,7 +153,7 @@ export function MonthViewDayCell({
 
   const cellContent = (
     <div
-      data-date={date.toISOString()}
+      data-date={formatCellDate(date)}
       onClick={handleBackgroundClick}
       className={cn(
         "flex flex-col border-b border-r border-border min-w-0",

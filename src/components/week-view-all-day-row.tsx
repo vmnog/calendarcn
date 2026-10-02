@@ -3,7 +3,7 @@
 import type React from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { isPast, isSameDay } from "date-fns";
+import { isSameDay } from "date-fns";
 import { useCallback } from "react";
 import { calculateAllDayEventRows } from "@/lib/event-utils";
 import { AllDayEventItem } from "./calendar-event-item";
@@ -342,7 +342,6 @@ function AllDayEventRow({
     >
       <AllDayEventItem
         event={event}
-        isPast={isPast(event.end)}
         isSelected={isBeingMoved ? false : isSelected}
         onClick={onEventClick}
         spanStart={spanStart}

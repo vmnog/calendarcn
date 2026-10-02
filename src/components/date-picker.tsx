@@ -3,8 +3,16 @@
 import * as React from "react";
 import { isSameDay, isSameMonth } from "date-fns";
 
+import { useToday } from "@/hooks/use-now";
 import { Calendar } from "@/components/ui/calendar";
 import { SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
+
+/**
+ * Stand-in for "today" on the server and during hydration, where the viewer's
+ * date is unknown. It lies outside any month the calendar shows, so no day is
+ * marked as today and server and client markup match (React error #418).
+ */
+const UNKNOWN_TODAY = new Date(0);
 
 interface DatePickerProps {
   onDateSelect?: (date: Date) => void;
@@ -33,9 +41,10 @@ export function DatePicker({
   currentDate,
   visibleDays,
 }: DatePickerProps) {
-  const [today] = React.useState(() => new Date());
+  // `null` on the server and during hydration
+  const today = useToday();
   const [displayedMonth, setDisplayedMonth] = React.useState<Date>(
-    () => getAnchorMonth(currentDate, visibleDays) ?? today,
+    () => getAnchorMonth(currentDate, visibleDays) ?? today ?? new Date(),
   );
 
   // Re-sync the displayed month whenever the calendar navigates. The user can
@@ -47,7 +56,8 @@ export function DatePicker({
     setDisplayedMonth((prev) => (isSameMonth(prev, anchor) ? prev : anchor));
   }, [currentDate, visibleDays]);
 
-  const isTodayMonth = isSameMonth(displayedMonth, today);
+  // Treat an unknown today as this month, so no "back to today" control renders
+  const isTodayMonth = today === null || isSameMonth(displayedMonth, today);
 
   const monthYearLabel = displayedMonth.toLocaleDateString("default", {
     month: "long",
@@ -55,6 +65,7 @@ export function DatePicker({
   });
 
   const goBackToToday = () => {
+    if (!today) return;
     setDisplayedMonth(today);
     onDateSelect?.(today);
   };
@@ -82,7 +93,8 @@ export function DatePicker({
           mode="single"
           month={displayedMonth}
           onMonthChange={setDisplayedMonth}
-          selected={today}
+          selected={today ?? undefined}
+          today={today ?? UNKNOWN_TODAY}
           onSelect={(date) => {
             if (date) {
               onDateSelect?.(date);

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { startOfDay } from "date-fns";
 
+import { parseCellDate } from "@/lib/event-utils";
 import type { CalendarEvent } from "@/components/calendar-types";
 
 /** Minimum cursor movement before entering resize mode */
@@ -62,7 +63,7 @@ function getDateAtPoint(
   for (const el of elements) {
     const dateAttr = el.getAttribute("data-date");
     if (dateAttr && gridEl.contains(el)) {
-      return new Date(dateAttr);
+      return parseCellDate(dateAttr);
     }
   }
   return null;

@@ -97,6 +97,18 @@ Renders a single event segment. Handles:
 | `useAllDayResize`     | Resize all-day event span    | Column-based calculation, row re-stacking               |
 | `useHorizontalScroll` | Smooth scroll in grid        | Scroll container ref, buffer management                 |
 
+### Server Rendering and the Clock
+
+`WeekView` and `MonthView` render the same markup on the server and in the browser, so apps can server-render them without hydration errors (React #418). Nothing reads the clock or the runtime's timezone during render. Instead, every now-dependent part reads the shared clock in `src/hooks/use-now.ts`:
+
+- `useNow()`: the current time, for the current-time line. Ticks on every minute boundary.
+- `useToday()`: the start of today, for the today badge, month cells, the mini calendar, and the default `currentDate`. Re-renders only when the day changes.
+- `useIsPast(date)`: past-event fading. Re-renders only when the answer flips.
+
+All three use `useSyncExternalStore` with a server snapshot of `null` (or `false`). The server and the hydration render show no today badge, no time line, and no faded events. React re-renders with the real time right after hydration. A client-only render gets the real time on its first render, so the demo looks the same either way. One timer serves every subscriber.
+
+The timezone label follows the same pattern (`useTimeZoneLabel`). Month cells tag themselves with a timezone-free `data-date` (`yyyy-MM-dd`) for the same reason.
+
 ## Styling Architecture
 
 ### Color System

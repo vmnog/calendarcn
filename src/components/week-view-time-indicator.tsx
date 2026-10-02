@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { useNow } from "@/hooks/use-now";
 import type { WeekViewTimeIndicatorProps } from "./week-view-types";
 
 /**
@@ -11,7 +12,8 @@ import type { WeekViewTimeIndicatorProps } from "./week-view-types";
  * - Time badge with current time (e.g., "5:48PM") on the left
  * - Thick line on today's column
  * - Thin line on other day columns
- * Updates position every minute
+ * Moves on every minute boundary via the shared `useNow` clock. Renders
+ * nothing on the server and during hydration, where the time is unknown.
  */
 export function WeekViewTimeIndicator({
   days,
@@ -21,22 +23,12 @@ export function WeekViewTimeIndicator({
   behindSelection,
   className,
 }: WeekViewTimeIndicatorProps) {
-  const [currentTime, setCurrentTime] = React.useState(() => new Date());
+  const currentTime = useNow();
 
   // Check if today is visible in the current week
-  const todayIndex = days.findIndex((day) => day.isToday);
-  const isTodayVisible = todayIndex !== -1;
+  const isTodayVisible = days.some((day) => day.isToday);
 
-  // Update time every minute
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  if (!isTodayVisible) {
+  if (!currentTime || !isTodayVisible) {
     return null;
   }
 

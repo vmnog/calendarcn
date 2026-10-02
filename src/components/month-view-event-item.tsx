@@ -1,7 +1,8 @@
 "use client";
 
-import { format, isPast } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useIsPast } from "@/hooks/use-now";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 
 export interface MonthViewEventItemProps {
@@ -75,7 +76,8 @@ export function MonthViewEventItem({
   const borderColor = borderColorStyles[color];
   const timeColor = timeColorStyles[color];
   const titleColor = titleColorStyles[color];
-  const eventIsPast = isPast(event.end);
+  // `false` on the server and during hydration, so the markup matches
+  const eventIsPast = useIsPast(event.end);
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
