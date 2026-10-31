@@ -192,6 +192,8 @@ pnpm test:e2e         # Playwright e2e regression suite (e2e/, see docs/runbooks
 
 **Before committing:** `pnpm lint && pnpm typecheck && pnpm format:check`
 
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, format check and build, plus `pnpm test:e2e`, on every PR and on pushes to `main`.
+
 ## Docs
 
 - `docs/architecture.md` — system architecture and data flow
