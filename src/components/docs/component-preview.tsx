@@ -8,6 +8,7 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { cn } from "@/lib/utils";
 import { CODE_THEMES } from "@/components/docs/code-themes";
 import { DocsCodeBlock } from "@/components/docs/docs-code-block";
+import { PreviewTab } from "@/components/docs/preview-tab";
 import {
   getExamplePath,
   isExampleName,
@@ -78,7 +79,8 @@ export async function ComponentPreview({
 
   return (
     <PreviewTabs className={className}>
-      <Tab value="Preview" className="p-0">
+      {/* An unfocusable panel, or the first event click closes its own popover */}
+      <PreviewTab value="Preview" className="p-0">
         <div
           data-example={name}
           className="docs-preview relative isolate min-h-[400px] max-h-[960px] resize-y overflow-hidden rounded-xl bg-background text-foreground"
@@ -86,7 +88,7 @@ export async function ComponentPreview({
         >
           {renderExample(name)}
         </div>
-      </Tab>
+      </PreviewTab>
       <Tab value="Code">
         <ServerCodeBlock
           lang="tsx"
