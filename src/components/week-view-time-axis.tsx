@@ -14,20 +14,22 @@ export function WeekViewTimeAxis({
   className,
 }: WeekViewTimeAxisProps) {
   return (
+    // Hour labels are visual only: each event's label already reads its time
     <div
+      aria-hidden
       className={cn("grid w-16 flex-shrink-0", className)}
       style={{
         gridTemplateRows: `repeat(${hours.length}, ${hourHeight}px)`,
         gridTemplateColumns: "1fr",
       }}
     >
-      {hours.map((hourSlot) => (
+      {hours.map((hourSlot, index) => (
         <div
           key={hourSlot.hour}
           className="text-muted-foreground relative pr-2 text-right text-xxs"
         >
-          {/* Show label at top of each cell, skip 12 AM (hour 0) */}
-          {hourSlot.hour > 0 && (
+          {/* Show label at top of each cell, skip the first row (it would sit on the grid's top edge) */}
+          {index > 0 && (
             <span className="absolute top-0 right-2 -translate-y-[55%] leading-none">
               {hourSlot.label}
             </span>

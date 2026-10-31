@@ -250,3 +250,11 @@ html.dark,
 .column-highlight {
   animation: column-highlight-fade 2s ease-out forwards;
 }
+
+/* Reduced motion: show the highlight without the fade; it still clears on its own */
+@media (prefers-reduced-motion: reduce) {
+  .column-highlight {
+    animation: none;
+    background-color: #602c2b;
+  }
+}

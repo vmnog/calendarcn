@@ -2,10 +2,16 @@
 
 import { isSameDay, startOfDay } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  isPrimaryPress,
+  suppressNextClick,
+  usePointerGesture,
+} from "@/hooks/use-pointer-gesture";
 import { snapToGrid } from "@/lib/event-utils";
 import type {
   CalendarEvent,
   EventResizeState,
+  PointerGestureStart,
 } from "@/components/week-view-types";
 
 interface UseEventResizeOptions {
@@ -15,6 +21,14 @@ interface UseEventResizeOptions {
   days: Date[];
   dayColumnWidth: number;
   timeAxisWidth: number;
+  /** Minute step the dragged edge snaps to, and the shortest duration */
+  snapMinutes: number;
+  /** First visible hour: the top of the grid, and the earliest start */
+  dayStartHour: number;
+  /** Hour the grid ends at: the latest end */
+  dayEndHour: number;
+  /** Days `onResizeNavigate` moves when the cursor is held at a side edge */
+  edgeNavigationDays: number;
   onEventChange?: (event: CalendarEvent) => void;
   onEventClick?: (event: CalendarEvent) => void;
   onResizeNavigate?: (daysDelta: number) => void;
@@ -22,15 +36,14 @@ interface UseEventResizeOptions {
 
 interface UseEventResizeReturn {
   resizeState: EventResizeState | null;
-  handleResizeMouseDown: (
-    e: React.MouseEvent,
+  handleResizePointerDown: (
+    e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
     edge: "top" | "bottom",
   ) => void;
 }
 
 const DRAG_THRESHOLD_PX = 4;
-const MIN_DURATION_MINUTES = 15;
 const AUTO_SCROLL_ZONE_PX = 60;
 const AUTO_SCROLL_MAX_SPEED = 12;
 const EDGE_ZONE_PX = 40;
@@ -53,6 +66,10 @@ function clamp(value: number, min: number, max: number): number {
 interface ResizeInfo {
   eventId: string;
   event: CalendarEvent;
+  /** Pointer driving the resize; moves from other pointers are ignored */
+  pointerId: number;
+  /** "mouse", "pen" or "touch" */
+  pointerType: string;
   edge: "top" | "bottom";
   startClientY: number;
   isResizing: boolean;
@@ -60,9 +77,9 @@ interface ResizeInfo {
   originalEndMinutes: number;
   originalStartDate: Date;
   originalEndDate: Date;
-  /** Latest snapped start, committed to the parent on mouseup */
+  /** Latest snapped start, committed to the parent on pointerup */
   currentStart: Date;
-  /** Latest snapped end, committed to the parent on mouseup */
+  /** Latest snapped end, committed to the parent on pointerup */
   currentEnd: Date;
 }
 
@@ -73,11 +90,18 @@ export function useEventResize({
   days,
   dayColumnWidth,
   timeAxisWidth,
+  snapMinutes,
+  dayStartHour,
+  dayEndHour,
+  edgeNavigationDays,
   onEventChange,
   onEventClick,
   onResizeNavigate,
 }: UseEventResizeOptions): UseEventResizeReturn {
   const [resizeState, setResizeState] = useState<EventResizeState | null>(null);
+  const { startGesture } = usePointerGesture({
+    containerRef: scrollContainerRef,
+  });
 
   const resizeRef = useRef<ResizeInfo | null>(null);
   const onEventChangeRef = useRef(onEventChange);
@@ -88,6 +112,10 @@ export function useEventResize({
   const daysRef = useRef(days);
   const dayColumnWidthRef = useRef(dayColumnWidth);
   const timeAxisWidthRef = useRef(timeAxisWidth);
+  const snapMinutesRef = useRef(snapMinutes);
+  const dayStartHourRef = useRef(dayStartHour);
+  const dayEndHourRef = useRef(dayEndHour);
+  const edgeNavigationDaysRef = useRef(edgeNavigationDays);
 
   useEffect(() => {
     onEventChangeRef.current = onEventChange;
@@ -113,14 +141,29 @@ export function useEventResize({
   useEffect(() => {
     timeAxisWidthRef.current = timeAxisWidth;
   }, [timeAxisWidth]);
+  useEffect(() => {
+    snapMinutesRef.current = snapMinutes;
+  }, [snapMinutes]);
+  useEffect(() => {
+    dayStartHourRef.current = dayStartHour;
+  }, [dayStartHour]);
+  useEffect(() => {
+    dayEndHourRef.current = dayEndHour;
+  }, [dayEndHour]);
+  useEffect(() => {
+    edgeNavigationDaysRef.current = edgeNavigationDays;
+  }, [edgeNavigationDays]);
 
   const autoScrollRAFRef = useRef<number | null>(null);
   const autoScrollSpeedRef = useRef(0);
   const edgeNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const edgeNavDirectionRef = useRef<number | null>(null);
 
-  const handleMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
-  const handleMouseUpRef = useRef<(() => void) | null>(null);
+  const handlePointerMoveRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const handlePointerUpRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const handlePointerCancelRef = useRef<((e: PointerEvent) => void) | null>(
+    null,
+  );
 
   const cancelAutoScroll = useCallback(() => {
     if (autoScrollRAFRef.current !== null) {
@@ -156,11 +199,17 @@ export function useEventResize({
   );
 
   const cleanup = useCallback(() => {
-    if (handleMouseMoveRef.current) {
-      window.removeEventListener("mousemove", handleMouseMoveRef.current);
+    if (handlePointerMoveRef.current) {
+      window.removeEventListener("pointermove", handlePointerMoveRef.current);
     }
-    if (handleMouseUpRef.current) {
-      window.removeEventListener("mouseup", handleMouseUpRef.current);
+    if (handlePointerUpRef.current) {
+      window.removeEventListener("pointerup", handlePointerUpRef.current);
+    }
+    if (handlePointerCancelRef.current) {
+      window.removeEventListener(
+        "pointercancel",
+        handlePointerCancelRef.current,
+      );
     }
     cancelAutoScroll();
     cancelEdgeNav();
@@ -187,9 +236,9 @@ export function useEventResize({
   }, [scrollContainerRef]);
 
   useEffect(() => {
-    handleMouseMoveRef.current = (e: MouseEvent) => {
+    handlePointerMoveRef.current = (e: PointerEvent) => {
       const resize = resizeRef.current;
-      if (!resize) return;
+      if (!resize || e.pointerId !== resize.pointerId) return;
 
       const deltaY = Math.abs(e.clientY - resize.startClientY);
       if (!resize.isResizing && deltaY < DRAG_THRESHOLD_PX) return;
@@ -204,8 +253,15 @@ export function useEventResize({
       const containerRect = container.getBoundingClientRect();
       const scrollTop = container.scrollTop;
       const absoluteY = e.clientY - containerRect.top + scrollTop;
-      const rawMinutes = (absoluteY / hourHeightRef.current) * 60;
-      const snappedMinutes = snapToGrid(rawMinutes);
+      // The grid's top edge is `dayStartHour`, not midnight
+      const visibleStartMinutes = dayStartHourRef.current * 60;
+      const visibleEndMinutes = dayEndHourRef.current * 60;
+      const rawMinutes =
+        visibleStartMinutes + (absoluteY / hourHeightRef.current) * 60;
+      const snapStep = snapMinutesRef.current;
+      const snappedMinutes = snapToGrid(rawMinutes, snapStep);
+      // Shortest event a resize can make: one snap step
+      const minDurationMinutes = snapStep;
 
       let newStartMinutes = resize.originalStartMinutes;
       let newEndMinutes = resize.originalEndMinutes;
@@ -245,7 +301,11 @@ export function useEventResize({
         startDate = anchorDate;
         newStartMinutes = anchorMinutes;
         endDate = targetDay;
-        newEndMinutes = clamp(snappedMinutes, 0, 1440);
+        newEndMinutes = clamp(
+          snappedMinutes,
+          visibleStartMinutes,
+          visibleEndMinutes,
+        );
 
         // Cross-day edge case: cursor at minute 0 on day right after anchor → treat as end-of-anchor-day
         if (!isSameDay(targetDay, anchorDate)) {
@@ -263,7 +323,7 @@ export function useEventResize({
         if (isSameDay(startDate, endDate)) {
           newEndMinutes = clamp(
             newEndMinutes,
-            anchorMinutes + MIN_DURATION_MINUTES,
+            anchorMinutes + minDurationMinutes,
             1440,
           );
         }
@@ -273,7 +333,11 @@ export function useEventResize({
         endDate = anchorDate;
         newEndMinutes = anchorMinutes;
         startDate = targetDay;
-        newStartMinutes = clamp(snappedMinutes, 0, 1440);
+        newStartMinutes = clamp(
+          snappedMinutes,
+          visibleStartMinutes,
+          visibleEndMinutes,
+        );
 
         // Cross-day edge case: cursor at minute 1440 on day right before anchor → treat as start-of-anchor-day
         if (!isSameDay(targetDay, anchorDate)) {
@@ -292,7 +356,7 @@ export function useEventResize({
           newStartMinutes = clamp(
             newStartMinutes,
             0,
-            anchorMinutes - MIN_DURATION_MINUTES,
+            anchorMinutes - minDurationMinutes,
           );
         }
       } else {
@@ -302,12 +366,12 @@ export function useEventResize({
           startDate = anchorDate;
           newStartMinutes = anchorMinutes;
           endDate = anchorDate;
-          newEndMinutes = anchorMinutes + MIN_DURATION_MINUTES;
+          newEndMinutes = anchorMinutes + minDurationMinutes;
         } else {
           endDate = anchorDate;
           newEndMinutes = anchorMinutes;
           startDate = anchorDate;
-          newStartMinutes = anchorMinutes - MIN_DURATION_MINUTES;
+          newStartMinutes = anchorMinutes - minDurationMinutes;
         }
       }
 
@@ -354,23 +418,28 @@ export function useEventResize({
       const gridWidth = colWidth * visibleDays.length;
 
       if (cursorXInGrid < EDGE_ZONE_PX) {
-        scheduleEdgeNav(-7);
+        scheduleEdgeNav(-edgeNavigationDaysRef.current);
       } else if (cursorXInGrid > gridWidth - EDGE_ZONE_PX) {
-        scheduleEdgeNav(7);
+        scheduleEdgeNav(edgeNavigationDaysRef.current);
       } else {
         cancelEdgeNav();
       }
     };
 
-    handleMouseUpRef.current = () => {
+    handlePointerUpRef.current = (e: PointerEvent) => {
       const resize = resizeRef.current;
-      if (!resize) return;
+      if (!resize || e.pointerId !== resize.pointerId) return;
 
       cleanup();
       resizeRef.current = null;
       setResizeState(null);
 
+      // Touch selects on release, after the resize, rather than on press
+      if (resize.pointerType === "touch") {
+        onEventClickRef.current?.(resize.event);
+      }
       if (!resize.isResizing) return;
+      suppressNextClick(resize.pointerType);
 
       // Commit from the handler, never from inside a state updater:
       // updaters run during render, and calling the parent's setState
@@ -389,6 +458,17 @@ export function useEventResize({
         isAllDay: isLongerThan24h,
       });
     };
+
+    // The browser took the pointer over (e.g. for a system gesture): drop
+    // the resize without committing it
+    handlePointerCancelRef.current = (e: PointerEvent) => {
+      const resize = resizeRef.current;
+      if (!resize || e.pointerId !== resize.pointerId) return;
+
+      cleanup();
+      resizeRef.current = null;
+      setResizeState(null);
+    };
   }, [
     scrollContainerRef,
     cleanup,
@@ -398,13 +478,14 @@ export function useEventResize({
     cancelEdgeNav,
   ]);
 
-  const handleResizeMouseDown = useCallback(
-    (e: React.MouseEvent, event: CalendarEvent, edge: "top" | "bottom") => {
-      if (e.button !== 0) return;
-
-      e.stopPropagation();
-
-      onEventClickRef.current?.(event);
+  const beginResize = useCallback(
+    (
+      { clientY, pointerId, pointerType }: PointerGestureStart,
+      event: CalendarEvent,
+      edge: "top" | "bottom",
+    ) => {
+      // Mouse and pen select the event immediately
+      if (pointerType !== "touch") onEventClickRef.current?.(event);
 
       const originalStartMinutes =
         event.start.getHours() * 60 + event.start.getMinutes();
@@ -417,8 +498,10 @@ export function useEventResize({
       resizeRef.current = {
         eventId: event.id,
         event,
+        pointerId,
+        pointerType,
         edge,
-        startClientY: e.clientY,
+        startClientY: clientY,
         isResizing: false,
         originalStartMinutes,
         originalEndMinutes,
@@ -442,19 +525,38 @@ export function useEventResize({
         currentStartDate: originalStartDate,
       });
 
-      if (handleMouseMoveRef.current) {
-        window.addEventListener("mousemove", handleMouseMoveRef.current);
+      if (handlePointerMoveRef.current) {
+        window.addEventListener("pointermove", handlePointerMoveRef.current);
       }
-      if (handleMouseUpRef.current) {
-        window.addEventListener("mouseup", handleMouseUpRef.current);
+      if (handlePointerUpRef.current) {
+        window.addEventListener("pointerup", handlePointerUpRef.current);
+      }
+      if (handlePointerCancelRef.current) {
+        window.addEventListener(
+          "pointercancel",
+          handlePointerCancelRef.current,
+        );
       }
     },
     [],
+  );
+
+  const handleResizePointerDown = useCallback(
+    (
+      e: React.PointerEvent<HTMLElement>,
+      event: CalendarEvent,
+      edge: "top" | "bottom",
+    ) => {
+      if (!isPrimaryPress(e)) return;
+      e.stopPropagation();
+      startGesture(e, (start) => beginResize(start, event, edge));
+    },
+    [startGesture, beginResize],
   );
 
   useEffect(() => {
     return cleanup;
   }, [cleanup]);
 
-  return { resizeState, handleResizeMouseDown };
+  return { resizeState, handleResizePointerDown };
 }

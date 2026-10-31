@@ -32,7 +32,7 @@ import { SidebarOverlay } from "@/components/sidebar-overlay";
 import { eventColorStyles } from "./calendar-event-item";
 import { EventDetailPanel } from "./event-detail-panel";
 import { useEventTitleFocus } from "./event-title-focus-context";
-import type { CalendarEvent } from "./week-view-types";
+import type { DetailedCalendarEvent } from "./week-view-types";
 
 /** Width of the context panel when it renders as an overlay (shadcn sidebar default) */
 const OVERLAY_WIDTH = "18rem";
@@ -43,9 +43,9 @@ const PANEL_MUTED_FOREGROUND = "#C7C5C1";
 interface SidebarLeftProps extends React.ComponentProps<typeof Sidebar> {
   /** Render as a modal sheet instead of an inline column (phones and tablets) */
   overlay?: boolean;
-  events?: CalendarEvent[];
-  selectedEvent?: CalendarEvent | null;
-  onEventChange?: (event: CalendarEvent) => void;
+  events?: DetailedCalendarEvent[];
+  selectedEvent?: DetailedCalendarEvent | null;
+  onEventChange?: (event: DetailedCalendarEvent) => void;
   onPrevWeek?: () => void;
   onNextWeek?: () => void;
 }
@@ -54,7 +54,7 @@ interface DateGroup {
   key: string;
   label: string;
   isToday: boolean;
-  events: CalendarEvent[];
+  events: DetailedCalendarEvent[];
 }
 
 function formatDuration(start: Date, end: Date): string {
@@ -71,7 +71,7 @@ function formatDuration(start: Date, end: Date): string {
   return `${hours}h ${minutes}min`;
 }
 
-function formatTimeRange(event: CalendarEvent): string {
+function formatTimeRange(event: DetailedCalendarEvent): string {
   if (event.isAllDay) {
     return "All day";
   }
@@ -104,8 +104,8 @@ function formatDateHeader(date: Date): {
   return { label: format(date, "EEE MMM d, yyyy"), isTodayGroup: false };
 }
 
-function groupEventsByDate(events: CalendarEvent[]): DateGroup[] {
-  const grouped = new Map<string, CalendarEvent[]>();
+function groupEventsByDate(events: DetailedCalendarEvent[]): DateGroup[] {
+  const grouped = new Map<string, DetailedCalendarEvent[]>();
 
   for (const event of events) {
     const dayKey = format(startOfDay(event.start), "yyyy-MM-dd");
@@ -148,7 +148,7 @@ export function SidebarLeft({
   const [searchQuery, setSearchQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [searchSelectedEvent, setSearchSelectedEvent] =
-    React.useState<CalendarEvent | null>(null);
+    React.useState<DetailedCalendarEvent | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const isSearching = searchQuery.trim().length > 0;
@@ -419,7 +419,7 @@ function DateGroupSection({
 }: {
   group: DateGroup;
   isPast?: boolean;
-  onEventClick?: (event: CalendarEvent) => void;
+  onEventClick?: (event: DetailedCalendarEvent) => void;
 }) {
   return (
     <div className="px-4 pt-5">
@@ -503,9 +503,9 @@ function SearchResultItem({
   isPast = false,
   onClick,
 }: {
-  event: CalendarEvent;
+  event: DetailedCalendarEvent;
   isPast?: boolean;
-  onClick?: (event: CalendarEvent) => void;
+  onClick?: (event: DetailedCalendarEvent) => void;
 }) {
   const timeRange = formatTimeRange(event);
   const duration = event.isAllDay ? "" : formatDuration(event.start, event.end);

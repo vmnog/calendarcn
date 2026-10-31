@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { getTimeZoneLabel } from "@/lib/timezone-label";
+import { getTimeZoneDisplayName, getTimeZoneLabel } from "@/lib/timezone-label";
 
 /**
  * Label rendered on the server and during hydration. It must not depend on
@@ -15,6 +15,10 @@ function subscribe(): () => void {
 
 function getClientSnapshot(): string {
   return getTimeZoneLabel(new Date());
+}
+
+function getClientDisplayNameSnapshot(): string {
+  return getTimeZoneDisplayName(new Date());
 }
 
 function getServerSnapshot(): string {
@@ -33,6 +37,19 @@ export function useTimeZoneLabel(): string {
   return React.useSyncExternalStore(
     subscribe,
     getClientSnapshot,
+    getServerSnapshot,
+  );
+}
+
+/**
+ * Returns the viewer's timezone label with its city ("GMT-3 Sao Paulo",
+ * "EDT New York"). Like `useTimeZoneLabel`, it is empty on the server and
+ * during hydration.
+ */
+export function useTimeZoneDisplayName(): string {
+  return React.useSyncExternalStore(
+    subscribe,
+    getClientDisplayNameSnapshot,
     getServerSnapshot,
   );
 }

@@ -18,11 +18,16 @@ import {
   isToday,
   parse,
 } from "date-fns";
+import type { Locale } from "date-fns";
 import type {
+  CalendarConfig,
   CalendarEvent,
   EventColor,
+  HourCycle,
   PositionedEvent,
+  ViewType,
   WeekDay,
+  WeekStartsOn,
 } from "@/components/week-view-types";
 
 /** Every event color, in the order the color pickers list them */
@@ -47,14 +52,11 @@ export function pickRandomEventColor(
   return choices[Math.floor(Math.random() * choices.length)];
 }
 
-/** Minute increment that timed-event drag, resize, and click-to-create snap to */
-export const SNAP_MINUTES = 15;
-
 /** Duration in minutes of an event created by clicking an empty time slot */
 export const NEW_EVENT_DURATION_MINUTES = 60;
 
-/** Minutes in a full day, used to keep created events inside their column */
-const MINUTES_PER_DAY = 24 * 60;
+/** Days in a week: the week view's default column count and prev/next step */
+const DAYS_PER_WEEK = 7;
 
 /**
  * Format of a month cell's `data-date` attribute. A calendar date with no
@@ -73,29 +75,34 @@ export function parseCellDate(value: string): Date {
   return parse(value, CELL_DATE_FORMAT, new Date());
 }
 
-/** Rounds a minute offset to the nearest SNAP_MINUTES increment. */
-export function snapToGrid(minutes: number): number {
-  return Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+/** Rounds a minute offset to the nearest `snapMinutes` increment. */
+export function snapToGrid(minutes: number, snapMinutes: number): number {
+  return Math.round(minutes / snapMinutes) * snapMinutes;
 }
 
 /**
  * Returns the start/end of a new event created by clicking a day column at
- * `minutesFromMidnight`. The start snaps down to the SNAP_MINUTES slot that
+ * `minutesFromMidnight`. The start snaps down to the `snapMinutes` slot that
  * contains the click, so the new event always covers the clicked point.
- * Near midnight the start is clamped to the last full slot and the end is
- * capped at the end of the day, because an event ending at the next day's
- * 00:00 counts as multi-day (see isMultiDayEvent) and would render in the
- * all-day row instead of the clicked column.
+ * Near the end of the visible hours the start is clamped to the last full
+ * event length, and near midnight the end is capped at the end of the day,
+ * because an event ending at the next day's 00:00 counts as multi-day (see
+ * isMultiDayEvent) and would render in the all-day row instead of the
+ * clicked column.
  */
 export function getNewEventRange(
   day: Date,
   minutesFromMidnight: number,
+  {
+    snapMinutes,
+    dayStartHour,
+    dayEndHour,
+  }: Pick<CalendarConfig, "snapMinutes" | "dayStartHour" | "dayEndHour">,
 ): { start: Date; end: Date } {
-  const slotStart =
-    Math.floor(minutesFromMidnight / SNAP_MINUTES) * SNAP_MINUTES;
+  const slotStart = Math.floor(minutesFromMidnight / snapMinutes) * snapMinutes;
   const startMinutes = Math.max(
-    0,
-    Math.min(slotStart, MINUTES_PER_DAY - NEW_EVENT_DURATION_MINUTES),
+    dayStartHour * 60,
+    Math.min(slotStart, dayEndHour * 60 - NEW_EVENT_DURATION_MINUTES),
   );
   const start = addMinutes(startOfDay(day), startMinutes);
   const end = addMinutes(start, NEW_EVENT_DURATION_MINUTES);
@@ -276,25 +283,37 @@ function assignColumns(
 }
 
 /**
- * Calculates positioned events for rendering in the grid.
+ * Calculates positioned events for rendering in the grid. `top` and
+ * `height` are percentages of the visible hours (`dayStartHour` to
+ * `dayEndHour`): events reaching past them are clipped to the edges, and
+ * events entirely outside them are left out.
  * @param rightGapPercent - right gap in percentage. Defaults to 8.
  *   Pass 0 for day view so events fill the full column width.
  */
 export function calculatePositionedEvents(
   events: CalendarEvent[],
   day: WeekDay,
+  {
+    dayStartHour,
+    dayEndHour,
+  }: Pick<CalendarConfig, "dayStartHour" | "dayEndHour">,
   rightGapPercent = 8,
 ): PositionedEvent[] {
-  const dayEvents = getEventsForDay(events, day);
+  const dayStart = startOfDay(day.date);
+  const nextDayMidnight = addDays(dayStart, 1);
+  const visibleStart = addMinutes(dayStart, dayStartHour * 60);
+  const visibleEnd = addMinutes(dayStart, dayEndHour * 60);
+  const visibleMinutes = (dayEndHour - dayStartHour) * 60;
+
+  const dayEvents = getEventsForDay(events, day).filter(
+    (event) => event.start < visibleEnd && event.end > visibleStart,
+  );
 
   if (dayEvents.length === 0) {
     return [];
   }
 
   const columnAssignments = assignColumns(dayEvents);
-  const dayStart = startOfDay(day.date);
-
-  const nextDayMidnight = addDays(dayStart, 1);
 
   return dayEvents.map((event) => {
     const assignment = columnAssignments.get(event.id) ?? {
@@ -302,18 +321,21 @@ export function calculatePositionedEvents(
       totalColumns: 1,
     };
 
-    // Compute effective start/end clamped to this day's boundaries
-    const effectiveStart = event.start > dayStart ? event.start : dayStart;
-    const effectiveEnd =
-      event.end < nextDayMidnight ? event.end : nextDayMidnight;
+    // Compute effective start/end clamped to the visible hours
+    const effectiveStart =
+      event.start > visibleStart ? event.start : visibleStart;
+    const effectiveEnd = event.end < visibleEnd ? event.end : visibleEnd;
 
-    // Calculate top position (percentage from day start)
-    const minutesFromDayStart = differenceInMinutes(effectiveStart, dayStart);
-    const top = (minutesFromDayStart / (24 * 60)) * 100;
+    // Calculate top position (percentage from the first visible hour)
+    const minutesFromVisibleStart = differenceInMinutes(
+      effectiveStart,
+      visibleStart,
+    );
+    const top = (minutesFromVisibleStart / visibleMinutes) * 100;
 
-    // Calculate height (percentage of the day)
+    // Calculate height (percentage of the visible hours)
     const durationMinutes = differenceInMinutes(effectiveEnd, effectiveStart);
-    const height = (durationMinutes / (24 * 60)) * 100;
+    const height = (durationMinutes / visibleMinutes) * 100;
 
     // Determine segment position for multi-day events
     const startsOnDay = isSameDay(event.start, dayStart);
@@ -534,7 +556,8 @@ export interface MonthDayCellLayout {
  */
 export function generateMonthGrid(
   currentDate: Date,
-  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 0,
+  weekStartsOn: WeekStartsOn,
+  locale: Locale,
 ): MonthWeekRow[] {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -553,13 +576,13 @@ export function generateMonthGrid(
 
     const days: WeekDay[] = daysInWeek.map((day) => ({
       date: day,
-      dayName: format(day, "EEE"),
+      dayName: format(day, "EEE", { locale }),
       dayNumber: day.getDate(),
       isToday: isToday(day),
     }));
 
     return {
-      weekNumber: getWeek(weekStart, { weekStartsOn }),
+      weekNumber: getWeek(weekStart, { weekStartsOn, locale }),
       days,
     };
   });
@@ -573,11 +596,12 @@ export function generateMonthGrid(
 export function generateConsecutiveWeeks(
   startDate: Date,
   count: number,
-  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 0,
+  weekStartsOn: WeekStartsOn,
+  locale: Locale,
 ): MonthWeekRow[] {
   const firstWeekStart = startOfWeek(startDate, { weekStartsOn });
   return Array.from({ length: count }, (_, i) =>
-    generateWeekRow(addDays(firstWeekStart, i * 7), weekStartsOn),
+    generateWeekRow(addDays(firstWeekStart, i * 7), weekStartsOn, locale),
   );
 }
 
@@ -587,7 +611,8 @@ export function generateConsecutiveWeeks(
  */
 export function generateWeekRow(
   date: Date,
-  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 0,
+  weekStartsOn: WeekStartsOn,
+  locale: Locale,
 ): MonthWeekRow {
   const weekStart = startOfWeek(date, { weekStartsOn });
   const weekEnd = endOfWeek(weekStart, { weekStartsOn });
@@ -595,13 +620,13 @@ export function generateWeekRow(
 
   const days: WeekDay[] = daysInWeek.map((day) => ({
     date: day,
-    dayName: format(day, "EEE"),
+    dayName: format(day, "EEE", { locale }),
     dayNumber: day.getDate(),
     isToday: isToday(day),
   }));
 
   return {
-    weekNumber: getWeek(weekStart, { weekStartsOn }),
+    weekNumber: getWeek(weekStart, { weekStartsOn, locale }),
     days,
   };
 }
@@ -840,4 +865,356 @@ export function calculateMonthCellLayout(
   }
 
   return result;
+}
+
+/**
+ * Returns how many day columns a view shows: one in day view,
+ * `numberOfDays` (at least one) in week view, a full week in month view.
+ */
+export function getVisibleDayCount(
+  view: ViewType,
+  numberOfDays: number,
+): number {
+  if (view === "day") return 1;
+  if (view === "month") return DAYS_PER_WEEK;
+  return Math.max(1, Math.round(numberOfDays));
+}
+
+/**
+ * Returns how many days the week view moves per prev/next: its column count
+ * when that is shorter than a week, a full week otherwise.
+ */
+export function getWeekViewStepDays(numberOfDays: number): number {
+  return Math.min(getVisibleDayCount("week", numberOfDays), DAYS_PER_WEEK);
+}
+
+/**
+ * Returns the first day of the period that contains `date`: the day itself
+ * in day view and in a week view shorter than a week, the start of its week
+ * otherwise.
+ */
+export function getPeriodStart(
+  date: Date,
+  view: ViewType,
+  weekStartsOn: WeekStartsOn,
+  numberOfDays: number,
+): Date {
+  if (view === "day") return startOfDay(date);
+  if (view === "week" && getWeekViewStepDays(numberOfDays) < DAYS_PER_WEEK) {
+    return startOfDay(date);
+  }
+  return startOfWeek(date, { weekStartsOn });
+}
+
+/**
+ * Returns the visible days starting from the given date (used for sidebar highlighting)
+ */
+export function getVisibleDays(
+  currentDate: Date,
+  view: ViewType,
+  numberOfDays: number,
+): Date[] {
+  const count = getVisibleDayCount(view, numberOfDays);
+  const end = addDays(currentDate, count - 1);
+  return eachDayOfInterval({ start: currentDate, end });
+}
+
+/**
+ * Returns the month name, year, and week number for the visible range.
+ *
+ * `rangeEnd` is the last visible day, and it is what names the month. A week
+ * straddling a month boundary is labeled with the later month — Notion Calendar
+ * shows "October 2026" for Sep 27 - Oct 3 — rather than the month of the first
+ * day, which would label that week "September". Omitting `rangeEnd` labels
+ * `currentDate` alone, which is what month view wants.
+ *
+ * The week number stays derived from `currentDate` (the week's first day).
+ */
+export function getCalendarHeaderInfo(
+  currentDate: Date,
+  weekStartsOn: WeekStartsOn,
+  locale: Locale,
+  rangeEnd?: Date,
+) {
+  const labelDate = rangeEnd ?? currentDate;
+
+  return {
+    monthName: format(labelDate, "MMMM", { locale }),
+    year: format(labelDate, "yyyy", { locale }),
+    weekNumber: getWeek(currentDate, { weekStartsOn, locale }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Time labels
+// ---------------------------------------------------------------------------
+
+/**
+ * Formats a time of day: "3 PM" / "3:30 PM" on a 12-hour clock, "15:00" /
+ * "15:30" on a 24-hour clock.
+ */
+export function formatTime(
+  date: Date,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  if (hourCycle === 24) return format(date, "HH:mm", { locale });
+  if (date.getMinutes() === 0) return format(date, "h a", { locale });
+  return format(date, "h:mm a", { locale });
+}
+
+/**
+ * Formats a time range compactly: "10–11 AM" or "11 AM–2 PM" (the period
+ * is shown once when both ends share it) on a 12-hour clock, "10:00–11:00"
+ * on a 24-hour clock.
+ */
+export function formatTimeRange(
+  start: Date,
+  end: Date,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  if (hourCycle === 24) {
+    return `${format(start, "HH:mm", { locale })}\u2013${format(end, "HH:mm", { locale })}`;
+  }
+
+  const startTime = formatHourAndMinutes(start, locale);
+  const endTime = formatHourAndMinutes(end, locale);
+  const startPeriod = format(start, "a", { locale });
+  const endPeriod = format(end, "a", { locale });
+
+  if (startPeriod === endPeriod) {
+    return `${startTime}\u2013${endTime} ${endPeriod}`;
+  }
+  return `${startTime} ${startPeriod}\u2013${endTime} ${endPeriod}`;
+}
+
+/** 12-hour clock without the period, minutes only when set: "10", "2:45" */
+function formatHourAndMinutes(date: Date, locale: Locale): string {
+  if (date.getMinutes() === 0) return format(date, "h", { locale });
+  return format(date, "h:mm", { locale });
+}
+
+/**
+ * Formats an hour of the day (0-23) for the time axis: "12 AM", "1 AM", ...
+ * "11 PM" on a 12-hour clock, "00:00" ... "23:00" on a 24-hour clock.
+ *
+ * Computed from the number alone, not from a Date on today's date: on a
+ * daylight-saving transition day, setting the hour that is skipped would
+ * yield the next hour, so the labels would depend on the runtime's timezone
+ * and date and could differ between server and client.
+ */
+export function formatHourLabel(
+  hour: number,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  if (hourCycle === 24) return `${String(hour).padStart(2, "0")}:00`;
+  const hourOnClock = hour % 12 === 0 ? 12 : hour % 12;
+  // Same period text as `format(date, "a")`
+  const period = locale.localize.dayPeriod(hour < 12 ? "am" : "pm", {
+    width: "abbreviated",
+    context: "formatting",
+  });
+  return `${hourOnClock} ${period}`;
+}
+
+// ---------------------------------------------------------------------------
+// Accessibility: labels, announcements and keyboard editing
+// ---------------------------------------------------------------------------
+
+/** Name read for an event whose title is empty */
+const UNTITLED_EVENT_LABEL = "Untitled event";
+
+/** Minutes in a full day; a keyboard move never ends an event past it */
+const MINUTES_PER_DAY = 24 * 60;
+
+/** Days a month-view event moves per Alt+ArrowUp/Down (one row) */
+const MONTH_KEYBOARD_STEP_DAYS = 7;
+
+/** Day a date falls on, read in full: "Tuesday, October 31" in the calendar's locale */
+export function formatFullDate(date: Date, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale.code, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}
+
+/** Time with minutes, as read aloud: "3:00 PM", or "15:00" on a 24-hour clock */
+function formatSpokenTime(
+  date: Date,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  return format(date, hourCycle === 24 ? "HH:mm" : "h:mm a", { locale });
+}
+
+/** An event's title, or a stand-in when it has none */
+function getSpokenTitle(event: CalendarEvent): string {
+  return event.title.trim() || UNTITLED_EVENT_LABEL;
+}
+
+/**
+ * When an event happens, as read aloud: "3:00 PM to 4:00 PM, Tuesday,
+ * October 31", "all day, Tuesday, October 31", or a range across days.
+ */
+export function describeEventTime(
+  event: CalendarEvent,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  const startDate = formatFullDate(event.start, locale);
+  const endDate = formatFullDate(event.end, locale);
+  if (event.isAllDay) {
+    if (isSameDay(event.start, event.end)) return `all day, ${startDate}`;
+    return `all day, ${startDate} to ${endDate}`;
+  }
+
+  const startTime = formatSpokenTime(event.start, hourCycle, locale);
+  const endTime = formatSpokenTime(event.end, hourCycle, locale);
+  if (isSameDay(event.start, event.end)) {
+    return `${startTime} to ${endTime}, ${startDate}`;
+  }
+  return `${startDate}, ${startTime} to ${endDate}, ${endTime}`;
+}
+
+/**
+ * Accessible name of an event: its title, then when it happens
+ * ("Team sync, 3:00 PM to 4:00 PM, Tuesday, October 31")
+ */
+export function getEventLabel(
+  event: CalendarEvent,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  return `${getSpokenTitle(event)}, ${describeEventTime(event, hourCycle, locale)}`;
+}
+
+/**
+ * What to announce after an event changed: "Moved Team sync to Wednesday,
+ * November 4, 3:00 PM", or "Resized Team sync, now ..." when its length
+ * changed. Returns `null` when its time didn't change (e.g. a title edit).
+ */
+export function describeEventChange(
+  previous: CalendarEvent,
+  next: CalendarEvent,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string | null {
+  const isSameTime =
+    previous.start.getTime() === next.start.getTime() &&
+    previous.end.getTime() === next.end.getTime() &&
+    Boolean(previous.isAllDay) === Boolean(next.isAllDay);
+  if (isSameTime) return null;
+
+  const title = getSpokenTitle(next);
+  const previousLength = previous.end.getTime() - previous.start.getTime();
+  const nextLength = next.end.getTime() - next.start.getTime();
+  if (previousLength !== nextLength) {
+    return `Resized ${title}, now ${describeEventTime(next, hourCycle, locale)}`;
+  }
+
+  const startDate = formatFullDate(next.start, locale);
+  if (next.isAllDay) return `Moved ${title} to ${startDate}`;
+  return `Moved ${title} to ${startDate}, ${formatSpokenTime(next.start, hourCycle, locale)}`;
+}
+
+/** What to announce after an event was created ("Created New event, ...") */
+export function describeEventCreated(
+  event: CalendarEvent,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  return `Created ${getSpokenTitle(event)}, ${describeEventTime(event, hourCycle, locale)}`;
+}
+
+/**
+ * Returns the event after an Alt+Arrow key press on it, or `null` when the
+ * key doesn't apply (or the event can't move further):
+ *
+ * - Alt+ArrowLeft/Right: one day earlier/later
+ * - Alt+ArrowUp/Down: one `snapMinutes` step earlier/later in the day and
+ *   week views (single-day timed events only, kept inside the visible
+ *   hours), one week earlier/later in month view
+ * - Alt+Shift+ArrowUp/Down: the end one step earlier/later (day and week
+ *   views, single-day timed events, at least one step long)
+ */
+export function getKeyboardEventChange(
+  event: CalendarEvent,
+  key: string,
+  shiftKey: boolean,
+  view: ViewType,
+  {
+    snapMinutes,
+    dayStartHour,
+    dayEndHour,
+  }: Pick<CalendarConfig, "snapMinutes" | "dayStartHour" | "dayEndHour">,
+): CalendarEvent | null {
+  const direction = key === "ArrowRight" || key === "ArrowDown" ? 1 : -1;
+
+  if (key === "ArrowLeft" || key === "ArrowRight") {
+    if (shiftKey) return null;
+    return {
+      ...event,
+      start: addDays(event.start, direction),
+      end: addDays(event.end, direction),
+    };
+  }
+  if (key !== "ArrowUp" && key !== "ArrowDown") return null;
+
+  // Month view has no time axis: up and down move by a row (a week)
+  if (view === "month") {
+    if (shiftKey) return null;
+    const days = direction * MONTH_KEYBOARD_STEP_DAYS;
+    return {
+      ...event,
+      start: addDays(event.start, days),
+      end: addDays(event.end, days),
+    };
+  }
+
+  // Only single-day timed events have a time of day to change
+  if (event.isAllDay || isMultiDayEvent(event)) return null;
+
+  const dayStart = startOfDay(event.start);
+  const startMinutes = differenceInMinutes(event.start, dayStart);
+  const endMinutes = differenceInMinutes(event.end, dayStart);
+  const visibleStart = dayStartHour * 60;
+  const visibleEnd = dayEndHour * 60;
+  // Next grid line in the key's direction, so an off-grid time lands on it
+  const step = (minutes: number) =>
+    direction > 0
+      ? Math.floor(minutes / snapMinutes) * snapMinutes + snapMinutes
+      : Math.ceil(minutes / snapMinutes) * snapMinutes - snapMinutes;
+  const clampMinutes = (minutes: number, min: number, max: number) =>
+    Math.min(Math.max(minutes, min), max);
+  // Ending at the next midnight would make it a multi-day event (all-day row)
+  const toDate = (minutes: number) =>
+    minutes >= MINUTES_PER_DAY
+      ? endOfDay(dayStart)
+      : addMinutes(dayStart, minutes);
+
+  if (shiftKey) {
+    const nextEnd = clampMinutes(
+      step(endMinutes),
+      startMinutes + snapMinutes,
+      visibleEnd,
+    );
+    if (nextEnd === endMinutes) return null;
+    return { ...event, end: toDate(nextEnd) };
+  }
+
+  const length = endMinutes - startMinutes;
+  const nextStart = clampMinutes(
+    step(startMinutes),
+    visibleStart,
+    visibleEnd - length,
+  );
+  if (nextStart === startMinutes) return null;
+  return {
+    ...event,
+    start: toDate(nextStart),
+    end: toDate(nextStart + length),
+  };
 }

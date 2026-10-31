@@ -167,7 +167,7 @@ This makes the hover border blend with the hover background (invisible border ef
 ### Hooks Pattern
 
 - Store all option/prop values in refs synced via `useEffect`
-- Store global event handlers (`mousemove`, `mouseup`) in refs
+- Store global event handlers (`pointermove`, `pointerup`, `pointercancel`) in refs
 - Use `dragRef.current` for intermediate state, commit to React state on specific events
 - Clean up listeners in `useEffect` return
 

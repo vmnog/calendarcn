@@ -5,26 +5,39 @@ import {
   differenceInCalendarDays,
   eachDayOfInterval,
   format,
-  getWeek,
   isSameDay,
 } from "date-fns";
+import type { Locale } from "date-fns";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { isMultiDayEvent } from "@/lib/event-utils";
+import {
+  formatHourLabel,
+  getPeriodStart,
+  getVisibleDayCount,
+  getWeekViewStepDays,
+  isMultiDayEvent,
+} from "@/lib/event-utils";
 import { useHorizontalScroll } from "@/hooks/use-horizontal-scroll";
+import { useEventKeyboard } from "@/hooks/use-event-keyboard";
 import { useEventDrag } from "@/hooks/use-event-drag";
 import { useEventResize } from "@/hooks/use-event-resize";
 import { useAllDayResize } from "@/hooks/use-all-day-resize";
 import { useToday } from "@/hooks/use-now";
 import { useTimeZoneLabel } from "@/hooks/use-timezone-label";
 import type {
+  CalendarEvent,
+  HourCycle,
   HourSlot,
   ViewType,
   WeekDay,
-  WeekViewContentProps,
   WeekViewProps,
 } from "./week-view-types";
+import {
+  useCalendar,
+  useCalendarConfig,
+  useCalendarViewSync,
+} from "./calendar-provider";
 import { WeekViewAllDayRow } from "./week-view-all-day-row";
 import { CalendarDayHeaders } from "./calendar-day-headers";
 import { WeekViewGrid } from "./week-view-grid";
@@ -37,13 +50,6 @@ const MIN_HOUR_HEIGHT = 48;
 
 /** Width of the time axis column in pixels (4rem = 64px) */
 export const TIME_AXIS_WIDTH = 64;
-
-/** Number of visible days per view mode */
-const VISIBLE_DAYS_BY_VIEW: Record<ViewType, number> = {
-  day: 1,
-  week: 7,
-  month: 7,
-};
 
 /** Buffer days per view mode (each side, for horizontal scroll) */
 const BUFFER_DAYS_BY_VIEW: Record<ViewType, number> = {
@@ -59,6 +65,9 @@ const BUFFER_STEP_BY_VIEW: Record<ViewType, number> = {
   month: 7,
 };
 
+/** Days the day view moves when a drag or resize is held at its side edge */
+const DAY_VIEW_EDGE_NAV_DAYS = 7;
+
 /**
  * Generates an array of WeekDay objects starting from the given date.
  * Note: isToday is added separately from the shared `useToday` clock, so it
@@ -67,12 +76,13 @@ const BUFFER_STEP_BY_VIEW: Record<ViewType, number> = {
 function generateWeekDays(
   startDate: Date,
   count: number,
+  locale: Locale,
 ): Omit<WeekDay, "isToday">[] {
   const end = addDays(startDate, count - 1);
 
   return eachDayOfInterval({ start: startDate, end }).map((date) => ({
     date,
-    dayName: format(date, "EEE"),
+    dayName: format(date, "EEE", { locale }),
     dayNumber: date.getDate(),
   }));
 }
@@ -85,6 +95,7 @@ function generateBufferedDays(
   startDate: Date,
   bufferDays: number,
   visibleDays: number,
+  locale: Locale,
 ): Omit<WeekDay, "isToday">[] {
   const bufferStart = addDays(startDate, -bufferDays);
   const bufferEnd = addDays(startDate, visibleDays + bufferDays - 1);
@@ -92,34 +103,26 @@ function generateBufferedDays(
   return eachDayOfInterval({ start: bufferStart, end: bufferEnd }).map(
     (date) => ({
       date,
-      dayName: format(date, "EEE"),
+      dayName: format(date, "EEE", { locale }),
       dayNumber: date.getDate(),
     }),
   );
 }
 
 /**
- * Formats an hour of the day (0-23) as "12 AM", "1 AM", ... "11 PM".
- *
- * Computed from the number alone, not from a Date on today's date: on a
- * daylight-saving transition day, setting the hour that is skipped would
- * yield the next hour, so the labels would depend on the runtime's timezone
- * and date and could differ between server and client.
+ * Generates an HourSlot for each visible hour, from `dayStartHour` up to
+ * (not including) `dayEndHour`
  */
-function formatHourLabel(hour: number): string {
-  const hourOnClock = hour % 12 === 0 ? 12 : hour % 12;
-  const period = hour < 12 ? "AM" : "PM";
-  return `${hourOnClock} ${period}`;
-}
-
-/**
- * Generates an array of HourSlot objects for all 24 hours
- */
-function generateHours(): HourSlot[] {
-  return Array.from({ length: 24 }, (_, i) => ({
-    hour: i,
-    label: formatHourLabel(i),
-  }));
+function generateHours(
+  dayStartHour: number,
+  dayEndHour: number,
+  hourCycle: HourCycle,
+  locale: Locale,
+): HourSlot[] {
+  return Array.from({ length: dayEndHour - dayStartHour }, (_, i) => {
+    const hour = dayStartHour + i;
+    return { hour, label: formatHourLabel(hour, hourCycle, locale) };
+  });
 }
 
 /** Marks the day matching `today` (none while `today` is unknown). */
@@ -134,87 +137,46 @@ function withIsToday(
 }
 
 /**
- * Returns the month name, year, and week number for the visible range.
- *
- * `rangeEnd` is the last visible day, and it is what names the month. A week
- * straddling a month boundary is labeled with the later month — Notion Calendar
- * shows "October 2026" for Sep 27 - Oct 3 — rather than the month of the first
- * day, which would label that week "September". Omitting `rangeEnd` labels
- * `currentDate` alone, which is what month view wants.
- *
- * The week number stays derived from `currentDate` (the week's first day).
- */
-export function getCalendarHeaderInfo(
-  currentDate: Date,
-  weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6,
-  rangeEnd?: Date,
-) {
-  const labelDate = rangeEnd ?? currentDate;
-
-  return {
-    monthName: format(labelDate, "MMMM"),
-    year: format(labelDate, "yyyy"),
-    weekNumber: getWeek(currentDate, { weekStartsOn }),
-  };
-}
-
-/**
- * Returns the visible days starting from the given date (used for sidebar highlighting)
- */
-export function getVisibleDays(
-  currentDate: Date,
-  view: ViewType = "week",
-): Date[] {
-  const count = VISIBLE_DAYS_BY_VIEW[view];
-  const end = addDays(currentDate, count - 1);
-  return eachDayOfInterval({ start: currentDate, end });
-}
-
-/**
- * Main Week View calendar component
- * Displays a week grid with time slots and supports horizontal scroll navigation
+ * Main Week View calendar component (day and week views)
+ * Displays a week grid with time slots and supports horizontal scroll navigation.
+ * View, date, events and selection come from the surrounding CalendarProvider.
  *
  * Renders the same markup on the server and during hydration: everything that
  * depends on the viewer's clock (today, the current-time line, past events)
  * reads the shared `useNow` clock, which is unknown until hydration finishes.
  */
-export function WeekView({ currentDate, ...props }: WeekViewProps) {
+export function WeekView({
+  showEventPopover = true,
+  onEventPopoverExpand,
+  className,
+}: WeekViewProps) {
+  const {
+    view,
+    currentDate,
+    events,
+    selectedEvent,
+    highlightedDate,
+    selectEvent,
+    clearSelection,
+    addEventFromRange,
+    updateEvent,
+    goToDate,
+    goToPrev,
+    goToNext,
+    numberOfDays,
+    weekStartsOn,
+  } = useCalendar();
+  const { snapMinutes, dayStartHour, dayEndHour, hourCycle, locale } =
+    useCalendarConfig();
+  const { reportVisibleDays, closeEventPopover } = useCalendarViewSync();
   // `null` on the server and during hydration
   const today = useToday();
-  const firstDay = currentDate ?? today;
-
-  // No `currentDate` and today is unknown yet: render the empty frame only
-  if (!firstDay) {
-    return <div className={cn("flex h-full flex-col", props.className)} />;
-  }
-
-  return <WeekViewContent {...props} currentDate={firstDay} today={today} />;
-}
-
-/**
- * Week View body, rendered once the first visible day is known
- */
-function WeekViewContent({
-  view = "week",
-  currentDate,
-  today,
-  events = [],
-  onEventClick,
-  selectedEventId,
-  onBackgroundClick,
-  onEventCreate,
-  onDateChange,
-  onVisibleDaysChange,
-  onEventChange,
-  isSidebarOpen,
-  onDockToSidebar,
-  onClosePopover,
-  onPrevWeek,
-  onNextWeek,
-  highlightedDate,
-  className,
-}: WeekViewContentProps) {
-  const VISIBLE_DAYS = VISIBLE_DAYS_BY_VIEW[view];
+  const selectedEventId = selectedEvent?.id;
+  const VISIBLE_DAYS = getVisibleDayCount(view, numberOfDays);
+  const visibleHourCount = dayEndHour - dayStartHour;
+  // A drag held at the grid's side edge moves by one prev/next step
+  const edgeNavigationDays =
+    view === "day" ? DAY_VIEW_EDGE_NAV_DAYS : getWeekViewStepDays(numberOfDays);
   const BUFFER_DAYS = BUFFER_DAYS_BY_VIEW[view];
   const BUFFER_STEP = BUFFER_STEP_BY_VIEW[view];
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -224,13 +186,16 @@ function WeekViewContent({
 
   // Visible days starting from currentDate
   const baseDays = React.useMemo(
-    () => generateWeekDays(currentDate, VISIBLE_DAYS),
-    [currentDate, VISIBLE_DAYS],
+    () => generateWeekDays(currentDate, VISIBLE_DAYS, locale),
+    [currentDate, VISIBLE_DAYS, locale],
   );
 
   const days = withIsToday(baseDays, today);
 
-  const hours = React.useMemo(() => generateHours(), []);
+  const hours = React.useMemo(
+    () => generateHours(dayStartHour, dayEndHour, hourCycle, locale),
+    [dayStartHour, dayEndHour, hourCycle, locale],
+  );
 
   const allDayEvents = React.useMemo(
     () => events.filter((e) => e.isAllDay || isMultiDayEvent(e)),
@@ -256,7 +221,9 @@ function WeekViewContent({
       if (!container) return;
       const availableWidth = container.clientWidth - TIME_AXIS_WIDTH;
       setDayColumnWidth(availableWidth / VISIBLE_DAYS);
-      setHourHeight(Math.max(MIN_HOUR_HEIGHT, container.clientHeight / 24));
+      setHourHeight(
+        Math.max(MIN_HOUR_HEIGHT, container.clientHeight / visibleHourCount),
+      );
     };
 
     updateDimensions();
@@ -266,7 +233,7 @@ function WeekViewContent({
       observer.observe(scrollContainerRef.current);
     }
     return () => observer.disconnect();
-  }, [VISIBLE_DAYS]);
+  }, [VISIBLE_DAYS, visibleHourCount]);
 
   // Track whether navigation was initiated by scroll (to avoid double-animation)
   const scrollNavigatedRef = React.useRef(false);
@@ -275,41 +242,54 @@ function WeekViewContent({
   const handleNavigate = React.useCallback(
     (daysDelta: number) => {
       scrollNavigatedRef.current = true;
-      onDateChange?.(addDays(currentDate, daysDelta));
+      goToDate(addDays(currentDate, daysDelta));
     },
-    [currentDate, onDateChange],
+    [currentDate, goToDate],
   );
 
   const handleDragNavigate = React.useCallback(
     (daysDelta: number) => {
-      onDateChange?.(addDays(currentDate, daysDelta));
+      goToDate(addDays(currentDate, daysDelta));
     },
-    [currentDate, onDateChange],
+    [currentDate, goToDate],
+  );
+
+  const handleEventClick = React.useCallback(
+    (event: CalendarEvent) => selectEvent(event.id),
+    [selectEvent],
   );
 
   const visibleDayDates = React.useMemo(() => days.map((d) => d.date), [days]);
 
-  const { resizeState, handleResizeMouseDown } = useEventResize({
+  const { resizeState, handleResizePointerDown } = useEventResize({
     hourHeight,
     scrollContainerRef,
     events: timedEvents,
     days: visibleDayDates,
     dayColumnWidth,
     timeAxisWidth: TIME_AXIS_WIDTH,
-    onEventChange,
-    onEventClick,
+    snapMinutes,
+    dayStartHour,
+    dayEndHour,
+    edgeNavigationDays,
+    onEventChange: updateEvent,
+    onEventClick: handleEventClick,
     onResizeNavigate: handleDragNavigate,
   });
 
-  const { dragState, handleEventMouseDown } = useEventDrag({
+  const { dragState, handleEventPointerDown } = useEventDrag({
     hourHeight,
     scrollContainerRef,
     events: timedEvents,
     days: visibleDayDates,
     dayColumnWidth,
     timeAxisWidth: TIME_AXIS_WIDTH,
-    onEventChange,
-    onEventClick,
+    snapMinutes,
+    dayStartHour,
+    dayEndHour,
+    edgeNavigationDays,
+    onEventChange: updateEvent,
+    onEventClick: handleEventClick,
     onDragNavigate: handleDragNavigate,
   });
 
@@ -329,12 +309,12 @@ function WeekViewContent({
   const scrollDaysDelta =
     dayColumnWidth > 0 ? Math.round(-scrollOffset / dayColumnWidth) : 0;
 
-  // Report visible days to parent in real-time as scroll crosses day boundaries
+  // Report visible days to the provider in real-time as scroll crosses day boundaries
   React.useEffect(() => {
     const start = addDays(currentDate, scrollDaysDelta);
     const end = addDays(start, VISIBLE_DAYS - 1);
-    onVisibleDaysChange?.(eachDayOfInterval({ start, end }));
-  }, [currentDate, scrollDaysDelta, onVisibleDaysChange, VISIBLE_DAYS]);
+    reportVisibleDays(eachDayOfInterval({ start, end }));
+  }, [currentDate, scrollDaysDelta, reportVisibleDays, VISIBLE_DAYS]);
 
   // Dynamic buffer: extends in BUFFER_STEP chunks based on scroll distance
   const extraScrollDays =
@@ -347,8 +327,9 @@ function WeekViewContent({
 
   // Extended buffered days for scroll (grows dynamically with scroll distance)
   const bufferedBaseDays = React.useMemo(
-    () => generateBufferedDays(currentDate, dynamicBuffer, VISIBLE_DAYS),
-    [currentDate, dynamicBuffer, VISIBLE_DAYS],
+    () =>
+      generateBufferedDays(currentDate, dynamicBuffer, VISIBLE_DAYS, locale),
+    [currentDate, dynamicBuffer, VISIBLE_DAYS, locale],
   );
 
   const bufferedDays = withIsToday(bufferedBaseDays, today);
@@ -358,13 +339,13 @@ function WeekViewContent({
     [bufferedBaseDays],
   );
 
-  const { allDayResizeState, handleAllDayResizeMouseDown } = useAllDayResize({
+  const { allDayResizeState, handleAllDayResizePointerDown } = useAllDayResize({
     days: bufferedDayDates,
     dayColumnWidth,
     allDayContainerRef: allDayScrollContentRef,
     events: allDayEvents,
-    onEventChange,
-    onEventClick,
+    onEventChange: updateEvent,
+    onEventClick: handleEventClick,
   });
 
   React.useEffect(() => {
@@ -403,6 +384,24 @@ function WeekViewContent({
   // Ref for the header (weekday columns + all-day row) to measure its height for popover top inset
   const calendarHeaderRef = React.useRef<HTMLDivElement>(null);
 
+  const isDayVisible = React.useCallback(
+    (date: Date) => visibleDayDates.some((day) => isSameDay(day, date)),
+    [visibleDayDates],
+  );
+
+  const revealDay = React.useCallback(
+    (date: Date) =>
+      goToDate(getPeriodStart(date, view, weekStartsOn, numberOfDays)),
+    [goToDate, view, weekStartsOn, numberOfDays],
+  );
+
+  const handleEventKeyDown = useEventKeyboard({
+    containerRef: calendarBoundaryRef,
+    scrollContainerRef,
+    isDayVisible,
+    revealDay,
+  });
+
   return (
     <CalendarPopoverBoundaryProvider
       boundaryRef={calendarBoundaryRef}
@@ -412,10 +411,11 @@ function WeekViewContent({
       <div
         ref={calendarBoundaryRef}
         className={cn("flex h-full flex-col", className)}
+        onKeyDown={handleEventKeyDown}
         onClick={(e) => {
           const target = e.target as HTMLElement;
           if (target.closest("[data-radix-popper-content-wrapper]")) return;
-          onBackgroundClick?.();
+          clearSelection();
         }}
       >
         {/* Header - day columns and all-day row with synchronized scroll */}
@@ -451,19 +451,19 @@ function WeekViewContent({
             <WeekViewAllDayRow
               days={bufferedDays}
               allDayEvents={allDayEvents}
-              onEventClick={onEventClick}
+              onEventClick={handleEventClick}
               selectedEventId={selectedEventId}
               scrollStyle={scrollStyle}
               allDayResizeState={allDayResizeState ?? undefined}
-              onAllDayResizeMouseDown={handleAllDayResizeMouseDown}
-              onEventChange={onEventChange}
+              onAllDayResizePointerDown={handleAllDayResizePointerDown}
+              onEventChange={updateEvent}
               onContextMenuOpenChange={setContextMenuOpen}
               allDayScrollContentRef={allDayScrollContentRef}
-              isSidebarOpen={isSidebarOpen}
-              onDockToSidebar={onDockToSidebar}
-              onClosePopover={onClosePopover}
-              onPrevWeek={onPrevWeek}
-              onNextWeek={onNextWeek}
+              showEventPopover={showEventPopover}
+              onEventPopoverExpand={onEventPopoverExpand}
+              onEventPopoverClose={closeEventPopover}
+              onPrevWeek={goToPrev}
+              onNextWeek={goToNext}
               visibleStartIndex={dynamicBuffer}
               visibleCount={VISIBLE_DAYS}
               dayColumnWidth={dayColumnWidth}
@@ -489,21 +489,23 @@ function WeekViewContent({
                   hours={hours}
                   hourHeight={hourHeight}
                   events={timedEvents}
-                  onEventClick={onEventClick}
+                  onEventClick={handleEventClick}
                   selectedEventId={selectedEventId}
-                  onEventCreate={onEventCreate}
+                  onEventCreate={addEventFromRange}
                   dragState={dragState ?? undefined}
-                  onEventDragMouseDown={handleEventMouseDown}
+                  onEventDragPointerDown={handleEventPointerDown}
                   resizeState={resizeState ?? undefined}
-                  onEventResizeMouseDown={handleResizeMouseDown}
-                  onEventChange={onEventChange}
+                  onEventResizePointerDown={handleResizePointerDown}
+                  onEventChange={updateEvent}
                   onContextMenuOpenChange={setContextMenuOpen}
-                  isSidebarOpen={isSidebarOpen}
-                  onDockToSidebar={onDockToSidebar}
-                  onClosePopover={onClosePopover}
-                  onPrevWeek={onPrevWeek}
-                  onNextWeek={onNextWeek}
+                  showEventPopover={showEventPopover}
+                  onEventPopoverExpand={onEventPopoverExpand}
+                  onEventPopoverClose={closeEventPopover}
+                  onPrevWeek={goToPrev}
+                  onNextWeek={goToNext}
                   highlightedDate={highlightedDate}
+                  visibleStartIndex={dynamicBuffer}
+                  visibleCount={VISIBLE_DAYS}
                 />
               </div>
             </div>

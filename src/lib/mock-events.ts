@@ -2,7 +2,7 @@ import { addDays, addMinutes, format, startOfWeek } from "date-fns";
 import type { Day } from "date-fns";
 
 import type {
-  CalendarEvent,
+  DetailedCalendarEvent,
   EventColor,
   EventReminder,
 } from "@/components/week-view-types";
@@ -51,7 +51,7 @@ function ev(
   color: EventColor,
   calendarId: string,
   opts?: EventOpts,
-): CalendarEvent {
+): DetailedCalendarEvent {
   return { id, title, start, end, color, calendarId, ...opts };
 }
 
@@ -180,9 +180,9 @@ const HOLIDAYS: readonly Holiday[] = [
 ];
 
 /** All-day holiday events for the years around `today` (ids like `holiday-labor-day-2026`). */
-function holidayEvents(today: Date): CalendarEvent[] {
+function holidayEvents(today: Date): DetailedCalendarEvent[] {
   const year = today.getFullYear();
-  const events: CalendarEvent[] = [];
+  const events: DetailedCalendarEvent[] = [];
   for (let y = year - HOLIDAY_YEAR_SPAN; y <= year + HOLIDAY_YEAR_SPAN; y++) {
     for (const holiday of HOLIDAYS) {
       const date = holiday.date(y);
@@ -402,8 +402,8 @@ const WEEKLY_ROUTINES: readonly WeeklyRoutine[] = [
  * `team-standup-2026-10-05` (unique per routine and day, stable across
  * renders, and never shaped like a `crypto.randomUUID()` id).
  */
-function routineEvents(rel: RelativeDate): CalendarEvent[] {
-  const events: CalendarEvent[] = [];
+function routineEvents(rel: RelativeDate): DetailedCalendarEvent[] {
+  const events: DetailedCalendarEvent[] = [];
   for (const routine of WEEKLY_ROUTINES) {
     for (
       let week = -ROUTINE_WEEKS_BEFORE;
@@ -454,7 +454,7 @@ function routineEvents(rel: RelativeDate): CalendarEvent[] {
  *   Fitness            → green   (gym/sports)
  *   Holidays in Brazil → green   (subscribed)
  */
-function demoEvents(rel: RelativeDate): CalendarEvent[] {
+function demoEvents(rel: RelativeDate): DetailedCalendarEvent[] {
   return [
     // ── 19 to 16 weeks ago ──
 
@@ -2006,7 +2006,9 @@ function demoEvents(rel: RelativeDate): CalendarEvent[] {
  * Weekly routines repeat across a window of weeks around today, and holidays
  * are added on their real dates for the years around `today`.
  */
-export function generateMockEvents(today: Date = new Date()): CalendarEvent[] {
+export function generateMockEvents(
+  today: Date = new Date(),
+): DetailedCalendarEvent[] {
   const rel = createRelativeDate(today);
   return [...demoEvents(rel), ...routineEvents(rel), ...holidayEvents(today)];
 }

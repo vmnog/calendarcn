@@ -54,9 +54,9 @@ State flows down as props. Mutations flow up via callbacks (`onEventChange`, `on
 User interaction → Hook (drag/resize) → onEventChange callback → page.tsx setState → Re-render
 ```
 
-1. User mousedown on event → hook captures initial state in `ref`
-2. User mousemove → hook computes snapped position, updates `dragState` / `resizeState`
-3. User mouseup → hook calls `onEventChange(updatedEvent)` → page.tsx merges into `events`
+1. User pointerdown on event → hook captures initial state in `ref` (touch: after a long press, see `use-pointer-gesture.ts`)
+2. User pointermove → hook computes snapped position, updates `dragState` / `resizeState`
+3. User pointerup → hook calls `onEventChange(updatedEvent)` → page.tsx merges into `events`
 
 ### Event Positioning Pipeline
 
@@ -86,7 +86,7 @@ Renders a single event segment. Handles:
 - Color styling via `eventColorStyles[color]` map
 - Selection state (border highlight, elevated z-index)
 - Multi-day segment rendering (rounded corners per segment position)
-- Drag handle (mousedown) and resize handles (top/bottom edges)
+- Drag handle (pointerdown) and resize handles (top/bottom edges)
 
 ### Custom Hooks
 

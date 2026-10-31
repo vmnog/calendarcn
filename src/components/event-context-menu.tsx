@@ -13,7 +13,12 @@ import {
 
 import { cn } from "@/lib/utils";
 import { EVENT_COLORS } from "@/lib/event-utils";
-import type { CalendarEvent, EventColor } from "./week-view-types";
+import { useCalendarConfig } from "./calendar-provider";
+import type {
+  CalendarInfo,
+  DetailedCalendarEvent,
+  EventColor,
+} from "./week-view-types";
 
 const colorSwatchClass: Record<EventColor, string> = {
   red: "bg-event-red-border",
@@ -25,31 +30,33 @@ const colorSwatchClass: Record<EventColor, string> = {
   gray: "bg-event-gray-border",
 };
 
-interface CalendarAccountData {
-  email: string;
-  calendars: { name: string; color: EventColor }[];
+/** Calendars that share an account, listed under its email */
+interface CalendarGroup {
+  /** Account email shown above the group; absent for calendars without one */
+  email?: string;
+  calendars: CalendarInfo[];
 }
 
-const CALENDAR_ACCOUNTS: CalendarAccountData[] = [
-  {
-    email: "me@vmnog.com",
-    calendars: [
-      { name: "me@vmnog.com", color: "red" },
-      { name: "Personal", color: "purple" },
-      { name: "Work", color: "blue" },
-      { name: "Family", color: "orange" },
-      { name: "Side Projects", color: "yellow" },
-      { name: "Fitness", color: "green" },
-      { name: "Holidays in Brazil", color: "green" },
-    ],
-  },
-];
+/** Groups calendars by account email, keeping the order they were given in */
+function groupCalendarsByEmail(calendars: CalendarInfo[]): CalendarGroup[] {
+  const groups: CalendarGroup[] = [];
+  for (const calendar of calendars) {
+    const group = groups.find((g) => g.email === calendar.email);
+    if (group) {
+      group.calendars.push(calendar);
+      continue;
+    }
+    groups.push({ email: calendar.email, calendars: [calendar] });
+  }
+  return groups;
+}
 
 interface EventContextMenuProps {
-  event: CalendarEvent;
+  /** The right-clicked event; "Block on calendar" sets its `calendarId` */
+  event: DetailedCalendarEvent;
   position: { x: number; y: number };
   onClose: () => void;
-  onEventChange?: (event: CalendarEvent) => void;
+  onEventChange?: (event: DetailedCalendarEvent) => void;
 }
 
 function MenuItem({
@@ -149,7 +156,12 @@ export function EventContextMenu({
   const menuRef = React.useRef<HTMLDivElement>(null);
   const [adjustedPos, setAdjustedPos] = React.useState(position);
   const [ready, setReady] = React.useState(false);
+  const { calendars } = useCalendarConfig();
   const currentColor = event.color ?? "blue";
+  const calendarGroups = React.useMemo(
+    () => groupCalendarsByEmail(calendars),
+    [calendars],
+  );
 
   React.useLayoutEffect(() => {
     const menu = menuRef.current;
@@ -197,15 +209,15 @@ export function EventContextMenu({
     onClose();
   }
 
-  function handleCalendarSelect(calendarName: string) {
-    onEventChange?.({ ...event, calendarId: calendarName });
+  function handleCalendarSelect(calendarId: string) {
+    onEventChange?.({ ...event, calendarId });
     onClose();
   }
 
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[200px] rounded-sm border border-[#303030] bg-[#252525] p-1 shadow-md animate-in fade-in-0 zoom-in-95"
+      className="fixed z-50 min-w-[200px] rounded-sm border border-[#303030] bg-[#252525] p-1 shadow-md animate-in fade-in-0 zoom-in-95 motion-reduce:animate-none"
       style={{
         top: adjustedPos.y,
         left: adjustedPos.x,
@@ -229,39 +241,44 @@ export function EventContextMenu({
         ))}
       </div>
 
-      <Separator />
-
-      {/* Block on calendar */}
-      <SubMenu
-        trigger={
-          <>
-            <Monitor className="size-3.5" />
-            Block on calendar
-          </>
-        }
-      >
-        {CALENDAR_ACCOUNTS.map((account) => (
-          <React.Fragment key={account.email}>
-            <div className="px-2 py-1 text-[10px] text-white/40">
-              {account.email}
-            </div>
-            {account.calendars.map((cal) => (
-              <MenuItem
-                key={cal.name}
-                onSelect={() => handleCalendarSelect(cal.name)}
-              >
-                <div
-                  className={cn(
-                    "size-3 rounded-xs shrink-0",
-                    colorSwatchClass[cal.color],
-                  )}
-                />
-                {cal.name}
-              </MenuItem>
+      {/* Block on calendar (only when the provider lists calendars) */}
+      {calendarGroups.length > 0 && (
+        <>
+          <Separator />
+          <SubMenu
+            trigger={
+              <>
+                <Monitor className="size-3.5" />
+                Block on calendar
+              </>
+            }
+          >
+            {calendarGroups.map((group) => (
+              <React.Fragment key={group.email ?? ""}>
+                {group.email && (
+                  <div className="px-2 py-1 text-[10px] text-white/40">
+                    {group.email}
+                  </div>
+                )}
+                {group.calendars.map((cal) => (
+                  <MenuItem
+                    key={cal.id}
+                    onSelect={() => handleCalendarSelect(cal.id)}
+                  >
+                    <div
+                      className={cn(
+                        "size-3 rounded-xs shrink-0",
+                        colorSwatchClass[cal.color],
+                      )}
+                    />
+                    {cal.name}
+                  </MenuItem>
+                ))}
+              </React.Fragment>
             ))}
-          </React.Fragment>
-        ))}
-      </SubMenu>
+          </SubMenu>
+        </>
+      )}
 
       <Separator />
 

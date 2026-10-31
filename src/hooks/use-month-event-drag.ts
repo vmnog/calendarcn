@@ -3,8 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { addDays, differenceInCalendarDays } from "date-fns";
 
+import {
+  suppressNextClick,
+  usePointerGesture,
+} from "@/hooks/use-pointer-gesture";
 import { parseCellDate } from "@/lib/event-utils";
-import type { CalendarEvent } from "@/components/calendar-types";
+import type {
+  CalendarEvent,
+  PointerGestureStart,
+} from "@/components/calendar-types";
 
 /**
  * State of an in-progress month-view event drag operation.
@@ -34,15 +41,18 @@ interface UseMonthEventDragOptions {
   events: CalendarEvent[];
   /** Called when an event is modified (date shifted) */
   onEventChange?: (event: CalendarEvent) => void;
-  /** Called immediately on mousedown to select the event */
+  /** Called on pointerup to select the event (after the drop, if it moved) */
   onEventClick?: (event: CalendarEvent) => void;
 }
 
 interface UseMonthEventDragReturn {
   /** Current drag state, or null when not dragging */
   dragState: MonthDragState | null;
-  /** Attach to event elements' onMouseDown */
-  handleDragMouseDown: (e: React.MouseEvent, event: CalendarEvent) => void;
+  /** Attach to event elements' onPointerDown */
+  handleDragPointerDown: (
+    e: React.PointerEvent<HTMLElement>,
+    event: CalendarEvent,
+  ) => void;
 }
 
 /** Minimum pixel distance before a click becomes a drag */
@@ -71,11 +81,15 @@ function getDateAtPoint(
 interface DragInfo {
   eventId: string;
   event: CalendarEvent;
+  /** Pointer driving the drag; moves from other pointers are ignored */
+  pointerId: number;
+  /** "mouse", "pen" or "touch" */
+  pointerType: string;
   originalDate: Date;
   startClientX: number;
   startClientY: number;
   isDragging: boolean;
-  /** Latest date under the cursor, committed to the parent on mouseup */
+  /** Latest date under the cursor, committed to the parent on pointerup */
   targetDate: Date;
 }
 
@@ -86,6 +100,7 @@ export function useMonthEventDrag({
   onEventClick,
 }: UseMonthEventDragOptions): UseMonthEventDragReturn {
   const [dragState, setDragState] = useState<MonthDragState | null>(null);
+  const { startGesture } = usePointerGesture({ containerRef: gridRef });
 
   const dragRef = useRef<DragInfo | null>(null);
   const onEventChangeRef = useRef(onEventChange);
@@ -103,23 +118,32 @@ export function useMonthEventDrag({
   }, [events]);
 
   // Store handlers in refs to break circular dependency
-  const handleMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
-  const handleMouseUpRef = useRef<(() => void) | null>(null);
+  const handlePointerMoveRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const handlePointerUpRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const handlePointerCancelRef = useRef<((e: PointerEvent) => void) | null>(
+    null,
+  );
 
   const cleanup = useCallback(() => {
-    if (handleMouseMoveRef.current) {
-      window.removeEventListener("mousemove", handleMouseMoveRef.current);
+    if (handlePointerMoveRef.current) {
+      window.removeEventListener("pointermove", handlePointerMoveRef.current);
     }
-    if (handleMouseUpRef.current) {
-      window.removeEventListener("mouseup", handleMouseUpRef.current);
+    if (handlePointerUpRef.current) {
+      window.removeEventListener("pointerup", handlePointerUpRef.current);
+    }
+    if (handlePointerCancelRef.current) {
+      window.removeEventListener(
+        "pointercancel",
+        handlePointerCancelRef.current,
+      );
     }
   }, []);
 
   // Initialize handlers once (stable references via refs)
   useEffect(() => {
-    handleMouseMoveRef.current = (e: MouseEvent) => {
+    handlePointerMoveRef.current = (e: PointerEvent) => {
       const drag = dragRef.current;
-      if (!drag) return;
+      if (!drag || e.pointerId !== drag.pointerId) return;
 
       const deltaX = Math.abs(e.clientX - drag.startClientX);
       const deltaY = Math.abs(e.clientY - drag.startClientY);
@@ -153,28 +177,23 @@ export function useMonthEventDrag({
       });
     };
 
-    handleMouseUpRef.current = () => {
+    handlePointerUpRef.current = (e: PointerEvent) => {
       const drag = dragRef.current;
-      if (!drag) return;
+      if (!drag || e.pointerId !== drag.pointerId) return;
 
       cleanup();
       dragRef.current = null;
       setDragState(null);
 
+      // Swallow the click that follows. Without a drag it would select the
+      // event a second time; after one it lands on a shared ancestor of the
+      // swapped-out item and would clear the selection made below.
+      suppressNextClick(drag.pointerType);
+
       if (!drag.isDragging) {
-        // No drag — select the event on mouseup (not mousedown) so the
+        // No drag — select the event on pointerup (not pointerdown) so the
         // popover doesn't flash while the user is still holding the mouse.
         onEventClickRef.current?.(drag.event);
-
-        // Swallow the subsequent click event so the event item's onClick
-        // doesn't double-fire selection.
-        window.addEventListener(
-          "click",
-          (ev) => {
-            ev.stopPropagation();
-          },
-          { capture: true, once: true },
-        );
         return;
       }
 
@@ -200,18 +219,32 @@ export function useMonthEventDrag({
       // Select the event after drop so the detail popover opens
       onEventClickRef.current?.(drag.event);
     };
+
+    // The browser took the pointer over (e.g. for a system gesture): drop
+    // the drag without committing it
+    handlePointerCancelRef.current = (e: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+
+      cleanup();
+      dragRef.current = null;
+      setDragState(null);
+    };
   }, [gridRef, cleanup]);
 
-  const handleDragMouseDown = useCallback(
-    (e: React.MouseEvent, event: CalendarEvent) => {
-      if (e.button !== 0) return;
-
+  const beginDrag = useCallback(
+    (
+      { clientX, clientY, pointerId, pointerType }: PointerGestureStart,
+      event: CalendarEvent,
+    ) => {
       dragRef.current = {
         eventId: event.id,
         event,
+        pointerId,
+        pointerType,
         originalDate: event.start,
-        startClientX: e.clientX,
-        startClientY: e.clientY,
+        startClientX: clientX,
+        startClientY: clientY,
         isDragging: false,
         targetDate: event.start,
       };
@@ -222,18 +255,31 @@ export function useMonthEventDrag({
         originalDate: event.start,
         targetDate: event.start,
         isDragging: false,
-        clientX: e.clientX,
-        clientY: e.clientY,
+        clientX,
+        clientY,
       });
 
-      if (handleMouseMoveRef.current) {
-        window.addEventListener("mousemove", handleMouseMoveRef.current);
+      if (handlePointerMoveRef.current) {
+        window.addEventListener("pointermove", handlePointerMoveRef.current);
       }
-      if (handleMouseUpRef.current) {
-        window.addEventListener("mouseup", handleMouseUpRef.current);
+      if (handlePointerUpRef.current) {
+        window.addEventListener("pointerup", handlePointerUpRef.current);
+      }
+      if (handlePointerCancelRef.current) {
+        window.addEventListener(
+          "pointercancel",
+          handlePointerCancelRef.current,
+        );
       }
     },
     [],
+  );
+
+  const handleDragPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLElement>, event: CalendarEvent) => {
+      startGesture(e, (start) => beginDrag(start, event));
+    },
+    [startGesture, beginDrag],
   );
 
   // Cleanup on unmount
@@ -241,5 +287,5 @@ export function useMonthEventDrag({
     return cleanup;
   }, [cleanup]);
 
-  return { dragState, handleDragMouseDown };
+  return { dragState, handleDragPointerDown };
 }

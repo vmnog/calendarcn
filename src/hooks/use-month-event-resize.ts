@@ -3,8 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { startOfDay } from "date-fns";
 
+import {
+  isPrimaryPress,
+  suppressNextClick,
+  usePointerGesture,
+} from "@/hooks/use-pointer-gesture";
 import { parseCellDate } from "@/lib/event-utils";
-import type { CalendarEvent } from "@/components/calendar-types";
+import type {
+  CalendarEvent,
+  PointerGestureStart,
+} from "@/components/calendar-types";
 
 /** Minimum cursor movement before entering resize mode */
 const DRAG_THRESHOLD_PX = 4;
@@ -24,12 +32,16 @@ export interface MonthResizeState {
 interface ResizeInfo {
   eventId: string;
   event: CalendarEvent;
+  /** Pointer driving the resize; moves from other pointers are ignored */
+  pointerId: number;
+  /** "mouse", "pen" or "touch" */
+  pointerType: string;
   edge: "left" | "right";
   startClientX: number;
   isResizing: boolean;
-  /** Latest start date, committed to the parent on mouseup */
+  /** Latest start date, committed to the parent on pointerup */
   currentStart: Date;
-  /** Latest end date, committed to the parent on mouseup */
+  /** Latest end date, committed to the parent on pointerup */
   currentEnd: Date;
 }
 
@@ -42,8 +54,8 @@ interface UseMonthEventResizeOptions {
 
 interface UseMonthEventResizeReturn {
   resizeState: MonthResizeState | null;
-  handleResizeMouseDown: (
-    e: React.MouseEvent,
+  handleResizePointerDown: (
+    e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
     edge: "left" | "right",
   ) => void;
@@ -75,6 +87,7 @@ export function useMonthEventResize({
   onEventChange,
 }: UseMonthEventResizeOptions): UseMonthEventResizeReturn {
   const [resizeState, setResizeState] = useState<MonthResizeState | null>(null);
+  const { startGesture } = usePointerGesture({ containerRef: gridRef });
 
   const resizeRef = useRef<ResizeInfo | null>(null);
   const onEventChangeRef = useRef(onEventChange);
@@ -87,23 +100,32 @@ export function useMonthEventResize({
     eventsRef.current = events;
   }, [events]);
 
-  const handleMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
-  const handleMouseUpRef = useRef<(() => void) | null>(null);
+  const handlePointerMoveRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const handlePointerUpRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const handlePointerCancelRef = useRef<((e: PointerEvent) => void) | null>(
+    null,
+  );
 
   const cleanup = useCallback(() => {
-    if (handleMouseMoveRef.current) {
-      window.removeEventListener("mousemove", handleMouseMoveRef.current);
+    if (handlePointerMoveRef.current) {
+      window.removeEventListener("pointermove", handlePointerMoveRef.current);
     }
-    if (handleMouseUpRef.current) {
-      window.removeEventListener("mouseup", handleMouseUpRef.current);
+    if (handlePointerUpRef.current) {
+      window.removeEventListener("pointerup", handlePointerUpRef.current);
+    }
+    if (handlePointerCancelRef.current) {
+      window.removeEventListener(
+        "pointercancel",
+        handlePointerCancelRef.current,
+      );
     }
     document.body.style.removeProperty("--cursor");
   }, []);
 
   useEffect(() => {
-    handleMouseMoveRef.current = (e: MouseEvent) => {
+    handlePointerMoveRef.current = (e: PointerEvent) => {
       const resize = resizeRef.current;
-      if (!resize) return;
+      if (!resize || e.pointerId !== resize.pointerId) return;
 
       const deltaX = Math.abs(e.clientX - resize.startClientX);
       if (!resize.isResizing && deltaX < DRAG_THRESHOLD_PX) return;
@@ -163,15 +185,16 @@ export function useMonthEventResize({
       });
     };
 
-    handleMouseUpRef.current = () => {
+    handlePointerUpRef.current = (e: PointerEvent) => {
       const resize = resizeRef.current;
-      if (!resize) return;
+      if (!resize || e.pointerId !== resize.pointerId) return;
 
       cleanup();
       resizeRef.current = null;
       setResizeState(null);
 
       if (!resize.isResizing) return;
+      suppressNextClick(resize.pointerType);
 
       // Commit from the handler, never from inside a state updater:
       // updaters run during render, and calling the parent's setState
@@ -185,18 +208,32 @@ export function useMonthEventResize({
         end: resize.currentEnd,
       });
     };
+
+    // The browser took the pointer over (e.g. for a system gesture): drop
+    // the resize without committing it
+    handlePointerCancelRef.current = (e: PointerEvent) => {
+      const resize = resizeRef.current;
+      if (!resize || e.pointerId !== resize.pointerId) return;
+
+      cleanup();
+      resizeRef.current = null;
+      setResizeState(null);
+    };
   }, [gridRef, cleanup]);
 
-  const handleResizeMouseDown = useCallback(
-    (e: React.MouseEvent, event: CalendarEvent, edge: "left" | "right") => {
-      if (e.button !== 0) return;
-      e.stopPropagation();
-
+  const beginResize = useCallback(
+    (
+      { clientX, pointerId, pointerType }: PointerGestureStart,
+      event: CalendarEvent,
+      edge: "left" | "right",
+    ) => {
       resizeRef.current = {
         eventId: event.id,
         event,
+        pointerId,
+        pointerType,
         edge,
-        startClientX: e.clientX,
+        startClientX: clientX,
         isResizing: false,
         currentStart: event.start,
         currentEnd: event.end,
@@ -211,19 +248,38 @@ export function useMonthEventResize({
         currentEnd: event.end,
       });
 
-      if (handleMouseMoveRef.current) {
-        window.addEventListener("mousemove", handleMouseMoveRef.current);
+      if (handlePointerMoveRef.current) {
+        window.addEventListener("pointermove", handlePointerMoveRef.current);
       }
-      if (handleMouseUpRef.current) {
-        window.addEventListener("mouseup", handleMouseUpRef.current);
+      if (handlePointerUpRef.current) {
+        window.addEventListener("pointerup", handlePointerUpRef.current);
+      }
+      if (handlePointerCancelRef.current) {
+        window.addEventListener(
+          "pointercancel",
+          handlePointerCancelRef.current,
+        );
       }
     },
     [],
+  );
+
+  const handleResizePointerDown = useCallback(
+    (
+      e: React.PointerEvent<HTMLElement>,
+      event: CalendarEvent,
+      edge: "left" | "right",
+    ) => {
+      if (!isPrimaryPress(e)) return;
+      e.stopPropagation();
+      startGesture(e, (start) => beginResize(start, event, edge));
+    },
+    [startGesture, beginResize],
   );
 
   useEffect(() => {
     return cleanup;
   }, [cleanup]);
 
-  return { resizeState, handleResizeMouseDown };
+  return { resizeState, handleResizePointerDown };
 }

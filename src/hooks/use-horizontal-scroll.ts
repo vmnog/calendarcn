@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePrefersReducedMotion } from "@/hooks/use-media-query";
 
 interface UseHorizontalScrollOptions {
   containerRef: React.RefObject<HTMLDivElement | null>;
@@ -30,6 +31,8 @@ export function useHorizontalScroll({
   const [slideOffset, setSlideOffset] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  // Snaps and slides jump straight to their end instead of animating
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const scrollEndTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const accumulatedDelta = useRef(0);
@@ -43,6 +46,14 @@ export function useHorizontalScroll({
       if (dayColumnWidth <= 0) return;
 
       const daysDelta = Math.round(offset / dayColumnWidth);
+
+      if (prefersReducedMotion) {
+        if (daysDelta !== 0) onNavigateRef.current(-daysDelta);
+        setScrollOffset(0);
+        setIsScrolling(false);
+        accumulatedDelta.current = 0;
+        return;
+      }
 
       // If scroll distance < half a day-column width, snap back
       if (daysDelta === 0) {
@@ -68,7 +79,7 @@ export function useHorizontalScroll({
         accumulatedDelta.current = 0;
       }, SNAP_ANIMATION_MS);
     },
-    [dayColumnWidth],
+    [dayColumnWidth, prefersReducedMotion],
   );
 
   // Programmatic slide animation for button/keyboard navigation
@@ -77,6 +88,7 @@ export function useHorizontalScroll({
   const triggerSlideAnimation = useCallback(
     (daysDelta: number) => {
       if (dayColumnWidth <= 0 || isAnimating || isScrolling) return;
+      if (prefersReducedMotion) return;
 
       // Start from the opposite direction to create slide effect
       const startOffset = daysDelta * dayColumnWidth;
@@ -93,7 +105,7 @@ export function useHorizontalScroll({
         });
       });
     },
-    [dayColumnWidth, isAnimating, isScrolling],
+    [dayColumnWidth, isAnimating, isScrolling, prefersReducedMotion],
   );
 
   useEffect(() => {

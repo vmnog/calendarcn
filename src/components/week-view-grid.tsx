@@ -4,25 +4,33 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { isSameDay, startOfDay, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { calculatePositionedEvents, getNewEventRange } from "@/lib/event-utils";
+import { isPrimaryPress, usePointerGesture } from "@/hooks/use-pointer-gesture";
+import {
+  calculatePositionedEvents,
+  formatFullDate,
+  getNewEventRange,
+} from "@/lib/event-utils";
 import { CalendarEventItem } from "./calendar-event-item";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
+import { useCalendarConfig } from "./calendar-provider";
 import type {
   CalendarEvent,
   EventDragState,
+  EventItemPopoverProps,
   EventResizeState,
   PositionedEvent,
   WeekViewGridProps,
 } from "./week-view-types";
 
 /**
- * Max pointer travel (px) between mousedown and click for a click on an empty
- * slot to create an event. Matches the drag threshold in use-event-drag so a
- * press that moves far enough to count as a drag never also creates an event.
+ * Max pointer travel (px) between pointerdown and click for a click on an
+ * empty slot to create an event. Matches the drag threshold in
+ * use-event-drag so a press that moves far enough to count as a drag never
+ * also creates an event.
  */
 const CREATE_CLICK_TOLERANCE_PX = 4;
 
-/** Pointer position recorded when a mousedown lands on an empty day column */
+/** Pointer position recorded when a mouse or pen press lands on an empty day column */
 interface PendingCreateClick {
   clientX: number;
   clientY: number;
@@ -41,25 +49,29 @@ export function WeekViewGrid({
   selectedEventId,
   onEventCreate,
   dragState,
-  onEventDragMouseDown,
+  onEventDragPointerDown,
   resizeState,
-  onEventResizeMouseDown,
+  onEventResizePointerDown,
   onEventChange,
   onContextMenuOpenChange,
-  isSidebarOpen,
-  onDockToSidebar,
-  onClosePopover,
+  showEventPopover,
+  onEventPopoverExpand,
+  onEventPopoverClose,
   onPrevWeek,
   onNextWeek,
   highlightedDate,
+  visibleStartIndex = 0,
+  visibleCount,
   className,
 }: WeekViewGridProps) {
   const { view } = useCalendarPopoverBoundary();
+  const config = useCalendarConfig();
   const isDayView = view === "day";
   const gridRef = React.useRef<HTMLDivElement>(null);
-  /** Set only by a mousedown directly on empty column space */
+  /** Set only by a mouse or pen press directly on empty column space */
   const pendingCreateRef = React.useRef<PendingCreateClick | null>(null);
   const [gridWidth, setGridWidth] = React.useState(0);
+  const { startGesture } = usePointerGesture({ containerRef: gridRef });
 
   React.useEffect(() => {
     const el = gridRef.current;
@@ -74,28 +86,49 @@ export function WeekViewGrid({
     return () => observer.disconnect();
   }, []);
 
+  /** Creates an event in a column at a viewport Y position */
+  const createEventAt = React.useCallback(
+    (column: HTMLElement, columnDate: Date, clientY: number) => {
+      if (!onEventCreate) return;
+      // The column's top edge is `dayStartHour`, not midnight
+      const columnTop = column.getBoundingClientRect().top;
+      const minutesFromMidnight =
+        config.dayStartHour * 60 + ((clientY - columnTop) / hourHeight) * 60;
+      onEventCreate(getNewEventRange(columnDate, minutesFromMidnight, config));
+    },
+    [onEventCreate, hourHeight, config],
+  );
+
   /**
-   * Capture phase runs before event items stop mousedown propagation, so a
-   * press that starts on an event (drag, resize, select) always clears any
+   * Capture phase runs before event items stop pointerdown propagation, so
+   * a press that starts on an event (drag, resize, select) always clears any
    * pending create left over from an earlier press.
    */
-  const handleColumnMouseDownCapture = React.useCallback(() => {
+  const handleColumnPointerDownCapture = React.useCallback(() => {
     pendingCreateRef.current = null;
   }, []);
 
-  const handleColumnMouseDown = React.useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (e.button !== 0) return;
+  const handleColumnPointerDown = React.useCallback(
+    (e: React.PointerEvent<HTMLDivElement>, columnDate: Date) => {
       if (e.target !== e.currentTarget) return;
+      // Touch creates with a long press, so a swipe over empty space still
+      // scrolls and a tap only clears the selection
+      if (e.pointerType === "touch") {
+        startGesture(e, ({ clientY, element }) =>
+          createEventAt(element, columnDate, clientY),
+        );
+        return;
+      }
+      if (!isPrimaryPress(e)) return;
       pendingCreateRef.current = { clientX: e.clientX, clientY: e.clientY };
     },
-    [],
+    [startGesture, createEventAt],
   );
 
   /**
    * Creates an event when a press started and ended on empty space in the
    * same column without moving. With an event selected the click is left to
-   * bubble so WeekView's onBackgroundClick deselects instead.
+   * bubble so WeekView's background click deselects instead.
    */
   const handleColumnClick = React.useCallback(
     (e: React.MouseEvent<HTMLDivElement>, columnDate: Date) => {
@@ -115,19 +148,17 @@ export function WeekViewGrid({
         return;
       }
 
-      const columnTop = e.currentTarget.getBoundingClientRect().top;
-      const minutesFromMidnight = ((e.clientY - columnTop) / hourHeight) * 60;
-
       e.stopPropagation();
-      onEventCreate(getNewEventRange(columnDate, minutesFromMidnight));
+      createEventAt(e.currentTarget, columnDate, e.clientY);
     },
-    [onEventCreate, selectedEventId, hourHeight],
+    [onEventCreate, selectedEventId, createEventAt],
   );
 
   return (
     <div ref={gridRef} className={cn("relative", className)}>
       {/* Background grid */}
       <div
+        aria-hidden
         className="grid"
         style={{
           gridTemplateColumns: `repeat(${days.length}, 1fr)`,
@@ -154,6 +185,7 @@ export function WeekViewGrid({
       {/* Column highlight layer — brief background fade for "+N more" navigation */}
       {highlightedDate && (
         <div
+          aria-hidden
           className="absolute inset-0 grid pointer-events-none"
           style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
         >
@@ -173,7 +205,10 @@ export function WeekViewGrid({
         className="absolute inset-0 grid pointer-events-none"
         style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
       >
-        {days.map((day) => {
+        {days.map((day, index) => {
+          const isOnScreen =
+            index >= visibleStartIndex &&
+            index < visibleStartIndex + (visibleCount ?? days.length);
           /**
            * Day view uses a smaller right gap than week view so events
            * nearly fill the column but still show a sliver of the grid
@@ -183,6 +218,7 @@ export function WeekViewGrid({
           const positionedEvents = calculatePositionedEvents(
             events,
             day,
+            config,
             rightGap,
           );
 
@@ -190,23 +226,25 @@ export function WeekViewGrid({
             <DayEventsColumn
               key={day.date.toISOString()}
               columnDate={day.date}
+              label={formatFullDate(day.date, config.locale)}
+              isOnScreen={isOnScreen}
               events={positionedEvents}
               hourHeight={hourHeight}
               onEventClick={onEventClick}
               selectedEventId={selectedEventId}
               dragState={dragState}
-              onEventDragMouseDown={onEventDragMouseDown}
+              onEventDragPointerDown={onEventDragPointerDown}
               resizeState={resizeState}
-              onEventResizeMouseDown={onEventResizeMouseDown}
+              onEventResizePointerDown={onEventResizePointerDown}
               onEventChange={onEventChange}
               onContextMenuOpenChange={onContextMenuOpenChange}
-              isSidebarOpen={isSidebarOpen}
-              onDockToSidebar={onDockToSidebar}
-              onClosePopover={onClosePopover}
+              showEventPopover={showEventPopover}
+              onEventPopoverExpand={onEventPopoverExpand}
+              onEventPopoverClose={onEventPopoverClose}
               onPrevWeek={onPrevWeek}
               onNextWeek={onNextWeek}
-              onColumnMouseDownCapture={handleColumnMouseDownCapture}
-              onColumnMouseDown={handleColumnMouseDown}
+              onColumnPointerDownCapture={handleColumnPointerDownCapture}
+              onColumnPointerDown={handleColumnPointerDown}
               onColumnClick={handleColumnClick}
             />
           );
@@ -279,6 +317,7 @@ function DragPlaceholderOverlay({
 
   return (
     <div
+      aria-hidden
       className="absolute inset-0 grid pointer-events-none"
       style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
     >
@@ -351,6 +390,7 @@ function BottomEdgeOverlay({
 
   return (
     <div
+      aria-hidden
       className="absolute inset-0 grid pointer-events-none"
       style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
     >
@@ -388,6 +428,7 @@ function BottomEdgeOverlay({
               positionedEvent={positioned}
               hourHeight={hourHeight}
               isSelected
+              isResizing
               overrideStart={overrideStart}
               overrideEnd={overrideEnd}
             />
@@ -415,6 +456,7 @@ function TopEdgeOverlay({
 
   return (
     <div
+      aria-hidden
       className="absolute inset-0 grid pointer-events-none"
       style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
     >
@@ -452,6 +494,7 @@ function TopEdgeOverlay({
               positionedEvent={positioned}
               hourHeight={hourHeight}
               isSelected
+              isResizing
               overrideStart={overrideStart}
               overrideEnd={overrideEnd}
             />
@@ -493,6 +536,7 @@ function FloatingDragCopy({
 
   return createPortal(
     <div
+      aria-hidden
       className="pointer-events-none"
       style={{
         position: "fixed",
@@ -520,29 +564,30 @@ function FloatingDragCopy({
   );
 }
 
-interface DayEventsColumnProps {
+interface DayEventsColumnProps extends EventItemPopoverProps {
   columnDate: Date;
+  /** Accessible name: the column's full date */
+  label: string;
+  /**
+   * Whether the column is on screen. Off-screen scroll buffer columns are
+   * inert, so their events can't be tabbed to or read out.
+   */
+  isOnScreen: boolean;
   events: ReturnType<typeof calculatePositionedEvents>;
   hourHeight: number;
   onEventClick?: (event: CalendarEvent) => void;
   selectedEventId?: string;
   dragState?: EventDragState;
-  onEventDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  onEventDragPointerDown?: WeekViewGridProps["onEventDragPointerDown"];
   resizeState?: EventResizeState;
-  onEventResizeMouseDown?: (
-    e: React.MouseEvent,
-    event: CalendarEvent,
-    edge: "top" | "bottom",
-  ) => void;
+  onEventResizePointerDown?: WeekViewGridProps["onEventResizePointerDown"];
   onEventChange?: (event: CalendarEvent) => void;
   onContextMenuOpenChange?: (open: boolean) => void;
-  isSidebarOpen?: boolean;
-  onDockToSidebar?: () => void;
-  onClosePopover?: () => void;
-  onPrevWeek?: () => void;
-  onNextWeek?: () => void;
-  onColumnMouseDownCapture?: () => void;
-  onColumnMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onColumnPointerDownCapture?: () => void;
+  onColumnPointerDown?: (
+    e: React.PointerEvent<HTMLDivElement>,
+    columnDate: Date,
+  ) => void;
   onColumnClick?: (
     e: React.MouseEvent<HTMLDivElement>,
     columnDate: Date,
@@ -565,30 +610,35 @@ function renderColumnGhost(
 
 function DayEventsColumn({
   columnDate,
+  label,
+  isOnScreen,
   events,
   hourHeight,
   onEventClick,
   selectedEventId,
   dragState,
-  onEventDragMouseDown,
+  onEventDragPointerDown,
   resizeState,
-  onEventResizeMouseDown,
+  onEventResizePointerDown,
   onEventChange,
   onContextMenuOpenChange,
-  isSidebarOpen,
-  onDockToSidebar,
-  onClosePopover,
+  showEventPopover,
+  onEventPopoverExpand,
+  onEventPopoverClose,
   onPrevWeek,
   onNextWeek,
-  onColumnMouseDownCapture,
-  onColumnMouseDown,
+  onColumnPointerDownCapture,
+  onColumnPointerDown,
   onColumnClick,
 }: DayEventsColumnProps) {
   return (
     <div
+      role="group"
+      aria-label={label}
+      inert={!isOnScreen}
       className="relative h-full pointer-events-auto"
-      onMouseDownCapture={onColumnMouseDownCapture}
-      onMouseDown={onColumnMouseDown}
+      onPointerDownCapture={onColumnPointerDownCapture}
+      onPointerDown={(e) => onColumnPointerDown?.(e, columnDate)}
       onClick={(e) => onColumnClick?.(e, columnDate)}
     >
       {events.map((positionedEvent) => {
@@ -658,6 +708,7 @@ function DayEventsColumn({
                 positionedEvent={resizePositioned}
                 hourHeight={hourHeight}
                 isSelected={isCrossDay || eventId === selectedEventId}
+                isResizing
                 overrideStart={displayStart}
                 overrideEnd={displayEnd}
                 onEventChange={onEventChange}
@@ -673,13 +724,13 @@ function DayEventsColumn({
             hourHeight={hourHeight}
             isSelected={eventId === selectedEventId}
             onClick={onEventClick}
-            onDragMouseDown={onEventDragMouseDown}
-            onResizeMouseDown={onEventResizeMouseDown}
+            onDragPointerDown={onEventDragPointerDown}
+            onResizePointerDown={onEventResizePointerDown}
             onEventChange={onEventChange}
             onContextMenuOpenChange={onContextMenuOpenChange}
-            isSidebarOpen={isSidebarOpen}
-            onDockToSidebar={onDockToSidebar}
-            onClosePopover={onClosePopover}
+            showEventPopover={showEventPopover}
+            onEventPopoverExpand={onEventPopoverExpand}
+            onEventPopoverClose={onEventPopoverClose}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
           />

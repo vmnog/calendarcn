@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePrefersReducedMotion } from "@/hooks/use-media-query";
 
 interface UseVerticalScrollOptions {
   /** Ref to the scrollable container element */
@@ -42,6 +43,8 @@ export function useVerticalScroll({
   const [slideOffset, setSlideOffset] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  // Snaps and slides jump straight to their end instead of animating
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const scrollEndTimer = useRef<ReturnType<typeof setTimeout>>(null);
   const accumulatedDelta = useRef(0);
@@ -55,6 +58,14 @@ export function useVerticalScroll({
       if (rowHeight <= 0) return;
 
       const rowsDelta = Math.round(offset / rowHeight);
+
+      if (prefersReducedMotion) {
+        if (rowsDelta !== 0) onNavigateRef.current(-rowsDelta);
+        setScrollOffset(0);
+        setIsScrolling(false);
+        accumulatedDelta.current = 0;
+        return;
+      }
 
       // If scroll distance < half a row, snap back
       if (rowsDelta === 0) {
@@ -80,13 +91,14 @@ export function useVerticalScroll({
         accumulatedDelta.current = 0;
       }, SNAP_ANIMATION_MS);
     },
-    [rowHeight],
+    [rowHeight, prefersReducedMotion],
   );
 
   // Programmatic slide animation for button/keyboard navigation
   const triggerSlideAnimation = useCallback(
     (rowsDelta: number) => {
       if (rowHeight <= 0 || isAnimating || isScrolling) return;
+      if (prefersReducedMotion) return;
 
       const startOffset = rowsDelta * rowHeight;
       setSlideOffset(startOffset);
@@ -101,7 +113,7 @@ export function useVerticalScroll({
         });
       });
     },
-    [rowHeight, isAnimating, isScrolling],
+    [rowHeight, isAnimating, isScrolling, prefersReducedMotion],
   );
 
   useEffect(() => {

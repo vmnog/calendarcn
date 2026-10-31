@@ -8,36 +8,29 @@ import {
   PanelRightIcon,
 } from "lucide-react";
 
-import {
-  addDays,
-  addMonths,
-  addWeeks,
-  format,
-  startOfDay,
-  startOfWeek,
-} from "date-fns";
+import { format } from "date-fns";
 import { useTheme } from "next-themes";
+import {
+  isTypingTarget,
+  useCalendarShortcuts,
+} from "@/hooks/use-calendar-shortcuts";
 import { useIsClient } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { generateMockEvents } from "@/lib/mock-events";
-import { pickRandomEventColor } from "@/lib/event-utils";
+import { getPeriodStart, pickRandomEventColor } from "@/lib/event-utils";
+import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { CommandMenu } from "@/components/command-menu";
 import { SidebarLeft } from "@/components/sidebar-left";
 import type {
-  CalendarEvent,
+  CalendarInfo,
+  DetailedCalendarEvent,
   EventColor,
   NewEventRange,
   ViewSettings,
-  ViewType,
 } from "@/components/week-view-types";
-import { EventTitleFocusProvider } from "@/components/event-title-focus-context";
 import { SidebarRight } from "@/components/sidebar-right";
 import { MonthView } from "@/components/month-view";
-import {
-  WeekView,
-  getCalendarHeaderInfo,
-  getVisibleDays,
-} from "@/components/week-view";
+import { WeekView } from "@/components/week-view";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ViewDropdown } from "@/components/view-dropdown";
@@ -61,6 +54,52 @@ const NEW_EVENT_TITLE = "New event";
 const PRIMARY_CALENDAR_ID = "me@vmnog.com";
 
 /**
+ * Calendars of the demo account, offered by the event context menu. Ids are
+ * the names, matching the `calendarId`s of the mock events.
+ */
+const DEMO_CALENDARS: CalendarInfo[] = [
+  {
+    id: PRIMARY_CALENDAR_ID,
+    name: PRIMARY_CALENDAR_ID,
+    color: "red",
+    email: PRIMARY_CALENDAR_ID,
+  },
+  {
+    id: "Personal",
+    name: "Personal",
+    color: "purple",
+    email: PRIMARY_CALENDAR_ID,
+  },
+  { id: "Work", name: "Work", color: "blue", email: PRIMARY_CALENDAR_ID },
+  { id: "Family", name: "Family", color: "orange", email: PRIMARY_CALENDAR_ID },
+  {
+    id: "Side Projects",
+    name: "Side Projects",
+    color: "yellow",
+    email: PRIMARY_CALENDAR_ID,
+  },
+  {
+    id: "Fitness",
+    name: "Fitness",
+    color: "green",
+    email: PRIMARY_CALENDAR_ID,
+  },
+  {
+    id: "Holidays in Brazil",
+    name: "Holidays in Brazil",
+    color: "green",
+    email: PRIMARY_CALENDAR_ID,
+  },
+];
+
+/** Display preferences the demo starts with (week numbers shown) */
+const DEMO_VIEW_SETTINGS: ViewSettings = {
+  showWeekends: true,
+  showDeclinedEvents: true,
+  showWeekNumbers: true,
+};
+
+/**
  * Viewports at least this wide keep both sidebars inline (Tailwind `xl`).
  * Narrower ones show the context panel as an overlay: inline, it would leave
  * the calendar under ~500px at 1024px (240px left + 288px right).
@@ -72,15 +111,159 @@ interface PageContentProps {
   isWideLayout: boolean;
 }
 
+interface CalendarDemoProps {
+  /** Whether the context panel sits inline (true) or opens as an overlay */
+  isWideLayout: boolean;
+}
+
+/** App-level actions behind the demo's own keyboard shortcuts */
+interface AppShortcutActions {
+  toggleCommandMenu: () => void;
+  toggleLeftSidebar: () => void;
+  toggleRightSidebar: () => void;
+  toggleWeekends: () => void;
+  toggleDeclinedEvents: () => void;
+  cycleTheme: () => void;
+}
+
+/**
+ * Handles the demo's app shortcuts (command menu, sidebars, view settings,
+ * theme). A shortcut that fires stops the event, so the calendar shortcuts
+ * listener (added after this one) never also acts on it, e.g. Cmd+K vs K.
+ */
+function handleAppShortcut(e: KeyboardEvent, actions: AppShortcutActions) {
+  const runShortcut = (action: () => void) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    action();
+  };
+
+  // Cmd+K for command menu
+  if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+    runShortcut(actions.toggleCommandMenu);
+    return;
+  }
+  // Command + / for left sidebar
+  if (e.metaKey && e.key === "/") {
+    runShortcut(actions.toggleLeftSidebar);
+    return;
+  }
+  // Shift+Cmd+E for toggle weekends
+  if (e.key === "e" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+    runShortcut(actions.toggleWeekends);
+    return;
+  }
+  // Shift+Cmd+D for toggle declined events
+  if (e.key === "d" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+    runShortcut(actions.toggleDeclinedEvents);
+    return;
+  }
+  // Cmd+, for general settings (placeholder)
+  if (e.key === "," && (e.metaKey || e.ctrlKey)) {
+    runShortcut(() => {});
+    return;
+  }
+
+  // Skip single-key shortcuts when focused on input/textarea
+  if (isTypingTarget(e.target)) return;
+
+  // / for right sidebar
+  if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    runShortcut(actions.toggleRightSidebar);
+    return;
+  }
+  // Shift+M for cycle theme
+  if (e.key === "M" && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+    runShortcut(actions.cycleTheme);
+  }
+}
+
+/**
+ * Demo setup: mock events, the demo's create-event policy, and opening the
+ * phone details sheet on select. Everything below reads the calendar state
+ * from `useCalendar()`.
+ */
 function PageContent({ isWideLayout }: PageContentProps) {
+  const { isMobile, setOpenMobile: setContextPanelOpenMobile } = useSidebar();
+  // Generated once: the provider only reads its initial events
+  const [initialEvents] = React.useState(() => generateMockEvents());
+  /** Color given to the last click-created event, so the next one differs */
+  const lastCreatedColorRef = React.useRef<EventColor | null>(null);
+
+  const createDemoEvent = React.useCallback(
+    (range: NewEventRange): DetailedCalendarEvent => {
+      // Demo choice: a random color per created event makes each click visibly
+      // new. A real app would use the target calendar's color instead.
+      const color = pickRandomEventColor(lastCreatedColorRef.current);
+      lastCreatedColorRef.current = color;
+      return {
+        id: crypto.randomUUID(),
+        title: NEW_EVENT_TITLE,
+        start: range.start,
+        end: range.end,
+        color,
+        calendarId: PRIMARY_CALENDAR_ID,
+        calendarEmail: PRIMARY_CALENDAR_ID,
+      };
+    },
+    [],
+  );
+
+  // Phones show event details in the context panel sheet: the 320px popover
+  // doesn't fit beside an event on a ~390px screen
+  const handleEventSelect = React.useCallback(() => {
+    if (isMobile) setContextPanelOpenMobile(true);
+  }, [isMobile, setContextPanelOpenMobile]);
+
+  return (
+    <CalendarProvider
+      defaultEvents={initialEvents}
+      defaultViewSettings={DEMO_VIEW_SETTINGS}
+      calendars={DEMO_CALENDARS}
+      createEvent={createDemoEvent}
+      onEventSelect={handleEventSelect}
+    >
+      <CalendarDemo isWideLayout={isWideLayout} />
+    </CalendarProvider>
+  );
+}
+
+/**
+ * Demo chrome around the calendar: sidebars, header, command menu, theme
+ * cycling and app shortcuts.
+ */
+function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
   const { theme, setTheme } = useTheme();
   const {
     toggleSidebar,
     open: contextPanelOpen,
     openMobile: contextPanelOpenMobile,
-    setOpenMobile: setContextPanelOpenMobile,
     isMobile,
   } = useSidebar();
+  const {
+    view,
+    currentDate,
+    weekStartsOn,
+    events,
+    numberOfDays,
+    viewSettings,
+    visibleDays,
+    displayMonth,
+    selectedEvent,
+    monthName,
+    year,
+    weekNumber,
+    goToToday,
+    goToPrev,
+    goToNext,
+    goToDate,
+    switchView,
+    setNumberOfDays,
+    updateEvent,
+    toggleWeekends,
+    toggleDeclinedEvents,
+    toggleWeekNumbers,
+  } = useCalendar<DetailedCalendarEvent>();
   // shadcn tracks the panel's phone state separately; read whichever is active
   const rightSidebarOpen = isMobile ? contextPanelOpenMobile : contextPanelOpen;
   /** Inline calendar sidebar state (tablet and desktop) */
@@ -95,117 +278,15 @@ function PageContent({ isWideLayout }: PageContentProps) {
     setLeftOverlayOpen(false);
   }
   const leftSidebarVisible = isMobile ? leftOverlayOpen : leftSidebarOpen;
-  const [view, setView] = React.useState<ViewType>("week");
-  const [currentDate, setCurrentDate] = React.useState(() =>
-    startOfWeek(new Date(), { weekStartsOn: 0 }),
-  );
-  const [events, setEvents] = React.useState(() => generateMockEvents());
-  const [selectedEventId, setSelectedEventId] = React.useState<string | null>(
-    null,
-  );
   const [commandMenuOpen, setCommandMenuOpen] = React.useState(false);
-  const [numberOfDays, setNumberOfDays] = React.useState(7);
-  const [viewSettings, setViewSettings] = React.useState<ViewSettings>({
-    showWeekends: true,
-    showDeclinedEvents: true,
-    showWeekNumbers: true,
-  });
-  const [highlightedDate, setHighlightedDate] = React.useState<Date | null>(
-    null,
-  );
-  const [monthViewDisplayMonth, setMonthViewDisplayMonth] =
-    React.useState<Date | null>(null);
-  const selectedEvent = React.useMemo(
-    () => events.find((e) => e.id === selectedEventId) ?? null,
-    [events, selectedEventId],
-  );
 
   // Phones show event details in the context panel sheet: the 320px popover
   // doesn't fit beside an event on a ~390px screen
   const showDetailsInPanel = isMobile || rightSidebarOpen;
 
-  const selectEvent = React.useCallback(
-    (eventId: string) => {
-      setSelectedEventId(eventId);
-      if (isMobile) setContextPanelOpenMobile(true);
-    },
-    [isMobile, setContextPanelOpenMobile],
-  );
-
-  const handleEventChange = React.useCallback((updatedEvent: CalendarEvent) => {
-    setEvents((prev) =>
-      prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)),
-    );
+  const toggleCommandMenu = React.useCallback(() => {
+    setCommandMenuOpen((prev) => !prev);
   }, []);
-
-  /** ID of a just-created event whose title input should be focused once */
-  const [titleFocusEventId, setTitleFocusEventId] = React.useState<
-    string | null
-  >(null);
-  // Only honor the focus request while that event is still the selected one
-  const pendingTitleFocusId =
-    titleFocusEventId === selectedEventId ? titleFocusEventId : null;
-
-  const clearTitleFocus = React.useCallback(() => {
-    setTitleFocusEventId(null);
-  }, []);
-
-  /** Color given to the last click-created event, so the next one differs */
-  const lastCreatedColorRef = React.useRef<EventColor | null>(null);
-
-  const handleEventCreate = React.useCallback(
-    (range: NewEventRange) => {
-      // Demo choice: a random color per created event makes each click visibly
-      // new. A real app would use the target calendar's color instead.
-      const color = pickRandomEventColor(lastCreatedColorRef.current);
-      lastCreatedColorRef.current = color;
-      const newEvent: CalendarEvent = {
-        id: crypto.randomUUID(),
-        title: NEW_EVENT_TITLE,
-        start: range.start,
-        end: range.end,
-        color,
-        calendarId: PRIMARY_CALENDAR_ID,
-        calendarEmail: PRIMARY_CALENDAR_ID,
-      };
-      setEvents((prev) => [...prev, newEvent]);
-      selectEvent(newEvent.id);
-      setTitleFocusEventId(newEvent.id);
-    },
-    [selectEvent],
-  );
-
-  const goToToday = React.useCallback(() => {
-    if (view === "day") {
-      setCurrentDate(startOfDay(new Date()));
-    } else if (view === "month") {
-      setCurrentDate(startOfWeek(new Date(), { weekStartsOn: 0 }));
-    } else {
-      setCurrentDate(startOfWeek(new Date(), { weekStartsOn: 0 }));
-    }
-  }, [view]);
-
-  const goToPrev = React.useCallback(() => {
-    if (view === "day") {
-      setCurrentDate((prev) => addDays(prev, -1));
-    } else if (view === "month") {
-      setCurrentDate((prev) => addMonths(prev, -1));
-    } else {
-      setCurrentDate((prev) => addWeeks(prev, -1));
-    }
-  }, [view]);
-
-  const goToNext = React.useCallback(() => {
-    if (view === "day") {
-      setCurrentDate((prev) => addDays(prev, 1));
-    } else if (view === "month") {
-      setCurrentDate((prev) => addMonths(prev, 1));
-    } else {
-      setCurrentDate((prev) => addWeeks(prev, 1));
-    }
-  }, [view]);
-
-  const goToDate = React.useCallback((date: Date) => setCurrentDate(date), []);
 
   const toggleLeftSidebar = React.useCallback(() => {
     if (isMobile) {
@@ -215,72 +296,19 @@ function PageContent({ isWideLayout }: PageContentProps) {
     setLeftSidebarOpen((prev) => !prev);
   }, [isMobile]);
 
-  const goToDateWeek = React.useCallback(
-    (date: Date) => {
-      if (view === "day") {
-        setCurrentDate(startOfDay(date));
-      } else {
-        setCurrentDate(startOfWeek(date, { weekStartsOn: 0 }));
-      }
-    },
-    [view],
-  );
-
-  /** Mini calendar day pick: navigate, and get the overlay out of the way on phones */
+  /** Mini calendar day pick: go to its period, and get the overlay out of the way on phones */
   const handleCalendarDateSelect = React.useCallback(
     (date: Date) => {
-      goToDateWeek(date);
+      goToDate(getPeriodStart(date, view, weekStartsOn, numberOfDays));
       setLeftOverlayOpen(false);
     },
-    [goToDateWeek],
+    [goToDate, view, weekStartsOn, numberOfDays],
   );
 
-  const switchView = React.useCallback(
-    (newView: ViewType) => {
-      if (newView === view) return;
-      setView(newView);
-      if (newView === "day") {
-        setCurrentDate(startOfDay(new Date()));
-        return;
-      }
-      if (newView === "month") {
-        setCurrentDate((prev) => startOfWeek(prev, { weekStartsOn: 0 }));
-        return;
-      }
-      setCurrentDate((prev) => startOfWeek(prev, { weekStartsOn: 0 }));
-    },
-    [view],
-  );
-
-  const handleMoreClick = React.useCallback((date: Date) => {
-    setView("week");
-    setCurrentDate(startOfWeek(date, { weekStartsOn: 0 }));
-    setHighlightedDate(date);
-  }, []);
-
-  React.useEffect(() => {
-    if (!highlightedDate) return;
-    const timer = setTimeout(() => setHighlightedDate(null), 2000);
-    return () => clearTimeout(timer);
-  }, [highlightedDate]);
-
-  const toggleWeekends = React.useCallback(() => {
-    setViewSettings((prev) => ({ ...prev, showWeekends: !prev.showWeekends }));
-  }, []);
-
-  const toggleDeclinedEvents = React.useCallback(() => {
-    setViewSettings((prev) => ({
-      ...prev,
-      showDeclinedEvents: !prev.showDeclinedEvents,
-    }));
-  }, []);
-
-  const toggleWeekNumbers = React.useCallback(() => {
-    setViewSettings((prev) => ({
-      ...prev,
-      showWeekNumbers: !prev.showWeekNumbers,
-    }));
-  }, []);
+  /** Popover expand button: move the details into the context panel */
+  const expandEventPopover = React.useCallback(() => {
+    if (!rightSidebarOpen) toggleSidebar();
+  }, [rightSidebarOpen, toggleSidebar]);
 
   const cycleTheme = React.useCallback(() => {
     if (theme === "system") {
@@ -294,173 +322,49 @@ function PageContent({ isWideLayout }: PageContentProps) {
     setTheme("system");
   }, [theme, setTheme]);
 
-  const [visibleDays, setVisibleDays] = React.useState<Date[]>(() =>
-    getVisibleDays(currentDate, view),
-  );
-
-  // Sync sidebar mini-calendar when in month view
-  React.useEffect(() => {
-    if (view !== "month") return;
-    // Pass empty array — sidebar mini-calendar syncs via monthViewDisplayMonth
-    setVisibleDays([]);
-  }, [view]);
-
-  const headerDate =
-    view === "month"
-      ? (monthViewDisplayMonth ?? currentDate)
-      : (visibleDays[0] ?? currentDate);
-  // Week/day views name the month after the LAST visible day, so a week
-  // crossing into the next month is labeled with the later month (Notion
-  // Calendar's behavior). Month view labels its own month instead.
-  const headerRangeEnd =
-    view === "month" ? undefined : visibleDays[visibleDays.length - 1];
-  const { monthName, year, weekNumber } = getCalendarHeaderInfo(
-    headerDate,
-    0,
-    headerRangeEnd,
-  );
-
-  // Keyboard shortcuts
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+K for command menu
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setCommandMenuOpen((prev) => !prev);
-        return;
-      }
-      // Command + / for left sidebar
-      if (e.metaKey && e.key === "/") {
-        e.preventDefault();
-        toggleLeftSidebar();
-        return;
-      }
-      // Shift+Cmd+E for toggle weekends
-      if (e.key === "e" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggleWeekends();
-        return;
-      }
-      // Shift+Cmd+D for toggle declined events
-      if (e.key === "d" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        toggleDeclinedEvents();
-        return;
-      }
-      // Cmd+, for general settings (placeholder)
-      if (e.key === "," && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        return;
-      }
-      // Escape to deselect event
-      if (e.key === "Escape") {
-        setSelectedEventId(null);
-        return;
-      }
-
-      // Skip single-key shortcuts when focused on input/textarea
-      const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
-        return;
-      }
-
-      // / for right sidebar
-      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        toggleSidebar();
-        return;
-      }
-
-      // T for today
-      if (e.key === "t" || e.key === "T") {
-        e.preventDefault();
-        goToToday();
-        return;
-      }
-
-      // 1 for day view
-      if (e.key === "1") {
-        e.preventDefault();
-        switchView("day");
-        return;
-      }
-
-      // D for day view
-      if (e.key === "d" || e.key === "D") {
-        e.preventDefault();
-        switchView("day");
-        return;
-      }
-
-      // 0 for week view
-      if (e.key === "0") {
-        e.preventDefault();
-        switchView("week");
-        return;
-      }
-
-      // W for week view
-      if (e.key === "w" || e.key === "W") {
-        e.preventDefault();
-        switchView("week");
-        return;
-      }
-
-      // 2-9 for number of days
-      if (/^[2-9]$/.test(e.key)) {
-        e.preventDefault();
-        setNumberOfDays(Number(e.key));
-        return;
-      }
-
-      // J or ArrowLeft for previous period
-      if (e.key === "j" || e.key === "J" || e.key === "ArrowLeft") {
-        e.preventDefault();
-        goToPrev();
-        return;
-      }
-
-      // K or ArrowRight for next period
-      if (e.key === "k" || e.key === "K" || e.key === "ArrowRight") {
-        e.preventDefault();
-        goToNext();
-        return;
-      }
-
-      // Shift+M for cycle theme
-      if (e.key === "M" && e.shiftKey && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        cycleTheme();
-        return;
-      }
-
-      // m for month view (lowercase only, no shift)
-      if (e.key === "m") {
-        e.preventDefault();
-        switchView("month");
-        return;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    toggleSidebar,
+  /** Latest app shortcut actions, read by the window listener */
+  const appShortcutsRef = React.useRef<AppShortcutActions>({
+    toggleCommandMenu,
     toggleLeftSidebar,
-    goToToday,
-    goToPrev,
-    goToNext,
-    switchView,
+    toggleRightSidebar: toggleSidebar,
+    toggleWeekends,
+    toggleDeclinedEvents,
+    cycleTheme,
+  });
+
+  React.useEffect(() => {
+    appShortcutsRef.current = {
+      toggleCommandMenu,
+      toggleLeftSidebar,
+      toggleRightSidebar: toggleSidebar,
+      toggleWeekends,
+      toggleDeclinedEvents,
+      cycleTheme,
+    };
+  }, [
+    toggleCommandMenu,
+    toggleLeftSidebar,
+    toggleSidebar,
     toggleWeekends,
     toggleDeclinedEvents,
     cycleTheme,
   ]);
 
+  // App shortcuts. Added once, before useCalendarShortcuts below, so this
+  // listener always runs first and can claim keys the calendar also uses
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      handleAppShortcut(e, appShortcutsRef.current);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, Escape
+  useCalendarShortcuts();
+
   return (
-    <EventTitleFocusProvider
-      pendingEventId={pendingTitleFocusId}
-      clearPending={clearTitleFocus}
-    >
+    <>
       <CommandMenu
         open={commandMenuOpen}
         onOpenChange={setCommandMenuOpen}
@@ -478,9 +382,7 @@ function PageContent({ isWideLayout }: PageContentProps) {
         overlay={isMobile}
         onDateSelect={handleCalendarDateSelect}
         currentDate={
-          view === "month" && monthViewDisplayMonth
-            ? monthViewDisplayMonth
-            : currentDate
+          view === "month" && displayMonth ? displayMonth : currentDate
         }
         visibleDays={view === "month" ? [] : visibleDays}
       />
@@ -607,43 +509,13 @@ function PageContent({ isWideLayout }: PageContentProps) {
         <div className="flex flex-1 flex-col overflow-hidden">
           {view === "month" ? (
             <MonthView
-              currentDate={currentDate}
-              events={events}
-              viewSettings={viewSettings}
-              onEventClick={(e) => selectEvent(e.id)}
-              selectedEventId={selectedEvent?.id}
-              onBackgroundClick={() => setSelectedEventId(null)}
-              onEventChange={handleEventChange}
-              onDateChange={goToDate}
-              onDisplayMonthChange={setMonthViewDisplayMonth}
-              onMoreClick={handleMoreClick}
-              onDayNumberClick={handleMoreClick}
-              isSidebarOpen={showDetailsInPanel}
-              onDockToSidebar={() => {
-                if (!rightSidebarOpen) toggleSidebar();
-              }}
-              onClosePopover={() => setSelectedEventId(null)}
+              showEventPopover={!showDetailsInPanel}
+              onEventPopoverExpand={expandEventPopover}
             />
           ) : (
             <WeekView
-              view={view}
-              currentDate={currentDate}
-              events={events}
-              onEventClick={(e) => selectEvent(e.id)}
-              selectedEventId={selectedEvent?.id}
-              onBackgroundClick={() => setSelectedEventId(null)}
-              onEventCreate={handleEventCreate}
-              onDateChange={goToDate}
-              onVisibleDaysChange={setVisibleDays}
-              onEventChange={handleEventChange}
-              isSidebarOpen={showDetailsInPanel}
-              onDockToSidebar={() => {
-                if (!rightSidebarOpen) toggleSidebar();
-              }}
-              onClosePopover={() => setSelectedEventId(null)}
-              onPrevWeek={goToPrev}
-              onNextWeek={goToNext}
-              highlightedDate={highlightedDate}
+              showEventPopover={!showDetailsInPanel}
+              onEventPopoverExpand={expandEventPopover}
             />
           )}
         </div>
@@ -652,11 +524,11 @@ function PageContent({ isWideLayout }: PageContentProps) {
         overlay={!isWideLayout}
         events={events}
         selectedEvent={selectedEvent}
-        onEventChange={handleEventChange}
+        onEventChange={updateEvent}
         onPrevWeek={goToPrev}
         onNextWeek={goToNext}
       />
-    </EventTitleFocusProvider>
+    </>
   );
 }
 

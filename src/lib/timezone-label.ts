@@ -17,3 +17,26 @@ export function getTimeZoneLabel(date: Date, timeZone?: string): string {
 
   return parts.find((part) => part.type === "timeZoneName")?.value ?? "";
 }
+
+/**
+ * Returns the city of an IANA timezone, e.g. "Sao Paulo" for
+ * "America/Sao_Paulo". Zones without one ("UTC", "Etc/GMT+3") return an
+ * empty string.
+ */
+export function getTimeZoneCity(timeZone: string): string {
+  if (!timeZone.includes("/") || timeZone.startsWith("Etc/")) return "";
+  return timeZone.slice(timeZone.lastIndexOf("/") + 1).replace(/_/g, " ");
+}
+
+/**
+ * Returns the short timezone label followed by the zone's city, e.g.
+ * "GMT-3 Sao Paulo" or "EDT New York", for `timeZone` (the runtime's zone
+ * when omitted). Zones without a city return the label alone.
+ */
+export function getTimeZoneDisplayName(date: Date, timeZone?: string): string {
+  const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const label = getTimeZoneLabel(date, zone);
+  const city = getTimeZoneCity(zone);
+  if (!city) return label;
+  return `${label} ${city}`;
+}

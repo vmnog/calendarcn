@@ -9,6 +9,7 @@ import {
   format,
   parse,
 } from "date-fns";
+import type { Locale } from "date-fns";
 import {
   Bell,
   Check,
@@ -31,6 +32,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useTimeZoneDisplayName } from "@/hooks/use-timezone-label";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -41,11 +43,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
-import type { CalendarEvent, EventColor } from "./week-view-types";
+import { useCalendarConfig } from "./calendar-provider";
+import { formatTime } from "@/lib/event-utils";
+import type { DetailedCalendarEvent, EventColor } from "./week-view-types";
 
-interface EventDetailPanelProps {
-  event: CalendarEvent;
-  onEventChange?: (event: CalendarEvent) => void;
+/**
+ * Props for EventDetailPanel. `TEvent` is the app's event type; detail fields
+ * it doesn't set show placeholders, and edits keep its other fields.
+ */
+interface EventDetailPanelProps<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> {
+  event: TEvent;
+  onEventChange?: (event: TEvent) => void;
   onPrevWeek?: () => void;
   onNextWeek?: () => void;
   /** Extra action buttons rendered in the header row (after the "..." menu). */
@@ -81,14 +91,6 @@ function formatDuration(start: Date, end: Date): string {
   }
 
   return `${hours}h ${minutes}min`;
-}
-
-function formatTimeDisplay(date: Date): string {
-  const minutes = date.getMinutes();
-  if (minutes === 0) {
-    return format(date, "h a");
-  }
-  return format(date, "h:mm a");
 }
 
 interface ParsedTime {
@@ -169,28 +171,30 @@ function applyTimeToDate(base: Date, hours: number, minutes: number): Date {
   return result;
 }
 
-function formatDateDisplay(date: Date): string {
-  return format(date, "EEE MMM d");
+function formatDateDisplay(date: Date, locale: Locale): string {
+  return format(date, "EEE MMM d", { locale });
 }
 
 /**
  * Parses a user-typed date string into a Date.
- * Strips any leading weekday name and parses "MMM d" (e.g., "Mar 11").
- * Uses the reference date's year. Returns null if unparseable.
+ * Strips any leading weekday name and parses "MMM d" (e.g., "Mar 11") in
+ * the calendar's locale. Uses the reference date's year. Returns null if
+ * unparseable.
  */
-function parseDateInput(input: string, referenceDate: Date): Date | null {
+function parseDateInput(
+  input: string,
+  referenceDate: Date,
+  locale: Locale,
+): Date | null {
   const trimmed = input.trim();
   if (trimmed.length === 0) {
     return null;
   }
 
-  // Strip optional leading weekday (e.g., "Tue ", "Wed ")
-  const withoutWeekday = trimmed.replace(/^[a-z]{3}\s+/i, "");
-  if (withoutWeekday.length === 0) {
-    return null;
-  }
+  // Strip an optional leading weekday ("Tue ", "sáb ") when a month name follows
+  const withoutWeekday = trimmed.replace(/^[^\s\d]+\s+(?=[^\s\d])/, "");
 
-  const parsed = parse(withoutWeekday, "MMM d", referenceDate);
+  const parsed = parse(withoutWeekday, "MMM d", referenceDate, { locale });
   if (Number.isNaN(parsed.getTime())) {
     return null;
   }
@@ -331,7 +335,9 @@ function EventTypeHelpIcon({ tooltip }: { tooltip?: string }) {
   );
 }
 
-export function EventDetailPanel({
+export function EventDetailPanel<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+>({
   event,
   onEventChange,
   onPrevWeek,
@@ -339,7 +345,7 @@ export function EventDetailPanel({
   headerActions,
   autoFocusTitle,
   onTitleAutoFocused,
-}: EventDetailPanelProps) {
+}: EventDetailPanelProps<TEvent>) {
   const color = event.color ?? "blue";
   const [eventType, setEventType] = React.useState<EventType>("Event");
   const [eventDropdownOpen, setEventDropdownOpen] = React.useState(false);
@@ -351,6 +357,21 @@ export function EventDetailPanel({
   const escapePressedRef = React.useRef(false);
   /** Stores the title when the input gains focus, used to restore on Escape. */
   const titleOnFocusRef = React.useRef(event.title);
+  const { hourCycle, locale } = useCalendarConfig();
+  // Empty on the server and during hydration, the viewer's zone afterwards
+  const timeZoneDisplayName = useTimeZoneDisplayName();
+
+  /** "3 PM" / "3:30 PM", or "15:00" / "15:30" on a 24-hour clock */
+  const formatTimeValue = React.useCallback(
+    (date: Date) => formatTime(date, hourCycle, locale),
+    [hourCycle, locale],
+  );
+
+  /** "Tue Mar 11" in the calendar's locale */
+  const formatDateValue = React.useCallback(
+    (date: Date) => formatDateDisplay(date, locale),
+    [locale],
+  );
 
   React.useEffect(() => {
     setTitleValue(event.title);
@@ -420,15 +441,15 @@ export function EventDetailPanel({
 
   // --- Start time input state & handlers ---
   const [startTimeValue, setStartTimeValue] = React.useState(() =>
-    formatTimeDisplay(event.start),
+    formatTimeValue(event.start),
   );
   const startTimeRef = React.useRef<HTMLInputElement>(null);
   const startTimeEscapePressedRef = React.useRef(false);
-  const startTimeOnFocusRef = React.useRef(formatTimeDisplay(event.start));
+  const startTimeOnFocusRef = React.useRef(formatTimeValue(event.start));
 
   React.useEffect(() => {
-    setStartTimeValue(formatTimeDisplay(event.start));
-  }, [event.start]);
+    setStartTimeValue(formatTimeValue(event.start));
+  }, [event.start, formatTimeValue]);
 
   const handleStartTimeChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -438,11 +459,11 @@ export function EventDetailPanel({
   );
 
   const handleStartTimeFocus = React.useCallback(() => {
-    startTimeOnFocusRef.current = formatTimeDisplay(event.start);
+    startTimeOnFocusRef.current = formatTimeValue(event.start);
     requestAnimationFrame(() => {
       startTimeRef.current?.select();
     });
-  }, [event.start]);
+  }, [event.start, formatTimeValue]);
 
   const commitStartTime = React.useCallback(() => {
     if (startTimeEscapePressedRef.current) {
@@ -459,9 +480,9 @@ export function EventDetailPanel({
       setStartTimeValue(startTimeOnFocusRef.current);
       return;
     }
-    setStartTimeValue(formatTimeDisplay(newStart));
+    setStartTimeValue(formatTimeValue(newStart));
     onEventChange?.({ ...event, start: newStart });
-  }, [startTimeValue, event, onEventChange]);
+  }, [startTimeValue, event, onEventChange, formatTimeValue]);
 
   const handleStartTimeKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -483,15 +504,15 @@ export function EventDetailPanel({
 
   // --- End time input state & handlers ---
   const [endTimeValue, setEndTimeValue] = React.useState(() =>
-    formatTimeDisplay(event.end),
+    formatTimeValue(event.end),
   );
   const endTimeRef = React.useRef<HTMLInputElement>(null);
   const endTimeEscapePressedRef = React.useRef(false);
-  const endTimeOnFocusRef = React.useRef(formatTimeDisplay(event.end));
+  const endTimeOnFocusRef = React.useRef(formatTimeValue(event.end));
 
   React.useEffect(() => {
-    setEndTimeValue(formatTimeDisplay(event.end));
-  }, [event.end]);
+    setEndTimeValue(formatTimeValue(event.end));
+  }, [event.end, formatTimeValue]);
 
   const handleEndTimeChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -501,11 +522,11 @@ export function EventDetailPanel({
   );
 
   const handleEndTimeFocus = React.useCallback(() => {
-    endTimeOnFocusRef.current = formatTimeDisplay(event.end);
+    endTimeOnFocusRef.current = formatTimeValue(event.end);
     requestAnimationFrame(() => {
       endTimeRef.current?.select();
     });
-  }, [event.end]);
+  }, [event.end, formatTimeValue]);
 
   const commitEndTime = React.useCallback(() => {
     if (endTimeEscapePressedRef.current) {
@@ -522,9 +543,9 @@ export function EventDetailPanel({
       setEndTimeValue(endTimeOnFocusRef.current);
       return;
     }
-    setEndTimeValue(formatTimeDisplay(newEnd));
+    setEndTimeValue(formatTimeValue(newEnd));
     onEventChange?.({ ...event, end: newEnd });
-  }, [endTimeValue, event, onEventChange]);
+  }, [endTimeValue, event, onEventChange, formatTimeValue]);
 
   const handleEndTimeKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -546,15 +567,15 @@ export function EventDetailPanel({
 
   // --- Date input state & handlers ---
   const [dateValue, setDateValue] = React.useState(() =>
-    formatDateDisplay(event.start),
+    formatDateValue(event.start),
   );
   const dateRef = React.useRef<HTMLInputElement>(null);
   const dateEscapePressedRef = React.useRef(false);
-  const dateOnFocusRef = React.useRef(formatDateDisplay(event.start));
+  const dateOnFocusRef = React.useRef(formatDateValue(event.start));
 
   React.useEffect(() => {
-    setDateValue(formatDateDisplay(event.start));
-  }, [event.start]);
+    setDateValue(formatDateValue(event.start));
+  }, [event.start, formatDateValue]);
 
   const handleDateChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -564,32 +585,32 @@ export function EventDetailPanel({
   );
 
   const handleDateFocus = React.useCallback(() => {
-    dateOnFocusRef.current = formatDateDisplay(event.start);
+    dateOnFocusRef.current = formatDateValue(event.start);
     requestAnimationFrame(() => {
       dateRef.current?.select();
     });
-  }, [event.start]);
+  }, [event.start, formatDateValue]);
 
   const commitDate = React.useCallback(() => {
     if (dateEscapePressedRef.current) {
       dateEscapePressedRef.current = false;
       return;
     }
-    const parsed = parseDateInput(dateValue, event.start);
+    const parsed = parseDateInput(dateValue, event.start, locale);
     if (!parsed) {
       setDateValue(dateOnFocusRef.current);
       return;
     }
     const dayDiff = differenceInCalendarDays(parsed, event.start);
     if (dayDiff === 0) {
-      setDateValue(formatDateDisplay(event.start));
+      setDateValue(formatDateValue(event.start));
       return;
     }
     const newStart = addDays(event.start, dayDiff);
     const newEnd = addDays(event.end, dayDiff);
-    setDateValue(formatDateDisplay(newStart));
+    setDateValue(formatDateValue(newStart));
     onEventChange?.({ ...event, start: newStart, end: newEnd });
-  }, [dateValue, event, onEventChange]);
+  }, [dateValue, event, onEventChange, formatDateValue, locale]);
 
   const handleDateKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -611,15 +632,15 @@ export function EventDetailPanel({
 
   // --- End date input state & handlers (shown only for all-day events) ---
   const [endDateValue, setEndDateValue] = React.useState(() =>
-    formatDateDisplay(event.end),
+    formatDateValue(event.end),
   );
   const endDateRef = React.useRef<HTMLInputElement>(null);
   const endDateEscapePressedRef = React.useRef(false);
-  const endDateOnFocusRef = React.useRef(formatDateDisplay(event.end));
+  const endDateOnFocusRef = React.useRef(formatDateValue(event.end));
 
   React.useEffect(() => {
-    setEndDateValue(formatDateDisplay(event.end));
-  }, [event.end]);
+    setEndDateValue(formatDateValue(event.end));
+  }, [event.end, formatDateValue]);
 
   const handleEndDateChange = React.useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -629,25 +650,25 @@ export function EventDetailPanel({
   );
 
   const handleEndDateFocus = React.useCallback(() => {
-    endDateOnFocusRef.current = formatDateDisplay(event.end);
+    endDateOnFocusRef.current = formatDateValue(event.end);
     requestAnimationFrame(() => {
       endDateRef.current?.select();
     });
-  }, [event.end]);
+  }, [event.end, formatDateValue]);
 
   const commitEndDate = React.useCallback(() => {
     if (endDateEscapePressedRef.current) {
       endDateEscapePressedRef.current = false;
       return;
     }
-    const parsed = parseDateInput(endDateValue, event.end);
+    const parsed = parseDateInput(endDateValue, event.end, locale);
     if (!parsed) {
       setEndDateValue(endDateOnFocusRef.current);
       return;
     }
     const dayDiff = differenceInCalendarDays(parsed, event.end);
     if (dayDiff === 0) {
-      setEndDateValue(formatDateDisplay(event.end));
+      setEndDateValue(formatDateValue(event.end));
       return;
     }
     const newEnd = addDays(event.end, dayDiff);
@@ -655,9 +676,9 @@ export function EventDetailPanel({
       setEndDateValue(endDateOnFocusRef.current);
       return;
     }
-    setEndDateValue(formatDateDisplay(newEnd));
+    setEndDateValue(formatDateValue(newEnd));
     onEventChange?.({ ...event, end: newEnd });
-  }, [endDateValue, event, onEventChange]);
+  }, [endDateValue, event, onEventChange, formatDateValue, locale]);
 
   const handleEndDateKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -1011,7 +1032,9 @@ export function EventDetailPanel({
           {!event.isAllDay && (
             <div className="flex items-center gap-3 px-4">
               <Globe className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-              <TimezoneDisplay timezone={event.timezone ?? "GMT-3 Sao Paulo"} />
+              <TimezoneDisplay
+                timezone={event.timezone ?? timeZoneDisplayName}
+              />
             </div>
           )}
 
