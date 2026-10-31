@@ -86,7 +86,7 @@ test("'+N more' in month view opens that week and highlights the day", async ({
   await expectHeader(page, "March 2026");
 
   await monthCell(page, "2026-03-23")
-    .getByRole("button", { name: /^\d+ more$/ })
+    .getByRole("button", { name: /^Show \d+ more events? on / })
     .click();
 
   await expectHeader(page, "March 2026 Week 13");

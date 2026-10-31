@@ -26,7 +26,9 @@ test("clicking an empty slot creates, selects and names a new event", async ({
   );
 
   const created = calendarEvent(page, "New event");
-  await expect(created).toHaveAccessibleName("New event 2–3 PM");
+  await expect(created).toHaveAccessibleName(
+    "New event, 2:00 PM to 3:00 PM, Friday, June 5",
+  );
 
   // Selected: the detail panel shows it, with the title focused and selected
   const title = detailTitle(page);
@@ -42,7 +44,7 @@ test("clicking an empty slot creates, selects and names a new event", async ({
   await expect(title).toHaveValue("Quarterly review");
   await expect(title).toBeFocused();
   await expect(calendarEvent(page, "Quarterly review")).toHaveAccessibleName(
-    "Quarterly review 2–3 PM",
+    "Quarterly review, 2:00 PM to 3:00 PM, Friday, June 5",
   );
   await expect(calendarEvent(page, "New event")).toHaveCount(0);
 });

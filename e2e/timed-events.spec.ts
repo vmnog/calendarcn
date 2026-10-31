@@ -18,7 +18,9 @@ test.beforeEach(async ({ page }) => {
 test("dragging an event moves it to another day and time", async ({ page }) => {
   // Sprint Planning: Monday Jun 1, 10 AM - 12 PM
   const event = calendarEvent(page, "Sprint Planning");
-  await expect(event).toHaveAccessibleName("Sprint Planning 10 AM–12 PM");
+  await expect(event).toHaveAccessibleName(
+    "Sprint Planning, 10:00 AM to 12:00 PM, Monday, June 1",
+  );
 
   // Two columns right (Wednesday Jun 3) and one hour down
   await dragBy(page, event, {
@@ -27,7 +29,9 @@ test("dragging an event moves it to another day and time", async ({ page }) => {
     offsetY: 20,
   });
 
-  await expect(event).toHaveAccessibleName("Sprint Planning 11 AM–1 PM");
+  await expect(event).toHaveAccessibleName(
+    "Sprint Planning, 11:00 AM to 1:00 PM, Wednesday, June 3",
+  );
   const fields = detailFields(page);
   await expect(detailTitle(page)).toHaveValue("Sprint Planning");
   await expect(fields.startTime).toHaveValue("11 AM");
@@ -54,7 +58,9 @@ test("dragging the bottom edge resizes an event", async ({ page }) => {
     offsetY: box.height - 2,
   });
 
-  await expect(event).toHaveAccessibleName("Sprint Planning 10 AM–1 PM");
+  await expect(event).toHaveAccessibleName(
+    "Sprint Planning, 10:00 AM to 1:00 PM, Monday, June 1",
+  );
   const fields = detailFields(page);
   await expect(detailTitle(page)).toHaveValue("Sprint Planning");
   await expect(fields.startTime).toHaveValue("10 AM");
