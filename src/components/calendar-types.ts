@@ -7,6 +7,12 @@ import type { Locale } from "date-fns";
 export type ViewType = "day" | "week" | "month";
 
 /**
+ * Views drawn by the hourly time grid: "day" (one column) and "week"
+ * (`numberOfDays` columns)
+ */
+export type TimeGridView = Extract<ViewType, "day" | "week">;
+
+/**
  * Day a week starts on, using the date-fns convention (0 = Sunday ... 6 = Saturday)
  */
 export type WeekStartsOn = 0 | 1 | 2 | 3 | 4 | 5 | 6;

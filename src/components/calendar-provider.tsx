@@ -27,6 +27,7 @@ import type {
   NewEventRange,
   ViewSettings,
   ViewType,
+  WeekStartsOn,
 } from "./calendar-types";
 
 /** Title of a click-created event when no `createEvent` factory is given */
@@ -73,11 +74,53 @@ const DEFAULT_VIEW_SETTINGS: ViewSettings = {
 /** Initial events when uncontrolled without `defaultEvents` (stable identity) */
 const NO_EVENTS: CalendarEvent[] = [];
 
+/** What a mounted view draws, as reported through `reportView` */
+interface ReportedView {
+  /** The view's type */
+  view: ViewType;
+  /**
+   * Day columns the view is fixed to, or `undefined` when it follows the
+   * provider's `numberOfDays`
+   */
+  numberOfDays?: number;
+}
+
+/**
+ * Provider state just before a view switch, restored when the mounted view
+ * keeps its own type instead of following the switch
+ */
+interface ViewSwitchSnapshot {
+  view: ViewType;
+  numberOfDays: number;
+  date: Date;
+}
+
+/** Inputs of `getAdoptedViewDate` */
+interface AdoptedViewDateOptions {
+  /** Date the provider shows now */
+  currentDate: Date;
+  /** View type being adopted */
+  view: ViewType;
+  /** Day count being adopted */
+  numberOfDays: number;
+  weekStartsOn: WeekStartsOn;
+  /** State before the latest switch, if one is waiting for the view's report */
+  pendingSwitch: ViewSwitchSnapshot | null;
+  /** Whether the provider still shows its untouched starting date (today's period) */
+  isOnStartingToday: boolean;
+}
+
 /**
  * Setters the views use to report what they currently show. Kept out of
  * `useCalendar()` because only the views write these values.
  */
 interface CalendarViewSyncValue {
+  /**
+   * Any view: which view is mounted. Reported after every commit that
+   * changes the view's props or the provider's state, so the provider can
+   * adopt it (see CalendarProvider).
+   */
+  reportView: (reported: ReportedView) => void;
   /** Day/week view: the days on screen, updated live while scrolling */
   reportVisibleDays: (days: Date[]) => void;
   /** Month view: the month on screen, updated while scrolling */
@@ -155,6 +198,35 @@ function shiftPeriod(
 }
 
 /**
+ * Date the provider moves to when it adopts a mounted view's type or day
+ * count
+ */
+function getAdoptedViewDate({
+  currentDate,
+  view,
+  numberOfDays,
+  weekStartsOn,
+  pendingSwitch,
+  isOnStartingToday,
+}: AdoptedViewDateOptions): Date {
+  // The mounted view didn't follow the latest switch: undo it, date included
+  if (
+    pendingSwitch?.view === view &&
+    pendingSwitch.numberOfDays === numberOfDays
+  ) {
+    return pendingSwitch.date;
+  }
+  // Still on the starting date picked before any view mounted: today's
+  // period of the mounted view instead (today for a day view)
+  if (isOnStartingToday) {
+    return getPeriodStart(new Date(), view, weekStartsOn, numberOfDays);
+  }
+  // The app swapped in a view of another type: land like switchView
+  if (view === "day") return startOfDay(new Date());
+  return getPeriodStart(currentDate, view, weekStartsOn, numberOfDays);
+}
+
+/**
  * Keeps the visible hours a valid range of whole hours: the start within
  * 0-23, the end after it and at most 24
  */
@@ -178,6 +250,27 @@ function resolveDayHours(
  *
  * `TEvent` is the app's event type. It is usually inferred from `events` or
  * `defaultEvents`; read it back with `useCalendar<TEvent>()`.
+ *
+ * Navigation (`goToPrev`, `goToNext`, `goToToday`, the shortcuts), header
+ * info (`monthName`, `weekNumber`) and `visibleDays` follow the provider's
+ * `view` and `numberOfDays`. Render one view per provider: it reports what
+ * it draws, and the provider lines up with it as follows.
+ *
+ * - Uncontrolled `view`: the provider adopts the mounted view's type
+ *   (DayView, WeekView, MonthView, or TimeGrid's `view`), so a lone view
+ *   just works. `defaultView` only applies until a view mounts.
+ * - Controlled `view` always wins: the provider never changes it to match
+ *   the mounted view (development builds warn about a mismatch). Render the
+ *   view it names, e.g. `<TimeGrid view={view} />`.
+ * - A view's `numberOfDays` prop (WeekView, TimeGrid) works the same way
+ *   against the provider's `numberOfDays`. Without it the view follows the
+ *   provider.
+ * - Switches the mounted view doesn't follow (`switchView`, `showDay`,
+ *   `setNumberOfDays`, the D/W/M and 2-9 shortcuts while a lone WeekView
+ *   stays mounted) are undone, date included. To make switching work,
+ *   render the view from `view`, as the demo does with `TimeGrid`.
+ * - Without `date` or `defaultDate`, the calendar starts on today's period
+ *   of the adopted view: today for DayView, this week for WeekView.
  */
 export function CalendarProvider<TEvent extends CalendarEvent = CalendarEvent>(
   props: CalendarProviderProps<TEvent>,
@@ -216,6 +309,7 @@ function CalendarStateProvider({
   defaultView = "week",
   onViewChange,
   date: dateProp,
+  defaultDate,
   onDateChange,
   weekStartsOn = 0,
   numberOfDays: numberOfDaysProp,
@@ -281,6 +375,16 @@ function CalendarStateProvider({
   );
   /** Latest events, so `updateEvent` can compare without depending on them */
   const eventsRef = React.useRef(events);
+  /**
+   * State before the latest switch of view or day count, so a mounted view
+   * that keeps its own type can undo it. Read and cleared by the next report.
+   */
+  const pendingSwitchRef = React.useRef<ViewSwitchSnapshot | null>(null);
+  /** Whether the controlled-view mismatch warning was already logged */
+  const hasWarnedViewConflictRef = React.useRef(false);
+  /** Whether the starting date is today's period (no `date` or `defaultDate`) */
+  const startsOnToday = dateProp === undefined && defaultDate === undefined;
+  const initialTime = initialDate.getTime();
 
   React.useEffect(() => {
     eventsRef.current = events;
@@ -396,6 +500,7 @@ function CalendarStateProvider({
   const switchView = React.useCallback(
     (newView: ViewType) => {
       if (newView === view) return;
+      pendingSwitchRef.current = { view, numberOfDays, date: currentDate };
       setView(newView);
       if (newView === "day") {
         setCurrentDate(startOfDay(new Date()));
@@ -405,11 +510,14 @@ function CalendarStateProvider({
         getPeriodStart(prev, newView, weekStartsOn, numberOfDays),
       );
     },
-    [view, weekStartsOn, numberOfDays, setView, setCurrentDate],
+    [view, currentDate, weekStartsOn, numberOfDays, setView, setCurrentDate],
   );
 
   const changeNumberOfDays = React.useCallback(
     (count: number) => {
+      if (count !== numberOfDays) {
+        pendingSwitchRef.current = { view, numberOfDays, date: currentDate };
+      }
       setNumberOfDays(count);
       if (view !== "week") return;
       // Going back to a full week starts on the week's first day again
@@ -418,16 +526,88 @@ function CalendarStateProvider({
         return next.getTime() === prev.getTime() ? prev : next;
       });
     },
-    [view, weekStartsOn, setNumberOfDays, setCurrentDate],
+    [
+      view,
+      numberOfDays,
+      currentDate,
+      weekStartsOn,
+      setNumberOfDays,
+      setCurrentDate,
+    ],
   );
 
   const showDay = React.useCallback(
     (date: Date) => {
+      if (view !== "week") {
+        pendingSwitchRef.current = { view, numberOfDays, date: currentDate };
+      }
       setView("week");
       setCurrentDate(getPeriodStart(date, "week", weekStartsOn, numberOfDays));
       setHighlightedDate(date);
     },
-    [weekStartsOn, numberOfDays, setView, setCurrentDate],
+    [view, currentDate, weekStartsOn, numberOfDays, setView, setCurrentDate],
+  );
+
+  const reportView = React.useCallback(
+    (reported: ReportedView) => {
+      const pendingSwitch = pendingSwitchRef.current;
+      pendingSwitchRef.current = null;
+      // Controlled values always win over the mounted view
+      const nextView = viewProp ?? reported.view;
+      const nextNumberOfDays =
+        numberOfDaysProp ?? reported.numberOfDays ?? numberOfDays;
+      const conflictsWithControlled =
+        reported.view !== nextView ||
+        (reported.numberOfDays !== undefined &&
+          reported.numberOfDays !== nextNumberOfDays);
+      if (
+        conflictsWithControlled &&
+        process.env.NODE_ENV !== "production" &&
+        !hasWarnedViewConflictRef.current
+      ) {
+        hasWarnedViewConflictRef.current = true;
+        console.warn(
+          `CalendarProvider: the mounted ${reported.view} view doesn't match the controlled \`view\` / \`numberOfDays\` props, which navigation follows. Render the view they name, e.g. <TimeGrid view={view} />.`,
+        );
+      }
+      if (nextView === view && nextNumberOfDays === numberOfDays) return;
+
+      const nextDate = getAdoptedViewDate({
+        currentDate,
+        view: nextView,
+        numberOfDays: nextNumberOfDays,
+        weekStartsOn,
+        pendingSwitch,
+        isOnStartingToday:
+          startsOnToday && currentDate.getTime() === initialTime,
+      });
+      setView(nextView);
+      setNumberOfDays(nextNumberOfDays);
+      setCurrentDate(nextDate);
+      // Header info reads the visible days: match them to the new date before
+      // the first paint (the view reports its own after it). A controlled date
+      // may not change, so it waits for the view's report.
+      if (dateProp !== undefined) return;
+      setVisibleDays(
+        nextView === "month"
+          ? []
+          : getVisibleDays(nextDate, nextView, nextNumberOfDays),
+      );
+    },
+    [
+      viewProp,
+      numberOfDaysProp,
+      dateProp,
+      view,
+      numberOfDays,
+      currentDate,
+      startsOnToday,
+      initialTime,
+      weekStartsOn,
+      setView,
+      setNumberOfDays,
+      setCurrentDate,
+    ],
   );
 
   const toggleWeekends = React.useCallback(() => {
@@ -533,11 +713,12 @@ function CalendarStateProvider({
 
   const viewSync = React.useMemo<CalendarViewSyncValue>(
     () => ({
+      reportView,
       reportVisibleDays: setVisibleDays,
       reportDisplayMonth: setDisplayMonth,
       closeEventPopover,
     }),
-    [closeEventPopover],
+    [reportView, closeEventPopover],
   );
 
   const renderSlots = React.useMemo<CalendarRenderSlots>(

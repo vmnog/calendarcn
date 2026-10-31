@@ -9,12 +9,14 @@ import type {
   HourSlot,
   NewEventRange,
   PositionedEvent,
+  TimeGridView,
   WeekDay,
 } from "./calendar-types";
 
 // Re-export all shared types for backward compatibility
 export type {
   ViewType,
+  TimeGridView,
   WeekStartsOn,
   HourCycle,
   ViewSettings,
@@ -42,7 +44,7 @@ export type {
 } from "./calendar-types";
 
 /**
- * Event popover options shared by WeekView and MonthView
+ * Event popover options shared by the time grid views and MonthView
  */
 export interface EventPopoverProps {
   /**
@@ -59,12 +61,39 @@ export interface EventPopoverProps {
 }
 
 /**
- * Props for the main WeekView component. View, date, events and selection
- * come from the surrounding CalendarProvider.
+ * Props for the DayView component. Date, events and selection come from the
+ * surrounding CalendarProvider.
  */
-export interface WeekViewProps extends EventPopoverProps {
+export interface DayViewProps extends EventPopoverProps {
   /** Optional className for the root element */
   className?: string;
+}
+
+/**
+ * Props for the WeekView component. Date, events and selection come from the
+ * surrounding CalendarProvider.
+ */
+export interface WeekViewProps extends DayViewProps {
+  /**
+   * Number of day columns. Defaults to the provider's `numberOfDays`. When
+   * set, it fixes the column count, and the provider adopts it while its
+   * `numberOfDays` is uncontrolled (so prev/next step by it below 7).
+   */
+  numberOfDays?: number;
+}
+
+/**
+ * Props for the TimeGrid component, the hourly grid behind DayView and
+ * WeekView. Date, events and selection come from the surrounding
+ * CalendarProvider.
+ */
+export interface TimeGridProps extends WeekViewProps {
+  /**
+   * "day" shows one column, "week" shows `numberOfDays` columns. While the
+   * provider's `view` is uncontrolled, the provider adopts this type, so
+   * navigation and header info follow it.
+   */
+  view: TimeGridView;
 }
 
 /**

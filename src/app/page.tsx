@@ -30,7 +30,7 @@ import type {
 } from "@/components/week-view-types";
 import { SidebarRight } from "@/components/sidebar-right";
 import { MonthView } from "@/components/month-view";
-import { WeekView } from "@/components/week-view";
+import { TimeGrid } from "@/components/time-grid";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ViewDropdown } from "@/components/view-dropdown";
@@ -513,7 +513,10 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
               onEventPopoverExpand={expandEventPopover}
             />
           ) : (
-            <WeekView
+            // One grid for day and week: switching re-lays it out instead of
+            // remounting, so the vertical scroll position is kept
+            <TimeGrid
+              view={view}
               showEventPopover={!showDetailsInPanel}
               onEventPopoverExpand={expandEventPopover}
             />

@@ -10,10 +10,15 @@ Live: https://calendarcn.vercel.app
 
 ```
 src/
-├── app/                  # Next.js App Router (page.tsx owns top-level state)
+├── app/                  # Next.js App Router (page.tsx is the demo around the library)
 ├── components/
 │   ├── ui/               # shadcn/ui primitives (don't edit directly)
-│   ├── week-view*.tsx     # Core calendar — grid, columns, time axis, all-day row
+│   ├── calendar-provider.tsx # CalendarProvider + useCalendar — state, navigation, view sync
+│   ├── time-grid.tsx     # TimeGrid — hourly grid behind DayView and WeekView
+│   ├── day-view.tsx      # DayView = TimeGrid view="day"
+│   ├── week-view.tsx     # WeekView = TimeGrid view="week"
+│   ├── week-view-*.tsx   # Time grid parts — all-day row, grid, time axis, now line
+│   ├── month-view*.tsx   # MonthView and its parts
 │   ├── calendar-event-*   # Event rendering & interactions
 │   ├── event-*            # Context menu, detail panel, detail popover
 │   ├── sidebar-*          # Left/right sidebars
@@ -29,7 +34,9 @@ src/
 Key files:
 
 - `src/components/week-view-types.ts` — **canonical type source** for all shared types
-- `src/app/page.tsx` — owns `currentDate`, `events`, `selectedEventId` state
+- `src/components/calendar-provider.tsx` — owns events, view, date and selection; adopts the mounted view's type (rule in its JSDoc)
+- `src/components/time-grid.tsx` — day/week grid orchestration (days, hours, scroll buffer, drag/resize hooks)
+- `src/app/page.tsx` — demo: renders `<TimeGrid view={view} />` / `MonthView` plus sidebars, header, command menu
 - `src/lib/event-utils.ts` — positioning math (column assignment, pixel calculations)
 - `src/hooks/use-event-drag.ts` — drag interaction (snapping, cross-day, auto-scroll)
 - `src/hooks/use-event-resize.ts` — resize interaction (anchor model, edge flipping)

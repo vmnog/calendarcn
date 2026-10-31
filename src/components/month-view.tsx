@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, useMemo, useCallback, useState, useEffect } from "react";
+import {
+  useRef,
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  useLayoutEffect,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   addDays,
@@ -50,6 +57,7 @@ export function MonthView({
   className,
 }: MonthViewProps) {
   const {
+    view,
     currentDate,
     events,
     viewSettings,
@@ -62,7 +70,13 @@ export function MonthView({
     showDay,
   } = useCalendar();
   const { locale } = useCalendarConfig();
-  const { reportDisplayMonth, closeEventPopover } = useCalendarViewSync();
+  const { reportView, reportDisplayMonth, closeEventPopover } =
+    useCalendarViewSync();
+  /**
+   * Whether the provider navigates by month. False for the commit before it
+   * adopts this view (on mount, or right after a switch it doesn't follow).
+   */
+  const isProviderInSync = view === "month";
   const boundaryRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -91,10 +105,19 @@ export function MonthView({
     return startOfMonth(midDate);
   }, [weekRows, currentDate]);
 
-  // Report the display month to the provider (header and sidebar sync)
+  // Tell the provider which view is on screen. `reportView` changes with the
+  // provider's state, so this also re-checks after every switch. A layout
+  // effect: the provider adopts month view before the first paint.
+  useLayoutEffect(() => {
+    reportView({ view: "month" });
+  }, [reportView]);
+
+  // Report the display month to the provider (header and sidebar sync). Not
+  // while it is adopting this view: the date is about to change.
   useEffect(() => {
+    if (!isProviderInSync) return;
     reportDisplayMonth(displayMonth);
-  }, [displayMonth, reportDisplayMonth]);
+  }, [isProviderInSync, displayMonth, reportDisplayMonth]);
 
   // Weekday columns in display order, starting on `weekStartsOn`, named in
   // the calendar's locale ("Sun", "Mon") like the rows' days
@@ -171,7 +194,11 @@ export function MonthView({
 
   // Detect external currentDate changes (button/keyboard nav) and trigger slide animation
   const prevDateRef = useRef(currentDate);
+  const wasProviderInSyncRef = useRef(isProviderInSync);
   useEffect(() => {
+    const wasProviderInSync = wasProviderInSyncRef.current;
+    wasProviderInSyncRef.current = isProviderInSync;
+
     if (scrollNavigatedRef.current) {
       scrollNavigatedRef.current = false;
       prevDateRef.current = currentDate;
@@ -182,6 +209,9 @@ export function MonthView({
     prevDateRef.current = currentDate;
 
     if (prevDate.getTime() === currentDate.getTime()) return;
+    // Dates set while the provider adopts this view (an undone switch, such
+    // as "+N more" without a week view to open) are not navigation
+    if (!wasProviderInSync || !isProviderInSync) return;
 
     // Calculate how many weeks changed
     const weeksDelta = Math.round(
@@ -191,7 +221,7 @@ export function MonthView({
     if (weeksDelta !== 0) {
       triggerSlideAnimation(weeksDelta);
     }
-  }, [currentDate, triggerSlideAnimation]);
+  }, [currentDate, isProviderInSync, triggerSlideAnimation]);
 
   /** Whether a day is in one of the on-screen week rows */
   const isDayVisible = useCallback(

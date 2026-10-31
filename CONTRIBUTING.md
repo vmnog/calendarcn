@@ -24,10 +24,14 @@ pnpm format:check   # Check formatting without writing
 ```
 src/
 ├── app/                          # Next.js app router
-│   └── page.tsx                  # Main page, owns currentDate state
+│   └── page.tsx                  # Demo page around the library components
 ├── components/
 │   ├── ui/                       # shadcn/ui primitives
-│   ├── week-view.tsx             # Main week view component
+│   ├── calendar-provider.tsx     # CalendarProvider + useCalendar (state, navigation)
+│   ├── time-grid.tsx             # TimeGrid: hourly grid behind day and week views
+│   ├── day-view.tsx              # DayView (TimeGrid view="day")
+│   ├── week-view.tsx             # WeekView (TimeGrid view="week")
+│   ├── month-view.tsx            # MonthView
 │   ├── week-view-types.ts        # Canonical type definitions (EventColor, CalendarEvent, etc.)
 │   ├── week-view-all-day-row.tsx # All-day event row
 │   ├── week-view-day-columns.tsx # Day column headers
