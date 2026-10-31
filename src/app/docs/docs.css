@@ -1,0 +1,27 @@
+/*
+ * Docs-only overrides. Every rule is scoped to pages that render the Fumadocs
+ * layout (`#nd-notebook-layout`), so the calendar demo at `/` is untouched
+ * even after a client-side navigation keeps this stylesheet loaded.
+ *
+ * globals.css makes the calendar feel like an app: no text selection and a
+ * default cursor on every element. Docs are for reading and copying code, so
+ * restore document behavior here. `:has()` on body also covers portals
+ * (search dialog, popovers) that render outside the layout.
+ */
+@layer base {
+  body:has(#nd-notebook-layout) {
+    /* next/font defines the Geist variables on <body>, so resolve them here. */
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+    --default-mono-font-family: var(--font-geist-mono);
+    --cursor: auto;
+  }
+
+  body:has(#nd-notebook-layout) * {
+    user-select: text;
+  }
+
+  body:has(#nd-notebook-layout)
+    :is(a[href], button, [role="button"], [role="tab"], summary) {
+    --cursor: pointer;
+  }
+}

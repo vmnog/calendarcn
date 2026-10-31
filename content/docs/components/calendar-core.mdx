@@ -1,0 +1,63 @@
+---
+title: Calendar Core
+description: CalendarProvider and useCalendar(), the state and settings every view shares.
+---
+
+<ComponentPreview name="calendar-core">
+
+```tsx
+// TODO: example lands once CalendarProvider and useCalendar() are final.
+```
+
+</ComponentPreview>
+
+Calendar Core has no UI of its own. `CalendarProvider` holds the calendar's state (the current date, the active view, the events and the selected event), and `useCalendar()` reads and updates it from any component inside the provider. Every view and the event details build on it.
+
+## Installation
+
+<InstallTabs item="calendar-core">
+
+{/* TODO: list the files and dependencies once the registry item exists. */}
+
+Manual steps land with the registry item.
+
+</InstallTabs>
+
+## Usage
+
+{/* TODO: replace with the real example once the API is final. */}
+
+```tsx
+// TODO: wrap your views in <CalendarProvider> and read state with useCalendar().
+```
+
+## Planned settings
+
+The provider is where calendar-wide settings will live. Names and defaults are still being decided:
+
+- Snap interval for dragging and resizing events.
+- Visible hour range of the time grid.
+- 12-hour or 24-hour clock.
+- A [date-fns locale](https://date-fns.org/docs/I18n) for dates, weekdays and the first day of the week.
+- Number of days in the week view.
+
+## API Reference
+
+### CalendarProvider
+
+{/* TODO: add the remaining props once the API is final. */}
+
+<PropsTable
+  rows={[
+    {
+      name: "children",
+      type: "ReactNode",
+      required: true,
+      description: "The views and components that read calendar state.",
+    },
+  ]}
+/>
+
+### useCalendar()
+
+<PropsTable todo="TODO: the return value lands once the API is final." />

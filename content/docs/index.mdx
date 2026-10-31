@@ -1,0 +1,57 @@
+---
+title: Introduction
+description: A calendar for React inspired by Notion Calendar. Built on shadcn/ui, installed with the shadcn CLI, and yours to edit.
+---
+
+CalendarCN is an open-source calendar for React. It brings the feel of Notion Calendar (fast keyboard navigation, drag to move and resize, a quiet interface) to any app that uses [shadcn/ui](https://ui.shadcn.com) and Tailwind CSS.
+
+[Open the live demo](/) to try it.
+
+## Not a package
+
+Like shadcn/ui, CalendarCN isn't an npm dependency. The shadcn CLI copies the source into your project, so you can read it, restyle it and change how it behaves. You can add the full calendar or only the pieces you need.
+
+<Callout title="Work in progress">
+  The calendar is being split into registry items. The pages under
+  **Components** describe each planned item. Their API reference fills in once
+  that work lands.
+</Callout>
+
+## What's included
+
+- **Views**: day, week, any number of days from 2 to 9, and month.
+- **Direct manipulation**: drag events to move them, drag their edges to resize, click an empty slot to create one.
+- **Real calendar data**: overlapping events side by side, multi-day and all-day events, a current-time indicator.
+- **Event details**: a side panel or popover with inline editing.
+- **Keyboard first**: shortcuts for every view and a command menu. See [Keyboard shortcuts](/docs/keyboard-shortcuts).
+- **Theming**: light and dark mode with the shadcn/ui CSS variables.
+
+## Components
+
+<Cards>
+  <Card title="Calendar" href="/docs/components/calendar">
+    The full calendar block, as seen in the demo.
+  </Card>
+  <Card title="Calendar Core" href="/docs/components/calendar-core">
+    `CalendarProvider` and `useCalendar()`, the state every view shares.
+  </Card>
+  <Card title="Time Grid" href="/docs/components/time-grid">
+    The scrollable hour grid behind the day and week views.
+  </Card>
+  <Card title="Day View" href="/docs/components/day-view">
+    A single day on the time grid.
+  </Card>
+  <Card title="Week View" href="/docs/components/week-view">
+    A week, or any number of days, on the time grid.
+  </Card>
+  <Card title="Month View" href="/docs/components/month-view">
+    A month at a glance.
+  </Card>
+  <Card title="Event Details" href="/docs/components/event-details">
+    The panel and popover for viewing and editing an event.
+  </Card>
+</Cards>
+
+## Built with
+
+[Next.js](https://nextjs.org), [React](https://react.dev), [Tailwind CSS](https://tailwindcss.com), [shadcn/ui](https://ui.shadcn.com) and [date-fns](https://date-fns.org). The source is on [GitHub](https://github.com/vmnog/calendarcn) under the MIT license.

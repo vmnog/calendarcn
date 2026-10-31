@@ -1,0 +1,78 @@
+---
+title: Installation
+description: Add CalendarCN to your project with the shadcn CLI.
+---
+
+<Callout type="warn" title="Coming soon">
+  The `@calendarcn` registry isn't published yet, so the commands below don't
+  work today. This page shows the planned flow.
+</Callout>
+
+<Steps>
+<Step>
+
+### Set up shadcn/ui
+
+CalendarCN builds on shadcn/ui and Tailwind CSS 4. If your project doesn't use them yet, follow the [shadcn/ui installation guide](https://ui.shadcn.com/docs/installation) first.
+
+</Step>
+<Step>
+
+### Add the registry
+
+Add the `@calendarcn` namespace to `registries` in your `components.json`:
+
+{/* TODO: confirm the registry URL once the registry is deployed. */}
+
+```json title="components.json"
+{
+  "registries": {
+    "@calendarcn": "https://calendarcn.vercel.app/r/{name}.json"
+  }
+}
+```
+
+</Step>
+<Step>
+
+### Add the calendar
+
+Add the full calendar block:
+
+```npm
+npx shadcn@latest add @calendarcn/calendar
+```
+
+Or add only the pieces you need, for example:
+
+```npm
+npx shadcn@latest add @calendarcn/week-view
+```
+
+The CLI also installs each item's npm dependencies and any shadcn/ui components it uses.
+
+</Step>
+<Step>
+
+### Render it
+
+{/* TODO: replace with the real example once the CalendarProvider API is final. */}
+
+```tsx title="app/page.tsx"
+// TODO: usage example lands with the calendar-core refactor.
+```
+
+</Step>
+</Steps>
+
+## Registry items
+
+| Item                        | What it adds                                  |
+| --------------------------- | --------------------------------------------- |
+| `@calendarcn/calendar`      | The full calendar block, as seen in the demo. |
+| `@calendarcn/calendar-core` | `CalendarProvider` and `useCalendar()`.       |
+| `@calendarcn/time-grid`     | The hour grid used by the day and week views. |
+| `@calendarcn/day-view`      | A single-day view.                            |
+| `@calendarcn/week-view`     | A week or N-day view.                         |
+| `@calendarcn/month-view`    | A month view.                                 |
+| `@calendarcn/event-details` | The event detail panel and popover.           |
