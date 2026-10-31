@@ -34,6 +34,20 @@ function clamp(value: number, min: number, max: number): number {
   return value;
 }
 
+/**
+ * Swallows the click the browser fires right after a drag's mouseup. A move
+ * ends with the cursor over the pointer-transparent placeholder, so that click
+ * lands on the row background and WeekView would deselect the moved event.
+ */
+function suppressClickAfterDrag() {
+  const swallowClick = (e: MouseEvent) => e.stopPropagation();
+  window.addEventListener("click", swallowClick, { capture: true, once: true });
+  // The click, if any, is dispatched in the same task as the mouseup
+  setTimeout(() => {
+    window.removeEventListener("click", swallowClick, { capture: true });
+  }, 0);
+}
+
 interface ResizeInfo {
   eventId: string;
   event: CalendarEvent;
@@ -179,6 +193,8 @@ export function useAllDayResize({
       setAllDayResizeState(null);
 
       if (!resize.isResizing) return;
+
+      suppressClickAfterDrag();
 
       // Commit from the handler, never from inside a state updater:
       // updaters run during render, and calling the parent's setState

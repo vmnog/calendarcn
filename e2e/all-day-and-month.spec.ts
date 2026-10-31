@@ -44,8 +44,7 @@ test("dragging an all-day event moves it to other days", async ({ page }) => {
   expect(after.x + after.width).toBeGreaterThan(friday.x);
   expect(after.width).toBeCloseTo(before.width, 0);
 
-  // The detail panel shows the new start date
-  await event.click();
+  // It stays selected, and the detail panel shows the new start date
   await expect(detailTitle(page)).toHaveValue("Weekend in Hudson Valley");
   await expect(detailFields(page).startDate).toHaveValue("Wed Jun 3");
 });
