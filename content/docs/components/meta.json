@@ -1,0 +1,12 @@
+{
+  "title": "Components",
+  "pages": [
+    "calendar",
+    "calendar-core",
+    "time-grid",
+    "day-view",
+    "week-view",
+    "month-view",
+    "event-details"
+  ]
+}

@@ -4,7 +4,7 @@ A beautifully crafted, open source calendar component for React. Built with [sha
 
 ![CalendarCN Preview](./public/og-image.png)
 
-**[Live Demo](https://calendarcn.vercel.app)**
+**[Live Demo](https://calendarcn.xyz)**
 
 ## Features
 
@@ -103,5 +103,5 @@ See [ROADMAP.md](./ROADMAP.md) for the full roadmap.
 
 ## Links
 
-- [Live Demo](https://calendarcn.vercel.app)
+- [Live Demo](https://calendarcn.xyz)
 - [Twitter/X](https://x.com/mevmnog)
