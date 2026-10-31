@@ -20,14 +20,12 @@ CalendarCN builds on shadcn/ui and Tailwind CSS 4. If your project doesn't use t
 
 ### Add the registry
 
-Add the `@calendarcn` namespace to `registries` in your `components.json`:
-
-{/* TODO: confirm the registry URL once the registry is deployed. */}
+Add the `@calendarcn` namespace to `registries` in your `components.json`. The registry is served from this site:
 
 ```json title="components.json"
 {
   "registries": {
-    "@calendarcn": "https://calendarcn.vercel.app/r/{name}.json"
+    "@calendarcn": "https://calendarcn.xyz/r/{name}.json"
   }
 }
 ```
@@ -35,18 +33,24 @@ Add the `@calendarcn` namespace to `registries` in your `components.json`:
 </Step>
 <Step>
 
-### Add the calendar
+### Add components
 
-Add the full calendar block:
+Add any item by name:
 
 ```npm
-npx shadcn@latest add @calendarcn/calendar
+npx shadcn add @calendarcn/<item>
 ```
 
-Or add only the pieces you need, for example:
+For example, the full calendar block:
 
 ```npm
-npx shadcn@latest add @calendarcn/week-view
+npx shadcn add @calendarcn/calendar
+```
+
+Or only the pieces you need, like the week view:
+
+```npm
+npx shadcn add @calendarcn/week-view
 ```
 
 The CLI also installs each item's npm dependencies and any shadcn/ui components it uses.

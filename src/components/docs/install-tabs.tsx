@@ -15,12 +15,15 @@ const REGISTRY_NAMESPACE = "@calendarcn";
 /** Shiki themes, matching the ones fumadocs-mdx uses for MDX code blocks. */
 const CODE_THEMES = { light: "github-light", dark: "github-dark" } as const;
 
-/** Package managers shown in the CLI tab, each with its shadcn CLI runner. */
+/**
+ * Package managers shown in the CLI tab, each with its shadcn CLI runner.
+ * Runners match the tabs fumadocs-mdx generates for ```npm code blocks.
+ */
 const PACKAGE_MANAGERS = [
   { name: "pnpm", runner: "pnpm dlx" },
   { name: "npm", runner: "npx" },
   { name: "yarn", runner: "yarn dlx" },
-  { name: "bun", runner: "bunx --bun" },
+  { name: "bun", runner: "bun x" },
 ] as const;
 
 interface InstallTabsProps {
@@ -61,7 +64,7 @@ export function InstallTabs({ item, children }: InstallTabsProps) {
               <ServerCodeBlock
                 lang="bash"
                 themes={CODE_THEMES}
-                code={`${runner} shadcn@latest add ${REGISTRY_NAMESPACE}/${item}`}
+                code={`${runner} shadcn add ${REGISTRY_NAMESPACE}/${item}`}
               />
             </CodeBlockTab>
           ))}
