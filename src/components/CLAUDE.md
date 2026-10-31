@@ -5,7 +5,10 @@
 All React components for CalendarCN. Split into:
 
 - `ui/` — shadcn/ui primitives (don't edit directly)
-- `week-view*.tsx` — core calendar rendering
+- `calendar-provider.tsx` — `CalendarProvider` / `useCalendar()`: state, navigation, view sync
+- `time-grid.tsx` — `TimeGrid`, the hourly grid for day and week (`view` prop); `day-view.tsx` and `week-view.tsx` are one-line wrappers that fix `view`
+- `week-view-*.tsx` — the time grid's parts (all-day row, grid, time axis, now line)
+- `month-view*.tsx` — `MonthView` and its parts
 - `calendar-event-*` / `event-*` — event interactions
 - `sidebar-*` — left and right sidebars
 - `nav-*` — navigation menus
@@ -15,6 +18,10 @@ All React components for CalendarCN. Split into:
 ### Type Definitions
 
 **All shared types live in `week-view-types.ts`** — the canonical source. Never define types inline in component files unless they're truly local (used only in that file). When in doubt, put it in `week-view-types.ts`.
+
+### View Sync
+
+Every view reports what it draws with `useCalendarViewSync().reportView(...)` from a layout effect (TimeGrid: its `view` and fixed `numberOfDays`; MonthView: `"month"`). The provider adopts it while `view` is uncontrolled and undoes switches the mounted view doesn't follow (full rule in the `CalendarProvider` JSDoc). For the commit before the provider adopts a view, `isProviderInSync` is false: skip slide animations and `reportVisibleDays` / `reportDisplayMonth` then, since the date change is the adoption, not navigation. A new view must follow the same pattern.
 
 ### Event Color Styling
 
