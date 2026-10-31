@@ -50,7 +50,7 @@ export function CustomEventDetailsDemo() {
       defaultEvents={initialEvents}
       renderEventDetails={renderEventDetails}
     >
-      <WeekView />
+      <WeekView scrollToHour={8} />
     </CalendarProvider>
   );
 }

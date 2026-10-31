@@ -12,7 +12,7 @@ export function WeekViewDemo() {
 
   return (
     <CalendarProvider defaultEvents={initialEvents}>
-      <WeekView />
+      <WeekView scrollToHour={8} />
     </CalendarProvider>
   );
 }

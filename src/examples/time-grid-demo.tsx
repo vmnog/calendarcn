@@ -13,7 +13,7 @@ export function TimeGridDemo() {
   return (
     <CalendarProvider defaultEvents={initialEvents}>
       {/* A three-day grid: prev/next step by three days */}
-      <TimeGrid view="week" numberOfDays={3} />
+      <TimeGrid view="week" numberOfDays={3} scrollToHour={8} />
     </CalendarProvider>
   );
 }

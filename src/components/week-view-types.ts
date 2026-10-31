@@ -65,6 +65,12 @@ export interface EventPopoverProps {
  * surrounding CalendarProvider.
  */
 export interface DayViewProps extends EventPopoverProps {
+  /**
+   * Hour the grid scrolls to when it mounts, so the first rows on screen
+   * are the ones with events (e.g. `8` for 8 AM, `8.5` for 8:30). Applied
+   * once; clamped to `dayStartHour`..`dayEndHour`. Unset starts at the top.
+   */
+  scrollToHour?: number;
   /** Optional className for the root element */
   className?: string;
 }

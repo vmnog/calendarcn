@@ -154,6 +154,7 @@ export function TimeGrid({
   numberOfDays: numberOfDaysProp,
   showEventPopover = true,
   onEventPopoverExpand,
+  scrollToHour,
   className,
 }: TimeGridProps) {
   const {
@@ -253,6 +254,36 @@ export function TimeGrid({
     }
     return () => observer.disconnect();
   }, [VISIBLE_DAYS, visibleHourCount]);
+
+  /** Whether `scrollToHour` has been applied; it only applies once */
+  const hasScrolledToHourRef = React.useRef(false);
+
+  // Scroll to `scrollToHour` before the first paint. A grid mounted hidden
+  // (e.g. in an inactive tab) has no height yet, so wait until it has one.
+  React.useLayoutEffect(() => {
+    if (scrollToHour === undefined || hasScrolledToHourRef.current) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const applyScroll = () => {
+      if (hasScrolledToHourRef.current || container.clientHeight === 0) return;
+      hasScrolledToHourRef.current = true;
+      // Same row height the grid settles on (see updateDimensions above)
+      const rowHeight = Math.max(
+        MIN_HOUR_HEIGHT,
+        container.clientHeight / visibleHourCount,
+      );
+      const hour = Math.min(Math.max(scrollToHour, dayStartHour), dayEndHour);
+      container.scrollTop = (hour - dayStartHour) * rowHeight;
+    };
+
+    applyScroll();
+    if (hasScrolledToHourRef.current) return;
+
+    const observer = new ResizeObserver(applyScroll);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [scrollToHour, dayStartHour, dayEndHour, visibleHourCount]);
 
   // Track whether navigation was initiated by scroll (to avoid double-animation)
   const scrollNavigatedRef = React.useRef(false);

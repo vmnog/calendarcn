@@ -37,7 +37,7 @@ export function ControlledEventsDemo() {
       <div className="@container h-full">
         <div className="flex h-full flex-col @2xl:flex-row">
           <div className="min-h-0 min-w-0 flex-1">
-            <WeekView />
+            <WeekView scrollToHour={8} />
           </div>
           <EventList
             events={events}

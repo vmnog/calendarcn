@@ -69,7 +69,7 @@ export function TypedEventsDemo() {
       renderEventContent={renderMeetingContent}
       renderEventDetails={renderMeetingDetails}
     >
-      <WeekView />
+      <WeekView scrollToHour={8} />
     </CalendarProvider>
   );
 }

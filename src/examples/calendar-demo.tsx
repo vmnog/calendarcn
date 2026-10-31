@@ -111,5 +111,5 @@ function CalendarBody() {
     return <MonthView />;
   }
 
-  return <WeekView />;
+  return <WeekView scrollToHour={8} />;
 }

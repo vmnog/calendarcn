@@ -28,7 +28,7 @@ export function Schedule() {
     <CalendarProvider defaultEvents={events}>
       {/* Week View fills its parent's height */}
       <div className="h-[600px]">
-        <WeekView />
+        <WeekView scrollToHour={8} />
       </div>
     </CalendarProvider>
   );
@@ -80,6 +80,12 @@ Everything else (date, events, number of days, hours, clock, locale) is set on [
       type: "() => void",
       description:
         "Called by the popover's expand button, e.g. to move the details into a side panel. The button is hidden when this is not set.",
+    },
+    {
+      name: "scrollToHour",
+      type: "number",
+      description:
+        "Hour the grid scrolls to when it mounts, e.g. `8` for 8 AM or `8.5` for 8:30. Applied once and clamped to the provider's `dayStartHour`..`dayEndHour`. Unset starts at the top.",
     },
     {
       name: "className",

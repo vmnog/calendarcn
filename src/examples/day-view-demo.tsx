@@ -12,7 +12,7 @@ export function DayViewDemo() {
 
   return (
     <CalendarProvider defaultEvents={initialEvents}>
-      <DayView />
+      <DayView scrollToHour={8} />
     </CalendarProvider>
   );
 }
