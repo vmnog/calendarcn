@@ -39,7 +39,7 @@ export function PropsTable({ rows = [], todo, className }: PropsTableProps) {
   return (
     <div
       className={cn(
-        "not-prose my-6 overflow-x-auto rounded-xl border text-sm",
+        "docs-surface not-prose my-6 overflow-x-auto rounded-xl text-sm",
         className,
       )}
     >

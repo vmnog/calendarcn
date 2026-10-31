@@ -34,7 +34,10 @@ export function ComponentPreview({
   className,
 }: ComponentPreviewProps) {
   return (
-    <Tabs items={["Preview", "Code"]} className={cn("not-prose", className)}>
+    <Tabs
+      items={["Preview", "Code"]}
+      className={cn("docs-surface not-prose", className)}
+    >
       <Tab value="Preview" className="p-0">
         {src ? (
           <iframe

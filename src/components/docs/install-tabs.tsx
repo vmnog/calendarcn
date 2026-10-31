@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Callout } from "fumadocs-ui/components/callout";
 import {
   CodeBlockTab,
   CodeBlockTabs,
@@ -8,6 +7,8 @@ import {
 } from "fumadocs-ui/components/codeblock";
 import { ServerCodeBlock } from "fumadocs-ui/components/codeblock.rsc";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+
+import { DocsPre } from "@/components/docs/docs-code-block";
 
 /** Registry namespace configured in `components.json` (see the Installation page). */
 const REGISTRY_NAMESPACE = "@calendarcn";
@@ -40,31 +41,37 @@ interface InstallTabsProps {
  */
 export function InstallTabs({ item, children }: InstallTabsProps) {
   return (
-    <Tabs items={["CLI", "Manual"]}>
-      <Tab value="CLI" className="not-prose flex flex-col gap-4">
-        <Callout type="warn" title="Coming soon" className="my-0">
-          The <code>{REGISTRY_NAMESPACE}</code> registry isn&apos;t published
-          yet. These commands start working once it is.
-        </Callout>
+    <Tabs items={["CLI", "Manual"]} className="docs-surface">
+      {/* The package-manager tabs fill the panel edge to edge, sharing its radius. */}
+      <Tab value="CLI" className="not-prose p-0">
         <CodeBlockTabs
           defaultValue={PACKAGE_MANAGERS[0].name}
           groupId="package-manager"
           persist
-          className="my-0"
+          className="docs-code-tabs my-0 rounded-[inherit] border-none"
         >
-          <CodeBlockTabsList>
-            {PACKAGE_MANAGERS.map(({ name }) => (
-              <CodeBlockTabsTrigger key={name} value={name}>
-                {name}
-              </CodeBlockTabsTrigger>
-            ))}
-          </CodeBlockTabsList>
+          <div className="flex items-center gap-2 pe-3">
+            <CodeBlockTabsList className="flex-1">
+              {PACKAGE_MANAGERS.map(({ name }) => (
+                <CodeBlockTabsTrigger key={name} value={name}>
+                  {name}
+                </CodeBlockTabsTrigger>
+              ))}
+            </CodeBlockTabsList>
+            <span
+              title={`The ${REGISTRY_NAMESPACE} registry isn't published yet`}
+              className="shrink-0 rounded-full bg-fd-warning/10 px-2 py-0.5 text-xs font-medium text-fd-warning"
+            >
+              Coming soon
+            </span>
+          </div>
           {PACKAGE_MANAGERS.map(({ name, runner }) => (
             <CodeBlockTab key={name} value={name}>
               <ServerCodeBlock
                 lang="bash"
                 themes={CODE_THEMES}
                 code={`${runner} shadcn add ${REGISTRY_NAMESPACE}/${item}`}
+                components={{ pre: DocsPre }}
               />
             </CodeBlockTab>
           ))}
