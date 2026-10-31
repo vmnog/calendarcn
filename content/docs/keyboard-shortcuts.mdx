@@ -5,7 +5,9 @@ description: Move around the calendar without touching the mouse.
 
 These shortcuts work in the [live demo](/). Single-key shortcuts pause while you type in an input.
 
-{/* TODO: document which registry item owns these shortcuts, and how to turn them off or remap them, once the API is final. */}
+They belong to the demo app (`useCalendarShortcuts()` in `src/hooks/use-calendar-shortcuts.ts`), not to the views. A calendar you build from the components only handles keys while one of its events has focus: see [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility) for moving and resizing events from the keyboard.
+
+{/* TODO: document how to add, turn off or remap these shortcuts once useCalendarShortcuts ships as part of a registry item. */}
 
 ## Navigation
 

@@ -3,15 +3,9 @@ title: Month View
 description: A month at a glance.
 ---
 
-<ComponentPreview name="month-view">
+<ComponentPreview name="month-view-demo" />
 
-```tsx
-// TODO: example lands once the month-view registry item exists.
-```
-
-</ComponentPreview>
-
-Month View shows a grid of weeks. Multi-day events run across days as bars, and busy days collapse extra events into a "more" link. In the demo, press <Kbd>M</Kbd> to switch to it.
+Month View shows six weeks at a time. Timed events are listed in each day, all-day and multi-day events run across days as bars, and busy days collapse the rest into a "more" button. Like every view, it reads its state from the surrounding [`CalendarProvider`](/docs/components/calendar-core).
 
 ## Installation
 
@@ -23,20 +17,65 @@ Requires [Calendar Core](/docs/components/calendar-core). Manual steps land with
 
 </InstallTabs>
 
-## Features
-
-- Multi-day events drawn as continuous bars across the week.
-- A "more" link on days with more events than fit.
-- Drag an event to move it to another day, or drag its ends to change its dates.
-
 ## Usage
 
-{/* TODO: replace with the real example once the API is final. */}
-
 ```tsx
-// TODO: usage example lands with the calendar-core refactor.
+import { CalendarProvider } from "@/components/calendar-provider";
+import { MonthView } from "@/components/month-view";
+
+export function MonthlyPlan() {
+  return (
+    <CalendarProvider defaultView="month" defaultEvents={events}>
+      {/* Month View fills its parent's height */}
+      <div className="h-[600px]">
+        <MonthView />
+      </div>
+    </CalendarProvider>
+  );
+}
 ```
+
+Set `defaultView="month"` (or control `view`) so the provider snaps the date, header and navigation to months. To switch between month and week, see the [Calendar](/docs/components/calendar) example.
+
+## Features
+
+- Drag an event to another day, or drag the ends of a bar to change its dates.
+- "N more" on a busy day calls `showDay()`, which switches the provider to the week view and briefly highlights that day. Render [Week View](/docs/components/week-view) for that view, as the [Calendar](/docs/components/calendar) example does; with Month View alone the button has nothing to show.
+- Scroll vertically to move through weeks. Scrolling snaps to the nearest week.
+- Hide weekends or show week numbers through the provider's view settings.
+- Move a focused event a day with <KbdGroup><Kbd>Alt</Kbd><Kbd>←</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>→</Kbd></KbdGroup>, or a week with <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>. See [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility).
+
+<Callout title="Scrolling over the preview">
+  Month View turns vertical wheel scrolling into week navigation, so the page
+  doesn't scroll while the pointer is over it. Scroll beside the preview to move
+  down the page.
+</Callout>
 
 ## API Reference
 
-<PropsTable todo="TODO: props land once the month-view API is final." />
+### MonthView
+
+Everything else (date, events, week start, locale, view settings) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+
+<PropsTable
+  rows={[
+    {
+      name: "showEventPopover",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the selected event opens a details popover beside it. Turn it off when the details are shown elsewhere, such as a side panel.",
+    },
+    {
+      name: "onEventPopoverExpand",
+      type: "() => void",
+      description:
+        "Called by the popover's expand button, e.g. to move the details into a side panel. The button is hidden when this is not set.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the root element.",
+    },
+  ]}
+/>

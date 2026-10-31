@@ -3,15 +3,9 @@ title: Week View
 description: A week, or any number of days, on the time grid.
 ---
 
-<ComponentPreview name="week-view">
+<ComponentPreview name="week-view-demo" />
 
-```tsx
-// TODO: example lands once the week-view registry item exists.
-```
-
-</ComponentPreview>
-
-Week View shows several days side by side on the [Time Grid](/docs/components/time-grid). It defaults to a full week and can show any number of days from 2 to 9.
+Week View shows several days side by side on the [Time Grid](/docs/components/time-grid): an all-day row on top, an hour grid below. It reads the date, events and selection from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so it has almost no props of its own.
 
 ## Installation
 
@@ -23,21 +17,68 @@ Requires [Calendar Core](/docs/components/calendar-core) and [Time Grid](/docs/c
 
 </InstallTabs>
 
-## Features
-
-- Day headers that highlight today.
-- Scroll sideways to move through days. Scrolling snaps to the nearest day.
-- Hide weekends to focus on working days.
-- In the demo, press <Kbd>W</Kbd> or <Kbd>0</Kbd> for the week view and <Kbd>2</Kbd> to <Kbd>9</Kbd> to pick the number of days.
-
 ## Usage
 
-{/* TODO: replace with the real example once the API is final. */}
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import { WeekView } from "@/components/week-view";
+
+export function Schedule() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      {/* Week View fills its parent's height */}
+      <div className="h-[600px]">
+        <WeekView />
+      </div>
+    </CalendarProvider>
+  );
+}
+```
+
+Show fewer days with the provider's `numberOfDays` (or `defaultNumberOfDays`). Below 7, the columns start on the current day and previous/next move by that many days.
 
 ```tsx
-// TODO: usage example lands with the calendar-core refactor.
+<CalendarProvider defaultEvents={events} defaultNumberOfDays={3}>
+  <WeekView />
+</CalendarProvider>
 ```
+
+## Features
+
+- Drag an event to move it, including to another day. The grid scrolls when you reach its edge.
+- Drag the top or bottom edge of an event to resize it.
+- Click an empty slot to create an event, then type its title.
+- Click an event to open its details in a popover. Right-click it for color, calendar and copy actions.
+- Overlapping events sit side by side. All-day and multi-day events sit in the all-day row.
+- Scroll sideways to move through days. Scrolling snaps to the nearest day.
+- Touch: long-press an event to drag it.
+- Move and resize from the keyboard. See [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility).
 
 ## API Reference
 
-<PropsTable todo="TODO: props land once the week-view API is final." />
+### WeekView
+
+Everything else (date, events, number of days, hours, clock, locale) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+
+<PropsTable
+  rows={[
+    {
+      name: "showEventPopover",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the selected event opens a details popover beside it. Turn it off when the details are shown elsewhere, such as a side panel.",
+    },
+    {
+      name: "onEventPopoverExpand",
+      type: "() => void",
+      description:
+        "Called by the popover's expand button, e.g. to move the details into a side panel. The button is hidden when this is not set.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the root element.",
+    },
+  ]}
+/>
