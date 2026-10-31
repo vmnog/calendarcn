@@ -3,20 +3,9 @@ title: Day View
 description: One day on the time grid.
 ---
 
-{/* TODO: switch to <ComponentPreview name="day-view-demo" /> once DayView lands in src/components/day-view.tsx. */}
+<ComponentPreview name="day-view-demo" />
 
-<ComponentPreview
-  name="day-view-demo"
-  todo="DayView is being split out of Week View, and its example lands with it."
-/>
-
-Day View shows a single day on the [Time Grid](/docs/components/time-grid), with the same drag, resize and create interactions as the week view. In the demo, press <Kbd>D</Kbd> or <Kbd>1</Kbd> to switch to it.
-
-<Callout title="Coming with the view split">
-  `DayView` doesn't exist as its own export yet. Until it does, `WeekView`
-  renders a single day when the provider's view is `"day"`:
-  `<CalendarProvider defaultView="day">` with `<WeekView />` inside.
-</Callout>
+Day View shows a single day on the [Time Grid](/docs/components/time-grid), with the same drag, resize and create interactions as the week view. Rendered on its own, it sets the provider's view to `"day"`, so prev/next, <Kbd>T</Kbd> and the header step by one day.
 
 ## Installation
 
@@ -30,15 +19,13 @@ Requires [Calendar Core](/docs/components/calendar-core) and [Time Grid](/docs/c
 
 ## Usage
 
-{/* TODO: check this against src/components/day-view.tsx after the split. */}
-
 ```tsx
 import { CalendarProvider } from "@/components/calendar-provider";
 import { DayView } from "@/components/day-view";
 
 export function Today() {
   return (
-    <CalendarProvider defaultView="day" defaultEvents={events}>
+    <CalendarProvider defaultEvents={events}>
       <div className="h-[600px]">
         <DayView />
       </div>
@@ -49,4 +36,29 @@ export function Today() {
 
 ## API Reference
 
-<PropsTable todo="TODO: DayView props land with the view split. Planned to match Week View: showEventPopover, onEventPopoverExpand and className." />
+### DayView
+
+Everything else (date, events, hours, clock, locale) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+
+<PropsTable
+  rows={[
+    {
+      name: "showEventPopover",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the selected event opens a details popover beside it. Turn it off when the details are shown elsewhere, such as a side panel.",
+    },
+    {
+      name: "onEventPopoverExpand",
+      type: "() => void",
+      description:
+        "Called by the popover's expand button, e.g. to move the details into a side panel. The button is hidden when this is not set.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the root element.",
+    },
+  ]}
+/>

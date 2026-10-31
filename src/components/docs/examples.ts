@@ -8,8 +8,10 @@ import { ConfigDemo } from "@/examples/config-demo";
 import { ControlledEventsDemo } from "@/examples/controlled-events-demo";
 import { CustomEventContentDemo } from "@/examples/custom-event-content-demo";
 import { CustomEventDetailsDemo } from "@/examples/custom-event-details-demo";
+import { DayViewDemo } from "@/examples/day-view-demo";
 import { EventDetailsDemo } from "@/examples/event-details-demo";
 import { MonthViewDemo } from "@/examples/month-view-demo";
+import { TimeGridDemo } from "@/examples/time-grid-demo";
 import { TypedEventsDemo } from "@/examples/typed-events-demo";
 import { WeekViewDemo } from "@/examples/week-view-demo";
 
@@ -26,8 +28,10 @@ const EXAMPLES = {
   "controlled-events-demo": ControlledEventsDemo,
   "custom-event-content-demo": CustomEventContentDemo,
   "custom-event-details-demo": CustomEventDetailsDemo,
+  "day-view-demo": DayViewDemo,
   "event-details-demo": EventDetailsDemo,
   "month-view-demo": MonthViewDemo,
+  "time-grid-demo": TimeGridDemo,
   "typed-events-demo": TypedEventsDemo,
   "week-view-demo": WeekViewDemo,
 } satisfies Record<string, ComponentType>;

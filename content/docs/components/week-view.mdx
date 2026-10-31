@@ -63,6 +63,12 @@ Everything else (date, events, number of days, hours, clock, locale) is set on [
 <PropsTable
   rows={[
     {
+      name: "numberOfDays",
+      type: "number",
+      description:
+        "Number of day columns. Defaults to the provider's `numberOfDays`. When set, it fixes the column count, and prev/next step by it below 7 while the provider's `numberOfDays` is uncontrolled.",
+    },
+    {
       name: "showEventPopover",
       type: "boolean",
       default: "true",
