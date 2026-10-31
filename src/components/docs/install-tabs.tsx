@@ -8,13 +8,11 @@ import {
 import { ServerCodeBlock } from "fumadocs-ui/components/codeblock.rsc";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 
+import { CODE_THEMES } from "@/components/docs/code-themes";
 import { DocsPre } from "@/components/docs/docs-code-block";
 
 /** Registry namespace configured in `components.json` (see the Installation page). */
 const REGISTRY_NAMESPACE = "@calendarcn";
-
-/** Shiki themes, matching the ones fumadocs-mdx uses for MDX code blocks. */
-const CODE_THEMES = { light: "github-light", dark: "github-dark" } as const;
 
 /**
  * Package managers shown in the CLI tab, each with its shadcn CLI runner.

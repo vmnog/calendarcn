@@ -44,6 +44,27 @@
   }
 
   /*
+   * Live examples (`ComponentPreview`) behave like the app again: dragging an
+   * event doesn't select text, and events and buttons keep the calendar's own
+   * cursor (inherited, so the resize cursor set on <body> mid-drag shows).
+   */
+  body:has(#nd-notebook-layout) .docs-preview * {
+    user-select: none;
+  }
+
+  body:has(#nd-notebook-layout)
+    .docs-preview
+    :is(input, textarea, [contenteditable="true"]) {
+    user-select: text;
+  }
+
+  body:has(#nd-notebook-layout)
+    .docs-preview
+    :is(a[href], button, [role="button"], [role="tab"], summary) {
+    --cursor: inherit;
+  }
+
+  /*
    * Fumadocs only names the transitioned properties on the collapsed sidebar,
    * which leaves the expanded one on `transition-property: all`. Use the same
    * list in both states.

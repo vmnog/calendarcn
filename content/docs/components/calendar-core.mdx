@@ -3,15 +3,9 @@ title: Calendar Core
 description: CalendarProvider and useCalendar(), the state and settings every view shares.
 ---
 
-<ComponentPreview name="calendar-core">
+<ComponentPreview name="controlled-events-demo" />
 
-```tsx
-// TODO: example lands once CalendarProvider and useCalendar() are final.
-```
-
-</ComponentPreview>
-
-Calendar Core has no UI of its own. `CalendarProvider` holds the calendar's state (the current date, the active view, the events and the selected event), and `useCalendar()` reads and updates it from any component inside the provider. Every view and the event details build on it.
+Calendar Core has no UI of its own. `CalendarProvider` holds the calendar's state (events, view, date, selection) and its settings, and `useCalendar()` reads and changes that state from any component inside it. Every view and the event details build on it. In the preview, the list on the right is the app's own `events` state: drag, resize or create an event and it updates.
 
 ## Installation
 
@@ -25,39 +19,606 @@ Manual steps land with the registry item.
 
 ## Usage
 
-{/* TODO: replace with the real example once the API is final. */}
-
 ```tsx
-// TODO: wrap your views in <CalendarProvider> and read state with useCalendar().
+import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
+import { WeekView } from "@/components/week-view";
+
+export function Schedule() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <Toolbar />
+      <WeekView />
+    </CalendarProvider>
+  );
+}
+
+function Toolbar() {
+  const { monthName, year, goToPrev, goToNext } = useCalendar();
+  // ...
+}
 ```
 
-## Planned settings
+### Controlled or uncontrolled
 
-The provider is where calendar-wide settings will live. Names and defaults are still being decided:
+Each piece of state comes in a shadcn/Radix-style pair. Pass `defaultEvents` (or nothing) and the provider owns the events. Pass `events` with `onEventsChange` and your app owns them: the provider draws whatever `events` holds and reports every drag, resize, create and edit as the full next list. `view`, `date` and `numberOfDays` work the same way.
 
-- Snap interval for dragging and resizing events.
-- Visible hour range of the time grid.
-- 12-hour or 24-hour clock.
-- A [date-fns locale](https://date-fns.org/docs/I18n) for dates, weekdays and the first day of the week.
-- Number of days in the week view.
+```tsx
+const [events, setEvents] = React.useState(initialEvents);
+
+<CalendarProvider events={events} onEventsChange={setEvents}>
+  <WeekView />
+</CalendarProvider>;
+```
+
+Use `onEventCreate`, `onEventUpdate` and `onEventSelect` to react to one change at a time, for example to save it to a server.
+
+### Server rendering
+
+Without `date` or `defaultDate`, the calendar starts on today's period. The server doesn't know the viewer's today or time zone, so in that case the provider renders nothing until hydration finishes, and server and client markup always match. Pass `defaultDate` to render on the server.
+
+## Configuration
+
+<ComponentPreview name="config-demo" />
+
+Display and interaction settings are plain props: a 24-hour clock, a [date-fns locale](https://date-fns.org/docs/I18n) for day and month names, the first day of the week, the visible hours of the time grid, and the minute step that drag, resize and click-to-create snap to. Events outside the visible hours are clipped at the edge, and hidden when they lie fully outside. Read the resolved settings anywhere with `useCalendarConfig()`, for example to format times in a custom renderer the way the calendar does.
+
+## Custom event content
+
+<ComponentPreview name="custom-event-content-demo" />
+
+`renderEventContent` replaces what's drawn inside each event. The calendar keeps drawing the box (position, color, selection, drag and resize handles), so the renderer only returns the inside. `placement` says where the event is drawn and how much room it has: a timed block in the hour grid (`"time-grid"`, as tall as the event), a 24px bar in the all-day row (`"all-day"`), or a 20px line in month view (`"month-item"` and `"month-bar"`). `isCompact` is true wherever there's room for one line only.
+
+To replace the details popover instead, see [Event Details](/docs/components/event-details#custom-details).
+
+## Typed events
+
+<ComponentPreview name="typed-events-demo" />
+
+Extend `CalendarEvent` with your own fields and pass your events in. The provider infers your type, and every callback and renderer gets it back. Read it in your own components with `useCalendar<Meeting>()`.
+
+Once your type has required fields, `createEvent` becomes required: the calendar can't fill `room` or `attendees` for an event created by clicking an empty slot, so TypeScript asks you to.
+
+```tsx
+interface Meeting extends CalendarEvent {
+  room: string;
+  attendees: string[];
+}
+
+<CalendarProvider
+  defaultEvents={meetings}
+  createEvent={(range) => ({
+    id: crypto.randomUUID(),
+    title: "New meeting",
+    ...range,
+    room: "Atlas",
+    attendees: [],
+  })}
+>
+  <WeekView />
+</CalendarProvider>;
+```
 
 ## API Reference
 
 ### CalendarProvider
 
-{/* TODO: add the remaining props once the API is final. */}
+`TEvent` is your event type: `CalendarEvent` plus your own fields. It's inferred from `events` or `defaultEvents`.
 
 <PropsTable
   rows={[
     {
+      name: "events",
+      type: "TEvent[]",
+      description:
+        "Events to display (controlled). Pair with `onEventsChange`.",
+    },
+    {
+      name: "defaultEvents",
+      type: "TEvent[]",
+      default: "[]",
+      description: "Initial events when `events` is not controlled.",
+    },
+    {
+      name: "onEventsChange",
+      type: "(events: TEvent[]) => void",
+      description:
+        "Called with the full next list whenever events change: drag, resize, create or an edit in the details.",
+    },
+    {
+      name: "view",
+      type: '"day" | "week" | "month"',
+      description: "Active view (controlled).",
+    },
+    {
+      name: "defaultView",
+      type: '"day" | "week" | "month"',
+      default: '"week"',
+      description: "Initial view when `view` is not controlled.",
+    },
+    {
+      name: "onViewChange",
+      type: "(view: ViewType) => void",
+      description: "Called when the view changes.",
+    },
+    {
+      name: "date",
+      type: "Date",
+      description: "First day of the displayed period (controlled).",
+    },
+    {
+      name: "defaultDate",
+      type: "Date",
+      description:
+        "Initial first day when `date` is not controlled. Defaults to today in day view and the start of this week otherwise. Without `date` or `defaultDate`, nothing renders until hydration finishes.",
+    },
+    {
+      name: "onDateChange",
+      type: "(date: Date) => void",
+      description:
+        "Called when the displayed date changes, by navigation or by scrolling.",
+    },
+    {
+      name: "weekStartsOn",
+      type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
+      default: "0",
+      description: "Day the week starts on, 0 for Sunday to 6 for Saturday.",
+    },
+    {
+      name: "numberOfDays",
+      type: "number",
+      description:
+        "Days the week view shows (controlled). Below 7, the columns start on the current day and previous/next move by that many days. From 7 up, they start on the week's first day and move by a week.",
+    },
+    {
+      name: "defaultNumberOfDays",
+      type: "number",
+      default: "7",
+      description:
+        "Initial number of days when `numberOfDays` is not controlled.",
+    },
+    {
+      name: "onNumberOfDaysChange",
+      type: "(numberOfDays: number) => void",
+      description: "Called when the number of days changes.",
+    },
+    {
+      name: "defaultViewSettings",
+      type: "Partial<ViewSettings>",
+      default:
+        "{ showWeekends: true, showDeclinedEvents: true, showWeekNumbers: false }",
+      description:
+        "Initial display preferences. Toggle them later with `toggleWeekends`, `toggleDeclinedEvents` and `toggleWeekNumbers`.",
+    },
+    {
+      name: "snapMinutes",
+      type: "number",
+      default: "15",
+      description:
+        "Minute step that timed-event drag, resize and click-to-create snap to. Also the shortest length a resize allows.",
+    },
+    {
+      name: "dayStartHour",
+      type: "number",
+      default: "0",
+      description:
+        "First hour (0–23) the day and week views show. Events before it are clipped at the top edge, and hidden when they end before it.",
+    },
+    {
+      name: "dayEndHour",
+      type: "number",
+      default: "24",
+      description:
+        "Hour (1–24) the day and week views end at, after `dayStartHour`. Events after it are clipped at the bottom edge, and hidden when they start after it.",
+    },
+    {
+      name: "hourCycle",
+      type: "12 | 24",
+      default: "12",
+      description: 'Clock style for every time label: "3 PM" or "15:00".',
+    },
+    {
+      name: "locale",
+      type: "Locale",
+      default: "enUS",
+      description:
+        "date-fns locale for day names, month names, dates and week numbers.",
+    },
+    {
+      name: "calendars",
+      type: "CalendarInfo[]",
+      default: "[]",
+      description:
+        'Calendars the event context menu offers under "Block on calendar". The submenu is hidden when the list is empty.',
+    },
+    {
+      name: "createEvent",
+      type: "(range: NewEventRange) => TEvent | null",
+      description:
+        'Builds the event created by clicking an empty slot. Return `null` to create nothing. Defaults to an event titled "New event" with a random UUID. Required when `TEvent` has required fields of its own.',
+    },
+    {
+      name: "onEventCreate",
+      type: "(event: TEvent) => void",
+      description: "Called after a click-created event is added.",
+    },
+    {
+      name: "onEventUpdate",
+      type: "(event: TEvent) => void",
+      description:
+        "Called after an event changes: drag, resize, keyboard move or an edit in the details.",
+    },
+    {
+      name: "onEventSelect",
+      type: "(eventId: string) => void",
+      description:
+        "Called whenever an event is selected, clicked or just created.",
+    },
+    {
+      name: "renderEventContent",
+      type: "(props: EventContentProps<TEvent>) => ReactNode",
+      description:
+        "Draws the inside of each event in the hour grid, the all-day row and month view. Defaults to the title and time.",
+    },
+    {
+      name: "renderEventDetails",
+      type: "(props: EventDetailsRenderProps<TEvent>) => ReactNode",
+      description:
+        "Draws the body of the details popover. Defaults to `EventDetailPanel`.",
+    },
+    {
       name: "children",
       type: "ReactNode",
-      required: true,
-      description: "The views and components that read calendar state.",
+      description:
+        "The views and your own components that read calendar state.",
     },
   ]}
 />
 
 ### useCalendar()
 
-<PropsTable todo="TODO: the return value lands once the API is final." />
+Returns the state and actions of the nearest `CalendarProvider`. Pass your event type, `useCalendar<TEvent>()`, to get events and callbacks typed with it. Throws outside a provider.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    { name: "events", type: "TEvent[]", description: "All events." },
+    {
+      name: "view",
+      type: '"day" | "week" | "month"',
+      description: "Active view.",
+    },
+    {
+      name: "currentDate",
+      type: "Date",
+      description: "First day of the displayed period.",
+    },
+    {
+      name: "weekStartsOn",
+      type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
+      description: "Day the week starts on.",
+    },
+    {
+      name: "numberOfDays",
+      type: "number",
+      description: "Days the week view shows.",
+    },
+    {
+      name: "viewSettings",
+      type: "ViewSettings",
+      description:
+        "`showWeekends`, `showDeclinedEvents` and `showWeekNumbers`.",
+    },
+    {
+      name: "visibleDays",
+      type: "Date[]",
+      description:
+        "Days the day or week view shows right now, updated live while it scrolls sideways. Empty in month view.",
+    },
+    {
+      name: "displayMonth",
+      type: "Date | null",
+      description:
+        "First day of the month the month view shows (it follows its scroll), or `null` before month view has rendered.",
+    },
+    {
+      name: "selectedEventId",
+      type: "string | null",
+      description: "ID of the selected event.",
+    },
+    {
+      name: "selectedEvent",
+      type: "TEvent | null",
+      description: "The selected event.",
+    },
+    {
+      name: "highlightedDate",
+      type: "Date | null",
+      description: "Day briefly highlighted after `showDay`.",
+    },
+    {
+      name: "monthName",
+      type: "string",
+      description:
+        'Month name for a header, in the calendar\'s locale ("October"). Week and day views use the last visible day, so a week that crosses into the next month shows the later month.',
+    },
+    {
+      name: "year",
+      type: "string",
+      description: 'Four-digit year for a header ("2026").',
+    },
+    {
+      name: "weekNumber",
+      type: "number",
+      description: "Week number of the displayed week.",
+    },
+    {
+      name: "goToToday",
+      type: "() => void",
+      description: "Goes to the period that contains today.",
+    },
+    {
+      name: "goToPrev",
+      type: "() => void",
+      description:
+        "Goes back one period: a day, a week (or `numberOfDays`) or a month.",
+    },
+    {
+      name: "goToNext",
+      type: "() => void",
+      description: "Goes forward one period.",
+    },
+    {
+      name: "goToDate",
+      type: "(date: Date) => void",
+      description:
+        "Sets the first displayed day as given, without snapping to a week start.",
+    },
+    {
+      name: "switchView",
+      type: "(view: ViewType) => void",
+      description:
+        "Switches the view and snaps the date to the new view's period.",
+    },
+    {
+      name: "setNumberOfDays",
+      type: "(numberOfDays: number) => void",
+      description: "Sets how many days the week view shows.",
+    },
+    {
+      name: "selectEvent",
+      type: "(eventId: string) => void",
+      description: "Selects an event, which opens its popover.",
+    },
+    {
+      name: "clearSelection",
+      type: "() => void",
+      description: "Clears the selection and closes the popover.",
+    },
+    {
+      name: "addEventFromRange",
+      type: "(range: NewEventRange) => void",
+      description:
+        "Creates an event for a time range through `createEvent`, selects it and focuses its title.",
+    },
+    {
+      name: "updateEvent",
+      type: "(event: TEvent) => void",
+      description: "Replaces the event with the same id.",
+    },
+    {
+      name: "toggleWeekends",
+      type: "() => void",
+      description: "Shows or hides weekend columns.",
+    },
+    {
+      name: "toggleDeclinedEvents",
+      type: "() => void",
+      description: "Shows or hides declined events.",
+    },
+    {
+      name: "toggleWeekNumbers",
+      type: "() => void",
+      description: "Shows or hides week numbers.",
+    },
+    {
+      name: "showDay",
+      type: "(date: Date) => void",
+      description:
+        "Opens the week containing `date` and briefly highlights that day.",
+    },
+  ]}
+/>
+
+### useCalendarConfig()
+
+Returns the resolved settings of the nearest provider. Outside a provider it returns the defaults, so components like `EventDetailPanel` work on their own.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "snapMinutes",
+      type: "number",
+      description: "Snap step in minutes.",
+    },
+    {
+      name: "dayStartHour",
+      type: "number",
+      description: "First visible hour, normalized to 0–23.",
+    },
+    {
+      name: "dayEndHour",
+      type: "number",
+      description:
+        "Last visible hour, normalized to after `dayStartHour` and at most 24.",
+    },
+    { name: "hourCycle", type: "12 | 24", description: "Clock style." },
+    { name: "locale", type: "Locale", description: "date-fns locale." },
+    {
+      name: "calendars",
+      type: "CalendarInfo[]",
+      description: "Calendars the context menu offers.",
+    },
+  ]}
+/>
+
+### CalendarEvent
+
+The fields the calendar needs to place and draw an event. [`DetailedCalendarEvent`](/docs/components/event-details#detailedcalendarevent) adds the fields the default details panel reads and edits.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "id",
+      type: "string",
+      required: true,
+      description: "Unique identifier.",
+    },
+    {
+      name: "title",
+      type: "string",
+      required: true,
+      description: "Event title.",
+    },
+    {
+      name: "start",
+      type: "Date",
+      required: true,
+      description: "Start date and time.",
+    },
+    {
+      name: "end",
+      type: "Date",
+      required: true,
+      description:
+        "End date and time. For an all-day event, the start of its last day, so a one-day event has `start` equal to `end`.",
+    },
+    {
+      name: "isAllDay",
+      type: "boolean",
+      description:
+        "Draws the event in the all-day row. Timed events that cross midnight go there too.",
+    },
+    {
+      name: "color",
+      type: '"red" | "orange" | "yellow" | "green" | "blue" | "purple" | "gray"',
+      description:
+        "Event color, from the `--event-*` theme tokens. Defaults to blue.",
+    },
+  ]}
+/>
+
+### EventContentProps
+
+Passed to `renderEventContent`.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "event",
+      type: "TEvent",
+      description:
+        "The event, with its in-progress start and end while it's dragged or resized.",
+    },
+    {
+      name: "view",
+      type: '"day" | "week" | "month"',
+      description: "View the event is drawn in.",
+    },
+    {
+      name: "placement",
+      type: '"time-grid" | "all-day" | "month-item" | "month-bar"',
+      description: "Where the event is drawn, which sets how much room it has.",
+    },
+    {
+      name: "isSelected",
+      type: "boolean",
+      description: "Whether the event is selected.",
+    },
+    {
+      name: "isPast",
+      type: "boolean",
+      description: "Whether the event has already ended.",
+    },
+    {
+      name: "isDragging",
+      type: "boolean",
+      description:
+        "Whether this is the copy that follows the pointer while dragging.",
+    },
+    {
+      name: "isResizing",
+      type: "boolean",
+      description: "Whether the event is being resized.",
+    },
+    {
+      name: "isCompact",
+      type: "boolean",
+      description:
+        "Whether there's room for one line only: hour-grid blocks under 40px tall, and always in the all-day row and month view.",
+    },
+    {
+      name: "timeLabel",
+      type: "string",
+      description:
+        'Time the default content shows: the range in the hour grid ("10–11 AM"), the start in month cells and for timed all-day-row events ("9 AM"). Empty where the default shows no time.',
+    },
+  ]}
+/>
+
+### NewEventRange
+
+Passed to `createEvent` and `addEventFromRange`.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "start",
+      type: "Date",
+      description: "Start of the clicked `snapMinutes` slot.",
+    },
+    {
+      name: "end",
+      type: "Date",
+      description:
+        "An hour after start, kept inside the visible hours and the clicked day.",
+    },
+  ]}
+/>
+
+### CalendarInfo
+
+An entry of the `calendars` prop.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "id",
+      type: "string",
+      required: true,
+      description: "Stored in the event's `calendarId` when picked.",
+    },
+    {
+      name: "name",
+      type: "string",
+      required: true,
+      description: "Display name.",
+    },
+    {
+      name: "color",
+      type: "EventColor",
+      required: true,
+      description: "Swatch color shown beside the name.",
+    },
+    {
+      name: "email",
+      type: "string",
+      description:
+        "Account the calendar belongs to. The menu groups calendars by it.",
+    },
+  ]}
+/>
