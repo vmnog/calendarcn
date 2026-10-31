@@ -53,6 +53,9 @@ const NEW_EVENT_TITLE = "New event";
 /** Primary calendar (and its account email) that click-created events belong to */
 const PRIMARY_CALENDAR_ID = "me@vmnog.com";
 
+/** Hour the time grid opens on, so the first rows on screen hold the day's events */
+const INITIAL_SCROLL_HOUR = 8;
+
 /**
  * Calendars of the demo account, offered by the event context menu. Ids are
  * the names, matching the `calendarId`s of the mock events.
@@ -517,6 +520,7 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
             // remounting, so the vertical scroll position is kept
             <TimeGrid
               view={view}
+              scrollToHour={INITIAL_SCROLL_HOUR}
               showEventPopover={!showDetailsInPanel}
               onEventPopoverExpand={expandEventPopover}
             />
