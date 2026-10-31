@@ -180,6 +180,7 @@ pnpm lint             # ESLint
 pnpm typecheck        # TypeScript check
 pnpm format           # Prettier format
 pnpm format:check     # Prettier check (CI)
+pnpm test:e2e         # Playwright e2e regression suite (e2e/, see docs/runbooks/local-development.md)
 ```
 
 **Before committing:** `pnpm lint && pnpm typecheck && pnpm format:check`

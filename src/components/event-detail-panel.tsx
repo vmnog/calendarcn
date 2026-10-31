@@ -884,6 +884,7 @@ export function EventDetailPanel({
             <Clock className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
             <input
               ref={startTimeRef}
+              data-testid="event-start-time"
               type="text"
               value={startTimeValue}
               onChange={handleStartTimeChange}
@@ -917,6 +918,7 @@ export function EventDetailPanel({
             </span>
             <input
               ref={endTimeRef}
+              data-testid="event-end-time"
               type="text"
               value={endTimeValue}
               onChange={handleEndTimeChange}
@@ -959,6 +961,7 @@ export function EventDetailPanel({
         >
           <input
             ref={dateRef}
+            data-testid="event-start-date"
             type="text"
             value={dateValue}
             onChange={handleDateChange}
