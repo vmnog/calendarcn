@@ -1,34 +1,53 @@
 ---
 title: Calendar
-description: A full calendar built from the parts, with a header, a view switcher, and week and month views.
+description: The full calendar, with a toolbar, a view switcher, and day, week and month views.
 ---
 
-{/* Taller than the default: the header takes room the details popover needs. */}
+{/* Taller than the default: the toolbar takes room the details popover needs. */}
 
 <ComponentPreview name="calendar-demo" height={680} />
 
-The calendar is a composition, not a component with a long list of props. [`CalendarProvider`](/docs/components/calendar-core) owns the state, a small header reads it with `useCalendar()`, and [Week View](/docs/components/week-view) or [Month View](/docs/components/month-view) renders whichever view the provider is on. Swap any piece for your own.
-
-{/* TODO: add Day View to the view switcher once the views are split into TimeGrid/DayView/WeekView. */}
+`Calendar` puts the pieces together: a [`CalendarProvider`](/docs/components/calendar-core) for the state, a toolbar with the title, view switcher, today and previous/next, and the [Time Grid](/docs/components/time-grid) or [Month View](/docs/components/month-view) below it. It takes every `CalendarProvider` prop, and the CLI copies its source into your project, so change the toolbar or the layout right in `components/calendar.tsx`.
 
 ## Installation
 
-<InstallTabs item="calendar">
-
-{/* TODO: list the files and dependencies once the block is split into registry items. */}
-
-The block pulls in every other item: [Calendar Core](/docs/components/calendar-core), [Time Grid](/docs/components/time-grid), [Day View](/docs/components/day-view), [Week View](/docs/components/week-view), [Month View](/docs/components/month-view) and [Event Details](/docs/components/event-details). Manual steps land with the registry.
-
-</InstallTabs>
+<InstallTabs item="calendar" />
 
 ## Usage
+
+```tsx
+import { Calendar } from "@/components/calendar";
+
+export function Schedule() {
+  return (
+    // The calendar fills its parent's height
+    <div className="h-[600px]">
+      <Calendar defaultEvents={events} />
+    </div>
+  );
+}
+```
+
+Events, the view and the date can each be left to the calendar (`defaultEvents`, `defaultView`, `defaultDate`) or controlled (`events` with `onEventsChange`, and so on), the same as on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider):
+
+```tsx
+const [events, setEvents] = React.useState(initialEvents);
+
+<Calendar events={events} onEventsChange={setEvents} defaultView="month" />;
+```
+
+The view switcher offers day, week and month, 2 to 9 days at a time, and the weekend, declined events and week number settings. The examples use `createSampleEvents()` from `src/lib/sample-events.ts` for their data; pass your own events instead.
+
+## Build your own
+
+`Calendar` is a short file. For a different header, compose the parts yourself: the provider owns the state, your header reads it with `useCalendar()`, and the body renders whichever view the provider is on.
 
 ```tsx
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { MonthView } from "@/components/month-view";
 import { WeekView } from "@/components/week-view";
 
-export function Calendar() {
+export function MyCalendar() {
   return (
     <CalendarProvider defaultEvents={events}>
       <div className="flex h-[600px] flex-col">
@@ -53,63 +72,7 @@ function Body() {
 }
 ```
 
-The preview's Code tab has the complete file. The examples use `createSampleEvents()` from `src/lib/sample-events.ts` for their data; pass your own events instead.
-
-The [live demo](/) is the same composition with more around it: two sidebars, a mini calendar, a command menu and app-wide [keyboard shortcuts](/docs/keyboard-shortcuts).
-
-## Keyboard & accessibility
-
-Every event is a button you can reach with <Kbd>Tab</Kbd>. The views only handle keys while one of their events has focus, so a calendar embedded in your page never takes over the page's own shortcuts.
-
-| Action                           | Keys                                                                                                                      |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Next or previous event on screen | <Kbd>Tab</Kbd> / <KbdGroup><Kbd>⇧</Kbd><Kbd>Tab</Kbd></KbdGroup>                                                          |
-| Open the event's details         | <Kbd>Enter</Kbd> or <Kbd>Space</Kbd>                                                                                      |
-| Close the details                | <Kbd>Esc</Kbd>. Focus goes back to the event.                                                                             |
-| Move a day earlier or later      | <KbdGroup><Kbd>Alt</Kbd><Kbd>←</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>→</Kbd></KbdGroup>                         |
-| Move earlier or later            | <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>                         |
-| Make it end earlier or later     | <KbdGroup><Kbd>Alt</Kbd><Kbd>⇧</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>⇧</Kbd><Kbd>↓</Kbd></KbdGroup> |
-
-- In the day and week views, <Kbd>Alt</Kbd> + <Kbd>↑</Kbd> / <Kbd>↓</Kbd> move a timed event by one `snapMinutes` step and keep it inside the visible hours. In month view they move it a week.
-- Moving an event past the visible days moves the view with it, and focus follows the event.
-- `CalendarProvider` renders a polite live region (`role="status"`) that announces each move, resize and create, e.g. "Moved Team standup to Tuesday, October 27, 9:15 AM".
-- Each event is labelled with its title and time and reports its selection with `aria-pressed`. Day columns and month cells are labelled groups with the full date. Decorative parts (time axis, grid lines, drag previews) are hidden from assistive tech, and off-screen scroll buffers are `inert`.
-- With reduced motion turned on, scrolling snaps without the slide animation.
-
-The single-key shortcuts (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>…) belong to the [live demo](/docs/keyboard-shortcuts), not to the views.
-
-## Theming
-
-The calendar uses your shadcn/ui theme (`--background`, `--foreground`, `--border`, `--muted-foreground`, `--popover`) plus a few tokens of its own, defined in `src/app/globals.css` for light mode (`:root`) and dark mode (`.dark`). Today's date and the current-time line use `--primary`.
-
-| Variable                 | Used for                                                      |
-| ------------------------ | ------------------------------------------------------------- |
-| `--event-{color}`        | Event text: the title and time of the default content         |
-| `--event-{color}-bg`     | Event background                                              |
-| `--event-{color}-border` | The bar on an event's left edge, and the color swatches       |
-| `--calendar-weekend`     | Background of weekend columns and weekend cells in month view |
-
-`{color}` is one of `red`, `orange`, `yellow`, `green`, `blue`, `purple` and `gray`. Override them to restyle every event of that color:
-
-```css
-:root {
-  --event-blue: #1d4ed8;
-  --event-blue-bg: #dbeafe;
-  --event-blue-border: #3b82f6;
-}
-
-.dark {
-  --event-blue: #93c5fd;
-  --event-blue-bg: #1e3a8a;
-  --event-blue-border: #3b82f6;
-}
-```
-
-They're also Tailwind colors (`text-event-blue`, `bg-event-blue-bg`, `bg-event-blue-border`), which is how the [custom content](/docs/components/calendar-core#custom-event-content) example colors its text.
-
-## API Reference
-
-The calendar has no props of its own: configure it on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider) and on each view. A header like the one in the example needs these fields of [`useCalendar()`](/docs/components/calendar-core#usecalendar):
+A header like this needs these fields of [`useCalendar()`](/docs/components/calendar-core#usecalendar):
 
 <PropsTable
   nameHeader="Field"
@@ -150,6 +113,92 @@ The calendar has no props of its own: configure it on [`CalendarProvider`](/docs
       name: "switchView",
       type: "(view: ViewType) => void",
       description: "Switches the view and snaps the date to its period.",
+    },
+  ]}
+/>
+
+The [live demo](/) is the same idea with more around it: two sidebars, a mini calendar and a command menu.
+
+## Keyboard & accessibility
+
+Every event is a button you can reach with <Kbd>Tab</Kbd>. The views only handle keys while one of their events has focus, so a calendar embedded in your page never takes over the page's own shortcuts.
+
+| Action                           | Keys                                                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Next or previous event on screen | <Kbd>Tab</Kbd> / <KbdGroup><Kbd>⇧</Kbd><Kbd>Tab</Kbd></KbdGroup>                                                          |
+| Open the event's details         | <Kbd>Enter</Kbd> or <Kbd>Space</Kbd>                                                                                      |
+| Close the details                | <Kbd>Esc</Kbd>. Focus goes back to the event.                                                                             |
+| Move a day earlier or later      | <KbdGroup><Kbd>Alt</Kbd><Kbd>←</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>→</Kbd></KbdGroup>                         |
+| Move earlier or later            | <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>                         |
+| Make it end earlier or later     | <KbdGroup><Kbd>Alt</Kbd><Kbd>⇧</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>⇧</Kbd><Kbd>↓</Kbd></KbdGroup> |
+
+- In the day and week views, <Kbd>Alt</Kbd> + <Kbd>↑</Kbd> / <Kbd>↓</Kbd> move a timed event by one `snapMinutes` step and keep it inside the visible hours. In month view they move it a week.
+- Moving an event past the visible days moves the view with it, and focus follows the event.
+- `CalendarProvider` renders a polite live region (`role="status"`) that announces each move, resize and create, e.g. "Moved Team standup to Tuesday, October 27, 9:15 AM".
+- Each event is labelled with its title and time and reports its selection with `aria-pressed`. Day columns and month cells are labelled groups with the full date. Decorative parts (time axis, grid lines, drag previews) are hidden from assistive tech, and off-screen scroll buffers are `inert`.
+- With reduced motion turned on, scrolling snaps without the slide animation.
+
+`Calendar` also turns on the single-key [keyboard shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>…). They listen on the whole page, so pass `shortcuts={false}` when several calendars share a page or the keys clash with your app's.
+
+## Theming
+
+The calendar uses your shadcn/ui theme (`--background`, `--foreground`, `--border`, `--muted-foreground`, `--popover`) plus a few tokens of its own, which the CLI adds to your CSS file for light mode (`:root`) and dark mode (`.dark`). Today's date and the current-time line use `--primary`.
+
+| Variable                 | Used for                                                      |
+| ------------------------ | ------------------------------------------------------------- |
+| `--event-{color}`        | Event text: the title and time of the default content         |
+| `--event-{color}-bg`     | Event background                                              |
+| `--event-{color}-border` | The bar on an event's left edge, and the color swatches       |
+| `--calendar-weekend`     | Background of weekend columns and weekend cells in month view |
+
+`{color}` is one of `red`, `orange`, `yellow`, `green`, `blue`, `purple` and `gray`. Override them to restyle every event of that color:
+
+```css
+:root {
+  --event-blue: #1d4ed8;
+  --event-blue-bg: #dbeafe;
+  --event-blue-border: #3b82f6;
+}
+
+.dark {
+  --event-blue: #93c5fd;
+  --event-blue-bg: #1e3a8a;
+  --event-blue-border: #3b82f6;
+}
+```
+
+They're also Tailwind colors (`text-event-blue`, `bg-event-blue-bg`, `bg-event-blue-border`), which is how the [custom content](/docs/components/calendar-core#custom-event-content) example colors its text.
+
+## API Reference
+
+`Calendar` takes every [`CalendarProvider` prop](/docs/components/calendar-core#calendarprovider) (events, view, date, configuration and render slots), plus these:
+
+<PropsTable
+  rows={[
+    {
+      name: "scrollToHour",
+      type: "number",
+      default: "8",
+      description:
+        "Hour the time grid scrolls to when it mounts, e.g. `8.5` for 8:30 AM.",
+    },
+    {
+      name: "shortcuts",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the single-key shortcuts are on. They listen on `window`, so turn them off when several calendars share a page.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Class name for the root element.",
+    },
+    {
+      name: "children",
+      type: "React.ReactNode",
+      description:
+        "Rendered inside the provider, after the calendar. Useful for your own panels that read `useCalendar()`.",
     },
   ]}
 />

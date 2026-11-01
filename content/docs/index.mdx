@@ -11,11 +11,13 @@ CalendarCN is an open-source calendar for React. It brings the feel of Notion Ca
 
 Like shadcn/ui, CalendarCN isn't an npm dependency. The shadcn CLI copies the source into your project, so you can read it, restyle it and change how it behaves. You can add the full calendar or only the pieces you need.
 
-<Callout title="Work in progress">
-  The calendar is being split into registry items. The pages under
-  **Components** describe each planned item. Their API reference fills in once
-  that work lands. See the [Roadmap](/docs/roadmap) for what comes next.
-</Callout>
+Start with the [Installation](/docs/installation) guide, then add the full calendar with one command:
+
+```npm
+npx shadcn add @calendarcn/calendar
+```
+
+See the [Roadmap](/docs/roadmap) for what comes next.
 
 ## What's included
 
@@ -30,7 +32,8 @@ Like shadcn/ui, CalendarCN isn't an npm dependency. The shadcn CLI copies the so
 
 <Cards>
   <Card title="Calendar" href="/docs/components/calendar">
-    The full calendar block, as seen in the demo.
+    The full calendar: a toolbar and view switcher over the day, week and month
+    views.
   </Card>
   <Card title="Calendar Core" href="/docs/components/calendar-core">
     `CalendarProvider` and `useCalendar()`, the state every view shares.
@@ -48,7 +51,8 @@ Like shadcn/ui, CalendarCN isn't an npm dependency. The shadcn CLI copies the so
     A month at a glance.
   </Card>
   <Card title="Event Details" href="/docs/components/event-details">
-    The panel and popover for viewing and editing an event.
+    Event chips, and the panel, popover and menu for viewing and editing an
+    event.
   </Card>
 </Cards>
 

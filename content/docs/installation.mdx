@@ -3,17 +3,18 @@ title: Installation
 description: Add CalendarCN to your project with the shadcn CLI.
 ---
 
-<Callout type="warn" title="Coming soon">
-  The `@calendarcn` registry isn't published yet, so the commands below don't
-  work today. This page shows the planned flow.
-</Callout>
-
 <Steps>
 <Step>
 
 ### Set up shadcn/ui
 
-CalendarCN builds on shadcn/ui and Tailwind CSS 4. If your project doesn't use them yet, follow the [shadcn/ui installation guide](https://ui.shadcn.com/docs/installation) first.
+CalendarCN builds on shadcn/ui and Tailwind CSS 4, with the Radix version of the shadcn/ui components. In a new project, pick Radix when you set up shadcn/ui:
+
+```npm
+npx shadcn init -b radix
+```
+
+Projects already on a Radix style (`new-york`, `radix-nova` and the other `radix-*` presets) are ready. Base UI styles aren't supported yet: the event details use Radix-only popover features. See the [shadcn/ui installation guide](https://ui.shadcn.com/docs/installation) for frameworks other than Next.js.
 
 </Step>
 <Step>
@@ -35,13 +36,7 @@ Add the `@calendarcn` namespace to `registries` in your `components.json`. The r
 
 ### Add components
 
-Add any item by name:
-
-```npm
-npx shadcn add @calendarcn/<item>
-```
-
-For example, the full calendar block:
+Add the full calendar:
 
 ```npm
 npx shadcn add @calendarcn/calendar
@@ -53,30 +48,70 @@ Or only the pieces you need, like the week view:
 npx shadcn add @calendarcn/week-view
 ```
 
-The CLI also installs each item's npm dependencies and any shadcn/ui components it uses.
+The CLI copies the files into your components, hooks and lib folders, installs their npm dependencies and the shadcn/ui components they use, and adds the calendar's color tokens to your CSS file.
 
 </Step>
 <Step>
 
 ### Render it
 
-{/* TODO: replace with the real example once the CalendarProvider API is final. */}
+```tsx title="app/calendar/page.tsx"
+"use client";
 
-```tsx title="app/page.tsx"
-// TODO: usage example lands with the calendar-core refactor.
+import * as React from "react";
+
+import { Calendar } from "@/components/calendar";
+import type { CalendarEvent } from "@/components/calendar-types";
+
+export default function CalendarPage() {
+  const [events, setEvents] = React.useState<CalendarEvent[]>([]);
+
+  React.useEffect(() => {
+    // Load your events here, e.g. from your API
+    setEvents([
+      {
+        id: "1",
+        title: "Team standup",
+        start: new Date(2026, 10, 2, 9, 0),
+        end: new Date(2026, 10, 2, 9, 30),
+        color: "blue",
+      },
+    ]);
+  }, []);
+
+  return (
+    <div className="h-screen">
+      <Calendar events={events} onEventsChange={setEvents} />
+    </div>
+  );
+}
 ```
+
+The calendar fills its parent's height, so give the parent one. It renders in the browser only, since "today" and the time zone belong to the viewer.
 
 </Step>
 </Steps>
 
+<Callout title="Next.js Cache Components">
+  With `cacheComponents` on (the default for new Next.js 16 apps), `new Date()`
+  can't run while a page prerenders. Create date-based events in an effect or an
+  event handler, or load them from your API, as above.
+</Callout>
+
 ## Registry items
 
-| Item                        | What it adds                                  |
-| --------------------------- | --------------------------------------------- |
-| `@calendarcn/calendar`      | The full calendar block, as seen in the demo. |
-| `@calendarcn/calendar-core` | `CalendarProvider` and `useCalendar()`.       |
-| `@calendarcn/time-grid`     | The hour grid used by the day and week views. |
-| `@calendarcn/day-view`      | A single-day view.                            |
-| `@calendarcn/week-view`     | A week or N-day view.                         |
-| `@calendarcn/month-view`    | A month view.                                 |
-| `@calendarcn/event-details` | The event detail panel and popover.           |
+| Item                        | What it adds                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `@calendarcn/calendar`      | The full calendar: toolbar, view switcher and keyboard shortcuts over the day, week and month views.          |
+| `@calendarcn/calendar-core` | Types, event layout math, `CalendarProvider`, `useCalendar()`, `useCalendarShortcuts()` and the color tokens. |
+| `@calendarcn/time-grid`     | The hour grid behind the day and week views, with drag, resize and create.                                    |
+| `@calendarcn/day-view`      | One day on the time grid.                                                                                     |
+| `@calendarcn/week-view`     | A week, or any number of days, on the time grid.                                                              |
+| `@calendarcn/month-view`    | The month grid, with drag and resize.                                                                         |
+| `@calendarcn/event-details` | Event chips, the detail panel, the details popover and the right-click menu.                                  |
+
+Each item pulls in the ones it builds on, so `calendar` installs all of them except `day-view` and `week-view`, which it doesn't need: it renders the time grid directly.
+
+## Updating
+
+Run the same `add` command again with `--overwrite` to replace your copy with the latest version. If you've changed the files, commit first and review the diff.
