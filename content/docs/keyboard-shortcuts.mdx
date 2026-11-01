@@ -3,20 +3,17 @@ title: Keyboard shortcuts
 description: Move around the calendar without touching the mouse.
 ---
 
-These shortcuts work in the [live demo](/). Single-key shortcuts pause while you type in an input.
+The [Calendar](/docs/components/calendar) block and the [live demo](/) share a set of single-key shortcuts. Single-key shortcuts pause while you type in an input, and leave presses with <Kbd>⌘</Kbd> or <Kbd>Ctrl</Kbd> to your app and the browser.
 
-They belong to the demo app (`useCalendarShortcuts()` in `src/hooks/use-calendar-shortcuts.ts`), not to the views. A calendar you build from the components only handles keys while one of its events has focus: see [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility) for moving and resizing events from the keyboard.
-
-{/* TODO: document how to add, turn off or remap these shortcuts once useCalendarShortcuts ships as part of a registry item. */}
+They come from `useCalendarShortcuts()`, part of [Calendar Core](/docs/components/calendar-core), not from the views. A calendar you build from the views alone only handles keys while one of its events has focus: see [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility) for moving and resizing events from the keyboard.
 
 ## Navigation
 
-| Action          | Shortcut                                      |
-| --------------- | --------------------------------------------- |
-| Go to today     | <Kbd>T</Kbd>                                  |
-| Previous period | <Kbd>J</Kbd> or <Kbd>←</Kbd>                  |
-| Next period     | <Kbd>K</Kbd> or <Kbd>→</Kbd>                  |
-| Command menu    | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> |
+| Action          | Shortcut                     |
+| --------------- | ---------------------------- |
+| Go to today     | <Kbd>T</Kbd>                 |
+| Previous period | <Kbd>J</Kbd> or <Kbd>←</Kbd> |
+| Next period     | <Kbd>K</Kbd> or <Kbd>→</Kbd> |
 
 ## Views
 
@@ -27,13 +24,6 @@ They belong to the demo app (`useCalendarShortcuts()` in `src/hooks/use-calendar
 | Show 2 to 9 days | <Kbd>2</Kbd> to <Kbd>9</Kbd> |
 | Month view       | <Kbd>M</Kbd>                 |
 
-## Panels
-
-| Action               | Shortcut                                      |
-| -------------------- | --------------------------------------------- |
-| Toggle left sidebar  | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> |
-| Toggle right sidebar | <Kbd>/</Kbd>                                  |
-
 ## Events
 
 | Action                | Shortcut                                                  |
@@ -42,10 +32,43 @@ They belong to the demo app (`useCalendarShortcuts()` in `src/hooks/use-calendar
 | Show or hide weekends | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>E</Kbd></KbdGroup> |
 | Show or hide declined | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>D</Kbd></KbdGroup> |
 
-## Appearance
+## Demo only
+
+The live demo adds a few of its own on top, for the parts around the calendar:
 
 | Action                            | Shortcut                                      |
 | --------------------------------- | --------------------------------------------- |
+| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> |
+| Toggle left sidebar               | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> |
+| Toggle right sidebar              | <Kbd>/</Kbd>                                  |
 | Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
 
 On Windows and Linux, use <Kbd>Ctrl</Kbd> in place of <Kbd>⌘</Kbd>. The one exception is the left sidebar toggle, which needs the <Kbd>⌘</Kbd> (Meta) key.
+
+## Use them in your own calendar
+
+The Calendar block turns them on for you. In a calendar you compose yourself, call the hook anywhere inside `CalendarProvider`:
+
+```tsx
+import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";
+
+function Shortcuts() {
+  useCalendarShortcuts();
+  return null;
+}
+
+<CalendarProvider defaultEvents={events}>
+  <Shortcuts />
+  <WeekView />
+</CalendarProvider>;
+```
+
+The hook listens on `window`, so one calendar per page should have it.
+
+### Turn them off
+
+Pass `shortcuts={false}` to the Calendar block, or `useCalendarShortcuts({ enabled: false })` to the hook, for example while a dialog of yours is open.
+
+### Change them
+
+The hook is your code: the keys live in `handleShortcut()` in `hooks/use-calendar-shortcuts.ts`, so remap or remove them there. To give your app a key the calendar also uses, handle it in a `keydown` listener added before the hook's and call `event.stopImmediatePropagation()`. The demo does this for <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup>, which would otherwise also switch to month view.
