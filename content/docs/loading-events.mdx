@@ -64,6 +64,17 @@ const { data: events = [], isFetching } = useQuery({
 </CalendarProvider>;
 ```
 
+The [Calendar](/docs/components/calendar) block takes every `CalendarProvider` prop and passes it through, so `onVisibleRangeChange` and `loading` work on it the same way:
+
+```tsx
+<Calendar
+  events={events}
+  onEventsChange={setEvents}
+  onVisibleRangeChange={loadRange}
+  loading={loading}
+/>
+```
+
 ## The range
 
 `start` is midnight at the beginning of the first visible day, and `end` is midnight after the last one, so `end` is exclusive. Both are in the viewer's time zone.
@@ -102,6 +113,8 @@ A range can come back: going to next week and back reports this week again. Cach
 ## Loading bar
 
 `loading` draws a 2px indeterminate bar along the bottom of the day headers in Day View, Week View and Month View. It doesn't block anything: people can keep dragging, creating and navigating while events load. With reduced motion turned on, the bar holds still instead of sliding. The view is marked `aria-busy` while loading.
+
+The bar is `CalendarLoadingBar` in `components/calendar-loading-bar.tsx`, and its animation is a `.calendar-loading-bar` class. Both come with [Calendar Core](/docs/components/calendar-core#installation), so every view you install has it.
 
 ## API Reference
 
