@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   checks:
-    name: Lint, typecheck, format, build
+    name: Lint, typecheck, format, registry, build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -37,6 +37,16 @@ jobs:
       - run: pnpm typecheck
 
       - run: pnpm format:check
+
+      # public/r holds the shadcn registry built from registry.json. Rebuild
+      # it and fail if a component changed without `pnpm registry:build`
+      - name: Registry is up to date
+        run: |
+          pnpm registry:build
+          git diff --exit-code -- public/r || {
+            echo "::error::public/r is out of date. Run pnpm registry:build and commit the result."
+            exit 1
+          }
 
       - run: pnpm build
 
