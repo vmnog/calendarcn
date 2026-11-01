@@ -343,6 +343,20 @@
           "type": "registry:component"
         }
       ]
+    },
+    {
+      "name": "ics",
+      "type": "registry:lib",
+      "title": "ICS Import and Export",
+      "description": "parseIcs() and toIcs(): read and write iCalendar (.ics) files from Google Calendar, Apple Calendar and Outlook.",
+      "dependencies": ["date-fns"],
+      "registryDependencies": ["@calendarcn/calendar-core"],
+      "files": [
+        {
+          "path": "src/lib/ics.ts",
+          "type": "registry:lib"
+        }
+      ]
     }
   ]
 }
