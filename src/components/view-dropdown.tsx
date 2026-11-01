@@ -42,6 +42,12 @@ const VIEW_OPTIONS: Array<{
 /** Number-of-days options for the submenu */
 const DAYS_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
+/**
+ * Shortcut hints inside menu items drop the key-cap background. Classes
+ * rather than a Kbd variant, so the file works with the stock shadcn/ui Kbd.
+ */
+const PLAIN_KBD_CLASS = "h-auto min-w-0 rounded-none bg-transparent px-0";
+
 interface ViewDropdownProps {
   view: ViewType;
   numberOfDays: number;
@@ -91,7 +97,7 @@ export function ViewDropdown({
                     or
                   </span>
                 ) : (
-                  <Kbd key={s} variant="ghost">
+                  <Kbd key={s} className={PLAIN_KBD_CLASS}>
                     {s}
                   </Kbd>
                 ),
@@ -117,13 +123,9 @@ export function ViewDropdown({
                   )}
                 />
                 {n} days
-                <Kbd variant="ghost" className="ml-auto">
-                  {n}
-                </Kbd>
+                <Kbd className={cn(PLAIN_KBD_CLASS, "ml-auto")}>{n}</Kbd>
               </DropdownMenuItem>
             ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>Other...</DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
@@ -141,9 +143,9 @@ export function ViewDropdown({
             >
               Weekends
               <KbdGroup className="ml-auto">
-                <Kbd variant="ghost">shift</Kbd>
-                <Kbd variant="ghost">&#8984;</Kbd>
-                <Kbd variant="ghost">E</Kbd>
+                <Kbd className={PLAIN_KBD_CLASS}>shift</Kbd>
+                <Kbd className={PLAIN_KBD_CLASS}>&#8984;</Kbd>
+                <Kbd className={PLAIN_KBD_CLASS}>E</Kbd>
               </KbdGroup>
             </DropdownMenuCheckboxItem>
 
@@ -153,9 +155,9 @@ export function ViewDropdown({
             >
               Declined eve...
               <KbdGroup className="ml-auto">
-                <Kbd variant="ghost">shift</Kbd>
-                <Kbd variant="ghost">&#8984;</Kbd>
-                <Kbd variant="ghost">D</Kbd>
+                <Kbd className={PLAIN_KBD_CLASS}>shift</Kbd>
+                <Kbd className={PLAIN_KBD_CLASS}>&#8984;</Kbd>
+                <Kbd className={PLAIN_KBD_CLASS}>D</Kbd>
               </KbdGroup>
             </DropdownMenuCheckboxItem>
 
@@ -165,16 +167,6 @@ export function ViewDropdown({
             >
               Week numbers
             </DropdownMenuCheckboxItem>
-
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem disabled>
-              General settings
-              <KbdGroup className="ml-auto">
-                <Kbd variant="ghost">&#8984;</Kbd>
-                <Kbd variant="ghost">,</Kbd>
-              </KbdGroup>
-            </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       </DropdownMenuContent>

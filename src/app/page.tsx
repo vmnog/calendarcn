@@ -138,15 +138,13 @@ interface AppShortcutActions {
   toggleCommandMenu: () => void;
   toggleLeftSidebar: () => void;
   toggleRightSidebar: () => void;
-  toggleWeekends: () => void;
-  toggleDeclinedEvents: () => void;
   cycleTheme: () => void;
 }
 
 /**
- * Handles the demo's app shortcuts (command menu, sidebars, view settings,
+ * Handles the demo's app shortcuts (command menu, sidebars, settings,
  * theme). A shortcut that fires stops the event, so the calendar shortcuts
- * listener (added after this one) never also acts on it, e.g. Cmd+K vs K.
+ * listener (added after this one) never also acts on it, e.g. Shift+M vs M.
  */
 function handleAppShortcut(e: KeyboardEvent, actions: AppShortcutActions) {
   const runShortcut = (action: () => void) => {
@@ -163,16 +161,6 @@ function handleAppShortcut(e: KeyboardEvent, actions: AppShortcutActions) {
   // Command + / for left sidebar
   if (e.metaKey && e.key === "/") {
     runShortcut(actions.toggleLeftSidebar);
-    return;
-  }
-  // Shift+Cmd+E for toggle weekends
-  if (e.key === "e" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
-    runShortcut(actions.toggleWeekends);
-    return;
-  }
-  // Shift+Cmd+D for toggle declined events
-  if (e.key === "d" && e.shiftKey && (e.metaKey || e.ctrlKey)) {
-    runShortcut(actions.toggleDeclinedEvents);
     return;
   }
   // Cmd+, for general settings (placeholder)
@@ -344,8 +332,6 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
     toggleCommandMenu,
     toggleLeftSidebar,
     toggleRightSidebar: toggleSidebar,
-    toggleWeekends,
-    toggleDeclinedEvents,
     cycleTheme,
   });
 
@@ -354,18 +340,9 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
       toggleCommandMenu,
       toggleLeftSidebar,
       toggleRightSidebar: toggleSidebar,
-      toggleWeekends,
-      toggleDeclinedEvents,
       cycleTheme,
     };
-  }, [
-    toggleCommandMenu,
-    toggleLeftSidebar,
-    toggleSidebar,
-    toggleWeekends,
-    toggleDeclinedEvents,
-    cycleTheme,
-  ]);
+  }, [toggleCommandMenu, toggleLeftSidebar, toggleSidebar, cycleTheme]);
 
   // App shortcuts. Added once, before useCalendarShortcuts below, so this
   // listener always runs first and can claim keys the calendar also uses
@@ -377,7 +354,8 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape
+  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape, and
+  // Shift+Cmd+E / Shift+Cmd+D for weekends and declined events
   useCalendarShortcuts();
 
   return (

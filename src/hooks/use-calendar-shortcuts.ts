@@ -17,6 +17,8 @@ type ShortcutActions = Pick<
   | "switchView"
   | "setNumberOfDays"
   | "clearSelection"
+  | "toggleWeekends"
+  | "toggleDeclinedEvents"
 >;
 
 /** Keys 2-9: show that many days */
@@ -39,7 +41,25 @@ function handleShortcut(e: KeyboardEvent, actions: ShortcutActions): void {
     return;
   }
 
-  if (isTypingTarget(e.target)) return;
+  const isCommand = e.metaKey || e.ctrlKey;
+  const key = e.key.toLowerCase();
+
+  // Shift+Cmd+E / Shift+Cmd+D (Ctrl on Windows and Linux) toggle the view
+  // settings, even from inside a text field
+  if (isCommand && e.shiftKey && key === "e") {
+    e.preventDefault();
+    actions.toggleWeekends();
+    return;
+  }
+
+  if (isCommand && e.shiftKey && key === "d") {
+    e.preventDefault();
+    actions.toggleDeclinedEvents();
+    return;
+  }
+
+  // Single keys only: Cmd+K, Ctrl+D and the like belong to the app and browser
+  if (isCommand || isTypingTarget(e.target)) return;
 
   if (e.key === "t" || e.key === "T") {
     e.preventDefault();
@@ -84,13 +104,8 @@ function handleShortcut(e: KeyboardEvent, actions: ShortcutActions): void {
     return;
   }
 
-  // Not with Cmd, Ctrl or Alt: Cmd+A / Ctrl+A still select all
-  if (
-    (e.key === "a" || e.key === "A") &&
-    !e.metaKey &&
-    !e.ctrlKey &&
-    !e.altKey
-  ) {
+  // Cmd+A / Ctrl+A never get here, so they still select all
+  if (e.key === "a" || e.key === "A") {
     e.preventDefault();
     actions.switchView("agenda");
   }
@@ -104,6 +119,10 @@ function handleShortcut(e: KeyboardEvent, actions: ShortcutActions): void {
  * - D or 1: day view, W or 0: week view, M: month view, A: agenda
  * - 2-9: number of days
  * - Escape: clear the selection
+ * - Shift+Cmd+E / Shift+Cmd+D (Ctrl on Windows and Linux): show or hide
+ *   weekends / declined events
+ *
+ * Presses with Cmd or Ctrl are left alone, apart from those two.
  *
  * Key presses in inputs and textareas are ignored (except Escape). The
  * listener is added once on mount, so its position among other `window`
@@ -121,6 +140,8 @@ export function useCalendarShortcuts({
     switchView,
     setNumberOfDays,
     clearSelection,
+    toggleWeekends,
+    toggleDeclinedEvents,
   } = useCalendar();
 
   /** Latest actions, read by the window listener */
@@ -131,6 +152,8 @@ export function useCalendarShortcuts({
     switchView,
     setNumberOfDays,
     clearSelection,
+    toggleWeekends,
+    toggleDeclinedEvents,
   });
 
   React.useEffect(() => {
@@ -141,6 +164,8 @@ export function useCalendarShortcuts({
       switchView,
       setNumberOfDays,
       clearSelection,
+      toggleWeekends,
+      toggleDeclinedEvents,
     };
   }, [
     goToToday,
@@ -149,6 +174,8 @@ export function useCalendarShortcuts({
     switchView,
     setNumberOfDays,
     clearSelection,
+    toggleWeekends,
+    toggleDeclinedEvents,
   ]);
 
   React.useEffect(() => {

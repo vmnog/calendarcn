@@ -1,0 +1,367 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "calendarcn",
+  "homepage": "https://calendarcn.xyz",
+  "items": [
+    {
+      "name": "calendar-core",
+      "type": "registry:lib",
+      "title": "Calendar Core",
+      "description": "Types, event layout math, keyboard shortcuts, CalendarProvider and useCalendar(). Every view builds on it.",
+      "dependencies": ["date-fns"],
+      "registryDependencies": ["utils"],
+      "files": [
+        {
+          "path": "src/components/calendar-types.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/week-view-types.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/calendar-provider.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/calendar-popover-context.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-title-focus-context.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/hooks/use-calendar-shortcuts.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-controllable-state.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-event-keyboard.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-now.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-pointer-gesture.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-timezone-label.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/lib/event-utils.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/timezone-label.ts",
+          "type": "registry:lib"
+        }
+      ],
+      "cssVars": {
+        "theme": {
+          "text-xxs": "0.625rem"
+        },
+        "light": {
+          "event-red": "#b23e31",
+          "event-red-border": "#ee000e",
+          "event-red-bg": "#ffe1d4",
+          "event-orange": "#ad4517",
+          "event-orange-border": "#fe7132",
+          "event-orange-bg": "#ffe3c8",
+          "event-yellow": "#855100",
+          "event-yellow-border": "#f2b827",
+          "event-yellow-bg": "#fff0be",
+          "event-green": "#027b27",
+          "event-green-border": "#49ca81",
+          "event-green-bg": "#deffe3",
+          "event-blue": "#006cbf",
+          "event-blue-border": "#32a5e5",
+          "event-blue-bg": "#e2f9ff",
+          "event-purple": "#7733d2",
+          "event-purple-border": "#9950ff",
+          "event-purple-bg": "#feecff",
+          "event-gray": "#5f6061",
+          "event-gray-border": "#b3b4b4",
+          "event-gray-bg": "#f6f4f3",
+          "calendar-weekend": "#fcfcfc",
+          "calendar-current-week": "#edece9",
+          "calendar-day-hover": "#eeece8",
+          "calendar-day-hover-current-week": "#e2e1dc"
+        },
+        "dark": {
+          "event-red": "#d85140",
+          "event-red-border": "#d85140",
+          "event-red-bg": "#6c2920",
+          "event-orange": "#e07040",
+          "event-orange-border": "#e07040",
+          "event-orange-bg": "#5f3524",
+          "event-yellow": "#d4a83a",
+          "event-yellow-border": "#d4a83a",
+          "event-yellow-bg": "#4e3f1b",
+          "event-green": "#52b577",
+          "event-green-border": "#52b577",
+          "event-green-bg": "#2d4935",
+          "event-blue": "#4895c8",
+          "event-blue-border": "#4895c8",
+          "event-blue-bg": "#2f4656",
+          "event-purple": "#8a5ad6",
+          "event-purple-border": "#8a5ad6",
+          "event-purple-bg": "#483a63",
+          "event-gray": "#a0a0a0",
+          "event-gray-border": "#a0a0a0",
+          "event-gray-bg": "#424242",
+          "calendar-weekend": "#181818",
+          "calendar-current-week": "#2e2e2e",
+          "calendar-day-hover": "#2e2e2e",
+          "calendar-day-hover-current-week": "#3d3d3d"
+        }
+      },
+      "css": {
+        "@utility scrollbar-hide": {
+          "-ms-overflow-style": "none",
+          "scrollbar-width": "none",
+          "&::-webkit-scrollbar": {
+            "display": "none"
+          }
+        },
+        "@layer base": {
+          "[data-event-id], [data-event-id] *": {
+            "cursor": "var(--cursor, default)"
+          }
+        },
+        "@keyframes column-highlight-fade": {
+          "from": {
+            "background-color": "#602c2b"
+          },
+          "to": {
+            "background-color": "transparent"
+          }
+        },
+        ".column-highlight": {
+          "animation": "column-highlight-fade 2s ease-out forwards"
+        },
+        "@media (prefers-reduced-motion: reduce)": {
+          ".column-highlight": {
+            "animation": "none",
+            "background-color": "#602c2b"
+          }
+        }
+      }
+    },
+    {
+      "name": "event-details",
+      "type": "registry:component",
+      "title": "Event Details",
+      "description": "Event chips, the detail panel, the details popover and the right-click menu.",
+      "dependencies": ["date-fns", "lucide-react"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "button",
+        "dropdown-menu",
+        "popover",
+        "switch"
+      ],
+      "files": [
+        {
+          "path": "src/components/calendar-event-item.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-panel.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-popover.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-context-menu.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "time-grid",
+      "type": "registry:component",
+      "title": "Time Grid",
+      "description": "The hour grid behind the day and week views: all-day row, time axis and current-time line, with drag, resize and create.",
+      "dependencies": ["date-fns"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "@calendarcn/event-details"
+      ],
+      "files": [
+        {
+          "path": "src/components/time-grid.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/calendar-day-headers.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/week-view-all-day-row.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/week-view-grid.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/week-view-time-axis.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/week-view-time-indicator.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/hooks/use-all-day-resize.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-event-drag.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-event-resize.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-horizontal-scroll.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-media-query.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "day-view",
+      "type": "registry:component",
+      "title": "Day View",
+      "description": "One day on the time grid.",
+      "registryDependencies": ["@calendarcn/time-grid"],
+      "files": [
+        {
+          "path": "src/components/day-view.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "week-view",
+      "type": "registry:component",
+      "title": "Week View",
+      "description": "A week, or any number of days, on the time grid.",
+      "registryDependencies": ["@calendarcn/time-grid"],
+      "files": [
+        {
+          "path": "src/components/week-view.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "month-view",
+      "type": "registry:component",
+      "title": "Month View",
+      "description": "The month grid, with drag and resize.",
+      "dependencies": ["date-fns"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "@calendarcn/event-details",
+        "popover"
+      ],
+      "files": [
+        {
+          "path": "src/components/month-view.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/month-view-grid.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/month-view-day-cell.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/month-view-event-bar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/month-view-event-item.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/hooks/use-month-event-drag.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-month-event-resize.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-media-query.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-vertical-scroll.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "agenda-view",
+      "type": "registry:component",
+      "title": "Agenda View",
+      "description": "The coming days' events as a scrolling list, grouped by day.",
+      "dependencies": ["date-fns", "lucide-react"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "@calendarcn/event-details",
+        "popover"
+      ],
+      "files": [
+        {
+          "path": "src/components/agenda-view.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "calendar",
+      "type": "registry:block",
+      "title": "Calendar",
+      "description": "The full calendar: a toolbar with the view switcher, today and previous/next, over day, week, month and agenda views, with keyboard shortcuts.",
+      "dependencies": ["date-fns", "lucide-react"],
+      "registryDependencies": [
+        "@calendarcn/time-grid",
+        "@calendarcn/month-view",
+        "@calendarcn/agenda-view",
+        "button",
+        "dropdown-menu",
+        "kbd"
+      ],
+      "files": [
+        {
+          "path": "src/components/calendar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/view-dropdown.tsx",
+          "type": "registry:component"
+        }
+      ]
+    }
+  ]
+}
