@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-# Prerequisites: Node.js 22+, pnpm 9+
+# Prerequisites: Node.js 22+, pnpm 10+
 pnpm install
 pnpm dev
 # Open http://localhost:3000

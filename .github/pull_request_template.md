@@ -4,6 +4,10 @@
 
 -
 
+Closes #
+
+<!-- Link the issue this fixes, if there is one. New here? See CONTRIBUTING.md. -->
+
 ## Type of Change
 
 <!-- Check the one that applies. -->
@@ -16,7 +20,7 @@
 ## Screenshots / Video
 
 <!-- Attach screenshots or a short screen recording showing your change in action. -->
-<!-- Required for any visual or interaction change. -->
+<!-- Required for any visual or interaction change. Skip for docs-only PRs. -->
 
 ## Stress Testing
 
@@ -28,8 +32,8 @@
 
 ## Checklist
 
-- [ ] `pnpm lint` passes
-- [ ] `pnpm typecheck` passes
-- [ ] `pnpm build` succeeds
-- [ ] `pnpm format:check` passes
+<!-- CI runs all of these on your PR too, so a red check tells you what to fix. -->
+
+- [ ] `pnpm lint && pnpm typecheck && pnpm format:check` passes
+- [ ] `pnpm test:e2e` passes (for changes to calendar behavior)
 - [ ] Tested locally in the browser

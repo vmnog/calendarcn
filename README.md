@@ -1,107 +1,70 @@
 # CalendarCN
 
-A beautifully crafted, open source calendar component for React. Built with [shadcn/ui](https://ui.shadcn.com), inspired by [Notion Calendar](https://www.notion.so/product/calendar).
+A calendar for React inspired by [Notion Calendar](https://www.notion.so/product/calendar). Built on [shadcn/ui](https://ui.shadcn.com), installed with the shadcn CLI, and yours to edit.
 
-![CalendarCN Preview](./public/og-image.png)
+[![CI](https://github.com/vmnog/calendarcn/actions/workflows/ci.yml/badge.svg)](https://github.com/vmnog/calendarcn/actions/workflows/ci.yml) [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-**[Live Demo](https://calendarcn.xyz)**
+**[Live demo](https://calendarcn.xyz)** · **[Docs](https://calendarcn.xyz/docs)** · **[Roadmap](https://calendarcn.xyz/docs/roadmap)**
+
+[![CalendarCN preview](./public/og-image.png)](https://calendarcn.xyz)
 
 ## Features
 
-- **Week View** - Full week calendar with time slots
-- **Dark Mode** - Seamless light/dark theme support
-- **Event Colors** - Multiple event color options (red, orange, yellow, green, blue, purple, gray)
-- **All-Day Events** - Support for all-day and multi-day events
-- **Current Time Indicator** - Visual indicator for current time
-- **Responsive Sidebar** - Collapsible calendar sidebar with mini calendar
-- **Calendar Management** - Multiple calendar support with visibility toggles
-- **Keyboard Shortcuts** - Navigate efficiently with keyboard shortcuts
+- **Views**: day, week, any number of days from 2 to 9, and month.
+- **Direct manipulation**: drag events to move them, drag their edges to resize, click an empty slot to create one. Works with touch too.
+- **Real calendar data**: overlapping events side by side, all-day and multi-day events, a current-time indicator.
+- **Event details**: a side panel or popover with inline editing, plus a right-click menu.
+- **Keyboard first**: shortcuts for every view, a command menu, and keyboard move and resize for focused events.
+- **Accessible**: labeled events, focus rings, and screen reader announcements when an event moves.
+- **Configurable**: date-fns locale, 12 or 24 hour clock, week start, snap interval and visible hours.
+- **Your data, your markup**: typed with your own event type, with render slots for event content and details.
+- **Theming**: light and dark mode with the shadcn/ui CSS variables.
 
-## Tech Stack
+## Usage
 
-- [Next.js 16](https://nextjs.org/) - React framework
-- [React 19](https://react.dev/) - UI library
-- [Tailwind CSS 4](https://tailwindcss.com/) - Styling
-- [shadcn/ui](https://ui.shadcn.com/) - UI components
-- [date-fns](https://date-fns.org/) - Date utilities
-- [Lucide React](https://lucide.dev/) - Icons
+Wrap a view in `CalendarProvider` and pass your events:
 
-## Getting Started
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import type { CalendarEvent } from "@/components/calendar-types";
+import { WeekView } from "@/components/week-view";
 
-### Prerequisites
+export function MyCalendar({ events }: { events: CalendarEvent[] }) {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <WeekView />
+    </CalendarProvider>
+  );
+}
+```
 
-- Node.js 22+ (see `.nvmrc`)
-- [pnpm 9+](https://pnpm.io/)
+Swap `WeekView` for `DayView`, `MonthView` or `TimeGrid`, or use the full calendar from the demo. The [docs](https://calendarcn.xyz/docs) have a live example and the API reference for each component.
 
 ### Installation
 
-1. Clone the repository:
+Like shadcn/ui, CalendarCN isn't an npm package: the shadcn CLI copies the source into your project. Publishing the `@calendarcn` registry is [next on the roadmap](https://calendarcn.xyz/docs/roadmap), and the [installation guide](https://calendarcn.xyz/docs/installation) shows the planned flow.
+
+## Development
+
+You'll need Node.js 22+ and pnpm 10+.
 
 ```bash
 git clone https://github.com/vmnog/calendarcn.git
 cd calendarcn
-```
-
-2. Install dependencies:
-
-```bash
 pnpm install
-```
-
-3. Run the development server:
-
-```bash
 pnpm dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Project Structure
-
-```
-src/
-├── app/                    # Next.js app router
-├── components/
-│   ├── ui/                 # shadcn/ui components
-│   ├── week-view.tsx       # Main week view component
-│   ├── week-view-*.tsx     # Week view sub-components
-│   ├── calendar-event-item.tsx  # Event rendering
-│   ├── calendars.tsx       # Calendar list sidebar
-│   ├── date-picker.tsx     # Mini calendar picker
-│   └── sidebar-*.tsx       # Sidebar components
-├── hooks/                  # Custom React hooks
-└── lib/                    # Utilities and helpers
-```
-
-## Keyboard Shortcuts
-
-| Shortcut           | Action                  |
-| ------------------ | ----------------------- |
-| `T`                | Go to today             |
-| `J` / `ArrowLeft`  | Previous week           |
-| `K` / `ArrowRight` | Next week               |
-| `/`                | Toggle context panel    |
-| `⌘ + /`            | Toggle calendar sidebar |
+Open [localhost:3000](http://localhost:3000) for the demo and [localhost:3000/docs](http://localhost:3000/docs) for the docs.
 
 ## Contributing
 
-Contributions are welcome! Please read the [Contributing Guide](./CONTRIBUTING.md) to get started.
+Contributions are welcome, from typo fixes in the docs to new views. Read the [contributing guide](./CONTRIBUTING.md) to get set up, then look at issues labeled [`good first issue`](https://github.com/vmnog/calendarcn/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22) or [open a new one](https://github.com/vmnog/calendarcn/issues/new/choose).
 
-## Roadmap
+## Built with
 
-See [ROADMAP.md](./ROADMAP.md) for the full roadmap.
+[Next.js](https://nextjs.org), [React](https://react.dev), [Tailwind CSS](https://tailwindcss.com), [shadcn/ui](https://ui.shadcn.com), [date-fns](https://date-fns.org) and [Lucide](https://lucide.dev). The docs run on [Fumadocs](https://fumadocs.dev).
 
 ## License
 
-[MIT License](./LICENSE) - feel free to use this in your own projects!
-
-## Credits
-
-- Design inspired by [Notion Calendar](https://www.notion.so/product/calendar)
-- Built with [shadcn/ui](https://ui.shadcn.com/) components
-- Created by [Victor Nogueira](https://vmnog.com)
-
-## Links
-
-- [Live Demo](https://calendarcn.xyz)
-- [Twitter/X](https://x.com/mevmnog)
+[MIT](./LICENSE). Created by [Victor Nogueira](https://vmnog.com) ([@mevmnog](https://x.com/mevmnog)).

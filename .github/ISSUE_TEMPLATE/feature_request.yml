@@ -2,6 +2,10 @@ name: Feature request
 description: Suggest a new feature or improvement for CalendarCN.
 labels: ["enhancement"]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! The [roadmap](https://calendarcn.xyz/docs/roadmap) lists what's already planned, and [existing issues](https://github.com/vmnog/calendarcn/issues) may already cover it. If it's there, a comment or a thumbs-up reaction on the issue helps us prioritize.
   - type: textarea
     id: problem
     attributes:

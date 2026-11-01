@@ -2,82 +2,115 @@
 
 Thanks for your interest in contributing! This guide will help you get started.
 
+## Ways to Contribute
+
+- **Report a bug** or **suggest a feature** with an [issue template](https://github.com/vmnog/calendarcn/issues/new/choose).
+- **Improve the docs.** Every page lives in `content/docs/` as MDX, and a fix there is a great first PR.
+- **Pick up an issue.** Issues labeled [`good first issue`](https://github.com/vmnog/calendarcn/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22) are scoped for newcomers, and the [roadmap](https://calendarcn.xyz/docs/roadmap) lists the bigger plans.
+
 ## Prerequisites
 
 - [Node.js 22+](https://nodejs.org/) (see `.nvmrc`)
-- [pnpm 9+](https://pnpm.io/)
+- [pnpm 10+](https://pnpm.io/)
 
-## Dev Workflow
+## Setup
+
+1. Fork the repo on GitHub, then clone your fork:
+
+   ```bash
+   git clone https://github.com/<your-username>/calendarcn.git
+   cd calendarcn
+   ```
+
+2. Install dependencies and start the dev server:
+
+   ```bash
+   pnpm install
+   pnpm dev
+   ```
+
+3. Open [localhost:3000](http://localhost:3000) for the demo and [localhost:3000/docs](http://localhost:3000/docs) for the docs. Both reload as you edit.
+
+## Commands
 
 ```bash
-pnpm install        # Install dependencies
-pnpm dev            # Start dev server at localhost:3000
-pnpm lint           # Run ESLint
-pnpm typecheck      # Run TypeScript type checking
-pnpm build          # Production build
+pnpm dev            # Dev server at localhost:3000 (demo at /, docs at /docs)
+pnpm lint           # ESLint
+pnpm typecheck      # TypeScript type checking
 pnpm format         # Format code with Prettier
 pnpm format:check   # Check formatting without writing
+pnpm build          # Production build
+pnpm test:e2e       # Playwright end-to-end suite
 ```
+
+The first time you run the e2e suite, download its browser with `pnpm exec playwright install chromium`. The [local development runbook](docs/runbooks/local-development.md#end-to-end-tests) covers running a single test, the interactive runner and reading traces.
 
 ## Project Structure
 
 ```
+content/docs/                     # Docs pages (MDX), served at /docs
+e2e/                              # Playwright end-to-end tests
 src/
-├── app/                          # Next.js app router
-│   └── page.tsx                  # Demo page around the library components
+├── app/
+│   ├── page.tsx                  # Demo page around the library components
+│   └── docs/                     # Docs site layout (Fumadocs)
 ├── components/
-│   ├── ui/                       # shadcn/ui primitives
+│   ├── ui/                       # shadcn/ui primitives (don't edit directly)
 │   ├── calendar-provider.tsx     # CalendarProvider + useCalendar (state, navigation)
+│   ├── calendar-types.ts         # Shared types (CalendarEvent, provider props, drag state)
+│   ├── week-view-types.ts        # Component props (re-exports the shared types)
 │   ├── time-grid.tsx             # TimeGrid: hourly grid behind day and week views
 │   ├── day-view.tsx              # DayView (TimeGrid view="day")
 │   ├── week-view.tsx             # WeekView (TimeGrid view="week")
-│   ├── month-view.tsx            # MonthView
-│   ├── week-view-types.ts        # Canonical type definitions (EventColor, CalendarEvent, etc.)
-│   ├── week-view-all-day-row.tsx # All-day event row
-│   ├── week-view-day-columns.tsx # Day column headers
-│   ├── week-view-grid.tsx        # Time grid
-│   ├── week-view-time-axis.tsx   # Hour labels
-│   ├── week-view-time-indicator.tsx # Current time line
+│   ├── week-view-*.tsx           # Time grid parts: all-day row, grid, time axis, now line
+│   ├── month-view*.tsx           # MonthView and its parts
 │   ├── calendar-event-item.tsx   # Event rendering
-│   ├── event-context-menu.tsx    # Right-click context menu
-│   ├── event-detail-panel.tsx    # Event detail view
-│   ├── calendars.tsx             # Calendar list sidebar
-│   ├── sidebar-left.tsx          # Left sidebar
-│   └── sidebar-right.tsx         # Right sidebar (context panel)
-├── hooks/
-│   ├── use-event-drag.ts         # Drag-and-drop logic
-│   └── use-horizontal-scroll.ts  # Wheel-based horizontal navigation
+│   ├── event-*.tsx               # Detail panel, popover and context menu
+│   ├── docs/                     # Docs-only components (previews, props tables)
+│   └── sidebar-*.tsx, nav-*.tsx  # Demo sidebars and navigation
+├── examples/                     # Live docs examples, shown with their source
+├── hooks/                        # Drag, resize, keyboard, scroll and gesture hooks
 └── lib/
     ├── event-utils.ts            # Event positioning and filtering
-    ├── format-utils.ts           # Time/duration formatting helpers
-    ├── mock-events.ts            # Sample event data
+    ├── mock-events.ts            # Demo event data
+    ├── sample-events.ts          # Docs example event data
     └── utils.ts                  # General utilities (cn)
 ```
+
+### Docs examples
+
+Each live preview on a docs page renders a file from `src/examples/`, and its Code tab shows that file's source. To add one, create the example, register it in `src/components/docs/examples.ts`, then use `<ComponentPreview name="your-example" />` in the MDX page.
 
 ## Code Style
 
 - **No `any` types.** Import the correct type or create a local one.
 - **Prefer early returns** over `if/else` chains or ternaries.
-- **Shared types** go in `week-view-types.ts` — it is the canonical type source.
+- **Shared types** go in `calendar-types.ts` and component props in `week-view-types.ts`, never inline in a component.
 - **Do not assign `ref.current` during render.** Use `useEffect` to sync refs.
+- **Use `cn()`** for conditional class names, never string concatenation.
 - Run `pnpm lint && pnpm typecheck && pnpm format:check` before committing.
 
 ## Pull Request Guidelines
 
-1. **Branch naming:** `feat/short-description`, `fix/short-description`
-2. **One logical change per PR.** Keep PRs focused and reviewable.
-3. **Run all checks** before opening:
+1. **Branch naming:** `feat/short-description`, `fix/short-description`, `docs/short-description`
+2. **PR titles follow [Conventional Commits](https://www.conventionalcommits.org/):** `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`
+3. **One logical change per PR.** Keep PRs focused and reviewable.
+4. **Run the checks** before opening:
    ```bash
-   pnpm lint && pnpm typecheck && pnpm build
+   pnpm lint && pnpm typecheck && pnpm format:check
    ```
-4. Fill out the PR template completely.
+   Changing calendar behavior (drag, resize, navigation, views)? Run `pnpm test:e2e` too.
+5. **Fill out the PR template.** Attach a screenshot or short recording for any visual or interaction change.
+
+CI runs lint, typecheck, format check, build and the e2e suite on every PR. On your first PR, a maintainer has to approve the CI run before it starts, so don't worry if checks wait at first.
 
 ## Reporting Issues
 
 [Open a new issue](https://github.com/vmnog/calendarcn/issues/new/choose) and pick a template:
 
-- **Bug report** — what happened, steps to reproduce, browser/OS, and timezone.
-- **Feature request** — the problem you're solving and your proposed solution.
+- **Bug report**: what happened, steps to reproduce, browser/OS, and timezone.
+- **Feature request**: the problem you're solving and your proposed solution. Check the [roadmap](https://calendarcn.xyz/docs/roadmap) first.
+- **Docs issue**: the page, and what's wrong or missing.
 
 For anything else, open a blank issue.
 

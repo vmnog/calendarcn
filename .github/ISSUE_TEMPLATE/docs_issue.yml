@@ -1,0 +1,26 @@
+name: Docs issue
+description: Something in the docs is wrong, unclear or missing.
+labels: ["documentation"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The docs page (or README section) this is about.
+      placeholder: e.g. https://calendarcn.xyz/docs/components/week-view
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's wrong or missing?
+      description: Quote the confusing part, or describe what you looked for and didn't find.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested fix
+      description: Optional. How should it read instead? Docs pages live in `content/docs/` and are a good first PR.
+    validations:
+      required: false
