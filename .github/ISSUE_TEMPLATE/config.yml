@@ -1,5 +1,11 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Docs
+    url: https://calendarcn.xyz/docs
+    about: Guides, live examples and the API reference for every component.
+  - name: Roadmap
+    url: https://calendarcn.xyz/docs/roadmap
+    about: Check whether a feature is already planned before requesting it.
   - name: Live demo
-    url: https://calendarcn.vercel.app
+    url: https://calendarcn.xyz
     about: Check whether the behavior reproduces on the latest deployed version before reporting.

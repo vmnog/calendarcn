@@ -36,11 +36,25 @@ body:
     attributes:
       label: Where did it happen?
       options:
-        - Live demo (https://calendarcn.vercel.app)
+        - Live demo (https://calendarcn.xyz)
+        - Docs site (https://calendarcn.xyz/docs)
         - Running the repo locally
         - Using the component in my own project
     validations:
       required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the calendar?
+      options:
+        - Week or day view
+        - Month view
+        - Event details (panel, popover, context menu)
+        - Navigation, shortcuts or command menu
+        - Docs
+        - Something else
+    validations:
+      required: false
   - type: input
     id: environment
     attributes:
