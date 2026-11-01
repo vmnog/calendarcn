@@ -20,29 +20,42 @@ A calendar for React inspired by [Notion Calendar](https://www.notion.so/product
 - **Your data, your markup**: typed with your own event type, with render slots for event content and details.
 - **Theming**: light and dark mode with the shadcn/ui CSS variables.
 
+## Installation
+
+Like shadcn/ui, CalendarCN isn't an npm package: the shadcn CLI copies the source into your project. Add the registry to your `components.json`:
+
+```json
+{
+  "registries": {
+    "@calendarcn": "https://calendarcn.xyz/r/{name}.json"
+  }
+}
+```
+
+Then add the full calendar, or only the pieces you need (`week-view`, `month-view`, `calendar-core` and more):
+
+```bash
+npx shadcn add @calendarcn/calendar
+```
+
+CalendarCN uses the Radix version of the shadcn/ui components. The [installation guide](https://calendarcn.xyz/docs/installation) covers setup and every item.
+
 ## Usage
 
-Wrap a view in `CalendarProvider` and pass your events:
-
 ```tsx
-import { CalendarProvider } from "@/components/calendar-provider";
+import { Calendar } from "@/components/calendar";
 import type { CalendarEvent } from "@/components/calendar-types";
-import { WeekView } from "@/components/week-view";
 
 export function MyCalendar({ events }: { events: CalendarEvent[] }) {
   return (
-    <CalendarProvider defaultEvents={events}>
-      <WeekView />
-    </CalendarProvider>
+    <div className="h-[600px]">
+      <Calendar defaultEvents={events} />
+    </div>
   );
 }
 ```
 
-Swap `WeekView` for `DayView`, `MonthView` or `TimeGrid`, or use the full calendar from the demo. The [docs](https://calendarcn.xyz/docs) have a live example and the API reference for each component.
-
-### Installation
-
-Like shadcn/ui, CalendarCN isn't an npm package: the shadcn CLI copies the source into your project. Publishing the `@calendarcn` registry is [next on the roadmap](https://calendarcn.xyz/docs/roadmap), and the [installation guide](https://calendarcn.xyz/docs/installation) shows the planned flow.
+Or compose your own: wrap `DayView`, `WeekView`, `MonthView` or `TimeGrid` in `CalendarProvider`. The [docs](https://calendarcn.xyz/docs) have a live example and the API reference for each component.
 
 ## Development
 

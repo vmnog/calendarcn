@@ -43,6 +43,7 @@ pnpm format         # Format code with Prettier
 pnpm format:check   # Check formatting without writing
 pnpm build          # Production build
 pnpm test:e2e       # Playwright end-to-end suite
+pnpm registry:build # Rebuild the shadcn registry in public/r
 ```
 
 The first time you run the e2e suite, download its browser with `pnpm exec playwright install chromium`. The [local development runbook](docs/runbooks/local-development.md#end-to-end-tests) covers running a single test, the interactive runner and reading traces.
@@ -78,6 +79,12 @@ src/
     ├── sample-events.ts          # Docs example event data
     └── utils.ts                  # General utilities (cn)
 ```
+
+### The registry
+
+`registry.json` lists the shadcn registry items (`calendar-core`, `time-grid`, `calendar` and the rest) and the files in each. `pnpm registry:build` turns it into `public/r/*.json`, which the site serves for `npx shadcn add @calendarcn/<item>`. After you change a file that ships in an item, or add a new one, run `pnpm registry:build` and commit `public/r`. CI fails when it's out of date.
+
+Files in the registry run in other people's projects, next to their own copies of the shadcn/ui components. Use only the stock shadcn/ui (Radix) API of `components/ui/*` in them, not variants added in this repo.
 
 ### Docs examples
 

@@ -26,6 +26,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
+    "registry:build": "pnpm dlx shadcn@4.23.0 build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "postinstall": "fumadocs-mdx"

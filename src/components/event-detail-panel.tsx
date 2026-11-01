@@ -1022,7 +1022,7 @@ export function EventDetailPanel<
             onClick={() => handleAllDayToggle(!(event.isAllDay ?? false))}
           >
             <Switch
-              size="xs"
+              size="sm"
               checked={event.isAllDay ?? false}
               onCheckedChange={handleAllDayToggle}
               onClick={(e) => e.stopPropagation()}

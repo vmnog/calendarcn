@@ -60,8 +60,7 @@ export function PropsTable({
           className,
         )}
       >
-        {todo ??
-          "TODO: the API reference lands once the calendar refactor is final."}
+        {todo ?? "Nothing to list here."}
       </div>
     );
   }
