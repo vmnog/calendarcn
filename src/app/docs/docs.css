@@ -65,6 +65,14 @@
   }
 
   /*
+   * Names in a table's first column (`calendar-core`) stay whole instead of
+   * breaking at a hyphen. Other columns hold long types, which must wrap.
+   */
+  body:has(#nd-notebook-layout) td:first-child > code {
+    white-space: nowrap;
+  }
+
+  /*
    * Fumadocs only names the transitioned properties on the collapsed sidebar,
    * which leaves the expanded one on `transition-property: all`. Use the same
    * list in both states.
