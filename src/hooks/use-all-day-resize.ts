@@ -1,9 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  isPrimaryPress,
+  suppressNextClick,
+  usePointerGesture,
+} from "@/hooks/use-pointer-gesture";
 import type {
   AllDayResizeState,
   CalendarEvent,
+  PointerGestureStart,
 } from "@/components/week-view-types";
 
 interface UseAllDayResizeOptions {
@@ -17,8 +23,8 @@ interface UseAllDayResizeOptions {
 
 interface UseAllDayResizeReturn {
   allDayResizeState: AllDayResizeState | null;
-  handleAllDayResizeMouseDown: (
-    e: React.MouseEvent,
+  handleAllDayResizePointerDown: (
+    e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
     edge: "left" | "right" | "move",
     startColumn: number,
@@ -37,20 +43,24 @@ function clamp(value: number, min: number, max: number): number {
 interface ResizeInfo {
   eventId: string;
   event: CalendarEvent;
+  /** Pointer driving the gesture; moves from other pointers are ignored */
+  pointerId: number;
+  /** "mouse", "pen" or "touch" */
+  pointerType: string;
   edge: "left" | "right" | "move";
   startClientX: number;
   isResizing: boolean;
   originalStartColumn: number;
   originalEndColumn: number;
-  /** Column index at the initial mousedown position (used for move delta) */
+  /** Column index where the gesture started (used for move delta) */
   startColumnIndex: number;
-  /** Offset from cursor to event left edge at mousedown (px) */
+  /** Offset from cursor to event left edge when the gesture started (px) */
   cursorOffsetX: number;
-  /** Offset from cursor to event top edge at mousedown (px) */
+  /** Offset from cursor to event top edge when the gesture started (px) */
   cursorOffsetY: number;
-  /** Latest start column, committed to the parent on mouseup */
+  /** Latest start column, committed to the parent on pointerup */
   currentStartColumn: number;
-  /** Latest end column, committed to the parent on mouseup */
+  /** Latest end column, committed to the parent on pointerup */
   currentEndColumn: number;
 }
 
@@ -64,6 +74,9 @@ export function useAllDayResize({
 }: UseAllDayResizeOptions): UseAllDayResizeReturn {
   const [allDayResizeState, setAllDayResizeState] =
     useState<AllDayResizeState | null>(null);
+  const { startGesture } = usePointerGesture({
+    containerRef: allDayContainerRef,
+  });
 
   const resizeRef = useRef<ResizeInfo | null>(null);
   const onEventChangeRef = useRef(onEventChange);
@@ -88,23 +101,32 @@ export function useAllDayResize({
     dayColumnWidthRef.current = dayColumnWidth;
   }, [dayColumnWidth]);
 
-  const handleMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
-  const handleMouseUpRef = useRef<(() => void) | null>(null);
+  const handlePointerMoveRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const handlePointerUpRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const handlePointerCancelRef = useRef<((e: PointerEvent) => void) | null>(
+    null,
+  );
 
   const cleanup = useCallback(() => {
-    if (handleMouseMoveRef.current) {
-      window.removeEventListener("mousemove", handleMouseMoveRef.current);
+    if (handlePointerMoveRef.current) {
+      window.removeEventListener("pointermove", handlePointerMoveRef.current);
     }
-    if (handleMouseUpRef.current) {
-      window.removeEventListener("mouseup", handleMouseUpRef.current);
+    if (handlePointerUpRef.current) {
+      window.removeEventListener("pointerup", handlePointerUpRef.current);
+    }
+    if (handlePointerCancelRef.current) {
+      window.removeEventListener(
+        "pointercancel",
+        handlePointerCancelRef.current,
+      );
     }
     document.body.style.removeProperty("--cursor");
   }, []);
 
   useEffect(() => {
-    handleMouseMoveRef.current = (e: MouseEvent) => {
+    handlePointerMoveRef.current = (e: PointerEvent) => {
       const resize = resizeRef.current;
-      if (!resize) return;
+      if (!resize || e.pointerId !== resize.pointerId) return;
 
       const deltaX = Math.abs(e.clientX - resize.startClientX);
       if (!resize.isResizing && deltaX < DRAG_THRESHOLD_PX) return;
@@ -170,15 +192,22 @@ export function useAllDayResize({
       });
     };
 
-    handleMouseUpRef.current = () => {
+    handlePointerUpRef.current = (e: PointerEvent) => {
       const resize = resizeRef.current;
-      if (!resize) return;
+      if (!resize || e.pointerId !== resize.pointerId) return;
 
       cleanup();
       resizeRef.current = null;
       setAllDayResizeState(null);
 
+      // Touch selects on release, after the gesture, rather than on press
+      if (resize.pointerType === "touch") {
+        onEventClickRef.current?.(resize.event);
+      }
       if (!resize.isResizing) return;
+      // A move swaps the pressed bar for a ghost, so the browser's click
+      // lands on the row and would clear the selection
+      suppressNextClick(resize.pointerType);
 
       // Commit from the handler, never from inside a state updater:
       // updaters run during render, and calling the parent's setState
@@ -223,23 +252,31 @@ export function useAllDayResize({
         isAllDay,
       });
     };
+
+    // The browser took the pointer over (e.g. for a system gesture): drop
+    // the gesture without committing it
+    handlePointerCancelRef.current = (e: PointerEvent) => {
+      const resize = resizeRef.current;
+      if (!resize || e.pointerId !== resize.pointerId) return;
+
+      cleanup();
+      resizeRef.current = null;
+      setAllDayResizeState(null);
+    };
   }, [allDayContainerRef, cleanup]);
 
-  const handleAllDayResizeMouseDown = useCallback(
+  const beginResize = useCallback(
     (
-      e: React.MouseEvent,
+      { clientX, pointerId, pointerType }: PointerGestureStart,
       event: CalendarEvent,
       edge: "left" | "right" | "move",
       startColumn: number,
       endColumn: number,
     ) => {
-      if (e.button !== 0) return;
+      // Mouse and pen select the event immediately
+      if (pointerType !== "touch") onEventClickRef.current?.(event);
 
-      e.stopPropagation();
-
-      onEventClickRef.current?.(event);
-
-      // Compute the column under the cursor at mousedown for move delta
+      // Compute the column under the cursor at the start for move delta
       const container = allDayContainerRef.current;
       let startColumnIndex = startColumn;
       let cursorOffsetX = 0;
@@ -248,20 +285,22 @@ export function useAllDayResize({
         const rect = container.getBoundingClientRect();
         const colWidth = dayColumnWidthRef.current;
         startColumnIndex = clamp(
-          Math.floor((e.clientX - rect.left) / colWidth),
+          Math.floor((clientX - rect.left) / colWidth),
           0,
           daysRef.current.length - 1,
         );
         // Compute offset from cursor to the event element's top-left
         const eventLeft = rect.left + startColumn * colWidth;
-        cursorOffsetX = e.clientX - eventLeft;
+        cursorOffsetX = clientX - eventLeft;
       }
 
       resizeRef.current = {
         eventId: event.id,
         event,
+        pointerId,
+        pointerType,
         edge,
-        startClientX: e.clientX,
+        startClientX: clientX,
         isResizing: false,
         originalStartColumn: startColumn,
         originalEndColumn: endColumn,
@@ -283,19 +322,42 @@ export function useAllDayResize({
         isResizing: false,
       });
 
-      if (handleMouseMoveRef.current) {
-        window.addEventListener("mousemove", handleMouseMoveRef.current);
+      if (handlePointerMoveRef.current) {
+        window.addEventListener("pointermove", handlePointerMoveRef.current);
       }
-      if (handleMouseUpRef.current) {
-        window.addEventListener("mouseup", handleMouseUpRef.current);
+      if (handlePointerUpRef.current) {
+        window.addEventListener("pointerup", handlePointerUpRef.current);
+      }
+      if (handlePointerCancelRef.current) {
+        window.addEventListener(
+          "pointercancel",
+          handlePointerCancelRef.current,
+        );
       }
     },
     [allDayContainerRef],
+  );
+
+  const handleAllDayResizePointerDown = useCallback(
+    (
+      e: React.PointerEvent<HTMLElement>,
+      event: CalendarEvent,
+      edge: "left" | "right" | "move",
+      startColumn: number,
+      endColumn: number,
+    ) => {
+      if (!isPrimaryPress(e)) return;
+      e.stopPropagation();
+      startGesture(e, (start) =>
+        beginResize(start, event, edge, startColumn, endColumn),
+      );
+    },
+    [startGesture, beginResize],
   );
 
   useEffect(() => {
     return cleanup;
   }, [cleanup]);
 
-  return { allDayResizeState, handleAllDayResizeMouseDown };
+  return { allDayResizeState, handleAllDayResizePointerDown };
 }

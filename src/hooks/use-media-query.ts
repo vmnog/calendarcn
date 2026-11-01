@@ -1,5 +1,8 @@
 import * as React from "react";
 
+/** Matches when the viewer asked the system to minimize animation */
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
 function getServerSnapshot(): boolean {
   return false;
 }
@@ -25,4 +28,12 @@ export function useMediaQuery(query: string): boolean {
   );
 
   return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+
+/**
+ * Whether the viewer prefers reduced motion. `false` during server
+ * rendering and hydration, then the live value.
+ */
+export function usePrefersReducedMotion(): boolean {
+  return useMediaQuery(REDUCED_MOTION_QUERY);
 }

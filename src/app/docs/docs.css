@@ -1,0 +1,209 @@
+/*
+ * Docs-only overrides. Every rule is scoped to pages that render the Fumadocs
+ * layout (`#nd-notebook-layout`), so the calendar demo at `/` is untouched
+ * even after a client-side navigation keeps this stylesheet loaded.
+ *
+ * globals.css makes the calendar feel like an app: no text selection and a
+ * default cursor on every element. Docs are for reading and copying code, so
+ * restore document behavior here. `:has()` on body also covers portals
+ * (search dialog, popovers) that render outside the layout.
+ */
+@layer base {
+  body:has(#nd-notebook-layout) {
+    /* next/font defines the Geist variables on <body>, so resolve them here. */
+    font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+    --default-mono-font-family: var(--font-geist-mono);
+    --cursor: auto;
+
+    /*
+     * Shadow-as-border for cards, containers and bordered buttons: a 1px ring
+     * plus soft lift. Unlike a solid `--border`, it stays visible on any
+     * background, including the near-black dark theme.
+     */
+    --shadow-border:
+      0 0 0 1px oklch(0 0 0 / 0.06), 0 1px 2px -1px oklch(0 0 0 / 0.06),
+      0 2px 4px 0 oklch(0 0 0 / 0.04);
+    --shadow-border-hover:
+      0 0 0 1px oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.08),
+      0 2px 4px 0 oklch(0 0 0 / 0.06);
+  }
+
+  /* Depth shadows don't read on dark backgrounds, so dark mode is the ring alone. */
+  .dark body:has(#nd-notebook-layout) {
+    --shadow-border: 0 0 0 1px oklch(1 0 0 / 0.08);
+    --shadow-border-hover: 0 0 0 1px oklch(1 0 0 / 0.13);
+  }
+
+  body:has(#nd-notebook-layout) * {
+    user-select: text;
+  }
+
+  body:has(#nd-notebook-layout)
+    :is(a[href], button, [role="button"], [role="tab"], summary) {
+    --cursor: pointer;
+  }
+
+  /*
+   * Live examples (`ComponentPreview`) behave like the app again: dragging an
+   * event doesn't select text, and events and buttons keep the calendar's own
+   * cursor (inherited, so the resize cursor set on <body> mid-drag shows).
+   */
+  body:has(#nd-notebook-layout) .docs-preview * {
+    user-select: none;
+  }
+
+  body:has(#nd-notebook-layout)
+    .docs-preview
+    :is(input, textarea, [contenteditable="true"]) {
+    user-select: text;
+  }
+
+  body:has(#nd-notebook-layout)
+    .docs-preview
+    :is(a[href], button, [role="button"], [role="tab"], summary) {
+    --cursor: inherit;
+  }
+
+  /*
+   * Names in a table's first column (`calendar-core`) stay whole instead of
+   * breaking at a hyphen. Other columns hold long types, which must wrap.
+   */
+  body:has(#nd-notebook-layout) td:first-child > code {
+    white-space: nowrap;
+  }
+
+  /*
+   * Fumadocs only names the transitioned properties on the collapsed sidebar,
+   * which leaves the expanded one on `transition-property: all`. Use the same
+   * list in both states.
+   */
+  #nd-sidebar {
+    transition-property: width, inset-block, translate, background-color;
+  }
+}
+
+/*
+ * Unlayered from here on: these replace Fumadocs utility classes, which live in
+ * `@layer utilities` and would otherwise win.
+ */
+
+/* Cards and containers (docs components add this class): ring instead of a solid border. */
+body:has(#nd-notebook-layout) .docs-surface {
+  border-width: 0;
+  box-shadow: var(--shadow-border);
+}
+
+body:has(#nd-notebook-layout) :is(a, button).docs-surface {
+  transition-property: color, background-color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+body:has(#nd-notebook-layout) :is(a, button).docs-surface:hover {
+  box-shadow: var(--shadow-border-hover);
+}
+
+/* Code block tabs are the surface; their code blocks sit flush inside. */
+body:has(#nd-notebook-layout) .docs-code-tabs figure {
+  margin: 0;
+  box-shadow: none;
+}
+
+/* A code block that fills a tab panel (Fumadocs drops its border) has no ring of its own. */
+body:has(#nd-notebook-layout)
+  [role="tabpanel"]
+  > figure.docs-surface:only-child {
+  box-shadow: none;
+}
+
+/* Prev / next page links. */
+body:has(#nd-notebook-layout) .docs-footer > a {
+  border-width: 0;
+  box-shadow: var(--shadow-border);
+  transition-property: color, background-color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+body:has(#nd-notebook-layout) .docs-footer > a:hover {
+  box-shadow: var(--shadow-border-hover);
+}
+
+/* Bordered header buttons: same ring, keeping the 1px border box so sizes don't change. */
+body:has(#nd-notebook-layout)
+  :is(
+    button[data-search-full],
+    button[data-theme-toggle],
+    button[aria-label="Collapse Sidebar"]
+  ) {
+  border-color: transparent;
+  box-shadow: var(--shadow-border);
+}
+
+body:has(#nd-notebook-layout)
+  :is(
+    button[data-search-full],
+    button[data-theme-toggle],
+    button[aria-label="Collapse Sidebar"]
+  ):hover {
+  box-shadow: var(--shadow-border-hover);
+}
+
+body:has(#nd-notebook-layout)
+  :is(
+    button[data-search-full],
+    button[data-theme-toggle],
+    button[aria-label="Collapse Sidebar"]
+  ):focus-visible {
+  box-shadow:
+    var(--shadow-border),
+    0 0 0 2px var(--color-fd-ring);
+}
+
+/* Press feedback on header and sidebar buttons. */
+body:has(#nd-notebook-layout)
+  :is(
+    button[data-search-full],
+    button[data-theme-toggle],
+    button[aria-label="Collapse Sidebar"],
+    button[aria-label="Open Sidebar"],
+    button[aria-label="Open Search"]
+  ) {
+  transition-property: color, background-color, box-shadow, scale;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+body:has(#nd-notebook-layout)
+  :is(
+    button[data-search-full],
+    button[data-theme-toggle],
+    button[aria-label="Collapse Sidebar"],
+    button[aria-label="Open Sidebar"],
+    button[aria-label="Open Search"]
+  ):active {
+  scale: 0.96;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(#nd-notebook-layout)
+    :is(
+      button[data-search-full],
+      button[data-theme-toggle],
+      button[aria-label="Collapse Sidebar"],
+      button[aria-label="Open Sidebar"],
+      button[aria-label="Open Search"]
+    ):active {
+    scale: none;
+  }
+}
+
+/* Icons beside regular-weight labels use a 1.5px stroke to match the text. */
+body:has(#nd-notebook-layout) :is(button[data-search-full], #toc-title) > svg {
+  stroke-width: 1.5;
+}
+
+/* The TOC progress ring only animates its dash offset (Fumadocs uses `transition-all`). */
+body:has(#nd-notebook-layout) [data-toc-popover-trigger] circle {
+  transition-property: stroke-dashoffset;
+}

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 @import "./tw-animate.css";
+/* Docs (/docs): Fumadocs UI styles, colors mapped to the shadcn tokens below */
+@import "fumadocs-ui/css/preset.css";
+@import "fumadocs-ui/css/shadcn.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -249,4 +252,12 @@ html.dark,
 
 .column-highlight {
   animation: column-highlight-fade 2s ease-out forwards;
+}
+
+/* Reduced motion: show the highlight without the fade; it still clears on its own */
+@media (prefers-reduced-motion: reduce) {
+  .column-highlight {
+    animation: none;
+    background-color: #602c2b;
+  }
 }

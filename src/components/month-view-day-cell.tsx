@@ -8,13 +8,19 @@ import {
   addDays,
   startOfDay,
 } from "date-fns";
+import type { Locale } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToday } from "@/hooks/use-now";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 import type { MonthCellSlot } from "@/lib/event-utils";
-import { formatCellDate, isMultiDayEvent } from "@/lib/event-utils";
+import {
+  formatCellDate,
+  formatFullDate,
+  isMultiDayEvent,
+} from "@/lib/event-utils";
 import { Popover, PopoverAnchor } from "@/components/ui/popover";
 import { EventDetailPopover } from "./event-detail-popover";
+import { useCalendarConfig } from "./calendar-provider";
 import { MonthViewEventItem } from "./month-view-event-item";
 import { MonthViewEventBar } from "./month-view-event-bar";
 
@@ -29,9 +35,12 @@ export interface MonthViewDayCellProps {
   onMoreClick?: (date: Date) => void;
   onDayNumberClick?: (date: Date) => void;
   onBackgroundClick?: () => void;
-  onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
-  onResizeMouseDown?: (
-    e: React.MouseEvent,
+  onDragPointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
+    event: CalendarEvent,
+  ) => void;
+  onResizePointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
     edge: "left" | "right",
   ) => void;
@@ -41,16 +50,20 @@ export interface MonthViewDayCellProps {
   resizeEventId?: string;
   dragTargetDate?: Date;
   dragEvent?: CalendarEvent;
-  isSidebarOpen?: boolean;
+  /** Whether the selected event shows its details popover */
+  showEventPopover?: boolean;
   onEventChange?: (event: CalendarEvent) => void;
-  onDockToSidebar?: () => void;
-  onClosePopover?: () => void;
+  /** Callback for the popover's expand button (hidden when absent) */
+  onEventPopoverExpand?: () => void;
+  /** Callback to close the popover (clears the selection) */
+  /** Closes the given event's popover (clears it only while it is still selected) */
+  onEventPopoverClose?: (eventId: string) => void;
   className?: string;
 }
 
 /** Returns the full month name for first-of-month labels */
-function getMonthName(date: Date): string {
-  return format(date, "MMMM");
+function getMonthName(date: Date, locale: Locale): string {
+  return format(date, "MMMM", { locale });
 }
 
 /** Border color for drag placeholder outline */
@@ -74,20 +87,21 @@ export function MonthViewDayCell({
   onMoreClick,
   onDayNumberClick,
   onBackgroundClick,
-  onDragMouseDown,
-  onResizeMouseDown,
+  onDragPointerDown,
+  onResizePointerDown,
   selectedEventId,
   dragEventId,
   resizeEventId,
   dragTargetDate,
   dragEvent,
-  isSidebarOpen,
+  showEventPopover,
   onEventChange,
-  onDockToSidebar,
-  onClosePopover,
+  onEventPopoverExpand,
+  onEventPopoverClose,
   className,
 }: MonthViewDayCellProps) {
   const dayNumber = date.getDate();
+  const { locale } = useCalendarConfig();
   // `null` on the server and during hydration, so no cell is marked as today
   const today = useToday();
   const todayDate = today !== null && isSameDay(date, today);
@@ -99,7 +113,7 @@ export function MonthViewDayCell({
   // For multi-day bars that span across week rows, only show the popover
   // on the cell matching the event's true start date to avoid duplicates.
   const selectedCellEvent =
-    selectedEventId && isSidebarOpen === false && !dragEventId && !resizeEventId
+    selectedEventId && showEventPopover && !dragEventId && !resizeEventId
       ? (() => {
           for (const slot of barSlots) {
             if (
@@ -151,9 +165,14 @@ export function MonthViewDayCell({
     onBackgroundClick?.();
   }
 
+  /** The cell's day in full ("Tuesday, October 31"), its accessible name */
+  const fullDate = formatFullDate(date, locale);
+
   const cellContent = (
     <div
       data-date={formatCellDate(date)}
+      role="group"
+      aria-label={fullDate}
       onClick={handleBackgroundClick}
       className={cn(
         "flex flex-col border-b border-r border-border min-w-0",
@@ -165,6 +184,7 @@ export function MonthViewDayCell({
       <div className="flex justify-end items-center px-2 pt-0.5 pb-0.5">
         <button
           type="button"
+          aria-label={fullDate}
           onClick={() => onDayNumberClick?.(date)}
           className={cn(
             "flex h-6 min-w-6 items-center justify-center rounded-sm px-1 text-[13px] font-medium leading-none cursor-pointer select-none gap-1",
@@ -177,7 +197,7 @@ export function MonthViewDayCell({
           )}
         >
           {isFirstOfMonth && (
-            <span className="font-semibold">{getMonthName(date)}</span>
+            <span className="font-semibold">{getMonthName(date, locale)}</span>
           )}
           {dayNumber}
         </button>
@@ -189,6 +209,7 @@ export function MonthViewDayCell({
           {/* Multi-day drag placeholder — absolute overlay */}
           {showPlaceholder && isMultiDay && (
             <div
+              aria-hidden
               className={cn(
                 "absolute top-0 left-0.5 right-0.5 h-5 rounded-sm border-2 pointer-events-none",
                 placeholderBorder,
@@ -219,10 +240,11 @@ export function MonthViewDayCell({
                           resizeEventId === slot.event.id
                         }
                         isGhost={dragEventId === slot.event.id}
+                        isResizing={resizeEventId === slot.event.id}
                         onClick={onEventClick}
                         onContextMenu={onContextMenu}
-                        onDragMouseDown={onDragMouseDown}
-                        onResizeMouseDown={onResizeMouseDown}
+                        onDragPointerDown={onDragPointerDown}
+                        onResizePointerDown={onResizePointerDown}
                       />
                     </div>
                   );
@@ -236,10 +258,11 @@ export function MonthViewDayCell({
                       roundedLeft={slot.roundedLeft}
                       roundedRight={slot.roundedRight}
                       isSelected={selectedEventId === slot.event.id}
+                      isResizing={resizeEventId === slot.event.id}
                       onClick={onEventClick}
                       onContextMenu={onContextMenu}
-                      onDragMouseDown={onDragMouseDown}
-                      onResizeMouseDown={onResizeMouseDown}
+                      onDragPointerDown={onDragPointerDown}
+                      onResizePointerDown={onResizePointerDown}
                     />
                   </div>
                 );
@@ -264,6 +287,7 @@ export function MonthViewDayCell({
         {/* Timed event drag placeholder — absolute overlay, doesn't push events */}
         {showPlaceholder && !isMultiDay && (
           <div
+            aria-hidden
             className={cn(
               "absolute inset-x-0.5 top-0 h-5 rounded-sm border-2 pointer-events-none z-30",
               placeholderBorder,
@@ -280,7 +304,7 @@ export function MonthViewDayCell({
                 isGhost={dragEventId === slot.event.id}
                 onClick={onEventClick}
                 onContextMenu={onContextMenu}
-                onDragMouseDown={onDragMouseDown}
+                onDragPointerDown={onDragPointerDown}
               />
             );
             return itemEl;
@@ -290,6 +314,8 @@ export function MonthViewDayCell({
             return (
               <button
                 key={`more-${index}`}
+                type="button"
+                aria-label={`Show ${slot.count} more ${slot.count === 1 ? "event" : "events"} on ${fullDate}`}
                 onClick={() => onMoreClick?.(date)}
                 className="px-1 py-0.5 text-xs font-bold text-foreground rounded-sm text-left cursor-default select-none"
               >
@@ -310,15 +336,15 @@ export function MonthViewDayCell({
     <Popover
       open
       onOpenChange={(open) => {
-        if (!open) onClosePopover?.();
+        if (!open) onEventPopoverClose?.(selectedCellEvent.id);
       }}
     >
       <PopoverAnchor asChild>{cellContent}</PopoverAnchor>
       <EventDetailPopover
         event={selectedCellEvent}
         onEventChange={onEventChange}
-        onClose={() => onClosePopover?.()}
-        onDockToSidebar={() => onDockToSidebar?.()}
+        onClose={() => onEventPopoverClose?.(selectedCellEvent.id)}
+        onExpand={onEventPopoverExpand}
         side="right"
         align="start"
       />

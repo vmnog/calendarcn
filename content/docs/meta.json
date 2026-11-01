@@ -1,0 +1,12 @@
+{
+  "title": "Docs",
+  "pages": [
+    "---Getting Started---",
+    "index",
+    "installation",
+    "keyboard-shortcuts",
+    "roadmap",
+    "---Components---",
+    "...components"
+  ]
+}

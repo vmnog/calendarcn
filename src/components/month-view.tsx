@@ -1,13 +1,27 @@
 "use client";
 
-import { useRef, useMemo, useCallback, useState, useEffect } from "react";
+import {
+  useRef,
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  useLayoutEffect,
+} from "react";
 import { createPortal } from "react-dom";
-import { addWeeks, startOfMonth } from "date-fns";
+import {
+  addDays,
+  addWeeks,
+  isWeekend,
+  startOfDay,
+  startOfMonth,
+} from "date-fns";
 
 import { cn } from "@/lib/utils";
 import { useMonthEventDrag } from "@/hooks/use-month-event-drag";
 import { useMonthEventResize } from "@/hooks/use-month-event-resize";
 import { useVerticalScroll } from "@/hooks/use-vertical-scroll";
+import { useEventKeyboard } from "@/hooks/use-event-keyboard";
 import { generateConsecutiveWeeks, generateWeekRow } from "@/lib/event-utils";
 import { isMultiDayEvent } from "@/lib/event-utils";
 import { MonthViewGrid } from "./month-view-grid";
@@ -15,36 +29,17 @@ import { MonthViewEventBar } from "./month-view-event-bar";
 import { MonthViewEventItem } from "./month-view-event-item";
 import { EventContextMenu } from "./event-context-menu";
 import { CalendarPopoverBoundaryProvider } from "./calendar-popover-context";
-import type { CalendarEvent, ViewSettings } from "./calendar-types";
+import {
+  useCalendar,
+  useCalendarConfig,
+  useCalendarViewSync,
+} from "./calendar-provider";
+import type { CalendarEvent } from "./calendar-types";
+import type { MonthViewProps } from "./week-view-types";
 import type { MonthWeekRow } from "@/lib/event-utils";
-
-/** Day name labels for full weeks (Sun–Sat) */
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-/** Day name labels for weekdays only (Mon–Fri) */
-const WEEKDAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 /** Base buffer rows on each side (extends dynamically with scroll distance) */
 const BUFFER_ROWS = 2;
-
-export interface MonthViewProps {
-  currentDate: Date;
-  events?: CalendarEvent[];
-  viewSettings?: ViewSettings;
-  onEventClick?: (event: CalendarEvent) => void;
-  selectedEventId?: string;
-  onBackgroundClick?: () => void;
-  onEventChange?: (event: CalendarEvent) => void;
-  onDateChange?: (date: Date) => void;
-  /** Called when the display month changes (for header/sidebar sync) */
-  onDisplayMonthChange?: (month: Date) => void;
-  onMoreClick?: (date: Date) => void;
-  onDayNumberClick?: (date: Date) => void;
-  isSidebarOpen?: boolean;
-  onDockToSidebar?: () => void;
-  onClosePopover?: () => void;
-  className?: string;
-}
 
 interface ContextMenuState {
   x: number;
@@ -52,29 +47,42 @@ interface ContextMenuState {
   event: CalendarEvent;
 }
 
+/**
+ * Month grid calendar. Date, events, selection and view settings come from
+ * the surrounding CalendarProvider.
+ */
 export function MonthView({
-  currentDate,
-  events = [],
-  viewSettings,
-  onEventClick,
-  selectedEventId,
-  onBackgroundClick,
-  onEventChange,
-  onDateChange,
-  onDisplayMonthChange,
-  onMoreClick,
-  onDayNumberClick,
-  isSidebarOpen,
-  onDockToSidebar,
-  onClosePopover,
+  showEventPopover = true,
+  onEventPopoverExpand,
   className,
 }: MonthViewProps) {
+  const {
+    view,
+    currentDate,
+    events,
+    viewSettings,
+    weekStartsOn,
+    selectedEvent,
+    selectEvent,
+    clearSelection,
+    updateEvent,
+    goToDate,
+    showDay,
+  } = useCalendar();
+  const { locale } = useCalendarConfig();
+  const { reportView, reportDisplayMonth, closeEventPopover } =
+    useCalendarViewSync();
+  /**
+   * Whether the provider navigates by month. False for the commit before it
+   * adopts this view (on mount, or right after a switch it doesn't follow).
+   */
+  const isProviderInSync = view === "month";
   const boundaryRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
 
-  const showWeekends = viewSettings?.showWeekends ?? true;
-  const showWeekNumbers = viewSettings?.showWeekNumbers ?? false;
+  const selectedEventId = selectedEvent?.id;
+  const { showWeekends, showWeekNumbers } = viewSettings;
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
@@ -82,8 +90,9 @@ export function MonthView({
   const VISIBLE_ROWS = 6;
 
   const weekRows = useMemo(
-    () => generateConsecutiveWeeks(currentDate, VISIBLE_ROWS),
-    [currentDate],
+    () =>
+      generateConsecutiveWeeks(currentDate, VISIBLE_ROWS, weekStartsOn, locale),
+    [currentDate, weekStartsOn, locale],
   );
 
   // Derive the display month from the center of the visible rows.
@@ -96,29 +105,51 @@ export function MonthView({
     return startOfMonth(midDate);
   }, [weekRows, currentDate]);
 
-  // Notify parent when the display month changes
-  useEffect(() => {
-    onDisplayMonthChange?.(displayMonth);
-  }, [displayMonth, onDisplayMonthChange]);
+  // Tell the provider which view is on screen. `reportView` changes with the
+  // provider's state, so this also re-checks after every switch. A layout
+  // effect: the provider adopts month view before the first paint.
+  useLayoutEffect(() => {
+    reportView({ view: "month" });
+  }, [reportView]);
 
-  const dayNames = showWeekends ? DAY_NAMES : WEEKDAY_NAMES;
+  // Report the display month to the provider (header and sidebar sync). Not
+  // while it is adopting this view: the date is about to change.
+  useEffect(() => {
+    if (!isProviderInSync) return;
+    reportDisplayMonth(displayMonth);
+  }, [isProviderInSync, displayMonth, reportDisplayMonth]);
+
+  // Weekday columns in display order, starting on `weekStartsOn`, named in
+  // the calendar's locale ("Sun", "Mon") like the rows' days
+  const dayNames = useMemo(() => {
+    const firstWeek = weekRows[0]?.days ?? [];
+    const visibleDays = showWeekends
+      ? firstWeek
+      : firstWeek.filter((day) => !isWeekend(day.date));
+    return visibleDays.map((day) => day.dayName);
+  }, [weekRows, showWeekends]);
 
   const colCount = dayNames.length;
   const gridTemplateColumns = showWeekNumbers
     ? `2rem repeat(${colCount}, minmax(0, 1fr))`
     : `repeat(${colCount}, minmax(0, 1fr))`;
 
-  const { dragState, handleDragMouseDown } = useMonthEventDrag({
+  const handleEventClick = useCallback(
+    (event: CalendarEvent) => selectEvent(event.id),
+    [selectEvent],
+  );
+
+  const { dragState, handleDragPointerDown } = useMonthEventDrag({
     gridRef,
     events,
-    onEventChange,
-    onEventClick,
+    onEventChange: updateEvent,
+    onEventClick: handleEventClick,
   });
 
-  const { resizeState, handleResizeMouseDown } = useMonthEventResize({
+  const { resizeState, handleResizePointerDown } = useMonthEventResize({
     gridRef,
     events,
-    onEventChange,
+    onEventChange: updateEvent,
   });
 
   const isDragging = dragState?.isDragging ?? false;
@@ -148,9 +179,9 @@ export function MonthView({
     (rowsDelta: number) => {
       scrollNavigatedRef.current = true;
       const newDate = addWeeks(currentDate, rowsDelta);
-      onDateChange?.(newDate);
+      goToDate(newDate);
     },
-    [currentDate, onDateChange],
+    [currentDate, goToDate],
   );
 
   const { scrollOffset, slideOffset, isAnimating, triggerSlideAnimation } =
@@ -163,7 +194,11 @@ export function MonthView({
 
   // Detect external currentDate changes (button/keyboard nav) and trigger slide animation
   const prevDateRef = useRef(currentDate);
+  const wasProviderInSyncRef = useRef(isProviderInSync);
   useEffect(() => {
+    const wasProviderInSync = wasProviderInSyncRef.current;
+    wasProviderInSyncRef.current = isProviderInSync;
+
     if (scrollNavigatedRef.current) {
       scrollNavigatedRef.current = false;
       prevDateRef.current = currentDate;
@@ -174,6 +209,9 @@ export function MonthView({
     prevDateRef.current = currentDate;
 
     if (prevDate.getTime() === currentDate.getTime()) return;
+    // Dates set while the provider adopts this view (an undone switch, such
+    // as "+N more" without a week view to open) are not navigation
+    if (!wasProviderInSync || !isProviderInSync) return;
 
     // Calculate how many weeks changed
     const weeksDelta = Math.round(
@@ -183,7 +221,38 @@ export function MonthView({
     if (weeksDelta !== 0) {
       triggerSlideAnimation(weeksDelta);
     }
-  }, [currentDate, triggerSlideAnimation]);
+  }, [currentDate, isProviderInSync, triggerSlideAnimation]);
+
+  /** Whether a day is in one of the on-screen week rows */
+  const isDayVisible = useCallback(
+    (date: Date) => {
+      const firstRow = weekRows[0];
+      const lastRow = weekRows[weekRows.length - 1];
+      if (!firstRow || !lastRow) return false;
+      const first = startOfDay(firstRow.days[0].date);
+      const afterLast = addDays(
+        startOfDay(lastRow.days[lastRow.days.length - 1].date),
+        1,
+      );
+      return date >= first && date < afterLast;
+    },
+    [weekRows],
+  );
+
+  /** Scrolls a row toward a day just off screen (keyboard moves go a week at most) */
+  const revealDay = useCallback(
+    (date: Date) => {
+      const firstDay = weekRows[0]?.days[0]?.date ?? currentDate;
+      goToDate(addWeeks(currentDate, date < firstDay ? -1 : 1));
+    },
+    [weekRows, currentDate, goToDate],
+  );
+
+  const handleEventKeyDown = useEventKeyboard({
+    containerRef: boundaryRef,
+    isDayVisible,
+    revealDay,
+  });
 
   // Symmetric buffer: extends in both directions (mirrors week view's dynamicBuffer)
   const extraScrollRows =
@@ -196,15 +265,15 @@ export function MonthView({
     const rows: MonthWeekRow[] = [];
     const firstDate = weekRows[0].days[0].date;
     for (let i = dynamicBuffer; i > 0; i--) {
-      rows.push(generateWeekRow(addWeeks(firstDate, -i)));
+      rows.push(generateWeekRow(addWeeks(firstDate, -i), weekStartsOn, locale));
     }
     rows.push(...weekRows);
     const lastDate = weekRows[weekRows.length - 1].days[0].date;
     for (let i = 1; i <= dynamicBuffer; i++) {
-      rows.push(generateWeekRow(addWeeks(lastDate, i)));
+      rows.push(generateWeekRow(addWeeks(lastDate, i), weekStartsOn, locale));
     }
     return rows;
-  }, [weekRows, dynamicBuffer]);
+  }, [weekRows, dynamicBuffer, weekStartsOn, locale]);
 
   // Base offset hides the top buffer; scrollOffset + slideOffset shift within
   const baseTranslateY = -(dynamicBuffer * rowHeight);
@@ -250,9 +319,9 @@ export function MonthView({
       ) {
         return;
       }
-      onBackgroundClick?.();
+      clearSelection();
     },
-    [onBackgroundClick],
+    [clearSelection],
   );
 
   return (
@@ -265,6 +334,7 @@ export function MonthView({
         ref={boundaryRef}
         className={cn("flex h-full flex-col overflow-hidden", className)}
         onClick={handleRootClick}
+        onKeyDown={handleEventKeyDown}
       >
         {/* Day-of-week header — right-aligned to match day number positions */}
         <div
@@ -295,23 +365,24 @@ export function MonthView({
             currentMonth={displayMonth}
             showWeekNumbers={showWeekNumbers}
             showWeekends={showWeekends}
-            onEventClick={onEventClick}
+            onEventClick={handleEventClick}
             onContextMenu={handleContextMenu}
-            onMoreClick={onMoreClick}
-            onDayNumberClick={onDayNumberClick}
-            onBackgroundClick={onBackgroundClick}
-            onDragMouseDown={handleDragMouseDown}
-            onResizeMouseDown={handleResizeMouseDown}
+            onMoreClick={showDay}
+            onDayNumberClick={showDay}
+            onBackgroundClick={clearSelection}
+            onDragPointerDown={handleDragPointerDown}
+            onResizePointerDown={handleResizePointerDown}
             selectedEventId={selectedEventId}
             dragEventId={dragEventId}
             resizeEventId={resizeEventId}
             dragTargetDate={isDragging ? dragState?.targetDate : undefined}
             dragEvent={isDragging ? dragState?.event : undefined}
-            isSidebarOpen={isSidebarOpen}
-            onEventChange={onEventChange}
-            onDockToSidebar={onDockToSidebar}
-            onClosePopover={onClosePopover}
+            showEventPopover={showEventPopover}
+            onEventChange={updateEvent}
+            onEventPopoverExpand={onEventPopoverExpand}
+            onEventPopoverClose={closeEventPopover}
             visibleRowCount={visibleRowCount}
+            visibleRowStart={dynamicBuffer}
             scrollStyle={scrollStyle}
             gridRef={gridRef}
           />
@@ -323,7 +394,7 @@ export function MonthView({
             event={contextMenu.event}
             position={{ x: contextMenu.x, y: contextMenu.y }}
             onClose={() => setContextMenu(null)}
-            onEventChange={onEventChange}
+            onEventChange={updateEvent}
           />
         )}
 
@@ -332,6 +403,7 @@ export function MonthView({
           dragState &&
           createPortal(
             <div
+              aria-hidden
               className="pointer-events-none fixed z-[9999] w-48 opacity-80 shadow-lg"
               style={{
                 left: dragState.clientX - 96,
@@ -344,9 +416,10 @@ export function MonthView({
                   colSpan={1}
                   roundedLeft
                   roundedRight
+                  isDragging
                 />
               ) : (
-                <MonthViewEventItem event={dragState.event} />
+                <MonthViewEventItem event={dragState.event} isDragging />
               )}
             </div>,
             document.body,

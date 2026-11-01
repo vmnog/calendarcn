@@ -22,9 +22,12 @@ export interface MonthViewGridProps {
   onMoreClick?: (date: Date) => void;
   onDayNumberClick?: (date: Date) => void;
   onBackgroundClick?: () => void;
-  onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
-  onResizeMouseDown?: (
-    e: React.MouseEvent,
+  onDragPointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
+    event: CalendarEvent,
+  ) => void;
+  onResizePointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
     edge: "left" | "right",
   ) => void;
@@ -37,12 +40,18 @@ export interface MonthViewGridProps {
   dragTargetDate?: Date;
   /** The event being dragged (for placeholder rendering) */
   dragEvent?: CalendarEvent;
-  isSidebarOpen?: boolean;
+  /** Whether the selected event shows its details popover */
+  showEventPopover?: boolean;
   onEventChange?: (event: CalendarEvent) => void;
-  onDockToSidebar?: () => void;
-  onClosePopover?: () => void;
+  /** Callback for the popover's expand button (hidden when absent) */
+  onEventPopoverExpand?: () => void;
+  /** Callback to close the popover (clears the selection) */
+  /** Closes the given event's popover (clears it only while it is still selected) */
+  onEventPopoverClose?: (eventId: string) => void;
   /** Number of rows visible in the viewport (for row height calculation) */
   visibleRowCount?: number;
+  /** Index in `weekRows` of the first on-screen row (the rest are scroll buffer) */
+  visibleRowStart?: number;
   /** CSS style for scroll transform */
   scrollStyle?: React.CSSProperties;
   /** Forwarded ref for the grid container (used by drag hook) */
@@ -61,18 +70,19 @@ export function MonthViewGrid({
   onMoreClick,
   onDayNumberClick,
   onBackgroundClick,
-  onDragMouseDown,
-  onResizeMouseDown,
+  onDragPointerDown,
+  onResizePointerDown,
   selectedEventId,
   dragEventId,
   resizeEventId,
   dragTargetDate,
   dragEvent,
-  isSidebarOpen,
+  showEventPopover,
   onEventChange,
-  onDockToSidebar,
-  onClosePopover,
+  onEventPopoverExpand,
+  onEventPopoverClose,
   visibleRowCount,
+  visibleRowStart = 0,
   scrollStyle,
   gridRef,
   className,
@@ -120,7 +130,12 @@ export function MonthViewGrid({
             gridTemplateRows: `repeat(${weekRows.length}, ${cellHeight || 0}px)`,
           }}
         >
-          {weekRows.map((weekRow) => {
+          {weekRows.map((weekRow, rowIndex) => {
+            // Rows above and below the screen are scroll buffer: inert, so
+            // their events can't be tabbed to or read out
+            const isOnScreen =
+              rowIndex >= visibleRowStart &&
+              rowIndex < visibleRowStart + (visibleRowCount ?? weekRows.length);
             const visibleDays = showWeekends
               ? weekRow.days
               : weekRow.days.filter(
@@ -134,6 +149,7 @@ export function MonthViewGrid({
             return (
               <div
                 key={weekRow.days[0].date.toISOString()}
+                inert={!isOnScreen}
                 className="grid min-h-0"
                 style={{ gridTemplateColumns }}
               >
@@ -160,17 +176,17 @@ export function MonthViewGrid({
                       onMoreClick={onMoreClick}
                       onDayNumberClick={onDayNumberClick}
                       onBackgroundClick={onBackgroundClick}
-                      onDragMouseDown={onDragMouseDown}
-                      onResizeMouseDown={onResizeMouseDown}
+                      onDragPointerDown={onDragPointerDown}
+                      onResizePointerDown={onResizePointerDown}
                       selectedEventId={selectedEventId}
                       dragEventId={dragEventId}
                       resizeEventId={resizeEventId}
                       dragTargetDate={dragTargetDate}
                       dragEvent={dragEvent}
-                      isSidebarOpen={isSidebarOpen}
+                      showEventPopover={showEventPopover}
                       onEventChange={onEventChange}
-                      onDockToSidebar={onDockToSidebar}
-                      onClosePopover={onClosePopover}
+                      onEventPopoverExpand={onEventPopoverExpand}
+                      onEventPopoverClose={onEventPopoverClose}
                     />
                   );
                 })}

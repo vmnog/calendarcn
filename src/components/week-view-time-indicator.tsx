@@ -5,15 +5,17 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { useNow } from "@/hooks/use-now";
+import { useCalendarConfig } from "./calendar-provider";
 import type { WeekViewTimeIndicatorProps } from "./week-view-types";
 
 /**
  * Current time indicator showing time badge and horizontal lines
- * - Time badge with current time (e.g., "5:48PM") on the left
+ * - Time badge with current time (e.g., "5:48PM", or "17:48" on a 24-hour clock) on the left
  * - Thick line on today's column
  * - Thin line on other day columns
  * Moves on every minute boundary via the shared `useNow` clock. Renders
- * nothing on the server and during hydration, where the time is unknown.
+ * nothing on the server and during hydration, where the time is unknown,
+ * and outside the visible hours (`dayStartHour` to `dayEndHour`).
  */
 export function WeekViewTimeIndicator({
   days,
@@ -24,6 +26,7 @@ export function WeekViewTimeIndicator({
   className,
 }: WeekViewTimeIndicatorProps) {
   const currentTime = useNow();
+  const { dayStartHour, dayEndHour, hourCycle, locale } = useCalendarConfig();
 
   // Check if today is visible in the current week
   const isTodayVisible = days.some((day) => day.isToday);
@@ -32,16 +35,24 @@ export function WeekViewTimeIndicator({
     return null;
   }
 
-  // Calculate position based on current time
+  // Calculate position based on current time, from the grid's top edge
   const minutesSinceMidnight =
     currentTime.getHours() * 60 + currentTime.getMinutes();
-  const totalMinutesInDay = 24 * 60;
-  const totalGridHeight = hourHeight * 24;
+  const visibleStartMinutes = dayStartHour * 60;
+  if (
+    minutesSinceMidnight < visibleStartMinutes ||
+    minutesSinceMidnight >= dayEndHour * 60
+  ) {
+    return null;
+  }
   const topPosition =
-    (minutesSinceMidnight / totalMinutesInDay) * totalGridHeight;
+    ((minutesSinceMidnight - visibleStartMinutes) / 60) * hourHeight;
 
-  // Format time as "H:MMAM/PM" (e.g., "5:48PM")
-  const formattedTime = format(currentTime, "h:mma").toUpperCase();
+  // "5:48PM" on a 12-hour clock, "17:48" on a 24-hour clock
+  const formattedTime =
+    hourCycle === 24
+      ? format(currentTime, "HH:mm", { locale })
+      : format(currentTime, "h:mma", { locale }).toUpperCase();
 
   const lineDays = scrollDays ?? days;
   const lineTodayIndex = lineDays.findIndex((d) => d.isToday);
@@ -73,6 +84,7 @@ export function WeekViewTimeIndicator({
 
   return (
     <div
+      aria-hidden
       className={cn(
         "pointer-events-none absolute left-0 right-0",
         behindSelection ? "z-10" : "z-20",

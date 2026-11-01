@@ -21,8 +21,11 @@ export function CalendarDayHeaders({
 
   // Standalone mode: just render the day columns (used inside scroll container)
   if (standalone) {
+    // Visual only (including the off-screen buffer days): each day column
+    // in the grid is labeled with its full date
     return (
       <div
+        aria-hidden
         className={cn("grid", className)}
         style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
       >

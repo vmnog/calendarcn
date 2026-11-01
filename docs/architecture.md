@@ -7,56 +7,59 @@ CalendarCN is a client-side React calendar component built with Next.js App Rout
 ## System Diagram
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  page.tsx (App State Owner)                         │
-│  ┌─────────────┬──────────────┬──────────────────┐  │
-│  │ currentDate  │ events[]     │ selectedEventId  │  │
-│  └──────┬──────┴──────┬───────┴────────┬─────────┘  │
-│         │             │                │             │
-│  ┌──────▼──────┐  ┌───▼────────┐  ┌───▼──────────┐  │
-│  │ DatePicker  │  │ WeekView   │  │ EventDetail  │  │
-│  │ (sidebar)   │  │ (main)     │  │ Panel/Popover│  │
-│  └─────────────┘  └───┬────────┘  └──────────────┘  │
-│                       │                              │
-│         ┌─────────────┼─────────────┐                │
-│         │             │             │                │
-│  ┌──────▼──────┐ ┌────▼─────┐ ┌────▼──────────┐     │
-│  │ AllDayRow   │ │ Grid     │ │ TimeAxis      │     │
-│  │             │ │          │ │               │     │
-│  │ (all-day    │ │ (timed   │ │ (hour labels) │     │
-│  │  events)    │ │  events) │ │               │     │
-│  └─────────────┘ └────┬─────┘ └───────────────┘     │
-│                       │                              │
-│              ┌────────▼─────────┐                    │
-│              │ CalendarEventItem│                    │
-│              │ (renders each    │                    │
-│              │  event segment)  │                    │
-│              └──────────────────┘                    │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  CalendarProvider (state owner, read with useCalendar()) │
+│  events · view · currentDate · selection · settings      │
+│        │                    │                   │        │
+│  ┌─────▼────────┐   ┌───────▼─────┐   ┌─────────▼────┐   │
+│  │ DayView /    │   │ MonthView   │   │ EventDetail  │   │
+│  │ WeekView     │   │ (month grid)│   │ Panel/Popover│   │
+│  └─────┬────────┘   └─────────────┘   └──────────────┘   │
+│        │ view="day" | "week"                             │
+│  ┌─────▼────────┐                                        │
+│  │ TimeGrid     │                                        │
+│  └─────┬────────┘                                        │
+│        ├──────────────┬──────────────┐                   │
+│  ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐             │
+│  │ AllDayRow │  │ Grid      │  │ TimeAxis  │             │
+│  │ (all-day  │  │ (timed    │  │ (hour     │             │
+│  │  events)  │  │  events)  │  │  labels)  │             │
+│  └───────────┘  └─────┬─────┘  └───────────┘             │
+│                       │                                  │
+│              ┌────────▼──────────┐                       │
+│              │ CalendarEventItem │                       │
+│              │ (renders each     │                       │
+│              │  event segment)   │                       │
+│              └───────────────────┘                       │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ## Data Flow
 
 ### State Ownership
 
-`page.tsx` is the single source of truth for all application state:
+`CalendarProvider` (`calendar-provider.tsx`) is the single source of truth for calendar state: events, view, `currentDate`, `numberOfDays`, selection and view settings. Each value can be controlled by the app (`value` + `onValueChange`) or owned by the provider (`defaultValue`). Views read state with `useCalendar()` and change it through its actions (`updateEvent`, `addEventFromRange`, `goToDate`, `switchView`, ...).
 
-- **`currentDate`** — the reference date for the visible week
-- **`events`** — array of `CalendarEvent` objects
-- **`selectedEventId`** — currently selected event (or null)
-- **`dirtyEventIds`** — tracks events modified via drag/resize
+`page.tsx` is the demo: it renders the provider with mock events, then demo-only chrome (sidebars, header, command menu) around `<TimeGrid view={view} />` or `MonthView`.
 
-State flows down as props. Mutations flow up via callbacks (`onEventChange`, `onDateChange`, `onEventSelect`).
+### View Sync
+
+Views tell the provider what they draw through the internal `useCalendarViewSync()`:
+
+- `reportView({ view, numberOfDays? })`, from a layout effect after every commit that changes the view's props or the provider's state. While `view` is uncontrolled, the provider adopts the reported type (and a `numberOfDays` the view is fixed to), so a lone `DayView`, `WeekView` or `MonthView` navigates, labels its header and fills `visibleDays` by its own type. A switch the mounted view doesn't follow (e.g. pressing D under a lone `WeekView`) is undone, date included. Controlled `view` / `numberOfDays` always win; development builds warn about a mismatch. The full rule is the JSDoc on `CalendarProvider`.
+- `reportVisibleDays` (time grid) and `reportDisplayMonth` (month view), for the header and the mini calendar.
+
+For the one commit before the provider adopts a view, the view's type differs from the provider's (`isProviderInSync` is false). Views skip slide animations and visible-day / display-month reports then: that date change is the adoption, not navigation.
 
 ### Event Lifecycle
 
 ```
-User interaction → Hook (drag/resize) → onEventChange callback → page.tsx setState → Re-render
+User interaction → Hook (drag/resize) → onEventChange callback → CalendarProvider updateEvent → Re-render
 ```
 
-1. User mousedown on event → hook captures initial state in `ref`
-2. User mousemove → hook computes snapped position, updates `dragState` / `resizeState`
-3. User mouseup → hook calls `onEventChange(updatedEvent)` → page.tsx merges into `events`
+1. User pointerdown on event → hook captures initial state in `ref` (touch: after a long press, see `use-pointer-gesture.ts`)
+2. User pointermove → hook computes snapped position, updates `dragState` / `resizeState`
+3. User pointerup → hook calls `onEventChange(updatedEvent)` → the provider's `updateEvent` merges it into `events`
 
 ### Event Positioning Pipeline
 
@@ -71,13 +74,21 @@ events[] → getEventsForDay(day) → assignColumns() → calculatePositionedEve
 
 ## Key Components
 
-### WeekView (`week-view.tsx`)
+### TimeGrid (`time-grid.tsx`)
 
-The main orchestrator. Receives all state from `page.tsx`, computes derived data (week days, hours), and delegates rendering to sub-components.
+The day/week orchestrator. Reads state from `useCalendar()`, takes `view` ("day" | "week") and an optional `numberOfDays` as props, computes derived data (days, hours, scroll buffer, column width and hour height via ResizeObserver), runs the drag/resize/scroll hooks and delegates rendering to the `week-view-*` parts. Changing `view` re-lays out the same grid instead of remounting it, which keeps the vertical scroll position.
+
+### DayView (`day-view.tsx`) and WeekView (`week-view.tsx`)
+
+One-line wrappers: `<TimeGrid view="day" />` and `<TimeGrid view="week" />` (WeekView also passes `numberOfDays`). Use them for a calendar with one fixed view; use `TimeGrid` with `view` from `useCalendar()` to switch between day and week.
+
+### MonthView (`month-view.tsx`)
+
+Month grid with continuous vertical scroll, its own drag/resize hooks, and "+N more" (`showDay`).
 
 ### WeekViewGrid (`week-view-grid.tsx`)
 
-Renders the scrollable time grid with day columns. Manages horizontal scroll behavior and container dimensions via ResizeObserver. Each day column renders its positioned events.
+Renders the timed-event day columns inside TimeGrid's horizontally scrolling container. Each day column renders its positioned events.
 
 ### CalendarEventItem (`calendar-event-item.tsx`)
 
@@ -86,7 +97,7 @@ Renders a single event segment. Handles:
 - Color styling via `eventColorStyles[color]` map
 - Selection state (border highlight, elevated z-index)
 - Multi-day segment rendering (rounded corners per segment position)
-- Drag handle (mousedown) and resize handles (top/bottom edges)
+- Drag handle (pointerdown) and resize handles (top/bottom edges)
 
 ### Custom Hooks
 
@@ -99,7 +110,7 @@ Renders a single event segment. Handles:
 
 ### Server Rendering and the Clock
 
-`WeekView` and `MonthView` render the same markup on the server and in the browser, so apps can server-render them without hydration errors (React #418). Nothing reads the clock or the runtime's timezone during render. Instead, every now-dependent part reads the shared clock in `src/hooks/use-now.ts`:
+`TimeGrid` (and so `DayView` and `WeekView`) and `MonthView` render the same markup on the server and in the browser, so apps can server-render them without hydration errors (React #418). Nothing reads the clock or the runtime's timezone during render. Instead, every now-dependent part reads the shared clock in `src/hooks/use-now.ts`:
 
 - `useNow()`: the current time, for the current-time line. Ticks on every minute boundary.
 - `useToday()`: the start of today, for the today badge, month cells, the mini calendar, and the default `currentDate`. Re-renders only when the day changes.

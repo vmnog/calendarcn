@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { createPortal } from "react-dom";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
 import {
@@ -12,10 +11,14 @@ import {
 } from "@/components/ui/popover";
 import { EventDetailPopover } from "./event-detail-popover";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
+import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
+import { formatTime, formatTimeRange, getEventLabel } from "@/lib/event-utils";
 import type {
   CalendarEvent,
   CalendarEventItemProps,
   EventColor,
+  EventContentProps,
+  EventItemPopoverProps,
 } from "./week-view-types";
 import { EventContextMenu } from "./event-context-menu";
 
@@ -81,40 +84,17 @@ export const eventColorStyles: Record<
 };
 
 /**
- * Formats time showing only minutes if not on the hour
- * e.g., "10" for 10:00, "2:45" for 2:45
+ * Positions a block from explicit start/end times (drag and resize
+ * previews), clipped to the visible hours and measured from the grid's top
+ * edge (`dayStartHour`)
  */
-function formatTimeShort(date: Date): string {
-  const minutes = date.getMinutes();
-  if (minutes === 0) {
-    return format(date, "h");
-  }
-  return format(date, "h:mm");
-}
-
-/**
- * Formats event time as a compact range like "10–11 AM" or "11 AM–2 PM"
- */
-function formatEventTimeRange(event: CalendarEvent): string {
-  const startTime = formatTimeShort(event.start);
-  const endTime = formatTimeShort(event.end);
-  const endPeriod = format(event.end, "a");
-  const startPeriod = format(event.start, "a");
-
-  // If same period (both AM or both PM), only show period at the end
-  if (startPeriod === endPeriod) {
-    return `${startTime}\u2013${endTime} ${endPeriod}`;
-  }
-
-  // Different periods, show both
-  return `${startTime} ${startPeriod}\u2013${endTime} ${endPeriod}`;
-}
-
 function computeOverrideStyle(
   positionedEvent: CalendarEventItemProps["positionedEvent"],
   hourHeight: number,
   overrideStart: Date,
   overrideEnd: Date,
+  dayStartHour: number,
+  dayEndHour: number,
 ) {
   const startMinutes =
     overrideStart.getHours() * 60 + overrideStart.getMinutes();
@@ -123,8 +103,14 @@ function computeOverrideStyle(
   if (endMinutes === 0 && overrideEnd.getDate() !== overrideStart.getDate()) {
     endMinutes = 1440;
   }
-  const topPx = (startMinutes / 60) * hourHeight;
-  const heightPx = ((endMinutes - startMinutes) / 60) * hourHeight;
+  const visibleStart = dayStartHour * 60;
+  const visibleEnd = dayEndHour * 60;
+  const topMinutes =
+    Math.min(Math.max(startMinutes, visibleStart), visibleEnd) - visibleStart;
+  const bottomMinutes =
+    Math.min(Math.max(endMinutes, visibleStart), visibleEnd) - visibleStart;
+  const topPx = (topMinutes / 60) * hourHeight;
+  const heightPx = ((bottomMinutes - topMinutes) / 60) * hourHeight;
 
   return {
     top: `${topPx}px`,
@@ -137,6 +123,22 @@ function computeOverrideStyle(
 
 const RESIZE_HOTZONE_PX = 8;
 
+/**
+ * Keyboard focus ring for events: a border on an `::after` overlay, painted
+ * above the event's absolutely positioned background layers (which cover an
+ * outline) and inside its box (so clipping and neighbors don't hide it).
+ * Shown only for keyboard focus (`focus-visible`), never on click. The
+ * event must be positioned.
+ */
+export const EVENT_FOCUS_RING_CLASS =
+  "focus-visible:after:pointer-events-none focus-visible:after:absolute focus-visible:after:inset-0 focus-visible:after:rounded-[inherit] focus-visible:after:border-2 focus-visible:after:border-ring";
+
+/**
+ * Box for custom `renderEventContent` output in a time-grid block: above the
+ * background layers, filling the block, inset like the default text
+ */
+const TIME_GRID_SLOT_CLASS = "relative h-full min-w-0 overflow-hidden pl-1";
+
 export function CalendarEventItem({
   positionedEvent,
   hourHeight,
@@ -144,19 +146,20 @@ export function CalendarEventItem({
   isSelected,
   onClick,
   dragVariant = "default",
+  isResizing = false,
   overrideStart,
   overrideEnd,
-  onDragMouseDown,
-  onResizeMouseDown,
+  onDragPointerDown,
+  onResizePointerDown,
   onEventChange,
   cursorY,
   cursorX,
   fixedWidth,
   fixedHeight,
   onContextMenuOpenChange,
-  isSidebarOpen,
-  onDockToSidebar,
-  onClosePopover,
+  showEventPopover,
+  onEventPopoverExpand,
+  onEventPopoverClose,
   onPrevWeek,
   onNextWeek,
   className,
@@ -168,6 +171,7 @@ export function CalendarEventItem({
   const endIsPast = useIsPast(event.end);
   const eventIsPast = isPastProp ?? endIsPast;
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
+  const { dayStartHour, dayEndHour, hourCycle, locale } = useCalendarConfig();
   const isDayView = view === "day";
 
   /** Ref to the event button element, used to measure its viewport rect. */
@@ -183,7 +187,7 @@ export function CalendarEventItem({
     height: number;
   } | null>(null);
 
-  const showPopover = isSelected && isSidebarOpen === false;
+  const showPopover = isSelected && showEventPopover;
 
   // Measure the event element's viewport position when the popover opens in
   // day view. useLayoutEffect ensures the measurement happens before paint so
@@ -240,18 +244,46 @@ export function CalendarEventItem({
           hourHeight,
           overrideStart,
           overrideEnd,
+          dayStartHour,
+          dayEndHour,
         )
       : defaultStyle;
 
   const heightInPixels =
     overrideStart && overrideEnd
       ? Number.parseFloat(String(posStyle.height))
-      : (positionedEvent.height / 100) * 24 * hourHeight;
+      : (positionedEvent.height / 100) *
+        (dayEndHour - dayStartHour) *
+        hourHeight;
   const isCompact = heightInPixels < 40;
+  /**
+   * A resize preview drawn next to the real event (its anchor or another
+   * day's segment), not an event the user can focus
+   */
+  const isPreview = isResizing || Boolean(overrideStart && overrideEnd);
+  const timeRangeLabel = formatTimeRange(
+    displayEvent.start,
+    displayEvent.end,
+    hourCycle,
+    locale,
+  );
+
+  const contentProps: EventContentProps = {
+    event: displayEvent,
+    view,
+    placement: "time-grid",
+    isSelected: isSelected ?? false,
+    isPast: eventIsPast,
+    isDragging: dragVariant === "dragging",
+    isResizing,
+    isCompact,
+    timeLabel: timeRangeLabel,
+  };
 
   if (dragVariant === "ghost") {
     return (
       <div
+        aria-hidden
         className={cn(
           "absolute rounded-sm px-2 py-1 pointer-events-none opacity-30 overflow-hidden",
           className,
@@ -273,33 +305,39 @@ export function CalendarEventItem({
             styles.border,
           )}
         />
-        <div
-          className={cn(
-            "relative flex flex-col h-full pl-1 overflow-hidden",
-            isCompact && "flex-row items-center gap-1",
-          )}
-        >
-          <span
-            className={cn(
-              "font-medium text-[0.625rem] leading-tight break-words",
-              styles.text,
-              "dark:text-white/80",
-            )}
-          >
-            {event.title}
-          </span>
-          {!isCompact && (
-            <span
+        <EventContentSlot
+          {...contentProps}
+          className={TIME_GRID_SLOT_CLASS}
+          fallback={
+            <div
               className={cn(
-                "text-[0.625rem] whitespace-nowrap",
-                styles.text,
-                "dark:text-white dark:mix-blend-overlay",
+                "relative flex flex-col h-full pl-1 overflow-hidden",
+                isCompact && "flex-row items-center gap-1",
               )}
             >
-              {formatEventTimeRange(event)}
-            </span>
-          )}
-        </div>
+              <span
+                className={cn(
+                  "font-medium text-[0.625rem] leading-tight break-words",
+                  styles.text,
+                  "dark:text-white/80",
+                )}
+              >
+                {event.title}
+              </span>
+              {!isCompact && (
+                <span
+                  className={cn(
+                    "text-[0.625rem] whitespace-nowrap",
+                    styles.text,
+                    "dark:text-white dark:mix-blend-overlay",
+                  )}
+                >
+                  {formatTimeRange(event.start, event.end, hourCycle, locale)}
+                </span>
+              )}
+            </div>
+          }
+        />
       </div>
     );
   }
@@ -307,6 +345,7 @@ export function CalendarEventItem({
   if (dragVariant === "placeholder") {
     return (
       <div
+        aria-hidden
         className={cn(
           "absolute rounded-sm pointer-events-none border-2",
           styles.borderLine,
@@ -353,6 +392,7 @@ export function CalendarEventItem({
     return (
       <div
         tabIndex={-1}
+        aria-hidden
         className={cn(
           "absolute rounded-sm px-2 py-1",
           "pointer-events-none cursor-grabbing",
@@ -369,21 +409,28 @@ export function CalendarEventItem({
             styles.border,
           )}
         />
-        <div
-          className={cn(
-            "relative flex flex-col h-full pl-1 overflow-hidden",
-            heightPx < 40 && "flex-row items-center gap-1",
-          )}
-        >
-          <span className="font-medium text-[0.625rem] leading-tight break-words text-white dark:text-white flex items-center gap-0.5">
-            {event.title}
-          </span>
-          {heightPx >= 40 && (
-            <span className="text-[0.625rem] whitespace-nowrap text-white dark:text-white">
-              {formatEventTimeRange(displayEvent)}
-            </span>
-          )}
-        </div>
+        <EventContentSlot
+          {...contentProps}
+          isCompact={heightPx < 40}
+          className={TIME_GRID_SLOT_CLASS}
+          fallback={
+            <div
+              className={cn(
+                "relative flex flex-col h-full pl-1 overflow-hidden",
+                heightPx < 40 && "flex-row items-center gap-1",
+              )}
+            >
+              <span className="font-medium text-[0.625rem] leading-tight break-words text-white dark:text-white flex items-center gap-0.5">
+                {event.title}
+              </span>
+              {heightPx >= 40 && (
+                <span className="text-[0.625rem] whitespace-nowrap text-white dark:text-white">
+                  {timeRangeLabel}
+                </span>
+              )}
+            </div>
+          }
+        />
       </div>
     );
   }
@@ -412,31 +459,30 @@ export function CalendarEventItem({
     target.style.removeProperty("--cursor");
   }
 
-  function handleMouseDown(e: React.MouseEvent) {
+  function handlePointerDown(e: React.PointerEvent<HTMLElement>) {
     e.stopPropagation();
 
-    const target = e.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
     const height = rect.height;
 
     if (showTopResize && showBottomResize && height < RESIZE_HOTZONE_PX * 2) {
       const edge = offsetY < height / 2 ? "top" : "bottom";
-      onResizeMouseDown?.(e, event, edge);
+      onResizePointerDown?.(e, event, edge);
       return;
     }
 
     if (showTopResize && offsetY <= RESIZE_HOTZONE_PX) {
-      onResizeMouseDown?.(e, event, "top");
+      onResizePointerDown?.(e, event, "top");
       return;
     }
 
     if (showBottomResize && offsetY >= height - RESIZE_HOTZONE_PX) {
-      onResizeMouseDown?.(e, event, "bottom");
+      onResizePointerDown?.(e, event, "bottom");
       return;
     }
 
-    onDragMouseDown?.(e, event);
+    onDragPointerDown?.(e, event);
   }
 
   function handleClick(e: React.MouseEvent) {
@@ -462,8 +508,12 @@ export function CalendarEventItem({
     <div
       ref={eventRef}
       role="button"
-      tabIndex={0}
-      onMouseDown={handleMouseDown}
+      tabIndex={isPreview ? -1 : 0}
+      aria-hidden={isPreview || undefined}
+      aria-label={getEventLabel(event, hourCycle, locale)}
+      aria-pressed={isSelected ?? false}
+      data-event-id={isPreview ? undefined : event.id}
+      onPointerDown={handlePointerDown}
       onMouseMove={handleMouseMove}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -472,7 +522,8 @@ export function CalendarEventItem({
         "absolute px-2 py-1",
         hasTopRounding && "rounded-t-md",
         hasBottomRounding && "rounded-b-md",
-        "cursor-default hover:z-10 focus:outline-none focus-visible:outline-none",
+        "cursor-default hover:z-10 focus:outline-none",
+        EVENT_FOCUS_RING_CLASS,
         "overflow-hidden select-none",
         isSelected && "z-20",
         className,
@@ -514,43 +565,49 @@ export function CalendarEventItem({
           )}
         />
       )}
-      <div
-        className={cn(
-          "relative flex flex-col h-full pl-1 overflow-hidden",
-          isCompact && "flex-row items-center gap-1",
-        )}
-      >
-        <span
-          className={cn(
-            "font-medium text-[0.625rem] leading-tight break-words flex items-center gap-0.5",
-            isSelected
-              ? "text-white dark:text-white"
-              : cn(
-                  styles.text,
-                  "dark:text-white/80",
-                  eventIsPast && "opacity-60",
-                ),
-          )}
-        >
-          {event.title}
-        </span>
-        {!isCompact && (
-          <span
+      <EventContentSlot
+        {...contentProps}
+        className={TIME_GRID_SLOT_CLASS}
+        fallback={
+          <div
             className={cn(
-              "text-[0.625rem] whitespace-nowrap",
-              isSelected
-                ? "text-white dark:text-white"
-                : cn(
-                    styles.text,
-                    "dark:text-white dark:mix-blend-overlay",
-                    eventIsPast && "opacity-60 dark:opacity-100",
-                  ),
+              "relative flex flex-col h-full pl-1 overflow-hidden",
+              isCompact && "flex-row items-center gap-1",
             )}
           >
-            {formatEventTimeRange(displayEvent)}
-          </span>
-        )}
-      </div>
+            <span
+              className={cn(
+                "font-medium text-[0.625rem] leading-tight break-words flex items-center gap-0.5",
+                isSelected
+                  ? "text-white dark:text-white"
+                  : cn(
+                      styles.text,
+                      "dark:text-white/80",
+                      eventIsPast && "opacity-60",
+                    ),
+              )}
+            >
+              {event.title}
+            </span>
+            {!isCompact && (
+              <span
+                className={cn(
+                  "text-[0.625rem] whitespace-nowrap",
+                  isSelected
+                    ? "text-white dark:text-white"
+                    : cn(
+                        styles.text,
+                        "dark:text-white dark:mix-blend-overlay",
+                        eventIsPast && "opacity-60 dark:opacity-100",
+                      ),
+                )}
+              >
+                {timeRangeLabel}
+              </span>
+            )}
+          </div>
+        }
+      />
     </div>
   );
 
@@ -560,7 +617,7 @@ export function CalendarEventItem({
         <Popover
           open
           onOpenChange={(open) => {
-            if (!open) onClosePopover?.();
+            if (!open) onEventPopoverClose?.(event.id);
           }}
         >
           <PopoverTrigger asChild>{eventElement}</PopoverTrigger>
@@ -591,8 +648,8 @@ export function CalendarEventItem({
           <EventDetailPopover
             event={event}
             onEventChange={onEventChange}
-            onClose={() => onClosePopover?.()}
-            onDockToSidebar={() => onDockToSidebar?.()}
+            onClose={() => onEventPopoverClose?.(event.id)}
+            onExpand={onEventPopoverExpand}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             side={isDayView ? "left" : "right"}
@@ -629,7 +686,7 @@ export function CalendarEventItem({
 /** Drag visual variant for all-day events */
 export type AllDayDragVariant = "ghost" | "placeholder" | "dragging";
 
-export interface AllDayEventItemProps {
+export interface AllDayEventItemProps extends EventItemPopoverProps {
   event: CalendarEvent;
   /** Overrides whether the event renders as past (defaults to `useIsPast`) */
   isPast?: boolean;
@@ -639,9 +696,9 @@ export interface AllDayEventItemProps {
   /** For multi-day events: position info */
   spanStart?: boolean;
   spanEnd?: boolean;
-  /** Mousedown handler to initiate horizontal resize or drag */
-  onResizeMouseDown?: (
-    e: React.MouseEvent,
+  /** Pointerdown handler to initiate horizontal resize or drag */
+  onResizePointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
     edge: "left" | "right" | "move",
   ) => void;
@@ -649,16 +706,6 @@ export interface AllDayEventItemProps {
   onEventChange?: (event: CalendarEvent) => void;
   /** Callback when context menu open state changes */
   onContextMenuOpenChange?: (open: boolean) => void;
-  /** Whether the right sidebar is open (controls popover visibility) */
-  isSidebarOpen?: boolean;
-  /** Callback to dock popover to sidebar */
-  onDockToSidebar?: () => void;
-  /** Callback to close popover (deselect event) */
-  onClosePopover?: () => void;
-  /** Navigate to previous week */
-  onPrevWeek?: () => void;
-  /** Navigate to next week */
-  onNextWeek?: () => void;
   /**
    * Percentage of the event's width that is hidden off-screen to the left.
    * Used in day view to offset the title into the visible area so multi-day
@@ -667,20 +714,18 @@ export interface AllDayEventItemProps {
   titleOffsetPercent?: number;
   /** Visual variant during drag operations */
   dragVariant?: AllDayDragVariant;
-}
-
-/**
- * Formats start time for all-day events like "8:45 AM" or "4 PM"
- */
-function formatAllDayStartTime(date: Date): string {
-  const minutes = date.getMinutes();
-  if (minutes === 0) {
-    return format(date, "h a");
-  }
-  return format(date, "h:mm a");
+  /** Whether the event's edges are being dragged (passed to `renderEventContent`) */
+  isResizing?: boolean;
 }
 
 const ALL_DAY_RESIZE_HOTZONE_PX = 6;
+
+/**
+ * Box for custom `renderEventContent` output in an all-day bar: above the
+ * background layers, filling the bar (`pl-1` is added beside the left accent)
+ */
+const ALL_DAY_SLOT_CLASS =
+  "relative flex h-full min-w-0 flex-1 items-center overflow-hidden";
 
 export function AllDayEventItem({
   event,
@@ -690,20 +735,22 @@ export function AllDayEventItem({
   className,
   spanStart = true,
   spanEnd = true,
-  onResizeMouseDown,
+  onResizePointerDown,
   onEventChange,
   onContextMenuOpenChange,
-  isSidebarOpen,
-  onDockToSidebar,
-  onClosePopover,
+  showEventPopover,
+  onEventPopoverExpand,
+  onEventPopoverClose,
   onPrevWeek,
   onNextWeek,
   titleOffsetPercent = 0,
   dragVariant,
+  isResizing = false,
 }: AllDayEventItemProps) {
   const color = event.color ?? "blue";
   const styles = eventColorStyles[color];
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
+  const { hourCycle, locale } = useCalendarConfig();
   const isDayView = view === "day";
   // `false` on the server and during hydration, so the markup matches
   const endIsPast = useIsPast(event.end);
@@ -719,10 +766,32 @@ export function AllDayEventItem({
     onContextMenuOpenChange?.(false);
   }, [onContextMenuOpenChange]);
 
+  // Check if event has a specific start time (not midnight)
+  const hasStartTime =
+    event.start.getHours() !== 0 || event.start.getMinutes() !== 0;
+  // "8:45 AM" / "4 PM", or "08:45" / "16:00" on a 24-hour clock
+  const startTimeLabel = hasStartTime
+    ? formatTime(event.start, hourCycle, locale)
+    : "";
+
+  const contentProps: EventContentProps = {
+    event,
+    view,
+    placement: "all-day",
+    isSelected: isSelected ?? false,
+    isPast: eventIsPast,
+    isDragging: dragVariant === "dragging",
+    isResizing,
+    isCompact: true,
+    timeLabel: startTimeLabel,
+  };
+  const slotClassName = cn(ALL_DAY_SLOT_CLASS, spanStart && "pl-1");
+
   // Ghost: faded version at original position during move
   if (dragVariant === "ghost") {
     return (
       <div
+        aria-hidden
         className={cn(
           "relative h-6 px-2 py-0.5 pointer-events-none opacity-30",
           "overflow-hidden select-none flex items-center gap-1",
@@ -755,16 +824,22 @@ export function AllDayEventItem({
             )}
           />
         )}
-        <span
-          className={cn(
-            "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap",
-            spanStart && "pl-1",
-            styles.text,
-            "dark:text-white/80",
-          )}
-        >
-          {event.title}
-        </span>
+        <EventContentSlot
+          {...contentProps}
+          className={slotClassName}
+          fallback={
+            <span
+              className={cn(
+                "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap",
+                spanStart && "pl-1",
+                styles.text,
+                "dark:text-white/80",
+              )}
+            >
+              {event.title}
+            </span>
+          }
+        />
       </div>
     );
   }
@@ -773,6 +848,7 @@ export function AllDayEventItem({
   if (dragVariant === "placeholder") {
     return (
       <div
+        aria-hidden
         className={cn(
           "relative h-6 pointer-events-none border-2 rounded-sm",
           styles.borderLine,
@@ -786,6 +862,7 @@ export function AllDayEventItem({
   if (dragVariant === "dragging") {
     return (
       <div
+        aria-hidden
         className={cn(
           "h-6 px-2 py-0.5 pointer-events-none cursor-grabbing",
           "overflow-hidden select-none flex items-center gap-1",
@@ -801,22 +878,24 @@ export function AllDayEventItem({
             styles.border,
           )}
         />
-        <span
-          className={cn(
-            "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap pl-1",
-            styles.text,
-            "dark:text-white/80",
-          )}
-        >
-          {event.title}
-        </span>
+        <EventContentSlot
+          {...contentProps}
+          className={slotClassName}
+          fallback={
+            <span
+              className={cn(
+                "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap pl-1",
+                styles.text,
+                "dark:text-white/80",
+              )}
+            >
+              {event.title}
+            </span>
+          }
+        />
       </div>
     );
   }
-
-  // Check if event has a specific start time (not midnight)
-  const hasStartTime =
-    event.start.getHours() !== 0 || event.start.getMinutes() !== 0;
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
@@ -853,29 +932,28 @@ export function AllDayEventItem({
     target.style.removeProperty("--cursor");
   }
 
-  function handleAllDayMouseDown(e: React.MouseEvent) {
-    if (!onResizeMouseDown) return;
+  function handleAllDayPointerDown(e: React.PointerEvent<HTMLElement>) {
+    if (!onResizePointerDown) return;
 
-    const target = e.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const width = rect.width;
 
     if (spanStart && offsetX <= ALL_DAY_RESIZE_HOTZONE_PX) {
       e.stopPropagation();
-      onResizeMouseDown(e, event, "left");
+      onResizePointerDown(e, event, "left");
       return;
     }
 
     if (spanEnd && offsetX >= width - ALL_DAY_RESIZE_HOTZONE_PX) {
       e.stopPropagation();
-      onResizeMouseDown(e, event, "right");
+      onResizePointerDown(e, event, "right");
       return;
     }
 
     // Middle area: initiate drag (move)
     e.stopPropagation();
-    onResizeMouseDown(e, event, "move");
+    onResizePointerDown(e, event, "move");
   }
 
   function handleContextMenu(e: React.MouseEvent) {
@@ -885,20 +963,24 @@ export function AllDayEventItem({
     onContextMenuOpenChange?.(true);
   }
 
-  const showPopover = isSelected && isSidebarOpen === false;
+  const showPopover = isSelected && showEventPopover;
 
   const eventElement = (
     <div
       role="button"
       tabIndex={0}
+      aria-label={getEventLabel(event, hourCycle, locale)}
+      aria-pressed={isSelected ?? false}
+      data-event-id={event.id}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       onContextMenu={handleContextMenu}
       onMouseMove={handleAllDayMouseMove}
-      onMouseDown={handleAllDayMouseDown}
+      onPointerDown={handleAllDayPointerDown}
       className={cn(
         "relative h-6 px-2 py-0.5 cursor-default",
-        "hover:z-10 focus:outline-none focus-visible:outline-none",
+        "hover:z-10 focus:outline-none",
+        EVENT_FOCUS_RING_CLASS,
         "overflow-hidden select-none flex items-center gap-1",
         spanStart && "rounded-l-md",
         spanEnd && "rounded-r-md",
@@ -942,37 +1024,45 @@ export function AllDayEventItem({
           )}
         />
       )}
-      <span
-        className={cn(
-          "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap",
-          spanStart && "pl-1",
-          isSelected
-            ? "text-white dark:text-white"
-            : cn(
-                styles.text,
-                "dark:text-white/80",
-                eventIsPast && "opacity-60",
-              ),
-        )}
-      >
-        {event.title}
-      </span>
-      {hasStartTime && (
-        <span
-          className={cn(
-            "relative text-[0.625rem] leading-tight whitespace-nowrap shrink-0",
-            isSelected
-              ? "text-white dark:text-white"
-              : cn(
-                  styles.text,
-                  "dark:text-white dark:mix-blend-overlay",
-                  eventIsPast && "opacity-60",
-                ),
-          )}
-        >
-          {formatAllDayStartTime(event.start)}
-        </span>
-      )}
+      <EventContentSlot
+        {...contentProps}
+        className={slotClassName}
+        fallback={
+          <>
+            <span
+              className={cn(
+                "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap",
+                spanStart && "pl-1",
+                isSelected
+                  ? "text-white dark:text-white"
+                  : cn(
+                      styles.text,
+                      "dark:text-white/80",
+                      eventIsPast && "opacity-60",
+                    ),
+              )}
+            >
+              {event.title}
+            </span>
+            {hasStartTime && (
+              <span
+                className={cn(
+                  "relative text-[0.625rem] leading-tight whitespace-nowrap shrink-0",
+                  isSelected
+                    ? "text-white dark:text-white"
+                    : cn(
+                        styles.text,
+                        "dark:text-white dark:mix-blend-overlay",
+                        eventIsPast && "opacity-60",
+                      ),
+                )}
+              >
+                {startTimeLabel}
+              </span>
+            )}
+          </>
+        }
+      />
     </div>
   );
 
@@ -982,7 +1072,7 @@ export function AllDayEventItem({
         <Popover
           open
           onOpenChange={(open) => {
-            if (!open) onClosePopover?.();
+            if (!open) onEventPopoverClose?.(event.id);
           }}
         >
           <PopoverTrigger asChild>{eventElement}</PopoverTrigger>
@@ -1010,8 +1100,8 @@ export function AllDayEventItem({
           <EventDetailPopover
             event={event}
             onEventChange={onEventChange}
-            onClose={() => onClosePopover?.()}
-            onDockToSidebar={() => onDockToSidebar?.()}
+            onClose={() => onEventPopoverClose?.(event.id)}
+            onExpand={onEventPopoverExpand}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             side={isDayView ? "left" : "right"}

@@ -1,0 +1,93 @@
+---
+title: Time Grid
+description: The scrollable hour grid behind the day and week views.
+---
+
+<ComponentPreview name="time-grid-demo" />
+
+The time grid lays out days as columns and hours as rows. [Day View](/docs/components/day-view) and [Week View](/docs/components/week-view) are both built on it, and you can use it directly for a custom layout.
+
+## Installation
+
+<InstallTabs item="time-grid">
+
+{/* TODO: list the files and dependencies once the registry item exists. */}
+
+Requires [Calendar Core](/docs/components/calendar-core). Manual steps land with the registry item.
+
+</InstallTabs>
+
+## Features
+
+- A time axis, a column per day and a current-time indicator.
+- An all-day row for all-day and multi-day events.
+- Overlapping events placed side by side.
+- Drag an event to move it, including to another day. The grid scrolls when you reach its edge.
+- Drag the top or bottom edge of an event to resize it.
+- Click an empty slot to create an event.
+- Visible hours, snap step and clock come from [`CalendarProvider`](/docs/components/calendar-core#calendarprovider): `dayStartHour`, `dayEndHour`, `snapMinutes` and `hourCycle`.
+
+## Usage
+
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import { TimeGrid } from "@/components/time-grid";
+
+export function ThreeDays() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <div className="h-[600px]">
+        <TimeGrid view="week" numberOfDays={3} />
+      </div>
+    </CalendarProvider>
+  );
+}
+```
+
+## API Reference
+
+### TimeGrid
+
+Use it directly when you switch between day and week yourself and want to keep the scroll position, as the [demo](/) does. Everything else is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+
+<PropsTable
+  rows={[
+    {
+      name: "view",
+      type: '"day" | "week"',
+      required: true,
+      description:
+        '"day" shows one column, "week" shows `numberOfDays` columns. While the provider\'s `view` is uncontrolled, the provider adopts it, so navigation and header info follow it.',
+    },
+    {
+      name: "numberOfDays",
+      type: "number",
+      description:
+        "Number of day columns. Defaults to the provider's `numberOfDays`. When set, it fixes the column count, and prev/next step by it below 7 while the provider's `numberOfDays` is uncontrolled.",
+    },
+    {
+      name: "showEventPopover",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the selected event opens a details popover beside it. Turn it off when the details are shown elsewhere, such as a side panel.",
+    },
+    {
+      name: "onEventPopoverExpand",
+      type: "() => void",
+      description:
+        "Called by the popover's expand button, e.g. to move the details into a side panel. The button is hidden when this is not set.",
+    },
+    {
+      name: "scrollToHour",
+      type: "number",
+      description:
+        "Hour the grid scrolls to when it mounts, e.g. `8` for 8 AM or `8.5` for 8:30. Applied once and clamped to the provider's `dayStartHour`..`dayEndHour`. Unset starts at the top.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the root element.",
+    },
+  ]}
+/>

@@ -1,10 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  usePointerGesture,
+  suppressNextClick,
+} from "@/hooks/use-pointer-gesture";
 import { snapToGrid } from "@/lib/event-utils";
 import type {
   CalendarEvent,
   EventDragState,
+  PointerGestureStart,
 } from "@/components/week-view-types";
 
 interface UseEventDragOptions {
@@ -14,6 +19,14 @@ interface UseEventDragOptions {
   days: Date[];
   dayColumnWidth: number;
   timeAxisWidth: number;
+  /** Minute step the dragged start snaps to */
+  snapMinutes: number;
+  /** First visible hour: the top of the grid, and the earliest start */
+  dayStartHour: number;
+  /** Hour the grid ends at: the latest end */
+  dayEndHour: number;
+  /** Days `onDragNavigate` moves when the cursor is held at a side edge */
+  edgeNavigationDays: number;
   onEventChange?: (event: CalendarEvent) => void;
   onEventClick?: (event: CalendarEvent) => void;
   onDragNavigate?: (daysDelta: number) => void;
@@ -21,7 +34,10 @@ interface UseEventDragOptions {
 
 interface UseEventDragReturn {
   dragState: EventDragState | null;
-  handleEventMouseDown: (e: React.MouseEvent, event: CalendarEvent) => void;
+  handleEventPointerDown: (
+    e: React.PointerEvent<HTMLElement>,
+    event: CalendarEvent,
+  ) => void;
 }
 
 const DRAG_THRESHOLD_PX = 4;
@@ -47,15 +63,19 @@ function clamp(value: number, min: number, max: number): number {
 interface DragInfo {
   eventId: string;
   event: CalendarEvent;
+  /** Pointer driving the drag; moves from other pointers are ignored */
+  pointerId: number;
+  /** "mouse", "pen" or "touch" */
+  pointerType: string;
   startClientY: number;
   startClientX: number;
   offsetWithinEvent: number;
   offsetWithinEventX: number;
   isDragging: boolean;
   durationMinutes: number;
-  /** Latest snapped start, committed to the parent on mouseup */
+  /** Latest snapped start, committed to the parent on pointerup */
   currentStart: Date;
-  /** Latest snapped end, committed to the parent on mouseup */
+  /** Latest snapped end, committed to the parent on pointerup */
   currentEnd: Date;
 }
 
@@ -66,11 +86,18 @@ export function useEventDrag({
   days,
   dayColumnWidth,
   timeAxisWidth,
+  snapMinutes,
+  dayStartHour,
+  dayEndHour,
+  edgeNavigationDays,
   onEventChange,
   onEventClick,
   onDragNavigate,
 }: UseEventDragOptions): UseEventDragReturn {
   const [dragState, setDragState] = useState<EventDragState | null>(null);
+  const { startGesture } = usePointerGesture({
+    containerRef: scrollContainerRef,
+  });
 
   const dragRef = useRef<DragInfo | null>(null);
   const onEventChangeRef = useRef(onEventChange);
@@ -81,6 +108,10 @@ export function useEventDrag({
   const daysRef = useRef(days);
   const dayColumnWidthRef = useRef(dayColumnWidth);
   const timeAxisWidthRef = useRef(timeAxisWidth);
+  const snapMinutesRef = useRef(snapMinutes);
+  const dayStartHourRef = useRef(dayStartHour);
+  const dayEndHourRef = useRef(dayEndHour);
+  const edgeNavigationDaysRef = useRef(edgeNavigationDays);
 
   useEffect(() => {
     onEventChangeRef.current = onEventChange;
@@ -106,6 +137,18 @@ export function useEventDrag({
   useEffect(() => {
     timeAxisWidthRef.current = timeAxisWidth;
   }, [timeAxisWidth]);
+  useEffect(() => {
+    snapMinutesRef.current = snapMinutes;
+  }, [snapMinutes]);
+  useEffect(() => {
+    dayStartHourRef.current = dayStartHour;
+  }, [dayStartHour]);
+  useEffect(() => {
+    dayEndHourRef.current = dayEndHour;
+  }, [dayEndHour]);
+  useEffect(() => {
+    edgeNavigationDaysRef.current = edgeNavigationDays;
+  }, [edgeNavigationDays]);
 
   // Edge navigation timer refs
   const edgeNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -116,8 +159,11 @@ export function useEventDrag({
   const autoScrollSpeedRef = useRef(0);
 
   // Store handlers in refs to break the circular dependency
-  const handleMouseMoveRef = useRef<((e: MouseEvent) => void) | null>(null);
-  const handleMouseUpRef = useRef<(() => void) | null>(null);
+  const handlePointerMoveRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const handlePointerUpRef = useRef<((e: PointerEvent) => void) | null>(null);
+  const handlePointerCancelRef = useRef<((e: PointerEvent) => void) | null>(
+    null,
+  );
 
   const cancelEdgeNav = useCallback(() => {
     if (edgeNavTimerRef.current !== null) {
@@ -136,11 +182,17 @@ export function useEventDrag({
   }, []);
 
   const cleanup = useCallback(() => {
-    if (handleMouseMoveRef.current) {
-      window.removeEventListener("mousemove", handleMouseMoveRef.current);
+    if (handlePointerMoveRef.current) {
+      window.removeEventListener("pointermove", handlePointerMoveRef.current);
     }
-    if (handleMouseUpRef.current) {
-      window.removeEventListener("mouseup", handleMouseUpRef.current);
+    if (handlePointerUpRef.current) {
+      window.removeEventListener("pointerup", handlePointerUpRef.current);
+    }
+    if (handlePointerCancelRef.current) {
+      window.removeEventListener(
+        "pointercancel",
+        handlePointerCancelRef.current,
+      );
     }
     cancelEdgeNav();
     cancelAutoScroll();
@@ -186,9 +238,9 @@ export function useEventDrag({
 
   // Initialize the handlers once (stable references via refs)
   useEffect(() => {
-    handleMouseMoveRef.current = (e: MouseEvent) => {
+    handlePointerMoveRef.current = (e: PointerEvent) => {
       const drag = dragRef.current;
-      if (!drag) return;
+      if (!drag || e.pointerId !== drag.pointerId) return;
 
       const deltaY = Math.abs(e.clientY - drag.startClientY);
       const deltaX = Math.abs(e.clientX - drag.startClientX);
@@ -212,11 +264,18 @@ export function useEventDrag({
         e.clientY - containerRect.top + scrollTop - drag.offsetWithinEvent;
       const absoluteX =
         e.clientX - containerRect.left - drag.offsetWithinEventX;
-      const rawMinutes = (absoluteY / hourHeightRef.current) * 60;
-      const snappedStartMinutes = snapToGrid(rawMinutes);
+      // The grid's top edge is `dayStartHour`, not midnight
+      const visibleStartMinutes = dayStartHourRef.current * 60;
+      const visibleEndMinutes = dayEndHourRef.current * 60;
+      const rawMinutes =
+        visibleStartMinutes + (absoluteY / hourHeightRef.current) * 60;
+      const snappedStartMinutes = snapToGrid(
+        rawMinutes,
+        snapMinutesRef.current,
+      );
       const clampedStart = Math.max(
-        0,
-        Math.min(snappedStartMinutes, 1440 - drag.durationMinutes),
+        visibleStartMinutes,
+        Math.min(snappedStartMinutes, visibleEndMinutes - drag.durationMinutes),
       );
 
       // Column detection — based on raw cursor position over the grid
@@ -261,9 +320,9 @@ export function useEventDrag({
       const gridWidth = colWidth * visibleDays.length;
 
       if (cursorXInGrid < EDGE_ZONE_PX) {
-        scheduleEdgeNav(-7);
+        scheduleEdgeNav(-edgeNavigationDaysRef.current);
       } else if (cursorXInGrid > gridWidth - EDGE_ZONE_PX) {
-        scheduleEdgeNav(7);
+        scheduleEdgeNav(edgeNavigationDaysRef.current);
       } else {
         cancelEdgeNav();
       }
@@ -287,15 +346,18 @@ export function useEventDrag({
       }
     };
 
-    handleMouseUpRef.current = () => {
+    handlePointerUpRef.current = (e: PointerEvent) => {
       const drag = dragRef.current;
-      if (!drag) return;
+      if (!drag || e.pointerId !== drag.pointerId) return;
 
       cleanup();
       dragRef.current = null;
       setDragState(null);
 
+      // Touch selects on release, after the drag, rather than on press
+      if (drag.pointerType === "touch") onEventClickRef.current?.(drag.event);
       if (!drag.isDragging) return;
+      suppressNextClick(drag.pointerType);
 
       // Commit from the handler, never from inside a state updater:
       // updaters run during render, and calling the parent's setState
@@ -309,6 +371,17 @@ export function useEventDrag({
         end: drag.currentEnd,
       });
     };
+
+    // The browser took the pointer over (e.g. for a system gesture): drop
+    // the drag without committing it
+    handlePointerCancelRef.current = (e: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag || e.pointerId !== drag.pointerId) return;
+
+      cleanup();
+      dragRef.current = null;
+      setDragState(null);
+    };
   }, [
     scrollContainerRef,
     cleanup,
@@ -318,21 +391,27 @@ export function useEventDrag({
     startAutoScrollLoop,
   ]);
 
-  const handleEventMouseDown = useCallback(
-    (e: React.MouseEvent, event: CalendarEvent) => {
-      if (e.button !== 0) return;
-
-      // Select the event immediately
-      onEventClickRef.current?.(event);
+  const beginDrag = useCallback(
+    (
+      {
+        clientX,
+        clientY,
+        pointerId,
+        pointerType,
+        element,
+      }: PointerGestureStart,
+      event: CalendarEvent,
+    ) => {
+      // Mouse and pen select the event immediately
+      if (pointerType !== "touch") onEventClickRef.current?.(event);
 
       const container = scrollContainerRef.current;
       if (!container) return;
 
       // Compute offset within the event element
-      const target = e.currentTarget as HTMLElement;
-      const targetRect = target.getBoundingClientRect();
-      const offsetWithinEvent = e.clientY - targetRect.top;
-      const offsetWithinEventX = e.clientX - targetRect.left;
+      const targetRect = element.getBoundingClientRect();
+      const offsetWithinEvent = clientY - targetRect.top;
+      const offsetWithinEventX = clientX - targetRect.left;
 
       const startMinutes =
         event.start.getHours() * 60 + event.start.getMinutes();
@@ -342,8 +421,10 @@ export function useEventDrag({
       dragRef.current = {
         eventId: event.id,
         event,
-        startClientY: e.clientY,
-        startClientX: e.clientX,
+        pointerId,
+        pointerType,
+        startClientY: clientY,
+        startClientX: clientX,
         offsetWithinEvent,
         offsetWithinEventX,
         isDragging: false,
@@ -367,14 +448,27 @@ export function useEventDrag({
         clientY: 0,
       });
 
-      if (handleMouseMoveRef.current) {
-        window.addEventListener("mousemove", handleMouseMoveRef.current);
+      if (handlePointerMoveRef.current) {
+        window.addEventListener("pointermove", handlePointerMoveRef.current);
       }
-      if (handleMouseUpRef.current) {
-        window.addEventListener("mouseup", handleMouseUpRef.current);
+      if (handlePointerUpRef.current) {
+        window.addEventListener("pointerup", handlePointerUpRef.current);
+      }
+      if (handlePointerCancelRef.current) {
+        window.addEventListener(
+          "pointercancel",
+          handlePointerCancelRef.current,
+        );
       }
     },
     [scrollContainerRef],
+  );
+
+  const handleEventPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLElement>, event: CalendarEvent) => {
+      startGesture(e, (start) => beginDrag(start, event));
+    },
+    [startGesture, beginDrag],
   );
 
   // Cleanup on unmount
@@ -382,5 +476,5 @@ export function useEventDrag({
     return cleanup;
   }, [cleanup]);
 
-  return { dragState, handleEventMouseDown };
+  return { dragState, handleEventPointerDown };
 }

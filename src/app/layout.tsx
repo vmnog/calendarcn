@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://calendarcn.vercel.app",
+    url: "https://calendarcn.xyz",
     title: "CalendarCN - Beautiful Open Source Calendar for React",
     description:
       "A beautifully crafted calendar component built with shadcn/ui and Tailwind CSS, inspired by Notion Calendar. Week view, dark mode, and more.",
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     images: ["/og-image.png"],
     creator: "@mevmnog",
   },
-  metadataBase: new URL("https://calendarcn.vercel.app"),
+  metadataBase: new URL("https://calendarcn.xyz"),
 };
 
 export default function RootLayout({

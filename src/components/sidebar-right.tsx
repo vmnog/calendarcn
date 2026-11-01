@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
+  BookOpen,
   Eye,
   Github,
   Link2,
@@ -161,12 +163,29 @@ export function SidebarRight({
                 className="size-7 text-sidebar-foreground"
                 asChild
               >
+                <Link href="/docs">
+                  <BookOpen className="size-4" />
+                  <span className="sr-only">Documentation</span>
+                </Link>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Go to docs</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7 text-sidebar-foreground"
+                asChild
+              >
                 <a
                   href="https://github.com/vmnog/calendarcn"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <Github className="size-4" />
+                  <span className="sr-only">GitHub repository</span>
                 </a>
               </Button>
             </TooltipTrigger>

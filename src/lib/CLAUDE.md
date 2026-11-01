@@ -18,7 +18,7 @@ This file contains the core math for laying out events in the calendar grid. Cha
 
 - `getEventsForDay(events, day)` — filters events that overlap a specific day. Handles all-day, multi-day, and single-day events. Be careful with boundary conditions (events that start at exactly midnight).
 - `assignColumns(events)` — determines how overlapping events stack side-by-side. Uses a greedy algorithm: sort by start time, group overlapping events, assign column indices. Bug-prone area — always verify with overlapping test cases.
-- `calculatePositionedEvents(events, day)` — combines filtering + column assignment + pixel math. Returns `PositionedEvent[]` with `top`, `height`, `left`, `width`, and `segmentPosition`.
+- `calculatePositionedEvents(events, day, { dayStartHour, dayEndHour })` — combines filtering + column assignment + pixel math. Returns `PositionedEvent[]` with `top`, `height` (percentages of the visible hours; events past them are clipped, events fully outside are dropped), `left`, `width`, and `segmentPosition`.
 - `calculateAllDayEventRows(events, days)` — stacks all-day events into rows. Returns occupied rows and max row count for height calculation.
 
 **When modifying:**

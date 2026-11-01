@@ -1,0 +1,70 @@
+---
+title: Day View
+description: One day on the time grid.
+---
+
+<ComponentPreview name="day-view-demo" />
+
+Day View shows a single day on the [Time Grid](/docs/components/time-grid), with the same drag, resize and create interactions as the week view. Rendered on its own, it sets the provider's view to `"day"`, so prev/next, <Kbd>T</Kbd> and the header step by one day.
+
+## Installation
+
+<InstallTabs item="day-view">
+
+{/* TODO: list the files and dependencies once the registry item exists. */}
+
+Requires [Calendar Core](/docs/components/calendar-core) and [Time Grid](/docs/components/time-grid). Manual steps land with the registry item.
+
+</InstallTabs>
+
+## Usage
+
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import { DayView } from "@/components/day-view";
+
+export function Today() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <div className="h-[600px]">
+        <DayView scrollToHour={8} />
+      </div>
+    </CalendarProvider>
+  );
+}
+```
+
+## API Reference
+
+### DayView
+
+Everything else (date, events, hours, clock, locale) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+
+<PropsTable
+  rows={[
+    {
+      name: "showEventPopover",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the selected event opens a details popover beside it. Turn it off when the details are shown elsewhere, such as a side panel.",
+    },
+    {
+      name: "onEventPopoverExpand",
+      type: "() => void",
+      description:
+        "Called by the popover's expand button, e.g. to move the details into a side panel. The button is hidden when this is not set.",
+    },
+    {
+      name: "scrollToHour",
+      type: "number",
+      description:
+        "Hour the grid scrolls to when it mounts, e.g. `8` for 8 AM or `8.5` for 8:30. Applied once and clamped to the provider's `dayStartHour`..`dayEndHour`. Unset starts at the top.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the root element.",
+    },
+  ]}
+/>

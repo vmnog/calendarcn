@@ -1,17 +1,25 @@
 "use client";
 
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
+import { isPrimaryPress } from "@/hooks/use-pointer-gesture";
+import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
+import { EVENT_FOCUS_RING_CLASS } from "./calendar-event-item";
+import { formatTime, getEventLabel } from "@/lib/event-utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 
 export interface MonthViewEventItemProps {
   event: CalendarEvent;
   isSelected?: boolean;
   isGhost?: boolean;
+  /** Whether this is the copy following the pointer during a drag */
+  isDragging?: boolean;
   onClick?: (event: CalendarEvent) => void;
   onContextMenu?: (e: React.MouseEvent, event: CalendarEvent) => void;
-  onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  onDragPointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
+    event: CalendarEvent,
+  ) => void;
   className?: string;
 }
 
@@ -49,15 +57,11 @@ const titleColorStyles: Record<EventColor, string> = {
 };
 
 /**
- * Formats a time as "9 AM" or "2:30 PM" — no leading zero, abbreviated period.
+ * Box for custom `renderEventContent` output: fills the line after the color
+ * accent, inset like the default text
  */
-function formatEventTime(date: Date): string {
-  const minutes = date.getMinutes();
-  if (minutes === 0) {
-    return format(date, "h a");
-  }
-  return format(date, "h:mm a");
-}
+const MONTH_ITEM_SLOT_CLASS =
+  "flex h-full min-w-0 flex-1 items-center overflow-hidden px-1";
 
 /**
  * Timed event in month view — transparent bg with colored dot, like Notion Calendar.
@@ -65,11 +69,12 @@ function formatEventTime(date: Date): string {
  */
 export function MonthViewEventItem({
   event,
-  isSelected,
+  isSelected = false,
   isGhost,
+  isDragging = false,
   onClick,
   onContextMenu,
-  onDragMouseDown,
+  onDragPointerDown,
   className,
 }: MonthViewEventItemProps) {
   const color = event.color ?? "blue";
@@ -78,6 +83,9 @@ export function MonthViewEventItem({
   const titleColor = titleColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
   const eventIsPast = useIsPast(event.end);
+  const { hourCycle, locale } = useCalendarConfig();
+  // "9 AM" / "2:30 PM", or "09:00" / "14:30" on a 24-hour clock
+  const startTimeLabel = formatTime(event.start, hourCycle, locale);
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
@@ -90,10 +98,10 @@ export function MonthViewEventItem({
     onContextMenu?.(e, event);
   }
 
-  function handleMouseDown(e: React.MouseEvent) {
-    if (e.button !== 0) return;
+  function handlePointerDown(e: React.PointerEvent<HTMLElement>) {
+    if (!isPrimaryPress(e)) return;
     e.stopPropagation();
-    onDragMouseDown?.(e, event);
+    onDragPointerDown?.(e, event);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -105,16 +113,24 @@ export function MonthViewEventItem({
   return (
     <div
       role="button"
-      tabIndex={0}
+      // Ghosts and the copy following the pointer are drag visuals, not events
+      tabIndex={isGhost || isDragging ? -1 : 0}
+      aria-hidden={isGhost || isDragging || undefined}
+      aria-label={getEventLabel(event, hourCycle, locale)}
+      aria-pressed={isSelected}
+      data-event-id={isGhost || isDragging ? undefined : event.id}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
-      onMouseDown={handleMouseDown}
+      onPointerDown={handlePointerDown}
       onKeyDown={handleKeyDown}
       className={cn(
         "h-5 flex items-center overflow-hidden rounded-sm",
         "cursor-default select-none",
         "hover:bg-accent",
-        "focus:outline-none focus-visible:outline-none",
+        "focus:outline-none",
+        // Positioned only while focused, for the ring overlay
+        "focus-visible:relative",
+        EVENT_FOCUS_RING_CLASS,
         isSelected && "bg-accent z-20",
         eventIsPast && "opacity-50",
         isGhost && "opacity-30 pointer-events-none",
@@ -130,10 +146,24 @@ export function MonthViewEventItem({
       />
 
       {/* Time + Title */}
-      <span className="text-[0.6875rem] leading-tight truncate pl-1 pr-1">
-        <span className={timeColor}>{formatEventTime(event.start)}</span>{" "}
-        <span className={cn("font-bold", titleColor)}>{event.title}</span>
-      </span>
+      <EventContentSlot
+        event={event}
+        view="month"
+        placement="month-item"
+        isSelected={isSelected}
+        isPast={eventIsPast}
+        isDragging={isDragging}
+        isResizing={false}
+        isCompact
+        timeLabel={startTimeLabel}
+        className={MONTH_ITEM_SLOT_CLASS}
+        fallback={
+          <span className="text-[0.6875rem] leading-tight truncate pl-1 pr-1">
+            <span className={timeColor}>{startTimeLabel}</span>{" "}
+            <span className={cn("font-bold", titleColor)}>{event.title}</span>
+          </span>
+        }
+      />
     </div>
   );
 }

@@ -1,0 +1,178 @@
+---
+title: Event Details
+description: The panel and popover for viewing and editing an event.
+---
+
+<ComponentPreview name="event-details-demo" />
+
+`EventDetailPanel` shows an event's details and edits them in place. The views open it in a popover beside the selected event, and you can render it yourself anywhere, such as a side panel. It only needs an event and a change handler. Inside a `CalendarProvider` it follows the provider's clock and locale; on its own it uses the defaults.
+
+## Installation
+
+<InstallTabs item="event-details">
+
+{/* TODO: list the files and dependencies once the registry item exists. */}
+
+Requires [Calendar Core](/docs/components/calendar-core). Manual steps land with the registry item.
+
+</InstallTabs>
+
+## Usage
+
+```tsx
+import { EventDetailPanel } from "@/components/event-detail-panel";
+
+export function EventSidebar() {
+  const [event, setEvent] = React.useState(initialEvent);
+
+  return <EventDetailPanel event={event} onEventChange={setEvent} />;
+}
+```
+
+To show the selected event of a calendar in a side panel, read it from `useCalendar()` and turn the popover off on the view:
+
+```tsx
+function SidePanel() {
+  const { selectedEvent, updateEvent } = useCalendar<DetailedCalendarEvent>();
+  if (!selectedEvent) return null;
+
+  return <EventDetailPanel event={selectedEvent} onEventChange={updateEvent} />;
+}
+
+<CalendarProvider defaultEvents={events}>
+  <WeekView showEventPopover={false} />
+  <SidePanel />
+</CalendarProvider>;
+```
+
+## Features
+
+- Edit the title in place. With `onEventChange` wired to the calendar, the event updates as you type.
+- Edit the start and end times and dates. <Kbd>Enter</Kbd> saves, <Kbd>Esc</Kbd> restores the old value.
+- Fields the event doesn't set (location, description, reminders) show placeholders.
+- Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
+
+## Custom details
+
+<ComponentPreview name="custom-event-details-demo" />
+
+Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. It gets the selected event, a `close` function and `isNew`, which is true right after the event was created by clicking an empty slot, so you can focus its title. Render a component from it when you need hooks: `useCalendar()` to save edits, `useCalendarConfig()` to format times like the calendar does.
+
+## API Reference
+
+### EventDetailPanel
+
+`TEvent` extends `DetailedCalendarEvent`. Edits keep your other fields.
+
+<PropsTable
+  rows={[
+    {
+      name: "event",
+      type: "TEvent",
+      required: true,
+      description: "The event to show.",
+    },
+    {
+      name: "onEventChange",
+      type: "(event: TEvent) => void",
+      description:
+        "Called with the edited event: on every keystroke in the title, and when a time, date or option is committed. Without it, edits are not saved.",
+    },
+    {
+      name: "headerActions",
+      type: "ReactNode",
+      description: 'Extra buttons in the header row, after the "..." menu.',
+    },
+    {
+      name: "autoFocusTitle",
+      type: "boolean",
+      description:
+        "Focuses and selects the title once, e.g. for a just-created event.",
+    },
+    {
+      name: "onTitleAutoFocused",
+      type: "() => void",
+      description:
+        "Called after the title was auto-focused, so the request isn't repeated.",
+    },
+    {
+      name: "onPrevWeek",
+      type: "() => void",
+      description:
+        "Called by the previous arrow on a recurring event's repeat row.",
+    },
+    {
+      name: "onNextWeek",
+      type: "() => void",
+      description:
+        "Called by the next arrow on a recurring event's repeat row.",
+    },
+  ]}
+/>
+
+### EventDetailsRenderProps
+
+Passed to `renderEventDetails` on `CalendarProvider`.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    { name: "event", type: "TEvent", description: "The selected event." },
+    {
+      name: "close",
+      type: "() => void",
+      description: "Closes the popover by clearing the selection.",
+    },
+    {
+      name: "isNew",
+      type: "boolean",
+      description:
+        "Whether the event was just created by clicking an empty slot, so its title should be focused. True on the first render after creation only.",
+    },
+  ]}
+/>
+
+### DetailedCalendarEvent
+
+[`CalendarEvent`](/docs/components/calendar-core#calendarevent) plus the Notion Calendar-style details the panel reads and edits. Every field is optional.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "calendarId",
+      type: "string",
+      description:
+        "Calendar the event belongs to, an `id` from the provider's `calendars`.",
+    },
+    { name: "description", type: "string", description: "Free-text notes." },
+    { name: "location", type: "string", description: "Where it happens." },
+    {
+      name: "timezone",
+      type: "string",
+      description:
+        'Time zone label, e.g. "GMT-3 Sao Paulo". Defaults to the viewer\'s zone.',
+    },
+    {
+      name: "recurrence",
+      type: "string",
+      description: 'Repeat rule as display text, e.g. "Every week on Thu".',
+    },
+    {
+      name: "reminders",
+      type: '{ amount: number; unit: "minutes" | "hours" | "days" }[]',
+      description: "Reminders before the event.",
+    },
+    { name: "status", type: '"busy" | "free"', description: "Busy or free." },
+    {
+      name: "visibility",
+      type: '"default" | "public" | "private"',
+      description: "Visibility setting.",
+    },
+    {
+      name: "calendarEmail",
+      type: "string",
+      description: "Account email shown beside the calendar.",
+    },
+  ]}
+/>

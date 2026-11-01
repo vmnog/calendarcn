@@ -7,97 +7,127 @@ import type {
   EventDragVariant,
   EventResizeState,
   HourSlot,
+  NewEventRange,
   PositionedEvent,
-  ViewType,
+  TimeGridView,
   WeekDay,
 } from "./calendar-types";
 
 // Re-export all shared types for backward compatibility
 export type {
   ViewType,
+  TimeGridView,
+  WeekStartsOn,
+  HourCycle,
   ViewSettings,
   WeekDay,
   HourSlot,
   EventReminder,
   CalendarEvent,
+  DetailedCalendarEvent,
   EventColor,
   PositionedEvent,
   EventDragVariant,
   EventDragState,
   EventResizeState,
   AllDayResizeState,
+  NewEventRange,
+  PointerGestureStart,
+  CalendarInfo,
+  CalendarConfig,
+  EventContentPlacement,
+  EventContentProps,
+  EventDetailsRenderProps,
+  CalendarRenderSlots,
+  CalendarProviderProps,
+  CalendarContextValue,
 } from "./calendar-types";
 
 /**
- * Start and end of a new event created by clicking an empty time slot
+ * Event popover options shared by the time grid views and MonthView
  */
-export interface NewEventRange {
-  /** Snapped start time of the clicked slot */
-  start: Date;
-  /** End time (start + NEW_EVENT_DURATION_MINUTES, capped at end of day) */
-  end: Date;
+export interface EventPopoverProps {
+  /**
+   * Whether the selected event opens a details popover beside it. Turn it
+   * off when the details are shown elsewhere (e.g. a side panel). Defaults
+   * to true.
+   */
+  showEventPopover?: boolean;
+  /**
+   * Called by the popover's expand button (e.g. to move the details into a
+   * side panel). The button is hidden when this is not set.
+   */
+  onEventPopoverExpand?: () => void;
 }
 
 /**
- * Props for the main WeekView component
+ * Props for the DayView component. Date, events and selection come from the
+ * surrounding CalendarProvider.
  */
-export interface WeekViewProps {
-  /** Calendar view mode. Defaults to "week" */
-  view?: ViewType;
+export interface DayViewProps extends EventPopoverProps {
   /**
-   * First visible day. Defaults to today. Without it, nothing date-dependent
-   * is rendered on the server or during hydration (today is not known there);
-   * the days appear right after hydration.
+   * Hour the grid scrolls to when it mounts, so the first rows on screen
+   * are the ones with events (e.g. `8` for 8 AM, `8.5` for 8:30). Applied
+   * once; clamped to `dayStartHour`..`dayEndHour`. Unset starts at the top.
    */
-  currentDate?: Date;
-  /** Day the week starts on. Defaults to 0 (Sunday) */
-  weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
-  /** Events to display on the calendar */
-  events?: CalendarEvent[];
-  /** Optional click handler for events */
-  onEventClick?: (event: CalendarEvent) => void;
-  /** ID of the currently selected event */
-  selectedEventId?: string;
-  /** Callback when clicking empty calendar space (not on an event) */
-  onBackgroundClick?: () => void;
-  /**
-   * Callback when an empty timed-grid slot is clicked while no event is
-   * selected. Receives the snapped range for the new event.
-   */
-  onEventCreate?: (range: NewEventRange) => void;
-  /** Callback when the displayed date changes (via scroll navigation) */
-  onDateChange?: (date: Date) => void;
-  /** Callback when the visible days change during scroll (real-time updates) */
-  onVisibleDaysChange?: (days: Date[]) => void;
-  /** Callback when an event is changed (e.g. dragged to a new time) */
-  onEventChange?: (event: CalendarEvent) => void;
-  /** Whether the right sidebar is open */
-  isSidebarOpen?: boolean;
-  /** Callback to dock popover to sidebar (opens sidebar) */
-  onDockToSidebar?: () => void;
-  /** Callback to close popover (deselect event) */
-  onClosePopover?: () => void;
-  /** Navigate to previous week */
-  onPrevWeek?: () => void;
-  /** Navigate to next week */
-  onNextWeek?: () => void;
-  /** Date to highlight with a temporary background animation (for "+N more" navigation) */
-  highlightedDate?: Date | null;
+  scrollToHour?: number;
   /** Optional className for the root element */
   className?: string;
 }
 
 /**
- * Props for the WeekView body, rendered once the first visible day is known
+ * Props for the WeekView component. Date, events and selection come from the
+ * surrounding CalendarProvider.
  */
-export interface WeekViewContentProps extends Omit<
-  WeekViewProps,
-  "currentDate"
-> {
-  /** First visible day */
-  currentDate: Date;
-  /** Start of the viewer's current day, or `null` during SSR and hydration */
-  today: Date | null;
+export interface WeekViewProps extends DayViewProps {
+  /**
+   * Number of day columns. Defaults to the provider's `numberOfDays`. When
+   * set, it fixes the column count, and the provider adopts it while its
+   * `numberOfDays` is uncontrolled (so prev/next step by it below 7).
+   */
+  numberOfDays?: number;
+}
+
+/**
+ * Props for the TimeGrid component, the hourly grid behind DayView and
+ * WeekView. Date, events and selection come from the surrounding
+ * CalendarProvider.
+ */
+export interface TimeGridProps extends WeekViewProps {
+  /**
+   * "day" shows one column, "week" shows `numberOfDays` columns. While the
+   * provider's `view` is uncontrolled, the provider adopts this type, so
+   * navigation and header info follow it.
+   */
+  view: TimeGridView;
+}
+
+/**
+ * Props for the MonthView component. Date, events, selection and view
+ * settings come from the surrounding CalendarProvider.
+ */
+export interface MonthViewProps extends EventPopoverProps {
+  /** Optional className for the root element */
+  className?: string;
+}
+
+/**
+ * Event popover props passed from a view down to its event items
+ */
+export interface EventItemPopoverProps {
+  /** Whether a selected event shows its details popover */
+  showEventPopover?: boolean;
+  /** Callback for the popover's expand button (hidden when absent) */
+  onEventPopoverExpand?: () => void;
+  /**
+   * Callback to close the popover of the given event. Clears the selection
+   * only while that event is still the selected one.
+   */
+  onEventPopoverClose?: (eventId: string) => void;
+  /** Navigate to the previous period (recurrence arrows in the details) */
+  onPrevWeek?: () => void;
+  /** Navigate to the next period (recurrence arrows in the details) */
+  onNextWeek?: () => void;
 }
 
 /**
@@ -129,7 +159,7 @@ export interface WeekViewTimeAxisProps {
 /**
  * Props for the WeekViewGrid component
  */
-export interface WeekViewGridProps {
+export interface WeekViewGridProps extends EventItemPopoverProps {
   /** Array of days for columns */
   days: WeekDay[];
   /** Array of hour slots for rows */
@@ -146,13 +176,16 @@ export interface WeekViewGridProps {
   onEventCreate?: (range: NewEventRange) => void;
   /** Current drag state if an event is being dragged */
   dragState?: EventDragState;
-  /** Mousedown handler to initiate event drag */
-  onEventDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
+  /** Pointerdown handler to initiate event drag */
+  onEventDragPointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
+    event: CalendarEvent,
+  ) => void;
   /** Current resize state if an event is being resized */
   resizeState?: EventResizeState;
-  /** Mousedown handler to initiate event resize */
-  onEventResizeMouseDown?: (
-    e: React.MouseEvent,
+  /** Pointerdown handler to initiate event resize */
+  onEventResizePointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
     edge: "top" | "bottom",
   ) => void;
@@ -160,18 +193,15 @@ export interface WeekViewGridProps {
   onEventChange?: (event: CalendarEvent) => void;
   /** Callback when context menu open state changes */
   onContextMenuOpenChange?: (open: boolean) => void;
-  /** Whether the right sidebar is open */
-  isSidebarOpen?: boolean;
-  /** Callback to dock popover to sidebar */
-  onDockToSidebar?: () => void;
-  /** Callback to close popover */
-  onClosePopover?: () => void;
-  /** Navigate to previous week */
-  onPrevWeek?: () => void;
-  /** Navigate to next week */
-  onNextWeek?: () => void;
   /** Date to highlight with a temporary background animation (for "+N more" navigation) */
   highlightedDate?: Date | null;
+  /**
+   * Index in `days` of the first on-screen column. Columns outside the
+   * on-screen range are scroll buffer: inert and hidden from assistive tech.
+   */
+  visibleStartIndex?: number;
+  /** Number of on-screen columns (defaults to all of `days`) */
+  visibleCount?: number;
   /** Optional className */
   className?: string;
 }
@@ -197,7 +227,7 @@ export interface WeekViewTimeIndicatorProps {
 /**
  * Props for the WeekViewAllDayRow component
  */
-export interface WeekViewAllDayRowProps {
+export interface WeekViewAllDayRowProps extends EventItemPopoverProps {
   /** Array of days to display */
   days: WeekDay[];
   /** All-day events to display */
@@ -210,9 +240,9 @@ export interface WeekViewAllDayRowProps {
   scrollStyle?: React.CSSProperties;
   /** Current all-day resize state */
   allDayResizeState?: AllDayResizeState;
-  /** Mousedown handler to initiate all-day event resize or drag */
-  onAllDayResizeMouseDown?: (
-    e: React.MouseEvent,
+  /** Pointerdown handler to initiate all-day event resize or drag */
+  onAllDayResizePointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
     edge: "left" | "right" | "move",
     startColumn: number,
@@ -224,16 +254,6 @@ export interface WeekViewAllDayRowProps {
   onContextMenuOpenChange?: (open: boolean) => void;
   /** Ref to attach to the scroll content div for column measurements */
   allDayScrollContentRef?: React.RefObject<HTMLDivElement | null>;
-  /** Whether the right sidebar is open */
-  isSidebarOpen?: boolean;
-  /** Callback to dock popover to sidebar */
-  onDockToSidebar?: () => void;
-  /** Callback to close popover */
-  onClosePopover?: () => void;
-  /** Navigate to previous week */
-  onPrevWeek?: () => void;
-  /** Navigate to next week */
-  onNextWeek?: () => void;
   /** Index of the first visible column (used to skip buffer-only events in day view) */
   visibleStartIndex?: number;
   /** Number of visible columns (defaults to days.length when omitted) */
@@ -249,7 +269,7 @@ export interface WeekViewAllDayRowProps {
 /**
  * Props for the CalendarEventItem component
  */
-export interface CalendarEventItemProps {
+export interface CalendarEventItemProps extends EventItemPopoverProps {
   /** The positioned event to render */
   positionedEvent: PositionedEvent;
   /** Height of each hour in pixels */
@@ -266,15 +286,20 @@ export interface CalendarEventItemProps {
   onClick?: (event: CalendarEvent) => void;
   /** Drag variant for visual state during drag */
   dragVariant?: EventDragVariant;
+  /** Whether this block shows an in-progress resize (passed to `renderEventContent`) */
+  isResizing?: boolean;
   /** Override start time (for dragging/placeholder positioning) */
   overrideStart?: Date;
   /** Override end time (for dragging/placeholder positioning) */
   overrideEnd?: Date;
-  /** Mousedown handler to initiate drag */
-  onDragMouseDown?: (e: React.MouseEvent, event: CalendarEvent) => void;
-  /** Mousedown handler to initiate resize */
-  onResizeMouseDown?: (
-    e: React.MouseEvent,
+  /** Pointerdown handler to initiate drag */
+  onDragPointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
+    event: CalendarEvent,
+  ) => void;
+  /** Pointerdown handler to initiate resize */
+  onResizePointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
     edge: "top" | "bottom",
   ) => void;
@@ -290,16 +315,6 @@ export interface CalendarEventItemProps {
   fixedHeight?: number;
   /** Callback when context menu open state changes */
   onContextMenuOpenChange?: (open: boolean) => void;
-  /** Whether the right sidebar is open (controls popover visibility) */
-  isSidebarOpen?: boolean;
-  /** Callback to dock popover to sidebar */
-  onDockToSidebar?: () => void;
-  /** Callback to close popover (deselect event) */
-  onClosePopover?: () => void;
-  /** Navigate to previous week */
-  onPrevWeek?: () => void;
-  /** Navigate to next week */
-  onNextWeek?: () => void;
   /** Optional className */
   className?: string;
 }

@@ -23,14 +23,14 @@ Inside the hook:
 
 ## Critical Pattern: Ref-Based State
 
-Hooks store temporary interaction state (e.g., drag position) in `ref.current` and only commit to React state at specific moments. This avoids re-rendering on every mousemove.
+Hooks store temporary interaction state (e.g., drag position) in `ref.current` and only commit to React state at specific moments. This avoids re-rendering on every pointermove.
 
 ```ts
 // Correct: update ref during interaction, commit to state on completion
 dragRef.current = { ...dragRef.current, newStart };
 setDragState({ ...dragRef.current }); // only on specific events
 
-// Wrong: setState on every mousemove
+// Wrong: setState on every pointermove
 setDragState({ ...dragState, newStart }); // causes re-render flood
 ```
 
@@ -55,11 +55,15 @@ Every `window.addEventListener` MUST have a corresponding `removeEventListener` 
 
 ### Snap Math
 
-`snapToGrid(minutes)` rounds to `SNAP_MINUTES` (15 by default). Always apply snapping before committing to state. The formula:
+`snapToGrid(minutes, snapMinutes)` rounds to the provider's `snapMinutes` (15 by default), passed to the hooks as an option. Always apply snapping before committing to state. The formula:
 
 ```ts
-Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+Math.round(minutes / snapMinutes) * snapMinutes;
 ```
+
+### Visible Hours
+
+The grid's top edge is `dayStartHour`, not midnight. Convert a pointer Y to minutes from midnight with `dayStartHour * 60 + (y / hourHeight) * 60`, and clamp starts/ends to `dayStartHour * 60`..`dayEndHour * 60`.
 
 ### Cross-Day Boundaries
 
@@ -67,4 +71,8 @@ When drag/resize crosses a day boundary, both the start and end dates need updat
 
 ### Auto-Scroll Edge Cases
 
-Auto-scroll triggers when the cursor is near container edges. It uses variable speed (faster near edges). Make sure to stop auto-scroll on mouseup — check the cleanup in `handleMouseUp`.
+Auto-scroll triggers when the cursor is near container edges. It uses variable speed (faster near edges). Make sure to stop auto-scroll on pointerup and pointercancel — check `cleanup`.
+
+### Pointer Events and Touch
+
+Drag, resize and click-to-create listen to pointer events, never mouse events. Start every gesture through `usePointerGesture().startGesture`: mouse and pen start right away, touch only after a long press (`LONG_PRESS_DELAY_MS`), so a finger that moves first still scrolls. Track only the gesture's `pointerId`, treat `pointercancel` as "drop without committing", and call `suppressNextClick(pointerType)` after a real drag: when the pressed element was swapped for a ghost mid-drag, the browser's follow-up click lands on a shared ancestor and would clear the selection.

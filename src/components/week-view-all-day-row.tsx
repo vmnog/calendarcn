@@ -8,7 +8,11 @@ import { useCallback } from "react";
 import { calculateAllDayEventRows } from "@/lib/event-utils";
 import { AllDayEventItem } from "./calendar-event-item";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
-import type { CalendarEvent, WeekViewAllDayRowProps } from "./week-view-types";
+import type {
+  CalendarEvent,
+  EventItemPopoverProps,
+  WeekViewAllDayRowProps,
+} from "./week-view-types";
 
 const ALL_DAY_EVENT_HEIGHT = 24;
 const ALL_DAY_ROW_GAP = 2;
@@ -24,13 +28,13 @@ export function WeekViewAllDayRow({
   selectedEventId,
   scrollStyle,
   allDayResizeState,
-  onAllDayResizeMouseDown,
+  onAllDayResizePointerDown,
   allDayScrollContentRef,
   onEventChange,
   onContextMenuOpenChange,
-  isSidebarOpen,
-  onDockToSidebar,
-  onClosePopover,
+  showEventPopover,
+  onEventPopoverExpand,
+  onEventPopoverClose,
   onPrevWeek,
   onNextWeek,
   visibleStartIndex,
@@ -80,6 +84,7 @@ export function WeekViewAllDayRow({
           <div className="relative" style={{ minHeight: `${contentHeight}px` }}>
             {/* Background grid */}
             <div
+              aria-hidden
               className="absolute inset-0 grid"
               style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
             >
@@ -134,16 +139,16 @@ export function WeekViewAllDayRow({
                     days={days}
                     onEventClick={onEventClick}
                     isSelected={event.id === selectedEventId}
-                    onAllDayResizeMouseDown={onAllDayResizeMouseDown}
+                    onAllDayResizePointerDown={onAllDayResizePointerDown}
                     originalStartColumn={startColumn}
                     originalEndColumn={endColumn}
                     isBeingResized={isBeingResized}
                     isBeingMoved={isBeingMoved}
                     onEventChange={onEventChange}
                     onContextMenuOpenChange={onContextMenuOpenChange}
-                    isSidebarOpen={isSidebarOpen}
-                    onDockToSidebar={onDockToSidebar}
-                    onClosePopover={onClosePopover}
+                    showEventPopover={showEventPopover}
+                    onEventPopoverExpand={onEventPopoverExpand}
+                    onEventPopoverClose={onEventPopoverClose}
                     onPrevWeek={onPrevWeek}
                     onNextWeek={onNextWeek}
                     visibleStartIndex={visibleStartIndex}
@@ -189,6 +194,7 @@ export function WeekViewAllDayRow({
 
           return createPortal(
             <div
+              aria-hidden
               className="pointer-events-none"
               style={{
                 position: "fixed",
@@ -222,7 +228,7 @@ export function WeekViewAllDayRow({
   );
 }
 
-interface AllDayEventRowProps {
+interface AllDayEventRowProps extends EventItemPopoverProps {
   event: CalendarEvent;
   startColumn: number;
   endColumn: number;
@@ -231,7 +237,7 @@ interface AllDayEventRowProps {
   days: WeekViewAllDayRowProps["days"];
   onEventClick?: (event: CalendarEvent) => void;
   isSelected?: boolean;
-  onAllDayResizeMouseDown?: WeekViewAllDayRowProps["onAllDayResizeMouseDown"];
+  onAllDayResizePointerDown?: WeekViewAllDayRowProps["onAllDayResizePointerDown"];
   originalStartColumn: number;
   originalEndColumn: number;
   isBeingResized?: boolean;
@@ -240,11 +246,6 @@ interface AllDayEventRowProps {
   onEventChange?: (event: CalendarEvent) => void;
   /** Callback when context menu open state changes */
   onContextMenuOpenChange?: (open: boolean) => void;
-  isSidebarOpen?: boolean;
-  onDockToSidebar?: () => void;
-  onClosePopover?: () => void;
-  onPrevWeek?: () => void;
-  onNextWeek?: () => void;
   /** Index of the first visible column (for sticky-title offset) */
   visibleStartIndex?: number;
 }
@@ -258,16 +259,16 @@ function AllDayEventRow({
   days,
   onEventClick,
   isSelected,
-  onAllDayResizeMouseDown,
+  onAllDayResizePointerDown,
   originalStartColumn,
   originalEndColumn,
   isBeingResized,
   isBeingMoved,
   onEventChange,
   onContextMenuOpenChange,
-  isSidebarOpen,
-  onDockToSidebar,
-  onClosePopover,
+  showEventPopover,
+  onEventPopoverExpand,
+  onEventPopoverClose,
   onPrevWeek,
   onNextWeek,
   visibleStartIndex,
@@ -312,13 +313,13 @@ function AllDayEventRow({
       ? ((hiddenContainerPercent + TITLE_NUDGE_PERCENT) / width) * 100
       : 0;
 
-  const handleResizeMouseDown = useCallback(
+  const handleResizePointerDown = useCallback(
     (
-      e: React.MouseEvent,
+      e: React.PointerEvent<HTMLElement>,
       ev: CalendarEvent,
       edge: "left" | "right" | "move",
     ) => {
-      onAllDayResizeMouseDown?.(
+      onAllDayResizePointerDown?.(
         e,
         ev,
         edge,
@@ -326,7 +327,7 @@ function AllDayEventRow({
         originalEndColumn,
       );
     },
-    [onAllDayResizeMouseDown, originalStartColumn, originalEndColumn],
+    [onAllDayResizePointerDown, originalStartColumn, originalEndColumn],
   );
 
   return (
@@ -346,16 +347,17 @@ function AllDayEventRow({
         onClick={onEventClick}
         spanStart={spanStart}
         spanEnd={spanEnd}
-        onResizeMouseDown={handleResizeMouseDown}
+        onResizePointerDown={handleResizePointerDown}
         onEventChange={onEventChange}
         onContextMenuOpenChange={onContextMenuOpenChange}
-        isSidebarOpen={isSidebarOpen}
-        onDockToSidebar={onDockToSidebar}
-        onClosePopover={onClosePopover}
+        showEventPopover={showEventPopover}
+        onEventPopoverExpand={onEventPopoverExpand}
+        onEventPopoverClose={onEventPopoverClose}
         onPrevWeek={onPrevWeek}
         onNextWeek={onNextWeek}
         titleOffsetPercent={titleOffsetPercent}
         dragVariant={isBeingMoved ? "ghost" : undefined}
+        isResizing={isBeingResized && !isBeingMoved}
       />
     </div>
   );
@@ -383,6 +385,7 @@ function AllDayPlaceholderRow({
 
   return (
     <div
+      aria-hidden
       className="absolute pointer-events-none"
       style={{
         left: `${left}%`,
