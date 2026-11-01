@@ -8,6 +8,7 @@ import {
 } from "fumadocs-ui/layouts/notebook/page";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 
+import { DocsEyebrow } from "@/components/docs/docs-eyebrow";
 import { getMDXComponents } from "@/components/docs/mdx-components";
 import { source } from "@/lib/source";
 
@@ -36,8 +37,13 @@ export default async function Page({ params }: DocsPageProps) {
       full={page.data.full}
       footer={{ className: "docs-footer" }}
     >
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
+      <DocsEyebrow url={page.url} />
+      <DocsTitle className="text-[2rem] leading-[1.1] font-bold tracking-[-0.03em] text-balance sm:text-[2.5rem]">
+        {page.data.title}
+      </DocsTitle>
+      <DocsDescription className="max-w-[64ch] leading-[1.55] text-pretty">
+        {page.data.description}
+      </DocsDescription>
       <DocsBody>
         <MDX
           components={getMDXComponents({
