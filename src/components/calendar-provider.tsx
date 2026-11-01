@@ -13,6 +13,7 @@ import {
   getCalendarHeaderInfo,
   getPeriodStart,
   getVisibleDays,
+  getVisibleRange,
   getWeekViewStepDays,
 } from "@/lib/event-utils";
 import type {
@@ -27,6 +28,7 @@ import type {
   NewEventRange,
   ViewSettings,
   ViewType,
+  VisibleRange,
   WeekStartsOn,
 } from "./calendar-types";
 
@@ -326,6 +328,8 @@ function CalendarStateProvider({
   onEventCreate,
   onEventUpdate,
   onEventSelect,
+  onVisibleRangeChange,
+  loading = false,
   renderEventContent,
   renderEventDetails,
   children,
@@ -382,6 +386,12 @@ function CalendarStateProvider({
   const pendingSwitchRef = React.useRef<ViewSwitchSnapshot | null>(null);
   /** Whether the controlled-view mismatch warning was already logged */
   const hasWarnedViewConflictRef = React.useRef(false);
+  /** The mounted view's latest report, or `null` while no view has reported */
+  const mountedViewRef = React.useRef<ReportedView | null>(null);
+  /** Latest `onVisibleRangeChange`, so a new callback alone doesn't report */
+  const onVisibleRangeChangeRef = React.useRef(onVisibleRangeChange);
+  /** Start and end times last passed to `onVisibleRangeChange` */
+  const reportedRangeKeyRef = React.useRef<string | null>(null);
   /** Whether the starting date is today's period (no `date` or `defaultDate`) */
   const startsOnToday = dateProp === undefined && defaultDate === undefined;
   const initialTime = initialDate.getTime();
@@ -389,6 +399,10 @@ function CalendarStateProvider({
   React.useEffect(() => {
     eventsRef.current = events;
   }, [events]);
+
+  React.useEffect(() => {
+    onVisibleRangeChangeRef.current = onVisibleRangeChange;
+  }, [onVisibleRangeChange]);
 
   // The highlight from `showDay` is a brief flash, not a lasting state
   React.useEffect(() => {
@@ -550,6 +564,7 @@ function CalendarStateProvider({
 
   const reportView = React.useCallback(
     (reported: ReportedView) => {
+      mountedViewRef.current = reported;
       const pendingSwitch = pendingSwitchRef.current;
       pendingSwitchRef.current = null;
       // Controlled values always win over the mounted view
@@ -644,6 +659,40 @@ function CalendarStateProvider({
     headerRangeEnd,
   );
 
+  // Derived from the provider's own period, not the live `visibleDays`, so a
+  // horizontal scroll moves it once it snaps instead of at every day it passes
+  const range = getVisibleRange(
+    currentDate,
+    view,
+    numberOfDays,
+    weekStartsOn,
+    viewSettings.showWeekends,
+  );
+  const rangeStartTime = range.start.getTime();
+  const rangeEndTime = range.end.getTime();
+  const visibleRange = React.useMemo<VisibleRange>(
+    () => ({ start: new Date(rangeStartTime), end: new Date(rangeEndTime) }),
+    [rangeStartTime, rangeEndTime],
+  );
+
+  // Report each new range once. While the provider is still adopting the
+  // mounted view (its first commit, or a switch the view is undoing), the
+  // range belongs to a view that isn't on screen, so wait for the next one.
+  // Same resolution as `reportView`: controlled values win.
+  React.useEffect(() => {
+    const mounted = mountedViewRef.current;
+    if (mounted) {
+      const adoptedView = viewProp ?? mounted.view;
+      const adoptedNumberOfDays =
+        numberOfDaysProp ?? mounted.numberOfDays ?? numberOfDays;
+      if (adoptedView !== view || adoptedNumberOfDays !== numberOfDays) return;
+    }
+    const key = `${visibleRange.start.getTime()}-${visibleRange.end.getTime()}`;
+    if (reportedRangeKeyRef.current === key) return;
+    reportedRangeKeyRef.current = key;
+    onVisibleRangeChangeRef.current?.(visibleRange);
+  }, [visibleRange, view, numberOfDays, viewProp, numberOfDaysProp]);
+
   const value = React.useMemo<CalendarContextValue>(
     () => ({
       events,
@@ -654,6 +703,8 @@ function CalendarStateProvider({
       viewSettings,
       visibleDays,
       displayMonth,
+      visibleRange,
+      loading,
       selectedEventId,
       selectedEvent,
       highlightedDate,
@@ -684,6 +735,8 @@ function CalendarStateProvider({
       viewSettings,
       visibleDays,
       displayMonth,
+      visibleRange,
+      loading,
       selectedEventId,
       selectedEvent,
       highlightedDate,

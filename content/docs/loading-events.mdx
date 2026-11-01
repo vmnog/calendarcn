@@ -1,0 +1,144 @@
+---
+title: Loading Events
+description: Fetch events for the dates on screen as people navigate, and show a loading bar while they arrive.
+---
+
+<ComponentPreview name="range-loading-demo" />
+
+The calendar doesn't fetch anything itself. `onVisibleRangeChange` tells you which dates are on screen, every time they change, so you can load the events for them. While you do, `loading` draws a thin bar under the day headers. In the preview, a pretend server answers after 800ms. Navigate, switch views or scroll sideways, and watch the log: a range seen before comes from the cache, with no bar.
+
+## Usage
+
+Keep the events in state, fetch them in `onVisibleRangeChange`, and pass `loading` while a request is in flight:
+
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import { WeekView } from "@/components/week-view";
+import type { CalendarEvent, VisibleRange } from "@/components/calendar-types";
+
+export function Schedule() {
+  const [events, setEvents] = React.useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const latestRequest = React.useRef(0);
+
+  const loadRange = React.useCallback(async (range: VisibleRange) => {
+    const request = ++latestRequest.current;
+    setLoading(true);
+    const next = await getEvents(range.start, range.end); // your API
+    // People may have moved on while this was loading
+    if (request !== latestRequest.current) return;
+    setEvents(next);
+    setLoading(false);
+  }, []);
+
+  return (
+    <CalendarProvider
+      events={events}
+      onEventsChange={setEvents}
+      onVisibleRangeChange={loadRange}
+      loading={loading}
+    >
+      <WeekView />
+    </CalendarProvider>
+  );
+}
+```
+
+With a data library such as [TanStack Query](https://tanstack.com/query), keep the range in state, use it as the query key, and pass `isFetching` as `loading`. Save drags, resizes and edits in `onEventUpdate`, and update the query's cache so they stick.
+
+```tsx
+const [range, setRange] = React.useState<VisibleRange | null>(null);
+const { data: events = [], isFetching } = useQuery({
+  queryKey: ["events", range?.start.toISOString(), range?.end.toISOString()],
+  queryFn: range ? () => getEvents(range.start, range.end) : skipToken,
+  placeholderData: keepPreviousData,
+});
+
+<CalendarProvider
+  events={events}
+  onVisibleRangeChange={setRange}
+  onEventUpdate={saveEvent}
+  loading={isFetching}
+>
+  <WeekView />
+</CalendarProvider>;
+```
+
+## The range
+
+`start` is midnight at the beginning of the first visible day, and `end` is midnight after the last one, so `end` is exclusive. Both are in the viewer's time zone.
+
+| View  | Range                                                                   | Example, week of Thursday Jun 4 2026 |
+| ----- | ----------------------------------------------------------------------- | ------------------------------------ |
+| Day   | The day on screen                                                       | Jun 4 → Jun 5                        |
+| Week  | `numberOfDays` days from the first column, 7 by default                 | May 31 → Jun 7                       |
+| Month | The whole six-week grid, days from the months before and after included | May 31 → Jul 12                      |
+
+When month view hides weekends, the range starts and ends on the first and last weekday it shows. The day and week views always show weekends, so the setting doesn't change their range.
+
+An event belongs in the range when it starts before `end` and ends after `start`:
+
+```ts
+const inRange = (event: CalendarEvent, range: VisibleRange) =>
+  event.start < range.end &&
+  (event.isAllDay ? event.end >= range.start : event.end > range.start);
+```
+
+<Callout title="All-day events">
+  An all-day event's `end` is the start of its last day, so a one-day event has `start` equal to `end`. Compare its end with `>=`, or it drops off the first day of the range.
+</Callout>
+
+Read the range anywhere inside the provider with `useCalendar().visibleRange`, and the loading state with `useCalendar().loading`, for example to show a spinner in your own toolbar.
+
+## When it fires
+
+- Once after the view mounts.
+- When the dates change: previous and next, today, `goToDate`, a view switch, a new `numberOfDays`, and month view's vertical scroll.
+- During a sideways scroll in day and week view, once the scroll snaps to a day, not for every day it passes. For the days on screen mid-scroll, read `visibleDays`.
+- Never twice in a row for the same range. Re-renders, edits and selection don't fire it, and neither does a view switch that's undone because the mounted view doesn't follow it.
+
+A range can come back: going to next week and back reports this week again. Cache by range, as the preview does, or by day, so a range seen before skips the network.
+
+## Loading bar
+
+`loading` draws a 2px indeterminate bar along the bottom of the day headers in Day View, Week View and Month View. It doesn't block anything: people can keep dragging, creating and navigating while events load. With reduced motion turned on, the bar holds still instead of sliding. The view is marked `aria-busy` while loading.
+
+## API Reference
+
+The provider props and the range type. See [Calendar Core](/docs/components/calendar-core#api-reference) for the rest of the provider.
+
+<PropsTable
+  rows={[
+    {
+      name: "onVisibleRangeChange",
+      type: "(range: VisibleRange) => void",
+      description:
+        "Called with the dates the view draws: once after it mounts, then each time they change. Never twice in a row for the same range.",
+    },
+    {
+      name: "loading",
+      type: "boolean",
+      default: "false",
+      description:
+        "Shows a thin progress bar under the day headers of every view. The calendar stays usable.",
+    },
+  ]}
+/>
+
+### VisibleRange
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "start",
+      type: "Date",
+      description: "Midnight that starts the first visible day.",
+    },
+    {
+      name: "end",
+      type: "Date",
+      description: "Midnight after the last visible day (exclusive).",
+    },
+  ]}
+/>
