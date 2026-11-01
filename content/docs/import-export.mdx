@@ -1,0 +1,352 @@
+---
+title: Import and Export
+description: Read .ics files from Google Calendar, Apple Calendar and Outlook, write events back out, and sync with Google Calendar.
+---
+
+<ComponentPreview name="ics-demo" />
+
+`parseIcs()` turns an iCalendar (`.ics`) file into events the calendar draws, and `toIcs()` turns events into a file other calendars import. Both live in one file with no dependencies beyond `date-fns`. In the preview, import a file with **Import .ics** or drop it on the calendar, then download every event with **Export .ics**.
+
+To get a file to try: in Google Calendar, open **Settings → Import & export → Export**. In Apple Calendar, choose **File → Export → Export…**. In Outlook, choose **File → Save Calendar**.
+
+## Installation
+
+<InstallTabs item="ics">
+
+Copy `lib/ics.ts` into your project. It needs `date-fns` and the event types from [Calendar Core](/docs/components/calendar-core).
+
+</InstallTabs>
+
+## Import a file
+
+Read the file as text and pass it to `parseIcs()`. It returns `DetailedCalendarEvent[]`, ready for the provider.
+
+```tsx
+import { parseIcs } from "@/lib/ics";
+
+async function importFile(file: File) {
+  const imported = parseIcs(await file.text());
+  setEvents((events) => [...events, ...imported]);
+}
+
+<input
+  type="file"
+  accept=".ics,text/calendar"
+  onChange={(event) => {
+    const file = event.target.files?.[0];
+    if (file) void importFile(file);
+  }}
+/>;
+```
+
+Each event keeps the file's `UID` as its `id`. The preview uses that to replace events it already has, so importing the same file twice doesn't duplicate them.
+
+### What gets imported
+
+| iCalendar                        | Event field                                                                  |
+| -------------------------------- | ---------------------------------------------------------------------------- |
+| `UID`                            | `id`. An edited occurrence of a recurring event gets `UID_RECURRENCE-ID`.    |
+| `SUMMARY`                        | `title`                                                                      |
+| `DTSTART`, `DTEND` or `DURATION` | `start`, `end` and `isAllDay`                                                |
+| `DESCRIPTION`, `LOCATION`        | `description`, `location`                                                    |
+| `RRULE`                          | `recurrence`, the rule as written, e.g. `FREQ=WEEKLY;BYDAY=MO`               |
+| `TRANSP`                         | `status`: `TRANSPARENT` is free, `OPAQUE` is busy                            |
+| `CLASS`                          | `visibility`: public, or private for `PRIVATE` and `CONFIDENTIAL`            |
+| `COLOR`                          | `color`, when it names one of the seven event colors                         |
+| `VALARM`                         | `reminders`, for alarms set a fixed time before the start (`TRIGGER:-PT15M`) |
+
+Dates and times follow RFC 5545:
+
+- **All-day events.** DATE values (`20260603`) become all-day events. iCalendar's end date is exclusive and the calendar's `end` is the last day, so an event from `20260603` to `20260604` becomes a one-day event on June 3.
+- **Times.** Times in UTC (`20260603T150000Z`), with a `TZID`, and floating times (no zone) all become `Date`s, shown in the viewer's time zone. A `TZID` can be an IANA name, as Google and Apple write it, or a zone the file defines in a `VTIMEZONE`, such as Outlook's `Pacific Standard Time`. Floating times are read in the viewer's zone.
+- **Text.** Folded lines are joined and escaped commas, semicolons and line breaks are restored.
+
+<Callout title="Recurring events aren't expanded">
+
+A weekly meeting comes in as one event on its first date, with its rule in `recurrence`. Expanding rules into occurrences is planned under **Recurring events** on the [roadmap](/docs/roadmap). Until then, edited occurrences come in as their own events, cancelled ones are left out, and `EXDATE` is ignored. Attendees, attachments, to-dos (`VTODO`) and other components are skipped.
+
+</Callout>
+
+## Export events
+
+`toIcs()` returns the file's text. Download it with a blob URL, or send it from your server with the `text/calendar` content type.
+
+```tsx
+import { toIcs } from "@/lib/ics";
+
+function downloadIcs(events: DetailedCalendarEvent[]) {
+  const ics = toIcs(events, { calendarName: "Team" });
+  const url = URL.createObjectURL(
+    new Blob([ics], { type: "text/calendar;charset=utf-8" }),
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "calendar.ics";
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+```
+
+Timed events are written in UTC and all-day events as dates, with the exclusive end iCalendar expects. `recurrence` is written as an `RRULE` only when it holds a rule (`FREQ=...`), so a display string such as "Every weekday" is left out. Long lines are folded at 75 octets and lines end with CRLF, so Google Calendar, Apple Calendar and Outlook all import the file.
+
+## Sync with Google Calendar
+
+<Callout type="warn" title="A recipe, not a live demo">
+
+This needs your own Google Cloud project and OAuth client, so it has no preview. Treat it as a starting point: add error handling, paging (`nextPageToken`) and token refresh before you ship it.
+
+</Callout>
+
+The Google Calendar API stays the source of truth. The calendar loads the events of the days on screen, and writes each change back.
+
+<Steps>
+<Step>
+
+### Get an access token
+
+In the [Google Cloud console](https://console.cloud.google.com/), enable the Google Calendar API and create an OAuth client ID of type "Web application", with your site as an authorized JavaScript origin. Then request a token for the `calendar.events` scope with [Google Identity Services](https://developers.google.com/identity/oauth2/web/guides/use-token-model):
+
+```tsx
+// Load https://accounts.google.com/gsi/client first
+const tokenClient = google.accounts.oauth2.initTokenClient({
+  client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+  scope: "https://www.googleapis.com/auth/calendar.events",
+  callback: (response) => setAccessToken(response.access_token),
+});
+
+// From a click, so the browser allows the consent popup
+tokenClient.requestAccessToken();
+```
+
+</Step>
+<Step>
+
+### Map Google events to calendar events
+
+Google writes all-day events as dates with an exclusive end, like iCalendar, and timed events as ISO strings.
+
+```ts
+import { addDays, format, parseISO, subDays } from "date-fns";
+
+import type { DetailedCalendarEvent } from "@/components/calendar-types";
+
+interface GoogleEvent {
+  id: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  start: { date?: string; dateTime?: string };
+  end: { date?: string; dateTime?: string };
+  transparency?: "opaque" | "transparent";
+}
+
+function fromGoogle(event: GoogleEvent): DetailedCalendarEvent {
+  const details: Omit<DetailedCalendarEvent, "start" | "end"> = {
+    id: event.id,
+    title: event.summary ?? "",
+    description: event.description,
+    location: event.location,
+    status: event.transparency === "transparent" ? "free" : "busy",
+  };
+  if (event.start.date && event.end.date) {
+    return {
+      ...details,
+      isAllDay: true,
+      start: parseISO(event.start.date),
+      // Google's end date is exclusive; the calendar's `end` is the last day
+      end: subDays(parseISO(event.end.date), 1),
+    };
+  }
+
+  return {
+    ...details,
+    start: new Date(event.start.dateTime ?? ""),
+    end: new Date(event.end.dateTime ?? ""),
+  };
+}
+
+function toGoogle(event: DetailedCalendarEvent) {
+  const fields = {
+    summary: event.title,
+    description: event.description,
+    location: event.location,
+  };
+  if (!event.isAllDay) {
+    return {
+      ...fields,
+      start: { dateTime: event.start.toISOString() },
+      end: { dateTime: event.end.toISOString() },
+    };
+  }
+
+  return {
+    ...fields,
+    start: { date: format(event.start, "yyyy-MM-dd") },
+    end: { date: format(addDays(event.end, 1), "yyyy-MM-dd") },
+  };
+}
+```
+
+</Step>
+<Step>
+
+### Load the visible range
+
+Ask for the days on screen with `timeMin` and `timeMax`. `singleEvents=true` makes Google expand recurring events into occurrences, so a weekly meeting shows every week.
+
+```ts
+const GOOGLE_EVENTS_URL =
+  "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+
+async function fetchGoogleEvents(accessToken: string, from: Date, to: Date) {
+  const params = new URLSearchParams({
+    timeMin: from.toISOString(),
+    timeMax: to.toISOString(),
+    singleEvents: "true",
+    orderBy: "startTime",
+    maxResults: "2500",
+  });
+  const response = await fetch(`${GOOGLE_EVENTS_URL}?${params}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(`Google Calendar: ${response.status}`);
+
+  const data: { items: GoogleEvent[] } = await response.json();
+  return data.items.map(fromGoogle);
+}
+```
+
+`visibleDays` from `useCalendar()` holds the days on screen. Fetch again whenever its first or last day changes:
+
+```tsx
+interface LoadVisibleRangeProps {
+  accessToken: string;
+  onLoad: (events: DetailedCalendarEvent[]) => void;
+}
+
+function LoadVisibleRange({ accessToken, onLoad }: LoadVisibleRangeProps) {
+  const { visibleDays } = useCalendar();
+  const firstDay = visibleDays[0]?.getTime();
+  const lastDay = visibleDays[visibleDays.length - 1]?.getTime();
+
+  React.useEffect(() => {
+    if (firstDay === undefined || lastDay === undefined) return;
+    let isCurrent = true;
+    fetchGoogleEvents(
+      accessToken,
+      new Date(firstDay),
+      addDays(new Date(lastDay), 1),
+    ).then((events) => {
+      // Skip responses for a range the user already navigated away from
+      if (isCurrent) onLoad(events);
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, [accessToken, firstDay, lastDay, onLoad]);
+
+  return null;
+}
+```
+
+</Step>
+<Step>
+
+### Write changes back
+
+`onEventUpdate` fires after every drag, resize or edit in the details. Send the change to Google with a `PATCH`:
+
+```tsx
+async function saveToGoogle(accessToken: string, event: DetailedCalendarEvent) {
+  await fetch(`${GOOGLE_EVENTS_URL}/${encodeURIComponent(event.id)}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(toGoogle(event)),
+  });
+}
+
+export function GoogleCalendar({ accessToken }: { accessToken: string }) {
+  const [events, setEvents] = React.useState<DetailedCalendarEvent[]>([]);
+
+  return (
+    <CalendarProvider
+      events={events}
+      onEventsChange={setEvents}
+      onEventUpdate={(event) => void saveToGoogle(accessToken, event)}
+    >
+      <LoadVisibleRange accessToken={accessToken} onLoad={setEvents} />
+      <WeekView />
+    </CalendarProvider>
+  );
+}
+```
+
+An occurrence of a recurring event has its own id (`eventId_20260601T130000Z`), so a `PATCH` to it changes only that occurrence. New events work the same way with `onEventCreate` and a `POST` to `GOOGLE_EVENTS_URL`: swap the local id for the one Google returns.
+
+</Step>
+</Steps>
+
+### Read-only: subscribe to an iCal address
+
+Without an OAuth client, you can show a Google calendar read-only. In Google Calendar, open the calendar's settings and copy **Secret address in iCal format**. Google doesn't allow cross-origin requests to it, so fetch it from your server and parse it with `parseIcs()` on either side:
+
+```ts title="app/api/calendar/route.ts"
+export async function GET() {
+  // Keep the secret address on the server: anyone with it can read the calendar
+  const response = await fetch(process.env.GOOGLE_ICAL_URL ?? "", {
+    next: { revalidate: 300 },
+  });
+  return new Response(await response.text(), {
+    headers: { "Content-Type": "text/calendar; charset=utf-8" },
+  });
+}
+```
+
+The file holds every event with recurring events unexpanded, so this suits small calendars best.
+
+## API Reference
+
+### parseIcs
+
+```ts
+function parseIcs(text: string): DetailedCalendarEvent[];
+```
+
+Reads every `VEVENT` in the text, in file order, and skips cancelled events, events without a start, and other components. An event without a `UID` gets `ics-event-N`, and a repeated id gets `-2`, `-3`, ….
+
+### toIcs
+
+```ts
+function toIcs(
+  events: readonly DetailedCalendarEvent[],
+  options?: ToIcsOptions,
+): string;
+```
+
+<PropsTable
+  nameHeader="Option"
+  rows={[
+    {
+      name: "calendarName",
+      type: "string",
+      description:
+        "Calendar name, written as `X-WR-CALNAME`. Google Calendar and Apple Calendar show it.",
+    },
+    {
+      name: "prodId",
+      type: "string",
+      default: '"-//CalendarCN//CalendarCN//EN"',
+      description: "Product identifier, written as `PRODID`.",
+    },
+    {
+      name: "timestamp",
+      type: "Date",
+      default: "new Date()",
+      description:
+        "Time the file is created, written as `DTSTAMP`. Pass a fixed date for output that doesn't change between runs.",
+    },
+  ]}
+/>

@@ -35,7 +35,6 @@ Not scheduled yet, roughly in priority order.
 - **Time zones**: a `timeZone` prop, and a second time zone column next to the time axis.
 - **Recurring events**: expand recurrence rules into events, and edit "this event", "this and following events" or "all events".
 - **Loading data by range**: a callback when the visible dates change, for fetching events as people navigate, and a loading state.
-- **Import and sync**: ICS import and export, and an example that syncs with Google Calendar.
 - **More views**: a year view, and a resource view with people or rooms side by side.
 - **Large calendars**: virtualized rendering for thousands of events.
 - **Theming**: event colors as CSS variables, so you can add your own next to the seven built in, and shading for business hours.
@@ -52,6 +51,7 @@ The groundwork that turned the demo into a library:
 - **Configuration**: snap interval, visible hours, 12 or 24 hour clock, a date-fns locale, week start, calendars, and the hour the grid opens on.
 - **Touch**: drag, resize and create work on phones and tablets. Long-press to start, so a normal swipe still scrolls.
 - **Accessibility**: every event has a descriptive label, <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> and the other arrows move the focused event, adding <Kbd>Shift</Kbd> resizes it, and time changes are announced to screen readers.
+- **Import and export**: `parseIcs()` and `toIcs()` read and write .ics files from Google Calendar, Apple Calendar and Outlook, and a recipe syncs with the Google Calendar API. See [Import and Export](/docs/import-export).
 - **Tests**: an end-to-end suite covers drag, resize, create, navigation and views on every pull request.
 
 ## Suggest something

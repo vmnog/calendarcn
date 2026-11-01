@@ -18,6 +18,7 @@ import { useIsClient } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { generateMockEvents } from "@/lib/mock-events";
 import { getPeriodStart, pickRandomEventColor } from "@/lib/event-utils";
+import { parseIcs, toIcs } from "@/lib/ics";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { CommandMenu } from "@/components/command-menu";
 import { SidebarLeft } from "@/components/sidebar-left";
@@ -55,6 +56,12 @@ const PRIMARY_CALENDAR_ID = "me@vmnog.com";
 
 /** Hour the time grid opens on, so the first rows on screen hold the day's events */
 const INITIAL_SCROLL_HOUR = 8;
+
+/** File types the command menu's .ics import offers */
+const ICS_FILE_TYPES = ".ics,text/calendar";
+
+/** Name of the file the command menu's .ics export downloads */
+const ICS_EXPORT_FILE_NAME = "calendarcn.ics";
 
 /**
  * Calendars of the demo account, offered by the event context menu. Ids are
@@ -117,6 +124,8 @@ interface PageContentProps {
 interface CalendarDemoProps {
   /** Whether the context panel sits inline (true) or opens as an overlay */
   isWideLayout: boolean;
+  /** Adds events read from an .ics file, replacing those with the same id */
+  onImportEvents: (events: DetailedCalendarEvent[]) => void;
 }
 
 /** App-level actions behind the demo's own keyboard shortcuts */
@@ -188,8 +197,10 @@ function handleAppShortcut(e: KeyboardEvent, actions: AppShortcutActions) {
  */
 function PageContent({ isWideLayout }: PageContentProps) {
   const { isMobile, setOpenMobile: setContextPanelOpenMobile } = useSidebar();
-  // Generated once: the provider only reads its initial events
-  const [initialEvents] = React.useState(() => generateMockEvents());
+  // The page owns the events, so the command menu can import an .ics file
+  const [events, setEvents] = React.useState<DetailedCalendarEvent[]>(() =>
+    generateMockEvents(),
+  );
   /** Color given to the last click-created event, so the next one differs */
   const lastCreatedColorRef = React.useRef<EventColor | null>(null);
 
@@ -218,15 +229,28 @@ function PageContent({ isWideLayout }: PageContentProps) {
     if (isMobile) setContextPanelOpenMobile(true);
   }, [isMobile, setContextPanelOpenMobile]);
 
+  // Importing the same file again updates its events instead of adding copies
+  const importEvents = React.useCallback(
+    (imported: DetailedCalendarEvent[]) => {
+      const importedIds = new Set(imported.map((event) => event.id));
+      setEvents((current) => [
+        ...current.filter((event) => !importedIds.has(event.id)),
+        ...imported,
+      ]);
+    },
+    [],
+  );
+
   return (
     <CalendarProvider
-      defaultEvents={initialEvents}
+      events={events}
+      onEventsChange={setEvents}
       defaultViewSettings={DEMO_VIEW_SETTINGS}
       calendars={DEMO_CALENDARS}
       createEvent={createDemoEvent}
       onEventSelect={handleEventSelect}
     >
-      <CalendarDemo isWideLayout={isWideLayout} />
+      <CalendarDemo isWideLayout={isWideLayout} onImportEvents={importEvents} />
     </CalendarProvider>
   );
 }
@@ -235,7 +259,7 @@ function PageContent({ isWideLayout }: PageContentProps) {
  * Demo chrome around the calendar: sidebars, header, command menu, theme
  * cycling and app shortcuts.
  */
-function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
+function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
   const { theme, setTheme } = useTheme();
   const {
     toggleSidebar,
@@ -282,6 +306,8 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
   }
   const leftSidebarVisible = isMobile ? leftOverlayOpen : leftSidebarOpen;
   const [commandMenuOpen, setCommandMenuOpen] = React.useState(false);
+  /** Hidden file picker behind the command menu's "Import .ics file" */
+  const icsInputRef = React.useRef<HTMLInputElement>(null);
 
   // Phones show event details in the context panel sheet: the 320px popover
   // doesn't fit beside an event on a ~390px screen
@@ -307,6 +333,39 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
     },
     [goToDate, view, weekStartsOn, numberOfDays],
   );
+
+  /** Imports the picked .ics file and shows the period of its first event */
+  const handleIcsFileChange = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      // Clear the input so picking the same file again imports it again
+      e.target.value = "";
+      if (!file) return;
+      const imported = parseIcs(await file.text());
+      if (imported.length === 0) return;
+      onImportEvents(imported);
+      const earliest = imported.reduce((first, event) =>
+        event.start < first.start ? event : first,
+      );
+      goToDate(
+        getPeriodStart(earliest.start, view, weekStartsOn, numberOfDays),
+      );
+    },
+    [onImportEvents, goToDate, view, weekStartsOn, numberOfDays],
+  );
+
+  const exportIcs = React.useCallback(() => {
+    const url = URL.createObjectURL(
+      new Blob([toIcs(events, { calendarName: "CalendarCN" })], {
+        type: "text/calendar;charset=utf-8",
+      }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = ICS_EXPORT_FILE_NAME;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }, [events]);
 
   /** Popover expand button: move the details into the context panel */
   const expandEventPopover = React.useCallback(() => {
@@ -378,6 +437,16 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
         onToggleLeftSidebar={toggleLeftSidebar}
         onToggleRightSidebar={toggleSidebar}
         onCycleTheme={cycleTheme}
+        onImportIcs={() => icsInputRef.current?.click()}
+        onExportIcs={exportIcs}
+      />
+      <input
+        ref={icsInputRef}
+        type="file"
+        accept={ICS_FILE_TYPES}
+        aria-label="Import .ics file"
+        className="hidden"
+        onChange={handleIcsFileChange}
       />
       <SidebarRight
         open={leftSidebarVisible}
