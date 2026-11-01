@@ -31,7 +31,6 @@ Submit CalendarCN to the shadcn/ui registry directory, so it shows up next to th
 
 Not scheduled yet, roughly in priority order.
 
-- **Agenda view**: a scrolling list of upcoming events. It also suits phones better than a time grid.
 - **Time zones**: a `timeZone` prop, and a second time zone column next to the time axis.
 - **Recurring events**: expand recurrence rules into events, and edit "this event", "this and following events" or "all events".
 - **Loading data by range**: a callback when the visible dates change, for fetching events as people navigate, and a loading state.
@@ -48,6 +47,7 @@ The groundwork that turned the demo into a library:
 
 - **Shared state**: `CalendarProvider` and `useCalendar()` hold events, the view, the date and the selection, so views no longer depend on the demo page. See [Calendar Core](/docs/components/calendar-core).
 - **Standalone views**: [Day View](/docs/components/day-view), [Week View](/docs/components/week-view), [Month View](/docs/components/month-view) and [Time Grid](/docs/components/time-grid) each work with only a provider around them.
+- **Agenda view**: [Agenda View](/docs/components/agenda-view) lists the next 30 days' events by day, which suits phones better than a time grid.
 - **Your own event type**: views are typed with your event type, and render slots let you draw event content and details yourself.
 - **Configuration**: snap interval, visible hours, 12 or 24 hour clock, a date-fns locale, week start, calendars, and the hour the grid opens on.
 - **Touch**: drag, resize and create work on phones and tablets. Long-press to start, so a normal swipe still scrolls.

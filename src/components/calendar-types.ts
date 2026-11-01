@@ -2,9 +2,10 @@ import type React from "react";
 import type { Locale } from "date-fns";
 
 /**
- * Calendar view mode — "day" shows a single column, "week" shows 7 columns
+ * Calendar view mode — "day" shows a single column, "week" shows 7 columns,
+ * "month" a month grid and "agenda" a list of the coming days' events
  */
-export type ViewType = "day" | "week" | "month";
+export type ViewType = "day" | "week" | "month" | "agenda";
 
 /**
  * Views drawn by the hourly time grid: "day" (one column) and "week"
@@ -141,6 +142,34 @@ export interface PositionedEvent {
   totalColumns: number;
   /** Segment position for multi-day timed events (controls corner rounding) */
   segmentPosition?: "start" | "middle" | "end" | "full";
+}
+
+/**
+ * An event as listed under one day of the agenda. An event that spans
+ * several days is listed under each of them.
+ */
+export interface AgendaEntry {
+  /** The original event */
+  event: CalendarEvent;
+  /** Which of the event's days this is, counting from 1 */
+  dayIndex: number;
+  /** How many days the event spans (1 for a single-day event) */
+  dayCount: number;
+  /**
+   * Whether the event fills this whole day: an all-day event, or a day
+   * between the first and last of a multi-day timed event
+   */
+  isAllDayOnThisDay: boolean;
+}
+
+/**
+ * A day in the agenda and the events listed under it
+ */
+export interface AgendaDay {
+  /** Start of the day */
+  date: Date;
+  /** Its events: whole-day entries first, then by start time */
+  entries: AgendaEntry[];
 }
 
 /**
@@ -308,12 +337,14 @@ export interface CalendarConfig {
  * - "all-day": a 24px bar in the day/week all-day row
  * - "month-item": a 20px line for a timed event in a month cell
  * - "month-bar": a 20px bar for an all-day or multi-day event in month view
+ * - "agenda": a row in the agenda list, as wide as the list
  */
 export type EventContentPlacement =
   | "time-grid"
   | "all-day"
   | "month-item"
-  | "month-bar";
+  | "month-bar"
+  | "agenda";
 
 /**
  * Props passed to `renderEventContent`. The calendar keeps drawing the
@@ -344,9 +375,9 @@ export interface EventContentProps<
    */
   isCompact: boolean;
   /**
-   * Time the default content shows: the range in the time grid ("10–11 AM"),
-   * the start in month cells and for all-day events that have one ("9 AM").
-   * Empty where the default content shows no time.
+   * Time the default content shows: the range in the time grid and the
+   * agenda ("10–11 AM"), the start in month cells and for all-day events
+   * that have one ("9 AM"). Empty where the default content shows no time.
    */
   timeLabel: string;
 }
@@ -376,8 +407,8 @@ export interface CalendarRenderSlots<
   TEvent extends CalendarEvent = CalendarEvent,
 > {
   /**
-   * Renders the inside of an event in the time grid, the all-day row and
-   * month view. Defaults to the title and time.
+   * Renders the inside of an event in the time grid, the all-day row,
+   * month view and the agenda. Defaults to the title and time.
    */
   renderEventContent?: (props: EventContentProps<TEvent>) => React.ReactNode;
   /**
@@ -434,7 +465,8 @@ interface CalendarProviderBaseProps<
   date?: Date;
   /**
    * Initial first day when `date` is not controlled. Defaults to the start of
-   * today's period (today in day view, the start of this week otherwise).
+   * today's period (today in day and agenda views, the start of this week
+   * otherwise).
    * Today is unknown during server rendering and hydration, so without
    * `date` or `defaultDate` the provider renders nothing until hydration ends.
    */
@@ -523,7 +555,7 @@ export interface CalendarContextValue<
   viewSettings: ViewSettings;
   /**
    * Days the day/week view currently shows, updated live while it scrolls
-   * horizontally. Empty in month view.
+   * horizontally, or the days the agenda covers. Empty in month view.
    */
   visibleDays: Date[];
   /**
@@ -545,9 +577,9 @@ export interface CalendarContextValue<
   weekNumber: number;
   /** Goes to the period that contains today */
   goToToday: () => void;
-  /** Goes back one period (day, week or month, by view) */
+  /** Goes back one period (day, week, month or agenda range, by view) */
   goToPrev: () => void;
-  /** Goes forward one period (day, week or month, by view) */
+  /** Goes forward one period (day, week, month or agenda range, by view) */
   goToNext: () => void;
   /** Sets the first displayed day as given (no snapping to a week start) */
   goToDate: (date: Date) => void;

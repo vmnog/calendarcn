@@ -1,13 +1,13 @@
 ---
 title: Calendar
-description: A full calendar built from the parts, with a header, a view switcher, and week and month views.
+description: A full calendar built from the parts, with a header, a view switcher, and week, month and agenda views.
 ---
 
 {/* Taller than the default: the header takes room the details popover needs. */}
 
 <ComponentPreview name="calendar-demo" height={680} />
 
-The calendar is a composition, not a component with a long list of props. [`CalendarProvider`](/docs/components/calendar-core) owns the state, a small header reads it with `useCalendar()`, and [Week View](/docs/components/week-view) or [Month View](/docs/components/month-view) renders whichever view the provider is on. Swap any piece for your own.
+The calendar is a composition, not a component with a long list of props. [`CalendarProvider`](/docs/components/calendar-core) owns the state, a small header reads it with `useCalendar()`, and [Week View](/docs/components/week-view), [Month View](/docs/components/month-view) or [Agenda View](/docs/components/agenda-view) renders whichever view the provider is on. Swap any piece for your own.
 
 {/* TODO: add Day View to the view switcher once the views are split into TimeGrid/DayView/WeekView. */}
 
@@ -24,6 +24,7 @@ The block pulls in every other item: [Calendar Core](/docs/components/calendar-c
 ## Usage
 
 ```tsx
+import { AgendaView } from "@/components/agenda-view";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { MonthView } from "@/components/month-view";
 import { WeekView } from "@/components/week-view";
@@ -49,7 +50,9 @@ function Header() {
 
 function Body() {
   const { view } = useCalendar();
-  return view === "month" ? <MonthView /> : <WeekView />;
+  if (view === "month") return <MonthView />;
+  if (view === "agenda") return <AgendaView />;
+  return <WeekView />;
 }
 ```
 
@@ -70,10 +73,10 @@ Every event is a button you can reach with <Kbd>Tab</Kbd>. The views only handle
 | Move earlier or later            | <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>                         |
 | Make it end earlier or later     | <KbdGroup><Kbd>Alt</Kbd><Kbd>⇧</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>⇧</Kbd><Kbd>↓</Kbd></KbdGroup> |
 
-- In the day and week views, <Kbd>Alt</Kbd> + <Kbd>↑</Kbd> / <Kbd>↓</Kbd> move a timed event by one `snapMinutes` step and keep it inside the visible hours. In month view they move it a week.
+- In the day and week views and the agenda, <Kbd>Alt</Kbd> + <Kbd>↑</Kbd> / <Kbd>↓</Kbd> move a timed event by one `snapMinutes` step and keep it inside the visible hours. In month view they move it a week.
 - Moving an event past the visible days moves the view with it, and focus follows the event.
 - `CalendarProvider` renders a polite live region (`role="status"`) that announces each move, resize and create, e.g. "Moved Team standup to Tuesday, October 27, 9:15 AM".
-- Each event is labelled with its title and time and reports its selection with `aria-pressed`. Day columns and month cells are labelled groups with the full date. Decorative parts (time axis, grid lines, drag previews) are hidden from assistive tech, and off-screen scroll buffers are `inert`.
+- Each event is labelled with its title and time and reports its selection with `aria-pressed`. Day columns, month cells and agenda days are labelled groups with the full date. Decorative parts (time axis, grid lines, drag previews) are hidden from assistive tech, and off-screen scroll buffers are `inert`.
 - With reduced motion turned on, scrolling snaps without the slide animation.
 
 The single-key shortcuts (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>…) belong to the [live demo](/docs/keyboard-shortcuts), not to the views.
@@ -116,7 +119,7 @@ The calendar has no props of its own: configure it on [`CalendarProvider`](/docs
   rows={[
     {
       name: "view",
-      type: '"day" | "week" | "month"',
+      type: '"day" | "week" | "month" | "agenda"',
       description: "Active view: pick the view component and the period label.",
     },
     {
@@ -139,12 +142,13 @@ The calendar has no props of its own: configure it on [`CalendarProvider`](/docs
     {
       name: "goToPrev",
       type: "() => void",
-      description: "Goes back one day, week or month, by view.",
+      description: "Goes back one day, week, month or agenda range, by view.",
     },
     {
       name: "goToNext",
       type: "() => void",
-      description: "Goes forward one day, week or month, by view.",
+      description:
+        "Goes forward one day, week, month or agenda range, by view.",
     },
     {
       name: "switchView",

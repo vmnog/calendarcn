@@ -22,6 +22,8 @@ export type {
   ViewSettings,
   WeekDay,
   HourSlot,
+  AgendaEntry,
+  AgendaDay,
   EventReminder,
   CalendarEvent,
   DetailedCalendarEvent,
@@ -107,6 +109,15 @@ export interface TimeGridProps extends WeekViewProps {
  * settings come from the surrounding CalendarProvider.
  */
 export interface MonthViewProps extends EventPopoverProps {
+  /** Optional className for the root element */
+  className?: string;
+}
+
+/**
+ * Props for the AgendaView component. Date, events, selection and view
+ * settings come from the surrounding CalendarProvider.
+ */
+export interface AgendaViewProps extends EventPopoverProps {
   /** Optional className for the root element */
   className?: string;
 }

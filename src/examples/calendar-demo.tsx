@@ -4,18 +4,29 @@ import * as React from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { AgendaView } from "@/components/agenda-view";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { MonthView } from "@/components/month-view";
 import { WeekView } from "@/components/week-view";
 import { Button } from "@/components/ui/button";
 import type { ViewType } from "@/components/calendar-types";
+import { AGENDA_DAYS } from "@/lib/event-utils";
 import { createSampleEvents } from "@/lib/sample-events";
 
 /** Views offered by the header's switcher, in display order */
 const VIEW_OPTIONS: { value: ViewType; label: string }[] = [
   { value: "week", label: "Week" },
   { value: "month", label: "Month" },
+  { value: "agenda", label: "Agenda" },
 ];
+
+/** What previous and next move by in each view, for their labels */
+const PERIOD_LABELS: Record<ViewType, string> = {
+  day: "day",
+  week: "week",
+  month: "month",
+  agenda: `${AGENDA_DAYS} days`,
+};
 
 export function CalendarDemo() {
   // The provider reads its initial events once, so create them once
@@ -45,7 +56,7 @@ function CalendarHeader() {
     goToNext,
     switchView,
   } = useCalendar();
-  const periodLabel = view === "month" ? "month" : "week";
+  const periodLabel = PERIOD_LABELS[view];
 
   return (
     <header className="flex items-center gap-2 border-b px-3 py-2">
@@ -109,6 +120,10 @@ function CalendarBody() {
 
   if (view === "month") {
     return <MonthView />;
+  }
+
+  if (view === "agenda") {
+    return <AgendaView />;
   }
 
   return <WeekView scrollToHour={8} />;

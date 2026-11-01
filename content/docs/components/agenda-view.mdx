@@ -1,0 +1,84 @@
+---
+title: Agenda View
+description: The coming days' events as a scrolling list.
+---
+
+<ComponentPreview name="agenda-view-demo" />
+
+Agenda View lists the events of the next 30 days, grouped by day. Days without events are skipped, except today, which always shows with its date in a badge and a line at the current time. It reads its state from the surrounding [`CalendarProvider`](/docs/components/calendar-core) like every view, and fits phones better than a time grid: there's no grid to squeeze, only rows.
+
+## Installation
+
+<InstallTabs item="agenda-view">
+
+{/* TODO: list the files and dependencies once the registry item exists. */}
+
+Requires [Calendar Core](/docs/components/calendar-core) and [Event Details](/docs/components/event-details). Manual steps land with the registry item.
+
+</InstallTabs>
+
+## Usage
+
+```tsx
+import { AgendaView } from "@/components/agenda-view";
+import { CalendarProvider } from "@/components/calendar-provider";
+
+export function Upcoming() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      {/* Agenda View fills its parent's height and scrolls inside it */}
+      <div className="h-[600px]">
+        <AgendaView />
+      </div>
+    </CalendarProvider>
+  );
+}
+```
+
+Rendered on its own, it sets the provider's view to `"agenda"` and starts on today. Previous and next move by 30 days, and the provider's `monthName` and `year` name the month the list starts in. To switch between the agenda and other views, render the view the provider is on, as the [Calendar](/docs/components/calendar) example does. Switching to the agenda starts it on today when the period on screen contains today, and on that period's first day otherwise.
+
+## Features
+
+- Each day lists its all-day events first, then timed events by start time.
+- An event that spans several days shows under each of them with "Day 2 of 3". A timed one reads "From 4 PM" on its first day, "All day" in between and "Until 1 PM" on its last.
+- Click an event, or press <Kbd>Enter</Kbd> on it, to select it and open the same details popover as the other views, below the row. [`renderEventDetails`](/docs/components/event-details#custom-details) replaces its body. Right-click opens the event's context menu.
+- [`renderEventContent`](/docs/components/calendar-core#custom-event-content) draws the inside of each row, with `placement: "agenda"`.
+- Times follow the provider's `hourCycle`, and day and month names its `locale`. Hiding weekends in the view settings hides their days here too.
+- Rows stack the title over the time on narrow screens, and line up time, title and location in columns once the agenda is wider than 36rem. It's a container query, so it follows the agenda's own width.
+- Past events are faded. A friendly empty state shows when no event falls in the 30 days.
+- Move a focused event a day with <KbdGroup><Kbd>Alt</Kbd><Kbd>←</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>→</Kbd></KbdGroup>, or a `snapMinutes` step with <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>. See [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility).
+
+<Callout title="Details on phones">
+  A 320px popover leaves little of a phone screen. The [live demo](/) turns it
+  off with `showEventPopover={false}` and opens the details in a sheet from
+  `onEventSelect` instead.
+</Callout>
+
+## API Reference
+
+### AgendaView
+
+Everything else (date, events, locale, view settings) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+
+<PropsTable
+  rows={[
+    {
+      name: "showEventPopover",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the selected event opens a details popover below its row. Turn it off when the details are shown elsewhere, such as a side panel or a sheet.",
+    },
+    {
+      name: "onEventPopoverExpand",
+      type: "() => void",
+      description:
+        "Called by the popover's expand button, e.g. to move the details into a side panel. The button is hidden when this is not set.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the root element.",
+    },
+  ]}
+/>

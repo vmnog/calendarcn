@@ -9,6 +9,7 @@ All React components for CalendarCN. Split into:
 - `time-grid.tsx` — `TimeGrid`, the hourly grid for day and week (`view` prop); `day-view.tsx` and `week-view.tsx` are one-line wrappers that fix `view`
 - `week-view-*.tsx` — the time grid's parts (all-day row, grid, time axis, now line)
 - `month-view*.tsx` — `MonthView` and its parts
+- `agenda-view.tsx` — `AgendaView`, a list of the next `AGENDA_DAYS` days' events grouped by day
 - `calendar-event-*` / `event-*` — event interactions
 - `sidebar-*` — left and right sidebars
 - `nav-*` — navigation menus
@@ -21,7 +22,7 @@ All React components for CalendarCN. Split into:
 
 ### View Sync
 
-Every view reports what it draws with `useCalendarViewSync().reportView(...)` from a layout effect (TimeGrid: its `view` and fixed `numberOfDays`; MonthView: `"month"`). The provider adopts it while `view` is uncontrolled and undoes switches the mounted view doesn't follow (full rule in the `CalendarProvider` JSDoc). For the commit before the provider adopts a view, `isProviderInSync` is false: skip slide animations and `reportVisibleDays` / `reportDisplayMonth` then, since the date change is the adoption, not navigation. A new view must follow the same pattern.
+Every view reports what it draws with `useCalendarViewSync().reportView(...)` from a layout effect (TimeGrid: its `view` and fixed `numberOfDays`; MonthView: `"month"`; AgendaView: `"agenda"`). The provider adopts it while `view` is uncontrolled and undoes switches the mounted view doesn't follow (full rule in the `CalendarProvider` JSDoc). For the commit before the provider adopts a view, `isProviderInSync` is false: skip slide animations and `reportVisibleDays` / `reportDisplayMonth` then, since the date change is the adoption, not navigation. A new view must follow the same pattern.
 
 ### Event Color Styling
 

@@ -24,6 +24,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   day: "Day",
   week: "Week",
   month: "Month",
+  agenda: "Agenda",
 };
 
 /** View mode options with their shortcut labels */
@@ -35,6 +36,7 @@ const VIEW_OPTIONS: Array<{
   { value: "day", label: "Day", shortcuts: ["1", "or", "D"] },
   { value: "week", label: "Week", shortcuts: ["0", "or", "W"] },
   { value: "month", label: "Month", shortcuts: ["M"] },
+  { value: "agenda", label: "Agenda", shortcuts: ["A"] },
 ];
 
 /** Number-of-days options for the submenu */
