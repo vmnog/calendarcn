@@ -2,6 +2,8 @@
 
 Thanks for your interest in contributing! This guide will help you get started.
 
+Everyone taking part in this project is expected to follow the [Code of Conduct](./CODE_OF_CONDUCT.md). Report unacceptable behavior to [me@vmnog.com](mailto:me@vmnog.com).
+
 ## Ways to Contribute
 
 - **Report a bug** or **suggest a feature** with an [issue template](https://github.com/vmnog/calendarcn/issues/new/choose).
