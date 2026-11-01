@@ -7,22 +7,6 @@ CalendarCN is built in the open. This page lists the planned work, roughly in pr
 
 ## Up next
 
-### Install with the shadcn CLI
-
-The calendar is being split into registry items, so you can add all of it or a single piece with `shadcn add`:
-
-| Item            | What it adds                                                                                   |
-| --------------- | ---------------------------------------------------------------------------------------------- |
-| `calendar-core` | Types, event layout math, `CalendarProvider` and `useCalendar()`                               |
-| `time-grid`     | The hour grid, all-day row, time axis and current-time line, with drag, resize and create      |
-| `day-view`      | One day on the time grid                                                                       |
-| `week-view`     | A week, or any number of days, on the time grid                                                |
-| `month-view`    | The month grid, with drag and resize                                                           |
-| `event-details` | The detail panel, popover and context menu                                                     |
-| `calendar`      | The full calendar from the demo: all of the above plus the toolbar, view switcher and commands |
-
-Once this lands, the install commands on each component page switch from "Coming soon" to working commands.
-
 ### List in the shadcn registry directory
 
 Submit CalendarCN to the shadcn/ui registry directory, so it shows up next to the other community registries and installs under the `@calendarcn` namespace.
@@ -39,12 +23,14 @@ Not scheduled yet, roughly in priority order.
 - **Large calendars**: virtualized rendering for thousands of events.
 - **Theming**: event colors as CSS variables, so you can add your own next to the seven built in, and shading for business hours.
 - **Right-to-left** layouts.
+- **Base UI styles**: support for shadcn/ui projects set up with Base UI instead of Radix.
 - **Blocks**: ready-made layouts (`calendar-01`, `calendar-02`, …) in the style of the shadcn/ui sidebar blocks.
 
 ## Recently shipped
 
 The groundwork that turned the demo into a library:
 
+- **Install with the shadcn CLI**: the calendar ships as seven registry items, from the full [Calendar](/docs/components/calendar) block down to [Calendar Core](/docs/components/calendar-core). See [Installation](/docs/installation).
 - **Shared state**: `CalendarProvider` and `useCalendar()` hold events, the view, the date and the selection, so views no longer depend on the demo page. See [Calendar Core](/docs/components/calendar-core).
 - **Standalone views**: [Day View](/docs/components/day-view), [Week View](/docs/components/week-view), [Month View](/docs/components/month-view) and [Time Grid](/docs/components/time-grid) each work with only a provider around them.
 - **Your own event type**: views are typed with your event type, and render slots let you draw event content and details yourself.

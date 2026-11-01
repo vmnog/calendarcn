@@ -1,0 +1,17 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "day-view",
+  "title": "Day View",
+  "description": "One day on the time grid.",
+  "registryDependencies": [
+    "@calendarcn/time-grid"
+  ],
+  "files": [
+    {
+      "path": "src/components/day-view.tsx",
+      "content": "\"use client\";\n\nimport type { DayViewProps } from \"./week-view-types\";\nimport { TimeGrid } from \"./time-grid\";\n\n/**\n * Single-day calendar on the hourly time grid. Date, events and selection\n * come from the surrounding CalendarProvider, which navigates by day while\n * this view is mounted.\n */\nexport function DayView(props: DayViewProps) {\n  return <TimeGrid {...props} view=\"day\" />;\n}\n",
+      "type": "registry:component"
+    }
+  ],
+  "type": "registry:component"
+}

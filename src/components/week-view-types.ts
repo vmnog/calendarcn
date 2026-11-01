@@ -3,6 +3,7 @@ import type React from "react";
 import type {
   AllDayResizeState,
   CalendarEvent,
+  CalendarProviderProps,
   EventDragState,
   EventDragVariant,
   EventResizeState,
@@ -110,6 +111,28 @@ export interface MonthViewProps extends EventPopoverProps {
   /** Optional className for the root element */
   className?: string;
 }
+
+/**
+ * Props for the Calendar block: everything CalendarProvider takes (events,
+ * view, date, configuration, render slots), plus options for its toolbar
+ * and views. `children` render inside the provider, after the calendar.
+ */
+export type CalendarProps<TEvent extends CalendarEvent = CalendarEvent> =
+  CalendarProviderProps<TEvent> & {
+    /**
+     * Hour the time grid scrolls to when it mounts (e.g. `8` for 8 AM).
+     * Defaults to 8.
+     */
+    scrollToHour?: number;
+    /**
+     * Whether the single-key shortcuts (T, J, K, D, W, M, 2-9, Escape) are
+     * on. They listen on `window`, so turn them off when several calendars
+     * share a page. Defaults to true.
+     */
+    shortcuts?: boolean;
+    /** Optional className for the root element */
+    className?: string;
+  };
 
 /**
  * Event popover props passed from a view down to its event items
