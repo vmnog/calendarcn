@@ -13,6 +13,7 @@ const ITEM_NAMES = [
   "month-view",
   "agenda-view",
   "calendar",
+  "ics",
 ];
 
 /** The parts of a built registry item the tests read */

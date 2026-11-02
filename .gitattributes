@@ -1,0 +1,2 @@
+# The .ics fixtures test CRLF and LF line endings, so keep their bytes as-is
+e2e/fixtures/*.ics -text

@@ -110,8 +110,9 @@ The calendar fills its parent's height, so give the parent one. It renders in th
 | `@calendarcn/month-view`    | The month grid, with drag and resize.                                                                         |
 | `@calendarcn/agenda-view`   | The coming days' events as a scrolling list, grouped by day.                                                  |
 | `@calendarcn/event-details` | Event chips, the detail panel, the details popover and the right-click menu.                                  |
+| `@calendarcn/ics`           | `parseIcs()` and `toIcs()`: read and write .ics files from Google Calendar, Apple Calendar and Outlook.       |
 
-Each item pulls in the ones it builds on, so `calendar` installs all of them except `day-view` and `week-view`, which it doesn't need: it renders the time grid directly.
+Each item pulls in the ones it builds on, so `calendar` installs all of them except `day-view` and `week-view`, which it doesn't need (it renders the time grid directly), and `ics`, which you add to import or export .ics files.
 
 ## Updating
 

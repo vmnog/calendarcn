@@ -17,7 +17,6 @@ Not scheduled yet, roughly in priority order.
 
 - **Time zones**: a `timeZone` prop, and a second time zone column next to the time axis.
 - **Recurring events**: expand recurrence rules into events, and edit "this event", "this and following events" or "all events".
-- **Import and sync**: ICS import and export, and an example that syncs with Google Calendar.
 - **More views**: a year view, and a resource view with people or rooms side by side.
 - **Large calendars**: virtualized rendering for thousands of events.
 - **Theming**: event colors as CSS variables, so you can add your own next to the seven built in, and shading for business hours.
@@ -27,6 +26,7 @@ Not scheduled yet, roughly in priority order.
 
 ## Recently shipped
 
+- **Import and export**: `parseIcs()` and `toIcs()` read and write .ics files from Google Calendar, Apple Calendar and Outlook, and a recipe syncs with the Google Calendar API. See [Import and Export](/docs/import-export).
 - **Agenda view**: [Agenda View](/docs/components/agenda-view) lists the next 30 days' events by day, which suits phones better than a time grid.
 - **Loading data by range**: `onVisibleRangeChange` reports the dates on screen as people navigate, so you can fetch events for them, and `loading` shows a progress bar while they arrive. See [Loading Events](/docs/loading-events).
 

@@ -31,6 +31,8 @@ interface CommandMenuProps {
   onToggleLeftSidebar: () => void;
   onToggleRightSidebar: () => void;
   onCycleTheme: () => void;
+  onImportIcs: () => void;
+  onExportIcs: () => void;
 }
 
 export function CommandMenu({
@@ -43,6 +45,8 @@ export function CommandMenu({
   onToggleLeftSidebar,
   onToggleRightSidebar,
   onCycleTheme,
+  onImportIcs,
+  onExportIcs,
 }: CommandMenuProps) {
   const runCommand = React.useCallback(
     (command: () => void) => {
@@ -87,6 +91,12 @@ export function CommandMenu({
           <CommandItem disabled>
             Create one-off scheduling link...
             {SOON_BADGE}
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(onImportIcs)}>
+            Import .ics file...
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(onExportIcs)}>
+            Export .ics file
           </CommandItem>
         </CommandGroup>
 

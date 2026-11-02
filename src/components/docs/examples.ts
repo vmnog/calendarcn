@@ -11,6 +11,7 @@ import { CustomEventContentDemo } from "@/examples/custom-event-content-demo";
 import { CustomEventDetailsDemo } from "@/examples/custom-event-details-demo";
 import { DayViewDemo } from "@/examples/day-view-demo";
 import { EventDetailsDemo } from "@/examples/event-details-demo";
+import { IcsDemo } from "@/examples/ics-demo";
 import { MonthViewDemo } from "@/examples/month-view-demo";
 import { RangeLoadingDemo } from "@/examples/range-loading-demo";
 import { TimeGridDemo } from "@/examples/time-grid-demo";
@@ -33,6 +34,7 @@ const EXAMPLES = {
   "custom-event-details-demo": CustomEventDetailsDemo,
   "day-view-demo": DayViewDemo,
   "event-details-demo": EventDetailsDemo,
+  "ics-demo": IcsDemo,
   "month-view-demo": MonthViewDemo,
   "range-loading-demo": RangeLoadingDemo,
   "time-grid-demo": TimeGridDemo,
