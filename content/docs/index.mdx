@@ -3,21 +3,22 @@ title: Introduction
 description: A calendar for React inspired by Notion Calendar. Built on shadcn/ui, installed with the shadcn CLI, and yours to edit.
 ---
 
-CalendarCN is an open-source calendar for React. It brings the feel of Notion Calendar (fast keyboard navigation, drag to move and resize, a quiet interface) to any app that uses [shadcn/ui](https://ui.shadcn.com) and Tailwind CSS.
+CalendarCN is an open-source calendar for React. It brings the feel of Notion Calendar (fast keyboard navigation, drag to move and resize, a quiet interface) to any app that uses [shadcn/ui](https://ui.shadcn.com) and Tailwind CSS. Pick the question that sounds like you to jump to its answer and the pages that go deeper.
 
-[Open the live demo](/) to try it.
+<DocsMap
+  questions={[
+    { question: "How do I install it?", href: "#install" },
+    { question: "How do I show my own events?", href: "#your-events" },
+    { question: "How do I customize it?", href: "#customize" },
+    { question: "What's coming next?", href: "#whats-next" },
+  ]}
+/>
 
-## Not a package
-
-Like shadcn/ui, CalendarCN isn't an npm dependency. The shadcn CLI copies the source into your project, so you can read it, restyle it and change how it behaves. You can add the full calendar or only the pieces you need.
-
-Start with the [Installation](/docs/installation) guide, then add the full calendar with one command:
-
-```npm
-npx shadcn add @calendarcn/calendar
-```
-
-See the [Roadmap](/docs/roadmap) for what comes next.
+<DocsMapCta title="Not sure where to start?">
+  Try the live demo: drag events to move them, drag their edges to resize, and
+  switch between day, week and month. The source is on GitHub under the MIT
+  license.
+</DocsMapCta>
 
 ## What's included
 
@@ -25,10 +26,20 @@ See the [Roadmap](/docs/roadmap) for what comes next.
 - **Direct manipulation**: drag events to move them, drag their edges to resize, click an empty slot to create one.
 - **Real calendar data**: overlapping events side by side, multi-day and all-day events, a current-time indicator.
 - **Event details**: a side panel or popover with inline editing.
-- **Keyboard first**: shortcuts for every view and a command menu. See [Keyboard shortcuts](/docs/keyboard-shortcuts).
+- **Keyboard first**: shortcuts for every view, and a command menu in the live demo. See [Keyboard shortcuts](/docs/keyboard-shortcuts).
 - **Theming**: light and dark mode with the shadcn/ui CSS variables.
 
-## Components
+## How do I install it? [#install]
+
+Like shadcn/ui, CalendarCN isn't an npm dependency. The shadcn CLI copies the source into your project, so you can read it, restyle it and change how it behaves.
+
+The [Installation](/docs/installation) guide sets up shadcn/ui and adds the `@calendarcn` registry to your `components.json`. Then add the full calendar with one command:
+
+```npm
+npx shadcn add @calendarcn/calendar
+```
+
+Or add only the pieces you need. Each one pulls in the ones it builds on.
 
 <Cards>
   <Card title="Calendar" href="/docs/components/calendar">
@@ -53,6 +64,86 @@ See the [Roadmap](/docs/roadmap) for what comes next.
   <Card title="Event Details" href="/docs/components/event-details">
     Event chips, and the panel, popover and menu for viewing and editing an
     event.
+  </Card>
+</Cards>
+
+## How do I show my own events? [#your-events]
+
+Pass them in. An event needs an `id`, a `title`, a `start` and an `end`. Give the calendar `defaultEvents` and it owns them, or pass `events` with `onEventsChange` and your app does: every drag, resize, create and edit comes back as the full next list.
+
+```tsx
+const [events, setEvents] = React.useState(initialEvents);
+
+<Calendar events={events} onEventsChange={setEvents} />;
+```
+
+<Cards>
+  <Card
+    title="Controlled or uncontrolled"
+    href="/docs/components/calendar-core#controlled-or-uncontrolled"
+  >
+    Who owns the events, and `onEventCreate`, `onEventUpdate` and
+    `onEventSelect` for saving one change at a time.
+  </Card>
+  <Card title="Loading Events" href="/docs/loading-events">
+    Fetch events for the dates on screen as people navigate, with a loading bar
+    while they arrive.
+  </Card>
+  <Card
+    title="Event fields"
+    href="/docs/components/calendar-core#calendarevent"
+  >
+    The four required fields, plus `isAllDay` for the all-day row and `color`
+    for one of the seven event colors.
+  </Card>
+  <Card title="Typed events" href="/docs/components/calendar-core#typed-events">
+    Extend `CalendarEvent` with your own fields, and every callback and renderer
+    gets your type back.
+  </Card>
+</Cards>
+
+## How do I customize it? [#customize]
+
+The CLI copies the source into your project, so you can change the toolbar or the layout right in `components/calendar.tsx`. Before you edit it, check the props: many changes are one prop away.
+
+<Cards>
+  <Card title="Settings" href="/docs/components/calendar-core#configuration">
+    A 24-hour clock, a date-fns locale, the first day of the week, the visible
+    hours and the snap step are plain props.
+  </Card>
+  <Card
+    title="Event content"
+    href="/docs/components/calendar-core#custom-event-content"
+  >
+    `renderEventContent` draws inside each event. `renderEventDetails` replaces
+    the details popover.
+  </Card>
+  <Card title="Theming" href="/docs/components/calendar#theming">
+    Your shadcn/ui theme, plus `--event-{color}` tokens for the seven event
+    colors in light and dark mode.
+  </Card>
+  <Card title="Build your own" href="/docs/components/calendar#build-your-own">
+    Compose your own header with `useCalendar()` around any view.
+  </Card>
+</Cards>
+
+The single-key shortcuts can be turned off with `shortcuts={false}` or changed: see [Keyboard shortcuts](/docs/keyboard-shortcuts#use-them-in-your-own-calendar).
+
+## What's coming next? [#whats-next]
+
+CalendarCN is built in the open, and plans change as people use it. Up next is listing CalendarCN in the shadcn/ui registry directory, next to the other community registries. Later plans include time zones, recurring events, a year view and a resource view, and virtualized rendering for thousands of events.
+
+<Cards>
+  <Card title="Roadmap" href="/docs/roadmap">
+    Everything that's planned, roughly in priority order, and what shipped
+    recently.
+  </Card>
+  <Card
+    title="Suggest something"
+    href="https://github.com/vmnog/calendarcn/issues/new"
+  >
+    Missing something you need? Open an issue on GitHub and describe what you're
+    building.
   </Card>
 </Cards>
 

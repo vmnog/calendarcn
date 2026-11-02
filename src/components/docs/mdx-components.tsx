@@ -10,6 +10,7 @@ import type { MDXComponents } from "mdx/types";
 import { cn } from "@/lib/utils";
 import { ComponentPreview } from "@/components/docs/component-preview";
 import { DocsPre } from "@/components/docs/docs-code-block";
+import { DocsMap, DocsMapCta } from "@/components/docs/docs-map";
 import { InstallTabs } from "@/components/docs/install-tabs";
 import { PropsTable } from "@/components/docs/props-table";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
@@ -65,6 +66,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Kbd: DocsKbd,
     KbdGroup: DocsKbdGroup,
     ComponentPreview,
+    DocsMap,
+    DocsMapCta,
     InstallTabs,
     PropsTable,
     ...components,
