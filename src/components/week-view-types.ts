@@ -23,6 +23,8 @@ export type {
   ViewSettings,
   WeekDay,
   HourSlot,
+  AgendaEntry,
+  AgendaDay,
   EventReminder,
   CalendarEvent,
   DetailedCalendarEvent,
@@ -114,6 +116,15 @@ export interface MonthViewProps extends EventPopoverProps {
 }
 
 /**
+ * Props for the AgendaView component. Date, events, selection and view
+ * settings come from the surrounding CalendarProvider.
+ */
+export interface AgendaViewProps extends EventPopoverProps {
+  /** Optional className for the root element */
+  className?: string;
+}
+
+/**
  * Props for the Calendar block: everything CalendarProvider takes (events,
  * view, date, configuration, render slots), plus options for its toolbar
  * and views. `children` render inside the provider, after the calendar.
@@ -126,7 +137,7 @@ export type CalendarProps<TEvent extends CalendarEvent = CalendarEvent> =
      */
     scrollToHour?: number;
     /**
-     * Whether the single-key shortcuts (T, J, K, D, W, M, 2-9, Escape) are
+     * Whether the single-key shortcuts (T, J, K, D, W, M, A, 2-9, Escape) are
      * on. They listen on `window`, so turn them off when several calendars
      * share a page. Defaults to true.
      */

@@ -178,6 +178,14 @@ export function CommandMenu({
               <Kbd>M</Kbd>
             </KbdGroup>
           </CommandItem>
+          <CommandItem
+            onSelect={() => runCommand(() => onSwitchView("agenda"))}
+          >
+            Display agenda view
+            <KbdGroup className="ml-auto">
+              <Kbd>A</Kbd>
+            </KbdGroup>
+          </CommandItem>
           <CommandItem disabled>
             Set number of displayed days...
             {SOON_BADGE}

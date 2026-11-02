@@ -60,7 +60,7 @@ Display and interaction settings are plain props: a 24-hour clock, a [date-fns l
 
 <ComponentPreview name="custom-event-content-demo" />
 
-`renderEventContent` replaces what's drawn inside each event. The calendar keeps drawing the box (position, color, selection, drag and resize handles), so the renderer only returns the inside. `placement` says where the event is drawn and how much room it has: a timed block in the hour grid (`"time-grid"`, as tall as the event), a 24px bar in the all-day row (`"all-day"`), or a 20px line in month view (`"month-item"` and `"month-bar"`). `isCompact` is true wherever there's room for one line only.
+`renderEventContent` replaces what's drawn inside each event. The calendar keeps drawing the box (position, color, selection, drag and resize handles), so the renderer only returns the inside. `placement` says where the event is drawn and how much room it has: a timed block in the hour grid (`"time-grid"`, as tall as the event), a 24px bar in the all-day row (`"all-day"`), a 20px line in month view (`"month-item"` and `"month-bar"`), or a row as wide as the [agenda](/docs/components/agenda-view) (`"agenda"`). `isCompact` is true wherever there's room for one line only.
 
 To replace the details popover instead, see [Event Details](/docs/components/event-details#custom-details).
 
@@ -120,12 +120,12 @@ interface Meeting extends CalendarEvent {
     },
     {
       name: "view",
-      type: '"day" | "week" | "month"',
+      type: '"day" | "week" | "month" | "agenda"',
       description: "Active view (controlled).",
     },
     {
       name: "defaultView",
-      type: '"day" | "week" | "month"',
+      type: '"day" | "week" | "month" | "agenda"',
       default: '"week"',
       description: "Initial view when `view` is not controlled.",
     },
@@ -143,7 +143,7 @@ interface Meeting extends CalendarEvent {
       name: "defaultDate",
       type: "Date",
       description:
-        "Initial first day when `date` is not controlled. Defaults to today in day view and the start of this week otherwise. Without `date` or `defaultDate`, nothing renders until hydration finishes.",
+        "Initial first day when `date` is not controlled. Defaults to today in day and agenda views and the start of this week otherwise. Without `date` or `defaultDate`, nothing renders until hydration finishes.",
     },
     {
       name: "onDateChange",
@@ -291,7 +291,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     { name: "events", type: "TEvent[]", description: "All events." },
     {
       name: "view",
-      type: '"day" | "week" | "month"',
+      type: '"day" | "week" | "month" | "agenda"',
       description: "Active view.",
     },
     {
@@ -319,7 +319,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "visibleDays",
       type: "Date[]",
       description:
-        "Days the day or week view shows right now, updated live while it scrolls sideways. Empty in month view.",
+        "Days the day or week view shows right now, updated live while it scrolls sideways, or the 30 days the agenda lists. Empty in month view.",
     },
     {
       name: "displayMonth",
@@ -331,7 +331,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "visibleRange",
       type: "VisibleRange",
       description:
-        "Dates the view draws, `end` exclusive: the days on screen in day and week view, the whole six-week grid in month view. A sideways scroll moves it once it snaps.",
+        "Dates the view draws, `end` exclusive: the days on screen in day and week view, the whole six-week grid in month view, the 30 days the agenda lists. A sideways scroll moves it once it snaps.",
     },
     {
       name: "loading",
@@ -378,7 +378,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "goToPrev",
       type: "() => void",
       description:
-        "Goes back one period: a day, a week (or `numberOfDays`) or a month.",
+        "Goes back one period: a day, a week (or `numberOfDays`), a month or the agenda's 30 days.",
     },
     {
       name: "goToNext",
@@ -542,12 +542,12 @@ Passed to `renderEventContent`.
     },
     {
       name: "view",
-      type: '"day" | "week" | "month"',
+      type: '"day" | "week" | "month" | "agenda"',
       description: "View the event is drawn in.",
     },
     {
       name: "placement",
-      type: '"time-grid" | "all-day" | "month-item" | "month-bar"',
+      type: '"time-grid" | "all-day" | "month-item" | "month-bar" | "agenda"',
       description: "Where the event is drawn, which sets how much room it has.",
     },
     {
@@ -581,7 +581,7 @@ Passed to `renderEventContent`.
       name: "timeLabel",
       type: "string",
       description:
-        'Time the default content shows: the range in the hour grid ("10–11 AM"), the start in month cells and for timed all-day-row events ("9 AM"). Empty where the default shows no time.',
+        'Time the default content shows: the range in the hour grid and the agenda ("10–11 AM", "All day"), the start in month cells and for timed all-day-row events ("9 AM"). Empty where the default shows no time.',
     },
   ]}
 />

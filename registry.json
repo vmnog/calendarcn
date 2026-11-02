@@ -342,14 +342,33 @@
       ]
     },
     {
+      "name": "agenda-view",
+      "type": "registry:component",
+      "title": "Agenda View",
+      "description": "The coming days' events as a scrolling list, grouped by day.",
+      "dependencies": ["date-fns", "lucide-react"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "@calendarcn/event-details",
+        "popover"
+      ],
+      "files": [
+        {
+          "path": "src/components/agenda-view.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
       "name": "calendar",
       "type": "registry:block",
       "title": "Calendar",
-      "description": "The full calendar: a toolbar with the view switcher, today and previous/next, over day, week and month views, with keyboard shortcuts.",
+      "description": "The full calendar: a toolbar with the view switcher, today and previous/next, over day, week, month and agenda views, with keyboard shortcuts.",
       "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/time-grid",
         "@calendarcn/month-view",
+        "@calendarcn/agenda-view",
         "button",
         "dropdown-menu",
         "kbd"

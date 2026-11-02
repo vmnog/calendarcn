@@ -129,6 +129,23 @@ test("view switches report the day and the whole month grid", async ({
   await expect(logEntries(page)).toHaveCount(4);
 });
 
+test("the agenda reports the 30 days it lists", async ({ page }) => {
+  await waitForLoaded(page);
+
+  // This week contains today, so the agenda starts on it
+  await demo(page)
+    .getByRole("group", { name: "View" })
+    .getByRole("button", { name: "Agenda" })
+    .click();
+  await expectLatestRange(page, {
+    start: "2026-06-04",
+    end: "2026-07-04",
+    status: "loading",
+  });
+  await expect(loadingBar(page)).toBeVisible();
+  await waitForLoaded(page);
+});
+
 test("a sideways scroll reports once, after it snaps", async ({ page }) => {
   await waitForLoaded(page);
 

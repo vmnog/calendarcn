@@ -11,6 +11,7 @@ const ITEM_NAMES = [
   "day-view",
   "week-view",
   "month-view",
+  "agenda-view",
   "calendar",
   "ics",
 ];
