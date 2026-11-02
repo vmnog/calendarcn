@@ -48,6 +48,7 @@
      */
     --docs-accent: oklch(0.53 0.2 26.8);
     --docs-accent-line: oklch(0.53 0.2 26.8 / 0.35);
+    --docs-accent-wash: oklch(0.53 0.2 26.8 / 0.07);
     --docs-cta: oklch(0.56 0.2 26.8);
     --docs-cta-hover: oklch(0.51 0.2 26.8);
   }
@@ -69,6 +70,7 @@
 
     --docs-accent: oklch(0.72 0.16 26.8);
     --docs-accent-line: oklch(0.72 0.16 26.8 / 0.35);
+    --docs-accent-wash: oklch(0.72 0.16 26.8 / 0.07);
   }
 
   body:has(#nd-notebook-layout) * {
@@ -129,6 +131,37 @@ body:has(#nd-notebook-layout) :is(a, button).docs-surface {
 
 body:has(#nd-notebook-layout) :is(a, button).docs-surface:hover {
   box-shadow: var(--shadow-border-hover);
+}
+
+/*
+ * Question cards on the Introduction's map (`DocsMap`): the surface ring,
+ * darkening to 20% foreground on hover. The suggested first question is the
+ * brand red instead: a 35% accent ring on a 7% wash.
+ */
+body:has(#nd-notebook-layout) .docs-map-card {
+  box-shadow: var(--shadow-border);
+  transition-property: background-color, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+@media (hover: hover) {
+  body:has(#nd-notebook-layout) .docs-map-card:not([data-highlighted]):hover {
+    box-shadow: 0 0 0 1px
+      color-mix(in oklab, var(--color-fd-foreground) 20%, transparent);
+  }
+}
+
+body:has(#nd-notebook-layout) .docs-map-card[data-highlighted] {
+  background-color: var(--docs-accent-wash);
+  box-shadow: 0 0 0 1px var(--docs-accent-line);
+}
+
+@media (hover: hover) {
+  body:has(#nd-notebook-layout) .docs-map-card[data-highlighted]:hover {
+    box-shadow: 0 0 0 1px
+      color-mix(in oklab, var(--docs-accent) 60%, transparent);
+  }
 }
 
 /* Code block tabs are the surface; their code blocks sit flush inside. */
