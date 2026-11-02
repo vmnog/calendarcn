@@ -44,6 +44,7 @@ import { WeekViewGrid } from "./week-view-grid";
 import { WeekViewTimeAxis } from "./week-view-time-axis";
 import { WeekViewTimeIndicator } from "./week-view-time-indicator";
 import { CalendarPopoverBoundaryProvider } from "./calendar-popover-context";
+import { CalendarLoadingBar } from "./calendar-loading-bar";
 
 /** Minimum height of each hour row in pixels */
 const MIN_HOUR_HEIGHT = 48;
@@ -172,6 +173,7 @@ export function TimeGrid({
     goToNext,
     numberOfDays: providerNumberOfDays,
     weekStartsOn,
+    loading,
   } = useCalendar();
   const { snapMinutes, dayStartHour, dayEndHour, hourCycle, locale } =
     useCalendarConfig();
@@ -484,6 +486,7 @@ export function TimeGrid({
       <div
         ref={calendarBoundaryRef}
         className={cn("flex h-full flex-col", className)}
+        aria-busy={loading || undefined}
         onKeyDown={handleEventKeyDown}
         onClick={(e) => {
           const target = e.target as HTMLElement;
@@ -492,7 +495,7 @@ export function TimeGrid({
         }}
       >
         {/* Header - day columns and all-day row with synchronized scroll */}
-        <div className="flex-shrink-0">
+        <div className="relative flex-shrink-0">
           <div
             ref={(el) => {
               (
@@ -543,6 +546,8 @@ export function TimeGrid({
               highlightedDate={highlightedDate}
             />
           </div>
+          {/* Under the day columns, along the header's bottom border */}
+          {loading && <CalendarLoadingBar className="left-16" />}
         </div>
 
         {/* Scrollable grid area \u2014 also serves as the collision boundary for popovers */}

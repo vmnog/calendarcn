@@ -32,6 +32,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/calendar-loading-bar.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/hooks/use-calendar-shortcuts.ts",
           "type": "registry:hook"
         },
@@ -147,10 +151,27 @@
         ".column-highlight": {
           "animation": "column-highlight-fade 2s ease-out forwards"
         },
+        "@keyframes calendar-loading-slide": {
+          "from": {
+            "transform": "translateX(-100%)"
+          },
+          "to": {
+            "transform": "translateX(300%)"
+          }
+        },
+        ".calendar-loading-bar": {
+          "width": "33.333%",
+          "animation": "calendar-loading-slide 1.2s cubic-bezier(0.65, 0, 0.35, 1) infinite"
+        },
         "@media (prefers-reduced-motion: reduce)": {
           ".column-highlight": {
             "animation": "none",
             "background-color": "#602c2b"
+          },
+          ".calendar-loading-bar": {
+            "width": "100%",
+            "opacity": "0.5",
+            "animation": "none"
           }
         }
       }

@@ -267,6 +267,19 @@ export interface NewEventRange {
 }
 
 /**
+ * Dates a view draws, passed to `onVisibleRangeChange` and returned as
+ * `visibleRange` by `useCalendar()`. Both are local midnights and `end` is
+ * exclusive, so an event is in range when `event.start < end` and
+ * `event.end > start`.
+ */
+export interface VisibleRange {
+  /** Midnight that starts the first visible day */
+  start: Date;
+  /** Midnight after the last visible day (exclusive) */
+  end: Date;
+}
+
+/**
  * A calendar events can belong to (e.g. "Work"), listed by the event
  * context menu's "Block on calendar" submenu
  */
@@ -490,6 +503,18 @@ interface CalendarProviderBaseProps<
   onEventUpdate?: (event: TEvent) => void;
   /** Called whenever an event is selected (clicked, or just created) */
   onEventSelect?: (eventId: string) => void;
+  /**
+   * Called with the dates the view draws: once after it mounts, then each
+   * time they change (navigation, a view switch, a settled scroll). Never
+   * twice in a row for the same range. Use it to fetch events by range.
+   */
+  onVisibleRangeChange?: (range: VisibleRange) => void;
+  /**
+   * Shows a thin progress bar under the day headers of every view, e.g.
+   * while events for a new range load. The calendar stays usable.
+   * Defaults to false
+   */
+  loading?: boolean;
   children?: React.ReactNode;
 }
 
@@ -531,6 +556,15 @@ export interface CalendarContextValue<
    * scroll), or `null` before month view has rendered
    */
   displayMonth: Date | null;
+  /**
+   * Dates the view draws (end exclusive): the visible days in day and week
+   * view, the whole six-week grid in month view, trimmed to the first and
+   * last weekday when month view hides weekends. Follows settled
+   * navigation, so a horizontal scroll moves it once it snaps.
+   */
+  visibleRange: VisibleRange;
+  /** Whether the provider's `loading` prop is set */
+  loading: boolean;
   /** ID of the selected event, or `null` */
   selectedEventId: string | null;
   /** The selected event, or `null` when nothing (or a missing event) is selected */

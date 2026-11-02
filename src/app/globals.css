@@ -261,3 +261,27 @@ html.dark,
     background-color: #602c2b;
   }
 }
+
+/* CalendarLoadingBar: a third-wide segment sliding across the track */
+@keyframes calendar-loading-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.calendar-loading-bar {
+  width: 33.333%;
+  animation: calendar-loading-slide 1.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* Reduced motion: a still bar across the whole track instead of the slide */
+@media (prefers-reduced-motion: reduce) {
+  .calendar-loading-bar {
+    width: 100%;
+    opacity: 0.5;
+    animation: none;
+  }
+}

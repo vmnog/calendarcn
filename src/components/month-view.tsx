@@ -22,13 +22,18 @@ import { useMonthEventDrag } from "@/hooks/use-month-event-drag";
 import { useMonthEventResize } from "@/hooks/use-month-event-resize";
 import { useVerticalScroll } from "@/hooks/use-vertical-scroll";
 import { useEventKeyboard } from "@/hooks/use-event-keyboard";
-import { generateConsecutiveWeeks, generateWeekRow } from "@/lib/event-utils";
+import {
+  MONTH_VIEW_ROWS,
+  generateConsecutiveWeeks,
+  generateWeekRow,
+} from "@/lib/event-utils";
 import { isMultiDayEvent } from "@/lib/event-utils";
 import { MonthViewGrid } from "./month-view-grid";
 import { MonthViewEventBar } from "./month-view-event-bar";
 import { MonthViewEventItem } from "./month-view-event-item";
 import { EventContextMenu } from "./event-context-menu";
 import { CalendarPopoverBoundaryProvider } from "./calendar-popover-context";
+import { CalendarLoadingBar } from "./calendar-loading-bar";
 import {
   useCalendar,
   useCalendarConfig,
@@ -68,6 +73,7 @@ export function MonthView({
     updateEvent,
     goToDate,
     showDay,
+    loading,
   } = useCalendar();
   const { locale } = useCalendarConfig();
   const { reportView, reportDisplayMonth, closeEventPopover } =
@@ -86,12 +92,14 @@ export function MonthView({
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
-  /** Number of week rows visible in the viewport */
-  const VISIBLE_ROWS = 6;
-
   const weekRows = useMemo(
     () =>
-      generateConsecutiveWeeks(currentDate, VISIBLE_ROWS, weekStartsOn, locale),
+      generateConsecutiveWeeks(
+        currentDate,
+        MONTH_VIEW_ROWS,
+        weekStartsOn,
+        locale,
+      ),
     [currentDate, weekStartsOn, locale],
   );
 
@@ -259,7 +267,7 @@ export function MonthView({
     rowHeight > 0 ? Math.ceil(Math.abs(scrollOffset) / rowHeight) : 0;
   const dynamicBuffer = BUFFER_ROWS + extraScrollRows;
 
-  // Build buffered week rows: dynamicBuffer above + VISIBLE_ROWS + dynamicBuffer below
+  // Build buffered week rows: dynamicBuffer above + MONTH_VIEW_ROWS + dynamicBuffer below
   const bufferedWeekRows = useMemo(() => {
     if (weekRows.length === 0) return weekRows;
     const rows: MonthWeekRow[] = [];
@@ -333,13 +341,14 @@ export function MonthView({
       <div
         ref={boundaryRef}
         className={cn("flex h-full flex-col overflow-hidden", className)}
+        aria-busy={loading || undefined}
         onClick={handleRootClick}
         onKeyDown={handleEventKeyDown}
       >
         {/* Day-of-week header — right-aligned to match day number positions */}
         <div
           ref={headerRef}
-          className="border-b border-border bg-background"
+          className="relative border-b border-border bg-background"
           style={{ display: "grid", gridTemplateColumns }}
         >
           {showWeekNumbers && (
@@ -355,6 +364,7 @@ export function MonthView({
               {name}
             </div>
           ))}
+          {loading && <CalendarLoadingBar />}
         </div>
 
         {/* Month grid — fills remaining space */}
