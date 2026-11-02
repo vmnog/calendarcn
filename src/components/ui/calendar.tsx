@@ -300,7 +300,10 @@ function CalendarDayButton({
         "absolute inset-x-0 -inset-y-px isolate flex size-auto items-center justify-center rounded-none leading-none font-normal transition-none outline-none hover:bg-transparent dark:hover:bg-transparent focus-visible:outline-none focus-visible:ring-0 [&>span]:text-xs [&>span]:opacity-70",
         "text-foreground data-[outside=true]:text-muted-foreground/40 data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:text-accent-foreground data-[range-start=true]:text-primary-foreground data-[range-end=true]:text-primary-foreground data-[today=true]:hover:!text-primary-foreground",
         // Visible box: a size-7 ::before centered in the hit area, behind the label
-        "before:absolute before:inset-0 before:-z-10 before:m-auto before:size-7 before:rounded-sm hover:before:bg-calendar-day-hover dark:hover:before:bg-accent/50 data-[in-view=true]:hover:before:bg-calendar-day-hover-current-week data-[selected-single=true]:before:bg-primary data-[range-middle=true]:before:bg-accent data-[range-start=true]:before:bg-primary data-[range-end=true]:before:bg-primary data-[range-end=true]:before:rounded-sm data-[range-end=true]:before:rounded-r-md data-[range-middle=true]:before:rounded-none data-[range-start=true]:before:rounded-sm data-[range-start=true]:before:rounded-l-md data-[today=true]:hover:before:!bg-primary",
+        "before:absolute before:inset-0 before:-z-10 before:m-auto before:size-7 before:rounded-sm hover:before:bg-calendar-day-hover data-[in-view=true]:hover:before:bg-calendar-day-hover-current-week data-[selected-single=true]:before:bg-primary data-[range-middle=true]:before:bg-accent data-[range-start=true]:before:bg-primary data-[range-end=true]:before:bg-primary data-[range-end=true]:before:rounded-sm data-[range-end=true]:before:rounded-r-md data-[range-middle=true]:before:rounded-none data-[range-start=true]:before:rounded-sm data-[range-start=true]:before:rounded-l-md data-[today=true]:hover:before:!bg-primary",
+        // Keyboard focus ring on the visible box, not the hit area: a 2px
+        // inset border-ring, like EVENT_FOCUS_RING_CLASS
+        "focus-visible:before:border-2 focus-visible:before:border-ring",
         defaultClassNames.day,
         className,
       )}
