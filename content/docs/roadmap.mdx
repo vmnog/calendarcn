@@ -18,7 +18,6 @@ Not scheduled yet, roughly in priority order.
 - **Agenda view**: a scrolling list of upcoming events. It also suits phones better than a time grid.
 - **Time zones**: a `timeZone` prop, and a second time zone column next to the time axis.
 - **Recurring events**: expand recurrence rules into events, and edit "this event", "this and following events" or "all events".
-- **Loading data by range**: a callback when the visible dates change, for fetching events as people navigate, and a loading state.
 - **Import and sync**: ICS import and export, and an example that syncs with Google Calendar.
 - **More views**: a year view, and a resource view with people or rooms side by side.
 - **Large calendars**: virtualized rendering for thousands of events.
@@ -28,6 +27,8 @@ Not scheduled yet, roughly in priority order.
 - **Blocks**: ready-made layouts (`calendar-01`, `calendar-02`, …) in the style of the shadcn/ui sidebar blocks.
 
 ## Recently shipped
+
+- **Loading data by range**: `onVisibleRangeChange` reports the dates on screen as people navigate, so you can fetch events for them, and `loading` shows a progress bar while they arrive. See [Loading Events](/docs/loading-events).
 
 The groundwork that turned the demo into a library:
 
