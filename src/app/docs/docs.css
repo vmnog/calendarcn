@@ -26,12 +26,49 @@
     --shadow-border-hover:
       0 0 0 1px oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.08),
       0 2px 4px 0 oklch(0 0 0 / 0.06);
+
+    /*
+     * Sidebar navigation. Text colors clear 4.5:1 on the sidebar and on the
+     * drawer. Fills are translucent so a row reads the same on both.
+     */
+    --docs-nav-label: #6e6d6a;
+    --docs-nav-item: #5e5d59;
+    --docs-nav-item-hover: oklch(0 0 0 / 0.04);
+    --docs-nav-item-active: oklch(0.642 0.206 26.8 / 0.09);
+    --docs-nav-border: oklch(0 0 0 / 0.06);
+    --docs-nav-peek-shadow:
+      0 0 0 1px oklch(0 0 0 / 0.06), 0 4px 8px -4px oklch(0 0 0 / 0.08),
+      0 12px 32px -8px oklch(0 0 0 / 0.16);
+    --docs-nav-overlay: oklch(0 0 0 / 0.16);
+
+    /*
+     * The brand red (`--primary`, oklch 0.642 0.206 26.8) as text, darkened
+     * here and lightened in dark mode so it clears 4.5:1 on its own tint. The
+     * CTA fill is deep enough for white text in both themes.
+     */
+    --docs-accent: oklch(0.53 0.2 26.8);
+    --docs-accent-line: oklch(0.53 0.2 26.8 / 0.35);
+    --docs-cta: oklch(0.56 0.2 26.8);
+    --docs-cta-hover: oklch(0.51 0.2 26.8);
   }
 
   /* Depth shadows don't read on dark backgrounds, so dark mode is the ring alone. */
   .dark body:has(#nd-notebook-layout) {
     --shadow-border: 0 0 0 1px oklch(1 0 0 / 0.08);
     --shadow-border-hover: 0 0 0 1px oklch(1 0 0 / 0.13);
+
+    --docs-nav-label: #8a8a8a;
+    --docs-nav-item: #a1a1a1;
+    --docs-nav-item-hover: oklch(1 0 0 / 0.05);
+    --docs-nav-item-active: oklch(0.642 0.206 26.8 / 0.14);
+    --docs-nav-border: oklch(1 0 0 / 0.06);
+    /* The floating peek panel still needs a dark lift off the page. */
+    --docs-nav-peek-shadow:
+      0 0 0 1px oklch(1 0 0 / 0.08), 0 12px 32px -8px oklch(0 0 0 / 0.6);
+    --docs-nav-overlay: oklch(0 0 0 / 0.4);
+
+    --docs-accent: oklch(0.72 0.16 26.8);
+    --docs-accent-line: oklch(0.72 0.16 26.8 / 0.35);
   }
 
   body:has(#nd-notebook-layout) * {
@@ -70,15 +107,6 @@
    */
   body:has(#nd-notebook-layout) td:first-child > code {
     white-space: nowrap;
-  }
-
-  /*
-   * Fumadocs only names the transitioned properties on the collapsed sidebar,
-   * which leaves the expanded one on `transition-property: all`. Use the same
-   * list in both states.
-   */
-  #nd-sidebar {
-    transition-property: width, inset-block, translate, background-color;
   }
 }
 
@@ -206,4 +234,195 @@ body:has(#nd-notebook-layout) :is(button[data-search-full], #toc-title) > svg {
 /* The TOC progress ring only animates its dash offset (Fumadocs uses `transition-all`). */
 body:has(#nd-notebook-layout) [data-toc-popover-trigger] circle {
   transition-property: stroke-dashoffset;
+}
+
+/*
+ * Sidebar navigation: the desktop sidebar (`#nd-sidebar`) and the phone
+ * drawer (`#nd-sidebar-mobile`). Small mono section labels, compact rows, and
+ * the current page in the brand red on its own tint (`--docs-accent` keeps
+ * that text above 4.5:1; Fumadocs' `--primary` on the tint only reached 3:1).
+ */
+body:has(#nd-notebook-layout)
+  :is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  p {
+  margin-block: 20px 0;
+  padding-block: 6px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--docs-nav-label);
+}
+
+/* A hairline between the sidebar and the page, as on the header's bottom edge. */
+body:has(#nd-notebook-layout) #nd-sidebar[data-collapsed="false"] {
+  border-inline-end: 1px solid var(--docs-nav-border);
+}
+
+/*
+ * The Demo link (below `lg`) sits above the first label like a section of its
+ * own, so its gap matches the one between sections. Above `lg` it is hidden
+ * and the first label starts the list.
+ */
+body:has(#nd-notebook-layout)
+  :is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  a[class~="lg:hidden"] {
+  margin-bottom: 0;
+}
+
+@media (width >= 64rem) {
+  body:has(#nd-notebook-layout)
+    #nd-sidebar
+    [data-radix-scroll-area-viewport]
+    a[class~="lg:hidden"]
+    + p {
+    margin-top: 0;
+  }
+}
+
+body:has(#nd-notebook-layout)
+  :is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  a[data-active] {
+  padding-block: 6px;
+  border-radius: var(--radius-md);
+  color: var(--docs-nav-item);
+}
+
+@media (hover: hover) {
+  body:has(#nd-notebook-layout)
+    :is(#nd-sidebar, #nd-sidebar-mobile)
+    [data-radix-scroll-area-viewport]
+    a[data-active="false"]:hover {
+    background-color: var(--docs-nav-item-hover);
+    color: var(--color-fd-foreground);
+  }
+}
+
+body:has(#nd-notebook-layout)
+  :is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  a[data-active="true"] {
+  background-color: var(--docs-nav-item-active);
+  color: var(--docs-accent);
+  font-weight: 500;
+}
+
+/* Inset, so the ring never touches the next row or gets cut off by the scroll mask. */
+body:has(#nd-notebook-layout)
+  :is(#nd-sidebar, #nd-sidebar-mobile)
+  [data-radix-scroll-area-viewport]
+  a[data-active]:focus-visible {
+  outline: 2px solid var(--color-fd-ring);
+  outline-offset: -2px;
+}
+
+/* The drawer is for thumbs: 40px rows, and labels sized up with its 15px text. */
+body:has(#nd-notebook-layout)
+  #nd-sidebar-mobile
+  [data-radix-scroll-area-viewport]
+  a[data-active] {
+  padding-block: 9px;
+}
+
+body:has(#nd-notebook-layout)
+  #nd-sidebar-mobile
+  [data-radix-scroll-area-viewport]
+  p {
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+}
+
+/*
+ * The drawer's close button lands exactly on the header button that opened it,
+ * which sits below the announcement bar (`--fd-banner-height`).
+ */
+body:has(#nd-notebook-layout)
+  #nd-sidebar-mobile
+  button[aria-label="Close Sidebar"] {
+  margin-block-start: calc(var(--fd-banner-height, 0px) - 5.5px);
+  margin-inline-end: -6px;
+  padding: 8px;
+}
+
+/*
+ * Scroll fade: a 32px fade on an edge only while more items sit past it, so a
+ * list that fits shows no fade at all. Browsers without scroll-driven
+ * animations keep Fumadocs' fixed 12px mask.
+ */
+@property --docs-nav-fade-top {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --docs-nav-fade-bottom {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes docs-nav-fade-top {
+  from {
+    --docs-nav-fade-top: 0px;
+  }
+  to {
+    --docs-nav-fade-top: 32px;
+  }
+}
+
+@keyframes docs-nav-fade-bottom {
+  from {
+    --docs-nav-fade-bottom: 32px;
+  }
+  to {
+    --docs-nav-fade-bottom: 0px;
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  body:has(#nd-notebook-layout)
+    :is(#nd-sidebar, #nd-sidebar-mobile)
+    [data-radix-scroll-area-viewport] {
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      #000 var(--docs-nav-fade-top),
+      #000 calc(100% - var(--docs-nav-fade-bottom)),
+      transparent
+    );
+    animation:
+      docs-nav-fade-top linear both,
+      docs-nav-fade-bottom linear both;
+    animation-timeline: scroll(self), scroll(self);
+    animation-range:
+      0 32px,
+      calc(100% - 32px) 100%;
+  }
+}
+
+/*
+ * Fumadocs only names the transitioned properties on the collapsed sidebar,
+ * which leaves the expanded one on `transition-property: all`. Use one list in
+ * every state, with `box-shadow` added for the collapsed peek below.
+ */
+body:has(#nd-notebook-layout) #nd-sidebar {
+  transition-property:
+    width, inset-block, translate, background-color, box-shadow;
+}
+
+/* Collapsed peek: a floating panel, so a ring plus lift instead of a border. */
+body:has(#nd-notebook-layout) #nd-sidebar[data-collapsed="true"] {
+  border-color: transparent;
+}
+
+body:has(#nd-notebook-layout) #nd-sidebar[data-hovered="true"] {
+  box-shadow: var(--docs-nav-peek-shadow);
+}
+
+/* Drawer backdrop: dim the page as well as blurring it. */
+body:has(#nd-notebook-layout) div[data-state]:has(+ #nd-sidebar-mobile) {
+  background-color: var(--docs-nav-overlay);
 }

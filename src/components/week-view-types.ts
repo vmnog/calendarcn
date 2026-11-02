@@ -36,6 +36,7 @@ export type {
   AllDayResizeState,
   NewEventRange,
   PointerGestureStart,
+  VisibleRange,
   CalendarInfo,
   CalendarConfig,
   EventContentPlacement,

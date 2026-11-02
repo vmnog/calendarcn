@@ -18,6 +18,7 @@ import { Popover, PopoverAnchor } from "@/components/ui/popover";
 import { EventContextMenu } from "./event-context-menu";
 import { EventDetailPopover } from "./event-detail-popover";
 import { CalendarPopoverBoundaryProvider } from "./calendar-popover-context";
+import { CalendarLoadingBar } from "./calendar-loading-bar";
 import {
   EventContentSlot,
   useCalendar,
@@ -152,6 +153,7 @@ export function AgendaView({
     clearSelection,
     updateEvent,
     goToDate,
+    loading,
   } = useCalendar();
   const { locale } = useCalendarConfig();
   const { reportView, reportVisibleDays, closeEventPopover } =
@@ -302,9 +304,10 @@ export function AgendaView({
       <div
         ref={boundaryRef}
         className={cn(
-          "@container/agenda flex h-full flex-col overflow-hidden bg-background",
+          "@container/agenda relative flex h-full flex-col overflow-hidden bg-background",
           className,
         )}
+        aria-busy={loading || undefined}
         onClick={handleRootClick}
         onKeyDown={handleEventKeyDown}
       >
@@ -336,6 +339,9 @@ export function AgendaView({
             <AgendaEmptyState from={rangeStart} to={rangeEnd} />
           )}
         </div>
+        {/* No header to sit under, so the bar runs along the top, above the
+            sticky month labels */}
+        {loading && <CalendarLoadingBar className="top-0 bottom-auto z-20" />}
 
         {contextMenu && (
           <EventContextMenu

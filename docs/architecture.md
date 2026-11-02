@@ -51,6 +51,10 @@ Views tell the provider what they draw through the internal `useCalendarViewSync
 
 For the one commit before the provider adopts a view, the view's type differs from the provider's (`isProviderInSync` is false). Views skip slide animations and visible-day / display-month reports then: that date change is the adoption, not navigation.
 
+### Visible Range
+
+`visibleRange` (`getVisibleRange()` in `event-utils.ts`) is derived from the provider's own `currentDate`, `view`, `numberOfDays`, `weekStartsOn` and `showWeekends`, not from the live `visibleDays`, so a horizontal scroll moves it once, when the scroll snaps and `currentDate` changes. A passive effect passes each new range to `onVisibleRangeChange`, keyed by its start and end times so a range is never reported twice in a row. It waits while the provider is still adopting the mounted view (the latest `reportView` disagrees with the provider's view or day count): that range belongs to a view that isn't on screen. The `loading` prop only draws `CalendarLoadingBar` in the views' headers; the app does the fetching.
+
 ### Event Lifecycle
 
 ```

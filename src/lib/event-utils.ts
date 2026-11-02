@@ -16,6 +16,7 @@ import {
   getWeek,
   format,
   isToday,
+  isWeekend,
   parse,
   differenceInCalendarDays,
 } from "date-fns";
@@ -29,6 +30,7 @@ import type {
   HourCycle,
   PositionedEvent,
   ViewType,
+  VisibleRange,
   WeekDay,
   WeekStartsOn,
 } from "@/components/week-view-types";
@@ -496,6 +498,9 @@ export function calculateAllDayEventRows(
 // Month-view utilities
 // ---------------------------------------------------------------------------
 
+/** Week rows the month view shows at once */
+export const MONTH_VIEW_ROWS = 6;
+
 /** Height of a single event row in the month grid (px): h-5 (20px) + gap-px (1px) */
 export const MONTH_EVENT_ROW_HEIGHT = 21;
 
@@ -925,6 +930,38 @@ export function getVisibleDays(
   const count = getVisibleDayCount(view, numberOfDays);
   const end = addDays(currentDate, count - 1);
   return eachDayOfInterval({ start: currentDate, end });
+}
+
+/**
+ * Returns the dates a view draws, from the first visible day's midnight to
+ * the midnight after the last (end exclusive). Day and week views start on
+ * `currentDate` and span their columns, and the agenda its `AGENDA_DAYS`
+ * days. Month view spans its whole grid,
+ * `MONTH_VIEW_ROWS` weeks from the week containing `currentDate`, days of
+ * other months included; with weekends hidden, the weekend columns at the
+ * grid's edges are left out. Only month view hides weekends, so
+ * `showWeekends` doesn't change the other views' range.
+ */
+export function getVisibleRange(
+  currentDate: Date,
+  view: ViewType,
+  numberOfDays: number,
+  weekStartsOn: WeekStartsOn,
+  showWeekends: boolean,
+): VisibleRange {
+  if (view !== "month") {
+    const start = startOfDay(currentDate);
+    const end = addDays(start, getVisibleDayCount(view, numberOfDays));
+    return { start, end };
+  }
+
+  let start = startOfWeek(currentDate, { weekStartsOn });
+  let end = addDays(start, MONTH_VIEW_ROWS * DAYS_PER_WEEK);
+  if (showWeekends) return { start, end };
+
+  while (isWeekend(start)) start = addDays(start, 1);
+  while (isWeekend(addDays(end, -1))) end = addDays(end, -1);
+  return { start, end };
 }
 
 /**

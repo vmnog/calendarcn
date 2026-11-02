@@ -44,7 +44,7 @@ const [events, setEvents] = React.useState(initialEvents);
 </CalendarProvider>;
 ```
 
-Use `onEventCreate`, `onEventUpdate` and `onEventSelect` to react to one change at a time, for example to save it to a server.
+Use `onEventCreate`, `onEventUpdate` and `onEventSelect` to react to one change at a time, for example to save it to a server. To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/loading-events).
 
 ### Server rendering
 
@@ -248,6 +248,19 @@ interface Meeting extends CalendarEvent {
         "Called whenever an event is selected, clicked or just created.",
     },
     {
+      name: "onVisibleRangeChange",
+      type: "(range: VisibleRange) => void",
+      description:
+        "Called with the dates the view draws: once after it mounts, then each time they change (navigation, a view switch, a sideways scroll once it snaps). Never twice in a row for the same range. See [Loading Events](/docs/loading-events).",
+    },
+    {
+      name: "loading",
+      type: "boolean",
+      default: "false",
+      description:
+        "Shows a thin progress bar under the day headers of every view, for example while events for a new range load. The calendar stays usable.",
+    },
+    {
       name: "renderEventContent",
       type: "(props: EventContentProps<TEvent>) => ReactNode",
       description:
@@ -313,6 +326,17 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       type: "Date | null",
       description:
         "First day of the month the month view shows (it follows its scroll), or `null` before month view has rendered.",
+    },
+    {
+      name: "visibleRange",
+      type: "VisibleRange",
+      description:
+        "Dates the view draws, `end` exclusive: the days on screen in day and week view, the whole six-week grid in month view, the 30 days the agenda lists. A sideways scroll moves it once it snaps.",
+    },
+    {
+      name: "loading",
+      type: "boolean",
+      description: "Whether the provider's `loading` prop is set.",
     },
     {
       name: "selectedEventId",
@@ -579,6 +603,26 @@ Passed to `createEvent` and `addEventFromRange`.
       type: "Date",
       description:
         "An hour after start, kept inside the visible hours and the clicked day.",
+    },
+  ]}
+/>
+
+### VisibleRange
+
+Passed to `onVisibleRangeChange` and returned as `visibleRange`. Both dates are local midnights.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "start",
+      type: "Date",
+      description: "Midnight that starts the first visible day.",
+    },
+    {
+      name: "end",
+      type: "Date",
+      description: "Midnight after the last visible day (exclusive).",
     },
   ]}
 />
