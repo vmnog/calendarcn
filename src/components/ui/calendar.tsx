@@ -109,13 +109,13 @@ function Calendar({
           defaultClassNames.week_number,
         ),
         day: cn(
-          "relative flex items-center justify-center w-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-md group/day select-none",
+          "relative flex items-center justify-center w-full h-7 p-0 text-center [&:last-child[data-selected=true]_button]:before:rounded-r-md group/day select-none",
           "[&.in-view-day]:bg-calendar-current-week",
           "[&.in-view-day:not(.in-view-day+.in-view-day)]:rounded-l-md",
           "[&.in-view-day:not(:has(+.in-view-day))]:rounded-r-md",
           props.showWeekNumber
-            ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-md"
-            : "[&:first-child[data-selected=true]_button]:rounded-l-md",
+            ? "[&:nth-child(2)[data-selected=true]_button]:before:rounded-l-md"
+            : "[&:first-child[data-selected=true]_button]:before:rounded-l-md",
           defaultClassNames.day,
         ),
         range_start: cn(
@@ -295,7 +295,12 @@ function CalendarDayButton({
       data-today={modifiers.today}
       data-in-view={isInView}
       className={cn(
-        "text-foreground data-[outside=true]:text-muted-foreground/40 data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground flex size-7 items-center justify-center leading-none font-normal transition-none outline-none focus-visible:outline-none focus-visible:ring-0 data-[range-end=true]:rounded-sm data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-sm data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70 hover:bg-calendar-day-hover data-[in-view=true]:hover:bg-calendar-day-hover-current-week data-[today=true]:hover:!bg-primary data-[today=true]:hover:!text-primary-foreground",
+        // Hit area: the whole cell plus half of the week row's mb-0.5 gap above
+        // and below, so the pointer never crosses a dead zone between days
+        "absolute inset-x-0 -inset-y-px isolate flex size-auto items-center justify-center rounded-none leading-none font-normal transition-none outline-none hover:bg-transparent dark:hover:bg-transparent focus-visible:outline-none focus-visible:ring-0 [&>span]:text-xs [&>span]:opacity-70",
+        "text-foreground data-[outside=true]:text-muted-foreground/40 data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:text-accent-foreground data-[range-start=true]:text-primary-foreground data-[range-end=true]:text-primary-foreground data-[today=true]:hover:!text-primary-foreground",
+        // Visible box: a size-7 ::before centered in the hit area, behind the label
+        "before:absolute before:inset-0 before:-z-10 before:m-auto before:size-7 before:rounded-sm hover:before:bg-calendar-day-hover dark:hover:before:bg-accent/50 data-[in-view=true]:hover:before:bg-calendar-day-hover-current-week data-[selected-single=true]:before:bg-primary data-[range-middle=true]:before:bg-accent data-[range-start=true]:before:bg-primary data-[range-end=true]:before:bg-primary data-[range-end=true]:before:rounded-sm data-[range-end=true]:before:rounded-r-md data-[range-middle=true]:before:rounded-none data-[range-start=true]:before:rounded-sm data-[range-start=true]:before:rounded-l-md data-[today=true]:hover:before:!bg-primary",
         defaultClassNames.day,
         className,
       )}
