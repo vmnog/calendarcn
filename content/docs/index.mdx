@@ -16,16 +16,17 @@ CalendarCN is an open-source calendar for React. It brings the feel of Notion Ca
 
 <DocsMapCta title="Not sure where to start?">
   Try the live demo: drag events to move them, drag their edges to resize, and
-  switch between day, week and month. The source is on GitHub under the MIT
-  license.
+  switch between day, week, month and agenda. The source is on GitHub under the
+  MIT license.
 </DocsMapCta>
 
 ## What's included
 
-- **Views**: day, week, any number of days from 2 to 9, and month.
+- **Views**: day, week, any number of days from 2 to 9, month, and an agenda that lists the next 30 days.
 - **Direct manipulation**: drag events to move them, drag their edges to resize, click an empty slot to create one.
 - **Real calendar data**: overlapping events side by side, multi-day and all-day events, a current-time indicator.
 - **Event details**: a side panel or popover with inline editing.
+- **Import and export**: read and write .ics files from Google Calendar, Apple Calendar and Outlook. See [Import and Export](/docs/import-export).
 - **Keyboard first**: shortcuts for every view, and a command menu in the live demo. See [Keyboard shortcuts](/docs/keyboard-shortcuts).
 - **Theming**: light and dark mode with the shadcn/ui CSS variables.
 
@@ -43,8 +44,8 @@ Or add only the pieces you need. Each one pulls in the ones it builds on.
 
 <Cards>
   <Card title="Calendar" href="/docs/components/calendar">
-    The full calendar: a toolbar and view switcher over the day, week and month
-    views.
+    The full calendar: a toolbar and view switcher over the day, week, month and
+    agenda views.
   </Card>
   <Card title="Calendar Core" href="/docs/components/calendar-core">
     `CalendarProvider` and `useCalendar()`, the state every view shares.
@@ -60,6 +61,9 @@ Or add only the pieces you need. Each one pulls in the ones it builds on.
   </Card>
   <Card title="Month View" href="/docs/components/month-view">
     A month at a glance.
+  </Card>
+  <Card title="Agenda View" href="/docs/components/agenda-view">
+    The next 30 days' events as a scrolling list, grouped by day.
   </Card>
   <Card title="Event Details" href="/docs/components/event-details">
     Event chips, and the panel, popover and menu for viewing and editing an
@@ -77,6 +81,8 @@ const [events, setEvents] = React.useState(initialEvents);
 <Calendar events={events} onEventsChange={setEvents} />;
 ```
 
+Already keep them in Google Calendar, Apple Calendar or Outlook? `parseIcs()` turns an exported .ics file into events, and `toIcs()` writes them back out.
+
 <Cards>
   <Card
     title="Controlled or uncontrolled"
@@ -88,6 +94,9 @@ const [events, setEvents] = React.useState(initialEvents);
   <Card title="Loading Events" href="/docs/loading-events">
     Fetch events for the dates on screen as people navigate, with a loading bar
     while they arrive.
+  </Card>
+  <Card title="Import and Export" href="/docs/import-export">
+    Read and write .ics files, plus a recipe that syncs with Google Calendar.
   </Card>
   <Card
     title="Event fields"
@@ -131,7 +140,7 @@ The single-key shortcuts can be turned off with `shortcuts={false}` or changed: 
 
 ## What's coming next? [#whats-next]
 
-CalendarCN is built in the open, and plans change as people use it. Up next is listing CalendarCN in the shadcn/ui registry directory, next to the other community registries. Later plans include time zones, recurring events, a year view and a resource view, and virtualized rendering for thousands of events.
+CalendarCN is built in the open, and plans change as people use it. The agenda view and .ics import and export shipped most recently. Up next is listing CalendarCN in the shadcn/ui registry directory, next to the other community registries. Later plans include time zones, recurring events, a year view and a resource view, and virtualized rendering for thousands of events.
 
 <Cards>
   <Card title="Roadmap" href="/docs/roadmap">
