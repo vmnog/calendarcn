@@ -102,12 +102,13 @@ The calendar fills its parent's height, so give the parent one. It renders in th
 
 | Item                        | What it adds                                                                                                  |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `@calendarcn/calendar`      | The full calendar: toolbar, view switcher and keyboard shortcuts over the day, week and month views.          |
+| `@calendarcn/calendar`      | The full calendar: toolbar, view switcher and keyboard shortcuts over the day, week, month and agenda views.  |
 | `@calendarcn/calendar-core` | Types, event layout math, `CalendarProvider`, `useCalendar()`, `useCalendarShortcuts()` and the color tokens. |
 | `@calendarcn/time-grid`     | The hour grid behind the day and week views, with drag, resize and create.                                    |
 | `@calendarcn/day-view`      | One day on the time grid.                                                                                     |
 | `@calendarcn/week-view`     | A week, or any number of days, on the time grid.                                                              |
 | `@calendarcn/month-view`    | The month grid, with drag and resize.                                                                         |
+| `@calendarcn/agenda-view`   | The coming days' events as a scrolling list, grouped by day.                                                  |
 | `@calendarcn/event-details` | Event chips, the detail panel, the details popover and the right-click menu.                                  |
 
 Each item pulls in the ones it builds on, so `calendar` installs all of them except `day-view` and `week-view`, which it doesn't need: it renders the time grid directly.

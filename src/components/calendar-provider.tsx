@@ -8,6 +8,7 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useToday } from "@/hooks/use-now";
 import { EventTitleFocusProvider } from "./event-title-focus-context";
 import {
+  AGENDA_DAYS,
   describeEventChange,
   describeEventCreated,
   getCalendarHeaderInfo,
@@ -185,8 +186,9 @@ function createDefaultEvent(range: NewEventRange): CalendarEvent {
 }
 
 /**
- * Moves `date` by `amount` periods of the given view: days, months, or the
- * week view's step (`numberOfDays` below a week, a week otherwise)
+ * Moves `date` by `amount` periods of the given view: days, months, the
+ * agenda's `AGENDA_DAYS`, or the week view's step (`numberOfDays` below a
+ * week, a week otherwise)
  */
 function shiftPeriod(
   date: Date,
@@ -196,7 +198,24 @@ function shiftPeriod(
 ): Date {
   if (view === "day") return addDays(date, amount);
   if (view === "month") return addMonths(date, amount);
+  if (view === "agenda") return addDays(date, amount * AGENDA_DAYS);
   return addDays(date, amount * getWeekViewStepDays(numberOfDays));
+}
+
+/**
+ * First day of the agenda when switching to it from `view`: today when the
+ * period on screen contains it, since an agenda lists what's coming up, and
+ * the period's first day otherwise
+ */
+function getAgendaStartFrom(
+  date: Date,
+  view: ViewType,
+  numberOfDays: number,
+  now: Date,
+): Date {
+  const periodEnd = shiftPeriod(date, view, 1, numberOfDays);
+  if (now >= date && now < periodEnd) return startOfDay(now);
+  return startOfDay(date);
 }
 
 /**
@@ -259,8 +278,8 @@ function resolveDayHours(
  * it draws, and the provider lines up with it as follows.
  *
  * - Uncontrolled `view`: the provider adopts the mounted view's type
- *   (DayView, WeekView, MonthView, or TimeGrid's `view`), so a lone view
- *   just works. `defaultView` only applies until a view mounts.
+ *   (DayView, WeekView, MonthView, AgendaView, or TimeGrid's `view`), so a
+ *   lone view just works. `defaultView` only applies until a view mounts.
  * - Controlled `view` always wins: the provider never changes it to match
  *   the mounted view (development builds warn about a mismatch). Render the
  *   view it names, e.g. `<TimeGrid view={view} />`.
@@ -272,7 +291,8 @@ function resolveDayHours(
  *   stays mounted) are undone, date included. To make switching work,
  *   render the view from `view`, as the demo does with `TimeGrid`.
  * - Without `date` or `defaultDate`, the calendar starts on today's period
- *   of the adopted view: today for DayView, this week for WeekView.
+ *   of the adopted view: today for DayView and AgendaView, this week for
+ *   WeekView.
  */
 export function CalendarProvider<TEvent extends CalendarEvent = CalendarEvent>(
   props: CalendarProviderProps<TEvent>,
@@ -520,6 +540,12 @@ function CalendarStateProvider({
         setCurrentDate(startOfDay(new Date()));
         return;
       }
+      if (newView === "agenda") {
+        setCurrentDate((prev) =>
+          getAgendaStartFrom(prev, view, numberOfDays, new Date()),
+        );
+        return;
+      }
       setCurrentDate((prev) =>
         getPeriodStart(prev, newView, weekStartsOn, numberOfDays),
       );
@@ -645,13 +671,16 @@ function CalendarStateProvider({
 
   // Week/day views name the month after the LAST visible day, so a week
   // crossing into the next month is labeled with the later month (Notion
-  // Calendar's behavior). Month view labels its own month instead.
+  // Calendar's behavior). Month view labels its own month instead, and the
+  // agenda the month it starts in.
   const headerDate =
     view === "month"
       ? (displayMonth ?? currentDate)
       : (visibleDays[0] ?? currentDate);
   const headerRangeEnd =
-    view === "month" ? undefined : visibleDays[visibleDays.length - 1];
+    view === "month" || view === "agenda"
+      ? undefined
+      : visibleDays[visibleDays.length - 1];
   const { monthName, year, weekNumber } = getCalendarHeaderInfo(
     headerDate,
     weekStartsOn,

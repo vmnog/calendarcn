@@ -1,13 +1,13 @@
 ---
 title: Calendar
-description: The full calendar, with a toolbar, a view switcher, and day, week and month views.
+description: The full calendar, with a toolbar, a view switcher, and day, week, month and agenda views.
 ---
 
 {/* Taller than the default: the toolbar takes room the details popover needs. */}
 
 <ComponentPreview name="calendar-demo" height={680} />
 
-`Calendar` puts the pieces together: a [`CalendarProvider`](/docs/components/calendar-core) for the state, a toolbar with the title, view switcher, today and previous/next, and the [Time Grid](/docs/components/time-grid) or [Month View](/docs/components/month-view) below it. It takes every `CalendarProvider` prop, and the CLI copies its source into your project, so change the toolbar or the layout right in `components/calendar.tsx`.
+`Calendar` puts the pieces together: a [`CalendarProvider`](/docs/components/calendar-core) for the state, a toolbar with the title, view switcher, today and previous/next, and the [Time Grid](/docs/components/time-grid), [Month View](/docs/components/month-view) or [Agenda View](/docs/components/agenda-view) below it. It takes every `CalendarProvider` prop, and the CLI copies its source into your project, so change the toolbar or the layout right in `components/calendar.tsx`.
 
 ## Installation
 
@@ -36,13 +36,14 @@ const [events, setEvents] = React.useState(initialEvents);
 <Calendar events={events} onEventsChange={setEvents} defaultView="month" />;
 ```
 
-The view switcher offers day, week and month, 2 to 9 days at a time, and the weekend, declined events and week number settings. The examples use `createSampleEvents()` from `src/lib/sample-events.ts` for their data; pass your own events instead.
+The view switcher offers day, week, month and agenda, 2 to 9 days at a time, and the weekend, declined events and week number settings. The examples use `createSampleEvents()` from `src/lib/sample-events.ts` for their data; pass your own events instead.
 
 ## Build your own
 
 `Calendar` is a short file. For a different header, compose the parts yourself: the provider owns the state, your header reads it with `useCalendar()`, and the body renders whichever view the provider is on.
 
 ```tsx
+import { AgendaView } from "@/components/agenda-view";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { MonthView } from "@/components/month-view";
 import { WeekView } from "@/components/week-view";
@@ -68,7 +69,9 @@ function Header() {
 
 function Body() {
   const { view } = useCalendar();
-  return view === "month" ? <MonthView /> : <WeekView />;
+  if (view === "month") return <MonthView />;
+  if (view === "agenda") return <AgendaView />;
+  return <WeekView />;
 }
 ```
 
@@ -79,7 +82,7 @@ A header like this needs these fields of [`useCalendar()`](/docs/components/cale
   rows={[
     {
       name: "view",
-      type: '"day" | "week" | "month"',
+      type: '"day" | "week" | "month" | "agenda"',
       description: "Active view: pick the view component and the period label.",
     },
     {
@@ -102,12 +105,13 @@ A header like this needs these fields of [`useCalendar()`](/docs/components/cale
     {
       name: "goToPrev",
       type: "() => void",
-      description: "Goes back one day, week or month, by view.",
+      description: "Goes back one day, week, month or agenda range, by view.",
     },
     {
       name: "goToNext",
       type: "() => void",
-      description: "Goes forward one day, week or month, by view.",
+      description:
+        "Goes forward one day, week, month or agenda range, by view.",
     },
     {
       name: "switchView",
@@ -132,13 +136,13 @@ Every event is a button you can reach with <Kbd>Tab</Kbd>. The views only handle
 | Move earlier or later            | <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>                         |
 | Make it end earlier or later     | <KbdGroup><Kbd>Alt</Kbd><Kbd>⇧</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>⇧</Kbd><Kbd>↓</Kbd></KbdGroup> |
 
-- In the day and week views, <Kbd>Alt</Kbd> + <Kbd>↑</Kbd> / <Kbd>↓</Kbd> move a timed event by one `snapMinutes` step and keep it inside the visible hours. In month view they move it a week.
+- In the day and week views and the agenda, <Kbd>Alt</Kbd> + <Kbd>↑</Kbd> / <Kbd>↓</Kbd> move a timed event by one `snapMinutes` step and keep it inside the visible hours. In month view they move it a week.
 - Moving an event past the visible days moves the view with it, and focus follows the event.
 - `CalendarProvider` renders a polite live region (`role="status"`) that announces each move, resize and create, e.g. "Moved Team standup to Tuesday, October 27, 9:15 AM".
-- Each event is labelled with its title and time and reports its selection with `aria-pressed`. Day columns and month cells are labelled groups with the full date. Decorative parts (time axis, grid lines, drag previews) are hidden from assistive tech, and off-screen scroll buffers are `inert`.
+- Each event is labelled with its title and time and reports its selection with `aria-pressed`. Day columns, month cells and agenda days are labelled groups with the full date. Decorative parts (time axis, grid lines, drag previews) are hidden from assistive tech, and off-screen scroll buffers are `inert`.
 - With reduced motion turned on, scrolling snaps without the slide animation.
 
-`Calendar` also turns on the single-key [keyboard shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>…). They listen on the whole page, so pass `shortcuts={false}` when several calendars share a page or the keys clash with your app's.
+`Calendar` also turns on the single-key [keyboard shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>A</Kbd>…). They listen on the whole page, so pass `shortcuts={false}` when several calendars share a page or the keys clash with your app's.
 
 ## Theming
 

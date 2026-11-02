@@ -3,6 +3,7 @@ import path from "node:path";
 import { createElement } from "react";
 import type { ComponentType, ReactElement } from "react";
 
+import { AgendaViewDemo } from "@/examples/agenda-view-demo";
 import { CalendarDemo } from "@/examples/calendar-demo";
 import { ConfigDemo } from "@/examples/config-demo";
 import { ControlledEventsDemo } from "@/examples/controlled-events-demo";
@@ -24,6 +25,7 @@ export const EXAMPLES_DIR = "src/examples";
  * `.tsx`). `ComponentPreview` renders the component and shows that file.
  */
 const EXAMPLES = {
+  "agenda-view-demo": AgendaViewDemo,
   "calendar-demo": CalendarDemo,
   "config-demo": ConfigDemo,
   "controlled-events-demo": ControlledEventsDemo,

@@ -8,7 +8,7 @@ import {
   PanelRightIcon,
 } from "lucide-react";
 
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
 import { useTheme } from "next-themes";
 import {
   isTypingTarget,
@@ -17,7 +17,12 @@ import {
 import { useIsClient } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { generateMockEvents } from "@/lib/mock-events";
-import { getPeriodStart, pickRandomEventColor } from "@/lib/event-utils";
+import {
+  AGENDA_DAYS,
+  getPeriodStart,
+  pickRandomEventColor,
+} from "@/lib/event-utils";
+import { AgendaView } from "@/components/agenda-view";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { CommandMenu } from "@/components/command-menu";
 import { SidebarLeft } from "@/components/sidebar-left";
@@ -27,6 +32,7 @@ import type {
   EventColor,
   NewEventRange,
   ViewSettings,
+  ViewType,
 } from "@/components/week-view-types";
 import { SidebarRight } from "@/components/sidebar-right";
 import { MonthView } from "@/components/month-view";
@@ -94,6 +100,14 @@ const DEMO_CALENDARS: CalendarInfo[] = [
     email: PRIMARY_CALENDAR_ID,
   },
 ];
+
+/** What the previous/next buttons move by in each view, for their labels */
+const PERIOD_LABELS: Record<ViewType, string> = {
+  day: "day",
+  week: "week",
+  month: "month",
+  agenda: `${AGENDA_DAYS} days`,
+};
 
 /** Display preferences the demo starts with (week numbers shown) */
 const DEMO_VIEW_SETTINGS: ViewSettings = {
@@ -340,7 +354,7 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, Escape, and
+  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape, and
   // Shift+Cmd+E / Shift+Cmd+D for weekends and declined events
   useCalendarShortcuts();
 
@@ -365,7 +379,7 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
         currentDate={
           view === "month" && displayMonth ? displayMonth : currentDate
         }
-        visibleDays={view === "month" ? [] : visibleDays}
+        visibleDays={view === "month" || view === "agenda" ? [] : visibleDays}
       />
       <SidebarInset className="flex flex-col overflow-hidden">
         <header className="@container/header bg-background sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2">
@@ -404,6 +418,8 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
                 {view === "day" && format(currentDate, "EEEE, MMM d")}
                 {view === "week" && `Week ${weekNumber}`}
                 {view === "month" && ""}
+                {view === "agenda" &&
+                  `${format(currentDate, "MMM d")} \u2013 ${format(addDays(currentDate, AGENDA_DAYS - 1), "MMM d")}`}
               </span>
             </h1>
           </div>
@@ -443,13 +459,7 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
                 onClick={goToPrev}
               >
                 <ChevronLeftIcon className="size-4" />
-                <span className="sr-only">
-                  {view === "day"
-                    ? "Previous day"
-                    : view === "month"
-                      ? "Previous month"
-                      : "Previous week"}
-                </span>
+                <span className="sr-only">Previous {PERIOD_LABELS[view]}</span>
               </Button>
               <Button
                 variant="ghost"
@@ -458,13 +468,7 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
                 onClick={goToNext}
               >
                 <ChevronRightIcon className="size-4" />
-                <span className="sr-only">
-                  {view === "day"
-                    ? "Next day"
-                    : view === "month"
-                      ? "Next month"
-                      : "Next week"}
-                </span>
+                <span className="sr-only">Next {PERIOD_LABELS[view]}</span>
               </Button>
             </div>
             {!rightSidebarOpen && (
@@ -488,14 +492,21 @@ function CalendarDemo({ isWideLayout }: CalendarDemoProps) {
           </div>
         </header>
         <div className="flex flex-1 flex-col overflow-hidden">
-          {view === "month" ? (
+          {view === "month" && (
             <MonthView
               showEventPopover={!showDetailsInPanel}
               onEventPopoverExpand={expandEventPopover}
             />
-          ) : (
-            // One grid for day and week: switching re-lays it out instead of
-            // remounting, so the vertical scroll position is kept
+          )}
+          {view === "agenda" && (
+            <AgendaView
+              showEventPopover={!showDetailsInPanel}
+              onEventPopoverExpand={expandEventPopover}
+            />
+          )}
+          {/* One grid for day and week: switching re-lays it out instead of
+              remounting, so the vertical scroll position is kept */}
+          {(view === "day" || view === "week") && (
             <TimeGrid
               view={view}
               scrollToHour={INITIAL_SCROLL_HOUR}

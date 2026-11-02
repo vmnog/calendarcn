@@ -1,13 +1,15 @@
 "use client";
 
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";
 import { Button } from "@/components/ui/button";
 import { ViewDropdown } from "@/components/view-dropdown";
+import { AGENDA_DAYS } from "@/lib/event-utils";
 
+import { AgendaView } from "./agenda-view";
 import {
   CalendarProvider,
   useCalendar,
@@ -30,11 +32,12 @@ const PERIOD_LABELS: Record<ViewType, string> = {
   day: "day",
   week: "week",
   month: "month",
+  agenda: `${AGENDA_DAYS} days`,
 };
 
 /**
  * The full calendar: a toolbar with the title, view switcher, today and
- * previous/next, over a day, week or month view. Takes every
+ * previous/next, over a day, week, month or agenda view. Takes every
  * `CalendarProvider` prop, so events, view and date can be controlled or
  * left to the calendar.
  */
@@ -113,6 +116,8 @@ function CalendarToolbar() {
         <span className="ml-2 hidden text-xs text-muted-foreground @lg/header:inline">
           {view === "day" && format(currentDate, "EEEE, MMM d", { locale })}
           {view === "week" && `Week ${weekNumber}`}
+          {view === "agenda" &&
+            `${format(currentDate, "MMM d", { locale })} \u2013 ${format(addDays(currentDate, AGENDA_DAYS - 1), "MMM d", { locale })}`}
         </span>
       </h2>
       <div className="hidden @xs/header:block">
@@ -169,6 +174,10 @@ function CalendarBody({ scrollToHour }: CalendarBodyProps) {
 
   if (view === "month") {
     return <MonthView />;
+  }
+
+  if (view === "agenda") {
+    return <AgendaView />;
   }
 
   // One grid for day and week: switching re-lays it out instead of

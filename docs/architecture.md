@@ -47,7 +47,7 @@ CalendarCN is a client-side React calendar component built with Next.js App Rout
 Views tell the provider what they draw through the internal `useCalendarViewSync()`:
 
 - `reportView({ view, numberOfDays? })`, from a layout effect after every commit that changes the view's props or the provider's state. While `view` is uncontrolled, the provider adopts the reported type (and a `numberOfDays` the view is fixed to), so a lone `DayView`, `WeekView` or `MonthView` navigates, labels its header and fills `visibleDays` by its own type. A switch the mounted view doesn't follow (e.g. pressing D under a lone `WeekView`) is undone, date included. Controlled `view` / `numberOfDays` always win; development builds warn about a mismatch. The full rule is the JSDoc on `CalendarProvider`.
-- `reportVisibleDays` (time grid) and `reportDisplayMonth` (month view), for the header and the mini calendar.
+- `reportVisibleDays` (time grid, and the agenda's 30 days) and `reportDisplayMonth` (month view), for the header and the mini calendar.
 
 For the one commit before the provider adopts a view, the view's type differs from the provider's (`isProviderInSync` is false). Views skip slide animations and visible-day / display-month reports then: that date change is the adoption, not navigation.
 
@@ -89,6 +89,10 @@ One-line wrappers: `<TimeGrid view="day" />` and `<TimeGrid view="week" />` (Wee
 ### MonthView (`month-view.tsx`)
 
 Month grid with continuous vertical scroll, its own drag/resize hooks, and "+N more" (`showDay`).
+
+### AgendaView (`agenda-view.tsx`)
+
+A list of the events of `AGENDA_DAYS` (30) days from `currentDate`, grouped by day by `getAgendaDays()` in `event-utils.ts`. Empty days are skipped, except today. A multi-day event is listed under each of its days with its position ("Day 2 of 3"). No drag or resize: events are selected, opened and moved from the keyboard like in the other views. Prev/next move by 30 days.
 
 ### WeekViewGrid (`week-view-grid.tsx`)
 

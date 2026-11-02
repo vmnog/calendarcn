@@ -18,9 +18,12 @@ import {
   isToday,
   isWeekend,
   parse,
+  differenceInCalendarDays,
 } from "date-fns";
 import type { Locale } from "date-fns";
 import type {
+  AgendaDay,
+  AgendaEntry,
   CalendarConfig,
   CalendarEvent,
   EventColor,
@@ -59,6 +62,9 @@ export const NEW_EVENT_DURATION_MINUTES = 60;
 
 /** Days in a week: the week view's default column count and prev/next step */
 const DAYS_PER_WEEK = 7;
+
+/** Days the agenda lists, from its first day; also its prev/next step */
+export const AGENDA_DAYS = 30;
 
 /**
  * Format of a month cell's `data-date` attribute. A calendar date with no
@@ -873,8 +879,9 @@ export function calculateMonthCellLayout(
 }
 
 /**
- * Returns how many day columns a view shows: one in day view,
- * `numberOfDays` (at least one) in week view, a full week in month view.
+ * Returns how many days a view shows: one in day view, `numberOfDays` (at
+ * least one) in week view, a full week in month view, `AGENDA_DAYS` in the
+ * agenda.
  */
 export function getVisibleDayCount(
   view: ViewType,
@@ -882,6 +889,7 @@ export function getVisibleDayCount(
 ): number {
   if (view === "day") return 1;
   if (view === "month") return DAYS_PER_WEEK;
+  if (view === "agenda") return AGENDA_DAYS;
   return Math.max(1, Math.round(numberOfDays));
 }
 
@@ -895,8 +903,8 @@ export function getWeekViewStepDays(numberOfDays: number): number {
 
 /**
  * Returns the first day of the period that contains `date`: the day itself
- * in day view and in a week view shorter than a week, the start of its week
- * otherwise.
+ * in day view, the agenda and a week view shorter than a week, the start of
+ * its week otherwise.
  */
 export function getPeriodStart(
   date: Date,
@@ -904,7 +912,7 @@ export function getPeriodStart(
   weekStartsOn: WeekStartsOn,
   numberOfDays: number,
 ): Date {
-  if (view === "day") return startOfDay(date);
+  if (view === "day" || view === "agenda") return startOfDay(date);
   if (view === "week" && getWeekViewStepDays(numberOfDays) < DAYS_PER_WEEK) {
     return startOfDay(date);
   }
@@ -927,7 +935,8 @@ export function getVisibleDays(
 /**
  * Returns the dates a view draws, from the first visible day's midnight to
  * the midnight after the last (end exclusive). Day and week views start on
- * `currentDate` and span their columns. Month view spans its whole grid,
+ * `currentDate` and span their columns, and the agenda its `AGENDA_DAYS`
+ * days. Month view spans its whole grid,
  * `MONTH_VIEW_ROWS` weeks from the week containing `currentDate`, days of
  * other months included; with weekends hidden, the weekend columns at the
  * grid's edges are left out. Only month view hides weekends, so
@@ -979,6 +988,109 @@ export function getCalendarHeaderInfo(
     year: format(labelDate, "yyyy", { locale }),
     weekNumber: getWeek(currentDate, { weekStartsOn, locale }),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Agenda
+// ---------------------------------------------------------------------------
+
+/** First and last day an event covers, at the start of each day */
+function getEventDayRange(event: CalendarEvent): { first: Date; last: Date } {
+  const first = startOfDay(event.start);
+  // All-day events end on the start of their last day. A timed event that
+  // ends at midnight doesn't reach into the day that starts then.
+  if (event.isAllDay || event.end <= event.start) {
+    return { first, last: startOfDay(event.end) };
+  }
+  return { first, last: startOfDay(new Date(event.end.getTime() - 1)) };
+}
+
+/**
+ * Minutes into `day` an entry starts, for sorting: 0 when it was already
+ * going on when the day began
+ */
+function getEntryStartMinutes(entry: AgendaEntry, day: Date): number {
+  if (entry.dayIndex > 1) return 0;
+  return differenceInMinutes(entry.event.start, day);
+}
+
+/** Orders a day's entries: whole-day ones first (longest first), then by start */
+function compareAgendaEntries(
+  a: AgendaEntry,
+  b: AgendaEntry,
+  day: Date,
+): number {
+  if (a.isAllDayOnThisDay !== b.isAllDayOnThisDay) {
+    return a.isAllDayOnThisDay ? -1 : 1;
+  }
+  if (a.isAllDayOnThisDay && a.dayCount !== b.dayCount) {
+    return b.dayCount - a.dayCount;
+  }
+  const startDifference =
+    getEntryStartMinutes(a, day) - getEntryStartMinutes(b, day);
+  if (startDifference !== 0) return startDifference;
+  const endDifference = a.event.end.getTime() - b.event.end.getTime();
+  if (endDifference !== 0) return endDifference;
+  return a.event.title.localeCompare(b.event.title);
+}
+
+/**
+ * Lists the events of `dayCount` days from `firstDay`, one `AgendaDay` per
+ * day (including days without events). An event spanning several days is
+ * listed under each of them, with its position (`dayIndex` of `dayCount`).
+ * All-day events use the calendar's convention: `end` is the start of their
+ * last day.
+ */
+export function getAgendaDays(
+  events: CalendarEvent[],
+  firstDay: Date,
+  dayCount: number,
+): AgendaDay[] {
+  const rangeStart = startOfDay(firstDay);
+  const rangeEnd = addDays(rangeStart, Math.max(1, dayCount) - 1);
+  const ranges = events
+    .map((event) => ({ event, ...getEventDayRange(event) }))
+    .filter(({ first, last }) => first <= rangeEnd && last >= rangeStart);
+
+  return eachDayOfInterval({ start: rangeStart, end: rangeEnd }).map((date) => {
+    const entries = ranges
+      .filter(({ first, last }) => first <= date && last >= date)
+      .map(({ event, first, last }): AgendaEntry => {
+        const dayIndex = differenceInCalendarDays(date, first) + 1;
+        const dayCount = differenceInCalendarDays(last, first) + 1;
+        const isAllDayOnThisDay =
+          Boolean(event.isAllDay) || (dayIndex > 1 && dayIndex < dayCount);
+        return { event, dayIndex, dayCount, isAllDayOnThisDay };
+      })
+      .sort((a, b) => compareAgendaEntries(a, b, date));
+    return { date, entries };
+  });
+}
+
+/**
+ * When an agenda entry happens on its day: "All day", the time range
+ * ("10–11 AM"), or for a multi-day timed event "From 4 PM" on its first day
+ * and "Until 1 PM" on its last
+ */
+export function formatAgendaTime(
+  entry: AgendaEntry,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  const { event, dayIndex, dayCount, isAllDayOnThisDay } = entry;
+  if (isAllDayOnThisDay) return "All day";
+  if (dayCount === 1) {
+    return formatTimeRange(event.start, event.end, hourCycle, locale);
+  }
+  if (dayIndex === 1)
+    return `From ${formatTime(event.start, hourCycle, locale)}`;
+  return `Until ${formatTime(event.end, hourCycle, locale)}`;
+}
+
+/** Which day of a multi-day event an entry is ("Day 2 of 3"), or `null` */
+export function formatAgendaDayOfSpan(entry: AgendaEntry): string | null {
+  if (entry.dayCount === 1) return null;
+  return `Day ${entry.dayIndex} of ${entry.dayCount}`;
 }
 
 // ---------------------------------------------------------------------------

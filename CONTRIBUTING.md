@@ -67,6 +67,7 @@ src/
 │   ├── week-view.tsx             # WeekView (TimeGrid view="week")
 │   ├── week-view-*.tsx           # Time grid parts: all-day row, grid, time axis, now line
 │   ├── month-view*.tsx           # MonthView and its parts
+│   ├── agenda-view.tsx           # AgendaView: the coming days' events as a list
 │   ├── calendar-event-item.tsx   # Event rendering
 │   ├── event-*.tsx               # Detail panel, popover and context menu
 │   ├── docs/                     # Docs-only components (previews, props tables)

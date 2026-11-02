@@ -13,6 +13,7 @@ import {
 import { ChevronLeftIcon, ChevronRightIcon, RotateCwIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { AgendaView } from "@/components/agenda-view";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { MonthView } from "@/components/month-view";
 import { TimeGrid } from "@/components/time-grid";
@@ -38,6 +39,7 @@ const VIEW_OPTIONS: { value: ViewType; label: string }[] = [
   { value: "day", label: "Day" },
   { value: "week", label: "Week" },
   { value: "month", label: "Month" },
+  { value: "agenda", label: "Agenda" },
 ];
 
 /** Meetings the pretend server spreads over weekdays */
@@ -139,16 +141,41 @@ export function RangeLoadingDemo() {
   );
 }
 
-/** Title, the view switcher, today, previous and next */
+/** Title, today, previous and next, and the view switcher below them */
 function CalendarHeader() {
   const { view, monthName, year, goToToday, goToPrev, goToNext, switchView } =
     useCalendar();
 
   return (
-    <header className="flex items-center gap-2 border-b px-3 py-2">
-      <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
-        {monthName} {year}
-      </h2>
+    <header className="flex flex-col gap-2 border-b px-3 py-2">
+      {/* The switcher gets its own row: four views don't fit beside the
+          title in the half of the example the calendar gets */}
+      <div className="flex items-center gap-2">
+        <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
+          {monthName} {year}
+        </h2>
+        <Button variant="secondary" size="sm" onClick={goToToday}>
+          Today
+        </Button>
+        <div className="flex items-center">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Previous ${view}`}
+            onClick={goToPrev}
+          >
+            <ChevronLeftIcon />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label={`Next ${view}`}
+            onClick={goToNext}
+          >
+            <ChevronRightIcon />
+          </Button>
+        </div>
+      </div>
       <div
         role="group"
         aria-label="View"
@@ -161,7 +188,7 @@ function CalendarHeader() {
             aria-pressed={view === option.value}
             onClick={() => switchView(option.value)}
             className={cn(
-              "h-7 rounded-sm px-2.5 text-xs font-medium text-muted-foreground transition-[color,background-color,box-shadow,scale] duration-150 ease-out outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.96] motion-reduce:active:scale-100",
+              "h-7 flex-1 rounded-sm px-2.5 text-xs font-medium text-muted-foreground transition-[color,background-color,box-shadow,scale] duration-150 ease-out outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.96] motion-reduce:active:scale-100",
               view === option.value &&
                 "bg-background text-foreground shadow-xs dark:bg-input",
             )}
@@ -169,27 +196,6 @@ function CalendarHeader() {
             {option.label}
           </button>
         ))}
-      </div>
-      <Button variant="secondary" size="sm" onClick={goToToday}>
-        Today
-      </Button>
-      <div className="flex items-center">
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Previous ${view}`}
-          onClick={goToPrev}
-        >
-          <ChevronLeftIcon />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Next ${view}`}
-          onClick={goToNext}
-        >
-          <ChevronRightIcon />
-        </Button>
       </div>
     </header>
   );
@@ -201,6 +207,10 @@ function CalendarBody() {
 
   if (view === "month") {
     return <MonthView />;
+  }
+
+  if (view === "agenda") {
+    return <AgendaView />;
   }
 
   return <TimeGrid view={view} scrollToHour={8} />;

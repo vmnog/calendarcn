@@ -101,6 +101,13 @@ function handleShortcut(e: KeyboardEvent, actions: ShortcutActions): void {
   if (e.key === "m") {
     e.preventDefault();
     actions.switchView("month");
+    return;
+  }
+
+  // Cmd+A / Ctrl+A never get here, so they still select all
+  if (e.key === "a" || e.key === "A") {
+    e.preventDefault();
+    actions.switchView("agenda");
   }
 }
 
@@ -109,7 +116,7 @@ function handleShortcut(e: KeyboardEvent, actions: ShortcutActions): void {
  *
  * - T: today
  * - J / ArrowLeft, K / ArrowRight: previous / next period
- * - D or 1: day view, W or 0: week view, M: month view
+ * - D or 1: day view, W or 0: week view, M: month view, A: agenda
  * - 2-9: number of days
  * - Escape: clear the selection
  * - Shift+Cmd+E / Shift+Cmd+D (Ctrl on Windows and Linux): show or hide

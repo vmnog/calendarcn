@@ -15,7 +15,6 @@ Submit CalendarCN to the shadcn/ui registry directory, so it shows up next to th
 
 Not scheduled yet, roughly in priority order.
 
-- **Agenda view**: a scrolling list of upcoming events. It also suits phones better than a time grid.
 - **Time zones**: a `timeZone` prop, and a second time zone column next to the time axis.
 - **Recurring events**: expand recurrence rules into events, and edit "this event", "this and following events" or "all events".
 - **Import and sync**: ICS import and export, and an example that syncs with Google Calendar.
@@ -28,11 +27,12 @@ Not scheduled yet, roughly in priority order.
 
 ## Recently shipped
 
+- **Agenda view**: [Agenda View](/docs/components/agenda-view) lists the next 30 days' events by day, which suits phones better than a time grid.
 - **Loading data by range**: `onVisibleRangeChange` reports the dates on screen as people navigate, so you can fetch events for them, and `loading` shows a progress bar while they arrive. See [Loading Events](/docs/loading-events).
 
 The groundwork that turned the demo into a library:
 
-- **Install with the shadcn CLI**: the calendar ships as seven registry items, from the full [Calendar](/docs/components/calendar) block down to [Calendar Core](/docs/components/calendar-core). See [Installation](/docs/installation).
+- **Install with the shadcn CLI**: the calendar ships as shadcn registry items, from the full [Calendar](/docs/components/calendar) block down to [Calendar Core](/docs/components/calendar-core). See [Installation](/docs/installation).
 - **Shared state**: `CalendarProvider` and `useCalendar()` hold events, the view, the date and the selection, so views no longer depend on the demo page. See [Calendar Core](/docs/components/calendar-core).
 - **Standalone views**: [Day View](/docs/components/day-view), [Week View](/docs/components/week-view), [Month View](/docs/components/month-view) and [Time Grid](/docs/components/time-grid) each work with only a provider around them.
 - **Your own event type**: views are typed with your event type, and render slots let you draw event content and details yourself.
