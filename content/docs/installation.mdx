@@ -8,13 +8,15 @@ description: Add CalendarCN to your project with the shadcn CLI.
 
 ### Set up shadcn/ui
 
-CalendarCN builds on shadcn/ui and Tailwind CSS 4, with the Radix version of the shadcn/ui components. In a new project, pick Radix when you set up shadcn/ui:
+CalendarCN builds on shadcn/ui and Tailwind CSS 4. It works with both component libraries shadcn/ui offers, Base UI and Radix. In a new project, pick either one when you set up shadcn/ui:
 
 ```npm
-npx shadcn init -b radix
+npx shadcn init -b base
 ```
 
-Projects already on a Radix style (`new-york`, `radix-nova` and the other `radix-*` presets) are ready. Base UI styles aren't supported yet: the event details use Radix-only popover features. See the [shadcn/ui installation guide](https://ui.shadcn.com/docs/installation) for frameworks other than Next.js.
+Use `-b radix` for Radix instead.
+
+Projects already on a Radix style (`new-york`, `radix-nova` and the other `radix-*` presets) or a Base UI style (`base-nova` and the other `base-*` presets) are ready. See the [shadcn/ui installation guide](https://ui.shadcn.com/docs/installation) for frameworks other than Next.js.
 
 </Step>
 <Step>
