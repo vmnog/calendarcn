@@ -45,7 +45,7 @@ import { WeekViewTimeAxis } from "./week-view-time-axis";
 import { WeekViewTimeIndicator } from "./week-view-time-indicator";
 import {
   CalendarPopoverBoundaryProvider,
-  isInsideCalendarPopover,
+  isEventInsideCalendarPopover,
 } from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
 
@@ -492,8 +492,7 @@ export function TimeGrid({
         aria-busy={loading || undefined}
         onKeyDown={handleEventKeyDown}
         onClick={(e) => {
-          const target = e.target as HTMLElement;
-          if (isInsideCalendarPopover(target)) return;
+          if (isEventInsideCalendarPopover(e)) return;
           clearSelection();
         }}
       >

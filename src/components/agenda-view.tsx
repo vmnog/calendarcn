@@ -18,7 +18,7 @@ import { EventContextMenu } from "./event-context-menu";
 import { EventDetailPopover } from "./event-detail-popover";
 import {
   CalendarPopoverBoundaryProvider,
-  isInsideCalendarPopover,
+  isEventInsideCalendarPopover,
 } from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
 import {
@@ -269,7 +269,7 @@ export function AgendaView({
     (e: React.MouseEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
       if (
-        isInsideCalendarPopover(target) ||
+        isEventInsideCalendarPopover(e) ||
         target.closest("button") ||
         target.closest("[role='button']")
       ) {

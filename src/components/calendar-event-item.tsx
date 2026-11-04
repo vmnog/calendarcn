@@ -172,7 +172,7 @@ export function CalendarEventItem({
   /** Ref to the event button element, used to measure its viewport rect. */
   const eventRef = React.useRef<HTMLDivElement>(null);
   /** Whether the details were open when the current press began */
-  const popoverOpenOnPressRef = React.useRef(false);
+  const popoverOpenOnPressRef = React.useRef<boolean | null>(null);
 
   /**
    * Viewport-relative top & height of the event element.
@@ -504,8 +504,9 @@ export function CalendarEventItem({
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
-    const wasOpen = popoverOpenOnPressRef.current;
-    popoverOpenOnPressRef.current = false;
+    // A click with no press before it (assistive technology) toggles too
+    const wasOpen = popoverOpenOnPressRef.current ?? showPopover;
+    popoverOpenOnPressRef.current = null;
     onClick?.(event);
     // A click on the event whose details were already open closes them (a
     // mouse press selects the event, and so opens them, before its click)
@@ -737,7 +738,7 @@ export function AllDayEventItem({
   /** The event element: anchors and toggles its details popover */
   const eventRef = React.useRef<HTMLDivElement>(null);
   /** Whether the details were open when the current press began */
-  const popoverOpenOnPressRef = React.useRef(false);
+  const popoverOpenOnPressRef = React.useRef<boolean | null>(null);
   const showPopover = isSelected && showEventPopover;
 
   /**
@@ -897,8 +898,9 @@ export function AllDayEventItem({
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
-    const wasOpen = popoverOpenOnPressRef.current;
-    popoverOpenOnPressRef.current = false;
+    // A click with no press before it (assistive technology) toggles too
+    const wasOpen = popoverOpenOnPressRef.current ?? showPopover;
+    popoverOpenOnPressRef.current = null;
     onClick?.(event);
     // A click on the event whose details were already open closes them (a
     // mouse press selects the event, and so opens them, before its click)

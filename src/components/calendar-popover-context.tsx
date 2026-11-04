@@ -46,10 +46,33 @@ const CALENDAR_POPOVER_SELECTOR = [
   "[data-radix-popper-content-wrapper]",
 ].join(", ");
 
-/** Whether a DOM node is inside the event details or a menu opened from them */
+/**
+ * Whether an element is inside the event details or a menu opened from them.
+ * For an event, use {@link isEventInsideCalendarPopover}: a menu may have
+ * removed the pressed item from the document before the handler runs.
+ */
 export function isInsideCalendarPopover(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return target.closest(CALENDAR_POPOVER_SELECTOR) !== null;
+}
+
+/**
+ * Whether an event fired inside the event details or a menu opened from
+ * them. Reads the path the event took when it fired, not the target's
+ * current ancestors: Radix closes a menu synchronously when an item is
+ * picked, so by the time the calendar's own handlers run the item is no
+ * longer in the document, and `closest()` on it finds nothing.
+ */
+export function isEventInsideCalendarPopover(
+  event: Event | React.SyntheticEvent,
+): boolean {
+  const nativeEvent = "nativeEvent" in event ? event.nativeEvent : event;
+  const path = nativeEvent.composedPath();
+  if (path.length === 0) return isInsideCalendarPopover(nativeEvent.target);
+  return path.some(
+    (node) =>
+      node instanceof Element && node.matches(CALENDAR_POPOVER_SELECTOR),
+  );
 }
 
 const CalendarPopoverBoundaryContext =
