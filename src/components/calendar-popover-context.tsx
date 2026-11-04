@@ -11,7 +11,7 @@ import type { ViewType } from "./week-view-types";
  * - headerHeight: the height of the weekday header + all-day row,
  *   used as top collision padding so popovers never overlap the header.
  * - view: current calendar view ("day" | "week") — in day view, the collision
- *   boundary is skipped so Radix uses the viewport for positioning.
+ *   boundary is skipped so the popover is positioned within the viewport.
  * - boundaryRight: the right-edge x-coordinate (in viewport px) of the
  *   calendar boundary. Used in day view to place a fixed-position popover
  *   anchor at the calendar's right edge so popovers match Notion Calendar.
@@ -29,6 +29,27 @@ interface CalendarPopoverBoundaryValue {
    * the header area when the collision boundary is the viewport.
    */
   headerBottom: number;
+}
+
+/**
+ * Floating layers that belong to the calendar's own popovers: the event
+ * details, and the dropdown menus opened from inside them. Each sits in a
+ * portal outside the calendar, yet React still bubbles its events through the
+ * views, so presses inside them must not count as clicks on the calendar.
+ * Matches the stock shadcn/ui markup of both the Radix and the Base UI styles
+ * (`data-slot` on the menus, the Radix wrapper for anything else it portals).
+ */
+const CALENDAR_POPOVER_SELECTOR = [
+  "[data-calendar-popover]",
+  '[data-slot="dropdown-menu-content"]',
+  '[data-slot="dropdown-menu-sub-content"]',
+  "[data-radix-popper-content-wrapper]",
+].join(", ");
+
+/** Whether a DOM node is inside the event details or a menu opened from them */
+export function isInsideCalendarPopover(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return target.closest(CALENDAR_POPOVER_SELECTOR) !== null;
 }
 
 const CalendarPopoverBoundaryContext =

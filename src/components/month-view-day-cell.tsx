@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import {
   isSameMonth,
   isSameDay,
@@ -18,7 +19,6 @@ import {
   formatFullDate,
   isMultiDayEvent,
 } from "@/lib/event-utils";
-import { Popover, PopoverAnchor } from "@/components/ui/popover";
 import { EventDetailPopover } from "./event-detail-popover";
 import { useCalendarConfig } from "./calendar-provider";
 import { MonthViewEventItem } from "./month-view-event-item";
@@ -102,6 +102,8 @@ export function MonthViewDayCell({
 }: MonthViewDayCellProps) {
   const dayNumber = date.getDate();
   const { locale } = useCalendarConfig();
+  /** The cell: the selected event's details popover opens beside it */
+  const cellRef = useRef<HTMLDivElement>(null);
   // `null` on the server and during hydration, so no cell is marked as today
   const today = useToday();
   const todayDate = today !== null && isSameDay(date, today);
@@ -170,6 +172,7 @@ export function MonthViewDayCell({
 
   const cellContent = (
     <div
+      ref={cellRef}
       data-date={formatCellDate(date)}
       role="group"
       aria-label={fullDate}
@@ -330,24 +333,20 @@ export function MonthViewDayCell({
     </div>
   );
 
-  if (!selectedCellEvent) return cellContent;
-
   return (
-    <Popover
-      open
-      onOpenChange={(open) => {
-        if (!open) onEventPopoverClose?.(selectedCellEvent.id);
-      }}
-    >
-      <PopoverAnchor asChild>{cellContent}</PopoverAnchor>
-      <EventDetailPopover
-        event={selectedCellEvent}
-        onEventChange={onEventChange}
-        onClose={() => onEventPopoverClose?.(selectedCellEvent.id)}
-        onExpand={onEventPopoverExpand}
-        side="right"
-        align="start"
-      />
-    </Popover>
+    <>
+      {cellContent}
+      {selectedCellEvent && (
+        <EventDetailPopover
+          event={selectedCellEvent}
+          anchor={cellRef}
+          onEventChange={onEventChange}
+          onClose={() => onEventPopoverClose?.(selectedCellEvent.id)}
+          onExpand={onEventPopoverExpand}
+          side="right"
+          align="start"
+        />
+      )}
+    </>
   );
 }

@@ -47,6 +47,19 @@ export type {
   CalendarContextValue,
 } from "./calendar-types";
 
+/** A rectangle in viewport pixels that a popover is placed beside */
+export interface PopoverAnchorRect {
+  getBoundingClientRect: () => DOMRect;
+}
+
+/**
+ * Where an event's details popover is placed: beside an element (by its
+ * ref), or beside a fixed rectangle in viewport pixels
+ */
+export type EventPopoverAnchor =
+  | React.RefObject<Element | null>
+  | PopoverAnchorRect;
+
 /**
  * Event popover options shared by the time grid views and MonthView
  */

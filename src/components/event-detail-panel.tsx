@@ -796,7 +796,7 @@ export function EventDetailPanel<
                 "group/item text-xs text-white focus:bg-[#303030] focus:text-white",
                 !hoveredOther && "bg-[#303030]",
               )}
-              onSelect={() => setEventType(eventType)}
+              onClick={() => setEventType(eventType)}
               onMouseEnter={() => setHoveredOther(false)}
             >
               <Check className="size-3.5" />
@@ -808,7 +808,7 @@ export function EventDetailPanel<
               <DropdownMenuItem
                 key={type}
                 className="group/item text-xs text-white focus:bg-[#303030] focus:text-white pl-8"
-                onSelect={() => setEventType(type)}
+                onClick={() => setEventType(type)}
                 onMouseEnter={() => setHoveredOther(true)}
               >
                 <span className="flex-1">{type}</span>
@@ -1026,7 +1026,8 @@ export function EventDetailPanel<
               checked={event.isAllDay ?? false}
               onCheckedChange={handleAllDayToggle}
               onClick={(e) => e.stopPropagation()}
-              className="data-[state=unchecked]:!bg-[#C7C5C1] dark:data-[state=unchecked]:!bg-[#595959] data-[state=checked]:!bg-[#3A85D3]"
+              // data-[state=*] is the Radix switch, data-checked/data-unchecked Base UI's
+              className="data-[state=unchecked]:!bg-[#C7C5C1] data-unchecked:!bg-[#C7C5C1] dark:data-[state=unchecked]:!bg-[#595959] dark:data-unchecked:!bg-[#595959] data-[state=checked]:!bg-[#3A85D3] data-checked:!bg-[#3A85D3]"
             />
             <span className="text-foreground text-xs">All-day</span>
           </div>

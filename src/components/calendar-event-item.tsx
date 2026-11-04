@@ -1,14 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
-import {
-  Popover,
-  PopoverAnchor,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { EventDetailPopover } from "./event-detail-popover";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
 import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
@@ -19,6 +13,7 @@ import type {
   EventColor,
   EventContentProps,
   EventItemPopoverProps,
+  PopoverAnchorRect,
 } from "./week-view-types";
 import { EventContextMenu } from "./event-context-menu";
 
@@ -176,10 +171,12 @@ export function CalendarEventItem({
 
   /** Ref to the event button element, used to measure its viewport rect. */
   const eventRef = React.useRef<HTMLDivElement>(null);
+  /** Whether the details were open when the current press began */
+  const popoverOpenOnPressRef = React.useRef(false);
 
   /**
    * Viewport-relative top & height of the event element.
-   * Used to vertically align the day-view PopoverAnchor with the event
+   * Used to vertically align the day-view popover anchor with the event
    * so the popover appears beside the event rather than at a fixed position.
    */
   const [anchorRect, setAnchorRect] = React.useState<{
@@ -191,7 +188,7 @@ export function CalendarEventItem({
 
   // Measure the event element's viewport position when the popover opens in
   // day view. useLayoutEffect ensures the measurement happens before paint so
-  // the PopoverAnchor is positioned correctly on first frame.
+  // the popover anchor is positioned correctly on first frame.
   React.useLayoutEffect(() => {
     if (!showPopover || !isDayView || !eventRef.current) {
       setAnchorRect(null);
@@ -200,6 +197,25 @@ export function CalendarEventItem({
     const rect = eventRef.current.getBoundingClientRect();
     setAnchorRect({ top: rect.top, height: rect.height });
   }, [showPopover, isDayView]);
+
+  /**
+   * In day view the event spans the full grid width, so there is no room for
+   * the popover beside it. Anchor it to a zero-width line at the RIGHT edge
+   * of the calendar boundary, level with the event, and open it leftward
+   * (side="left") — matching Notion Calendar.
+   */
+  const dayViewAnchor = React.useMemo<PopoverAnchorRect>(
+    () => ({
+      getBoundingClientRect: () =>
+        new DOMRect(
+          boundaryRight,
+          anchorRect?.top ?? 0,
+          0,
+          anchorRect?.height ?? 0,
+        ),
+    }),
+    [boundaryRight, anchorRect],
+  );
 
   const hasTopRounding =
     segmentPosition === "start" || segmentPosition === "full";
@@ -461,6 +477,7 @@ export function CalendarEventItem({
 
   function handlePointerDown(e: React.PointerEvent<HTMLElement>) {
     e.stopPropagation();
+    popoverOpenOnPressRef.current = showPopover ?? false;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
@@ -487,8 +504,12 @@ export function CalendarEventItem({
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!onClick) return;
-    onClick(event);
+    const wasOpen = popoverOpenOnPressRef.current;
+    popoverOpenOnPressRef.current = false;
+    onClick?.(event);
+    // A click on the event whose details were already open closes them (a
+    // mouse press selects the event, and so opens them, before its click)
+    if (wasOpen && showPopover) onEventPopoverClose?.(event.id);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -611,66 +632,23 @@ export function CalendarEventItem({
     </div>
   );
 
-  if (showPopover) {
-    return (
-      <>
-        <Popover
-          open
-          onOpenChange={(open) => {
-            if (!open) onEventPopoverClose?.(event.id);
-          }}
-        >
-          <PopoverTrigger asChild>{eventElement}</PopoverTrigger>
-          {/*
-           * In day view the event spans the full grid width, so Radix can't
-           * fit the popover beside the trigger. Place a zero-width anchor at
-           * the RIGHT edge of the calendar boundary and use side="left" so
-           * the popover extends leftward \u2014 matching Notion Calendar.
-           *
-           * The anchor is portaled to document.body to escape scroll
-           * containers that apply CSS transforms (which break position:fixed
-           * by creating a new containing block).
-           */}
-          {isDayView &&
-            createPortal(
-              <PopoverAnchor
-                className="pointer-events-none"
-                style={{
-                  position: "fixed",
-                  left: boundaryRight,
-                  top: anchorRect?.top ?? 0,
-                  height: anchorRect?.height ?? 0,
-                  width: 0,
-                }}
-              />,
-              document.body,
-            )}
-          <EventDetailPopover
-            event={event}
-            onEventChange={onEventChange}
-            onClose={() => onEventPopoverClose?.(event.id)}
-            onExpand={onEventPopoverExpand}
-            onPrevWeek={onPrevWeek}
-            onNextWeek={onNextWeek}
-            side={isDayView ? "left" : "right"}
-            collisionPaddingTop={isDayView ? headerBottom : undefined}
-          />
-        </Popover>
-        {contextMenu && (
-          <EventContextMenu
-            event={event}
-            position={contextMenu}
-            onClose={closeContextMenu}
-            onEventChange={onEventChange}
-          />
-        )}
-      </>
-    );
-  }
-
   return (
     <>
       {eventElement}
+      {showPopover && (
+        <EventDetailPopover
+          event={event}
+          anchor={isDayView ? dayViewAnchor : eventRef}
+          triggerRef={eventRef}
+          onEventChange={onEventChange}
+          onClose={() => onEventPopoverClose?.(event.id)}
+          onExpand={onEventPopoverExpand}
+          onPrevWeek={onPrevWeek}
+          onNextWeek={onNextWeek}
+          side={isDayView ? "left" : "right"}
+          collisionPaddingTop={isDayView ? headerBottom : undefined}
+        />
+      )}
       {contextMenu && (
         <EventContextMenu
           event={event}
@@ -755,6 +733,26 @@ export function AllDayEventItem({
   // `false` on the server and during hydration, so the markup matches
   const endIsPast = useIsPast(event.end);
   const eventIsPast = isPastProp ?? endIsPast;
+
+  /** The event element: anchors and toggles its details popover */
+  const eventRef = React.useRef<HTMLDivElement>(null);
+  /** Whether the details were open when the current press began */
+  const popoverOpenOnPressRef = React.useRef(false);
+  const showPopover = isSelected && showEventPopover;
+
+  /**
+   * In day view, all-day events span the full width. Anchor the popover to
+   * the calendar boundary's right edge (a zero-width line the height of the
+   * viewport) so it always appears at the visible right edge — even when the
+   * event wrapper extends into off-screen buffer days.
+   */
+  const dayViewAnchor = React.useMemo<PopoverAnchorRect>(
+    () => ({
+      getBoundingClientRect: () =>
+        new DOMRect(boundaryRight, 0, 0, window.innerHeight),
+    }),
+    [boundaryRight],
+  );
 
   const [contextMenu, setContextMenu] = React.useState<{
     x: number;
@@ -899,10 +897,12 @@ export function AllDayEventItem({
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!onClick) {
-      return;
-    }
-    onClick(event);
+    const wasOpen = popoverOpenOnPressRef.current;
+    popoverOpenOnPressRef.current = false;
+    onClick?.(event);
+    // A click on the event whose details were already open closes them (a
+    // mouse press selects the event, and so opens them, before its click)
+    if (wasOpen && showPopover) onEventPopoverClose?.(event.id);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -933,6 +933,7 @@ export function AllDayEventItem({
   }
 
   function handleAllDayPointerDown(e: React.PointerEvent<HTMLElement>) {
+    popoverOpenOnPressRef.current = showPopover ?? false;
     if (!onResizePointerDown) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -963,10 +964,9 @@ export function AllDayEventItem({
     onContextMenuOpenChange?.(true);
   }
 
-  const showPopover = isSelected && showEventPopover;
-
   const eventElement = (
     <div
+      ref={eventRef}
       role="button"
       tabIndex={0}
       aria-label={getEventLabel(event, hourCycle, locale)}
@@ -1066,64 +1066,24 @@ export function AllDayEventItem({
     </div>
   );
 
-  if (showPopover) {
-    return (
-      <>
-        <Popover
-          open
-          onOpenChange={(open) => {
-            if (!open) onEventPopoverClose?.(event.id);
-          }}
-        >
-          <PopoverTrigger asChild>{eventElement}</PopoverTrigger>
-          {/*
-           * In day view, all-day events span the full width. Portal the
-           * anchor to document.body (escaping transformed scroll containers)
-           * and position it at the calendar boundary's right edge so the
-           * popover always appears at the visible right edge \u2014 even when the
-           * event wrapper extends into off-screen buffer days.
-           */}
-          {isDayView &&
-            createPortal(
-              <PopoverAnchor
-                className="pointer-events-none"
-                style={{
-                  position: "fixed",
-                  left: boundaryRight,
-                  top: 0,
-                  bottom: 0,
-                  width: 0,
-                }}
-              />,
-              document.body,
-            )}
-          <EventDetailPopover
-            event={event}
-            onEventChange={onEventChange}
-            onClose={() => onEventPopoverClose?.(event.id)}
-            onExpand={onEventPopoverExpand}
-            onPrevWeek={onPrevWeek}
-            onNextWeek={onNextWeek}
-            side={isDayView ? "left" : "right"}
-            align="start"
-            collisionPaddingTop={isDayView ? headerBottom : undefined}
-          />
-        </Popover>
-        {contextMenu && (
-          <EventContextMenu
-            event={event}
-            position={contextMenu}
-            onClose={closeContextMenu}
-            onEventChange={onEventChange}
-          />
-        )}
-      </>
-    );
-  }
-
   return (
     <>
       {eventElement}
+      {showPopover && (
+        <EventDetailPopover
+          event={event}
+          anchor={isDayView ? dayViewAnchor : eventRef}
+          triggerRef={eventRef}
+          onEventChange={onEventChange}
+          onClose={() => onEventPopoverClose?.(event.id)}
+          onExpand={onEventPopoverExpand}
+          onPrevWeek={onPrevWeek}
+          onNextWeek={onNextWeek}
+          side={isDayView ? "left" : "right"}
+          align="start"
+          collisionPaddingTop={isDayView ? headerBottom : undefined}
+        />
+      )}
       {contextMenu && (
         <EventContextMenu
           event={event}

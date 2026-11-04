@@ -14,10 +14,12 @@ import { CalendarCheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEventKeyboard } from "@/hooks/use-event-keyboard";
 import { useIsPast, useNow, useToday } from "@/hooks/use-now";
-import { Popover, PopoverAnchor } from "@/components/ui/popover";
 import { EventContextMenu } from "./event-context-menu";
 import { EventDetailPopover } from "./event-detail-popover";
-import { CalendarPopoverBoundaryProvider } from "./calendar-popover-context";
+import {
+  CalendarPopoverBoundaryProvider,
+  isInsideCalendarPopover,
+} from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
 import {
   EventContentSlot,
@@ -267,7 +269,7 @@ export function AgendaView({
     (e: React.MouseEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
       if (
-        target.closest("[data-radix-popper-content-wrapper]") ||
+        isInsideCalendarPopover(target) ||
         target.closest("button") ||
         target.closest("[role='button']")
       ) {
@@ -475,6 +477,8 @@ function AgendaEventRow({
   const dayOfSpan = formatAgendaDayOfSpan(entry);
   const label = getEventLabel(event, hourCycle, locale);
   const details = [location, dayOfSpan].filter(Boolean).join(" · ");
+  /** The row: its details popover opens below it */
+  const rowRef = useRef<HTMLDivElement>(null);
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
@@ -498,100 +502,93 @@ function AgendaEventRow({
     : cn(styles.text, "opacity-80 dark:text-white/70 dark:opacity-100");
 
   return (
-    // Always inside a Popover, so opening the details keeps this element
-    // (and its focus) instead of re-creating it
-    <Popover
-      open={showPopover}
-      onOpenChange={(open) => {
-        if (!open) onPopoverClose(event.id);
-      }}
-    >
-      <PopoverAnchor asChild>
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label={
-            dayOfSpan ? `${label}, ${dayOfSpan.toLowerCase()}` : label
-          }
-          aria-pressed={isSelected}
-          data-event-id={event.id}
-          onClick={handleClick}
-          onContextMenu={handleContextMenu}
-          onKeyDown={handleKeyDown}
-          className={cn(
-            "relative flex min-h-9 cursor-default overflow-hidden rounded-md select-none",
-            "focus:outline-none",
-            EVENT_FOCUS_RING_CLASS,
-            isSelected ? styles.border : cn(styles.bg, styles.bgHover),
-            eventIsPast && !isSelected && "opacity-60",
-          )}
-        >
-          {/* Color accent, merged into the background when selected (kept
+    // The row stays first, so opening the details keeps this element (and
+    // its focus) instead of re-creating it
+    <>
+      <div
+        ref={rowRef}
+        role="button"
+        tabIndex={0}
+        aria-label={dayOfSpan ? `${label}, ${dayOfSpan.toLowerCase()}` : label}
+        aria-pressed={isSelected}
+        data-event-id={event.id}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onKeyDown={handleKeyDown}
+        className={cn(
+          "relative flex min-h-9 cursor-default overflow-hidden rounded-md select-none",
+          "focus:outline-none",
+          EVENT_FOCUS_RING_CLASS,
+          isSelected ? styles.border : cn(styles.bg, styles.bgHover),
+          eventIsPast && !isSelected && "opacity-60",
+        )}
+      >
+        {/* Color accent, merged into the background when selected (kept
               in place so the content doesn't shift) */}
-          <span
-            aria-hidden
-            className={cn(
-              "w-1 shrink-0",
-              !isSelected &&
-                cn(styles.border, "dark:bg-white dark:mix-blend-overlay"),
-            )}
-          />
-          <EventContentSlot
-            event={event}
-            view="agenda"
-            placement="agenda"
-            isSelected={isSelected}
-            isPast={eventIsPast}
-            isDragging={false}
-            isResizing={false}
-            isCompact={false}
-            timeLabel={timeLabel}
-            className={AGENDA_SLOT_CLASS}
-            fallback={
-              <div
+        <span
+          aria-hidden
+          className={cn(
+            "w-1 shrink-0",
+            !isSelected &&
+              cn(styles.border, "dark:bg-white dark:mix-blend-overlay"),
+          )}
+        />
+        <EventContentSlot
+          event={event}
+          view="agenda"
+          placement="agenda"
+          isSelected={isSelected}
+          isPast={eventIsPast}
+          isDragging={false}
+          isResizing={false}
+          isCompact={false}
+          timeLabel={timeLabel}
+          className={AGENDA_SLOT_CLASS}
+          fallback={
+            <div
+              className={cn(
+                "grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] content-center gap-x-1 gap-y-0.5 px-2.5 py-1.5 text-xs",
+                "@xl/agenda:grid-cols-[8.5rem_minmax(0,1fr)_auto] @xl/agenda:items-center @xl/agenda:gap-x-4",
+              )}
+            >
+              <span
                 className={cn(
-                  "grid min-w-0 flex-1 grid-cols-[auto_minmax(0,1fr)] content-center gap-x-1 gap-y-0.5 px-2.5 py-1.5 text-xs",
-                  "@xl/agenda:grid-cols-[8.5rem_minmax(0,1fr)_auto] @xl/agenda:items-center @xl/agenda:gap-x-4",
+                  "col-span-2 truncate text-sm font-medium",
+                  "@xl/agenda:col-span-1 @xl/agenda:col-start-2 @xl/agenda:row-start-1",
+                  isSelected
+                    ? "text-white"
+                    : cn(styles.text, "dark:text-white/90"),
                 )}
               >
+                {event.title}
+              </span>
+              <span
+                className={cn(
+                  "whitespace-nowrap tabular-nums",
+                  "@xl/agenda:col-start-1 @xl/agenda:row-start-1",
+                  secondaryTextClass,
+                )}
+              >
+                {timeLabel}
+              </span>
+              {details && (
                 <span
                   className={cn(
-                    "col-span-2 truncate text-sm font-medium",
-                    "@xl/agenda:col-span-1 @xl/agenda:col-start-2 @xl/agenda:row-start-1",
-                    isSelected
-                      ? "text-white"
-                      : cn(styles.text, "dark:text-white/90"),
-                  )}
-                >
-                  {event.title}
-                </span>
-                <span
-                  className={cn(
-                    "whitespace-nowrap tabular-nums",
-                    "@xl/agenda:col-start-1 @xl/agenda:row-start-1",
+                    "truncate before:mr-1 before:content-['·'] @xl/agenda:col-start-3 @xl/agenda:row-start-1 @xl/agenda:max-w-56 @xl/agenda:text-right @xl/agenda:before:content-none",
                     secondaryTextClass,
                   )}
                 >
-                  {timeLabel}
+                  {details}
                 </span>
-                {details && (
-                  <span
-                    className={cn(
-                      "truncate before:mr-1 before:content-['·'] @xl/agenda:col-start-3 @xl/agenda:row-start-1 @xl/agenda:max-w-56 @xl/agenda:text-right @xl/agenda:before:content-none",
-                      secondaryTextClass,
-                    )}
-                  >
-                    {details}
-                  </span>
-                )}
-              </div>
-            }
-          />
-        </div>
-      </PopoverAnchor>
+              )}
+            </div>
+          }
+        />
+      </div>
       {showPopover && (
         <EventDetailPopover
           event={event}
+          anchor={rowRef}
           onEventChange={onEventChange}
           onClose={() => onPopoverClose(event.id)}
           onExpand={onPopoverExpand}
@@ -599,7 +596,7 @@ function AgendaEventRow({
           align="end"
         />
       )}
-    </Popover>
+    </>
   );
 }
 
