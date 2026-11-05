@@ -156,11 +156,32 @@ test("a sideways scroll reports once, after it snaps", async ({ page }) => {
   const columnWidth = second.x - first.x;
   const grid = await boxOf(header);
 
-  // 2.4 columns to the right in small steps snaps two days forward
-  await page.mouse.move(grid.x + grid.width / 2, grid.y + grid.height / 2);
-  for (let step = 0; step < 4; step++) {
-    await page.mouse.wheel(columnWidth * 0.6, 0);
-  }
+  // 2.4 columns to the right in small steps snaps two days forward. The
+  // steps are dispatched in one task, the way a trackpad's arrive within the
+  // 150ms snap debounce: separate mouse.wheel calls can land further apart
+  // on a slow runner, snapping early and reporting twice
+  await page.evaluate(
+    ({ x, y, deltaX }) => {
+      const target = document.elementFromPoint(x, y);
+      if (!target) throw new Error(`Nothing to scroll at ${x}, ${y}`);
+      for (let step = 0; step < 4; step++) {
+        target.dispatchEvent(
+          new WheelEvent("wheel", {
+            deltaX,
+            clientX: x,
+            clientY: y,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      }
+    },
+    {
+      x: grid.x + grid.width / 2,
+      y: grid.y + grid.height / 2,
+      deltaX: columnWidth * 0.6,
+    },
+  );
 
   await expectLatestRange(page, {
     start: "2026-06-02",
