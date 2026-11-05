@@ -65,3 +65,17 @@ pnpm exec playwright show-trace test-results/<test>/trace.zip   # inspect a fail
 - The clock is frozen at Thursday, June 4 2026, 8:00 AM in `America/New_York` (`FROZEN_NOW` in `e2e/helpers.ts`). Mock events are generated relative to today, so every test sees the same dates. If you change `src/lib/mock-events.ts`, check the event titles and times the specs rely on.
 - Locators use roles, labels and text first. The detail panel's time and date inputs have no label, so they carry `data-testid`s: `event-start-time`, `event-end-time`, `event-start-date`. Month view cells are found by their existing `data-date` attribute.
 - Failures keep a trace in `test-results/` (gitignored).
+
+### The Registry in a Base UI Project
+
+`pnpm test:e2e` runs the `chromium` project, which only exercises this repo's own Radix components. The `base-ui` project checks that the registry installs and works in a shadcn/ui project set up with Base UI, like `npx shadcn add @calendarcn/calendar` in a user's app.
+
+```bash
+pnpm test:e2e:base-ui                              # install, type-check, build, then run e2e/base-ui/
+pnpm exec playwright test --project=base-ui        # rerun the spec against the last build
+```
+
+- `e2e/base-ui/fixture` is the stock `npx shadcn@4.23.0 init -t next -b base -p nova` scaffold, with exact versions and without its ThemeProvider (its `d` key clashes with the calendar's day view shortcut). Keep it as generated: it stands in for a user's project.
+- `tools/scripts/base-ui-fixture.sh` builds the registry from the current source, serves it on port 3201 (`BASE_UI_REGISTRY_PORT`), copies the fixture outside the repo (`$TMPDIR/calendarcn-base-ui`, or `BASE_UI_DIR`), points its `components.json` `@calendarcn` registry at the server, runs `shadcn add @calendarcn/calendar`, then `tsc --noEmit` and `next build`. The tested components are always the ones in `src/`, so there's no need to run `pnpm registry:build` first.
+- The app is served with `next start` on port 3200 (`E2E_BASE_UI_PORT`). Its page renders `<Calendar defaultEvents={...} />` with two events on Thursday, June 4 2026, the frozen test date.
+- The install needs network access (npm and `ui.shadcn.com`). If npm fails with `EACCES` on `~/.npm`, point it at another cache: `npm_config_cache=$TMPDIR/npm-cache pnpm test:e2e:base-ui`.
