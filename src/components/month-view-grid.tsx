@@ -121,7 +121,10 @@ export function MonthViewGrid({
   return (
     <div
       ref={containerRef}
-      className={cn("relative h-full overflow-hidden", className)}
+      // Clip, not hide: a hidden box can still be scrolled by script or the
+      // browser (e.g. scrollIntoView), shifting the rows. They only move by
+      // scrollStyle.
+      className={cn("relative h-full overflow-clip", className)}
     >
       <div style={scrollStyle}>
         <div
