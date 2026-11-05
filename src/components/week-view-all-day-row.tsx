@@ -79,7 +79,7 @@ export function WeekViewAllDayRow({
       </div>
 
       {/* Day columns for all-day events - wrapped for scroll sync */}
-      <div className="flex-1 overflow-hidden">
+      <div className="min-w-0 flex-1 overflow-clip">
         <div ref={allDayScrollContentRef} style={scrollStyle}>
           <div className="relative" style={{ minHeight: `${contentHeight}px` }}>
             {/* Background grid */}

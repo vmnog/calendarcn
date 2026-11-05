@@ -512,7 +512,7 @@ export function TimeGrid({
               <div className="text-muted-foreground flex w-16 flex-shrink-0 items-center justify-end pr-2 text-xxs">
                 {timeZoneLabel}
               </div>
-              <div className="flex-1 overflow-hidden">
+              <div className="min-w-0 flex-1 overflow-clip">
                 <div style={scrollStyle}>
                   <CalendarDayHeaders
                     days={bufferedDays}
@@ -560,7 +560,11 @@ export function TimeGrid({
             style={{ height: hours.length * hourHeight }}
           >
             <WeekViewTimeAxis hours={hours} hourHeight={hourHeight} />
-            <div className="relative flex-1 overflow-hidden">
+            {/* Buffer wrappers clip rather than hide: a hidden box can still be
+                scrolled by script or the browser (e.g. scrollIntoView before
+                an automated click), which would slide the grid out of line
+                with the day headers. The buffer only moves by scrollStyle. */}
+            <div className="relative min-w-0 flex-1 overflow-clip">
               <div style={scrollStyle}>
                 <WeekViewGrid
                   days={bufferedDays}

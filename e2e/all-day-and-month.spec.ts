@@ -98,3 +98,20 @@ test("'+N more' in month view opens that week and highlights the day", async ({
     page.getByRole("main").locator(".column-highlight").first(),
   ).toHaveText(/Mon\s*23/);
 });
+
+test("scrolling a month cell into view keeps the rows in place", async ({
+  page,
+}) => {
+  await page.keyboard.press("m");
+  await expectHeader(page, "June 2026");
+
+  // Centering a cell in the last visible row must not scroll the grid's
+  // buffer wrapper and pull the next month's buffer rows into view
+  const firstCell = monthCell(page, "2026-05-31");
+  const before = await boxOf(firstCell);
+  await monthCell(page, "2026-07-11").evaluate((el) =>
+    el.scrollIntoView({ block: "center", inline: "center" }),
+  );
+
+  expect(await boxOf(firstCell)).toEqual(before);
+});
