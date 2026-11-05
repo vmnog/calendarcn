@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -30,6 +31,7 @@ import {
 import {
   EVENT_FOCUS_RING_CLASS,
   eventColorStyles,
+  getEventDetailsTriggerProps,
 } from "./calendar-event-item";
 import {
   AGENDA_DAYS,
@@ -73,6 +75,8 @@ interface AgendaEventRowProps {
   isSelected: boolean;
   /** Whether this row opens the details popover of the selected event */
   showPopover: boolean;
+  /** Whether rows open the details in a popover at all */
+  showEventPopover: boolean;
   onSelect: (event: CalendarEvent) => void;
   onContextMenu: (e: React.MouseEvent, event: CalendarEvent) => void;
   onEventChange: (event: CalendarEvent) => void;
@@ -288,6 +292,7 @@ export function AgendaView({
         entry={entry}
         isSelected={entry.event.id === selectedEventId}
         showPopover={key === popoverEntryKey}
+        showEventPopover={showEventPopover}
         onSelect={handleSelect}
         onContextMenu={handleContextMenu}
         onEventChange={updateEvent}
@@ -459,6 +464,7 @@ function AgendaEventRow({
   entry,
   isSelected,
   showPopover,
+  showEventPopover,
   onSelect,
   onContextMenu,
   onEventChange,
@@ -479,6 +485,8 @@ function AgendaEventRow({
   const details = [location, dayOfSpan].filter(Boolean).join(" · ");
   /** The row: its details popover opens below it */
   const rowRef = useRef<HTMLDivElement>(null);
+  /** The row's details popover, for the row's `aria-controls` */
+  const detailsId = useId();
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
@@ -511,6 +519,11 @@ function AgendaEventRow({
         tabIndex={0}
         aria-label={dayOfSpan ? `${label}, ${dayOfSpan.toLowerCase()}` : label}
         aria-pressed={isSelected}
+        {...getEventDetailsTriggerProps({
+          showEventPopover,
+          showPopover,
+          detailsId,
+        })}
         data-event-id={event.id}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
@@ -588,6 +601,7 @@ function AgendaEventRow({
       {showPopover && (
         <EventDetailPopover
           event={event}
+          id={detailsId}
           anchor={rowRef}
           onEventChange={onEventChange}
           onClose={() => onPopoverClose(event.id)}

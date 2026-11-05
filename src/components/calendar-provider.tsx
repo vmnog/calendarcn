@@ -33,6 +33,14 @@ import type {
   WeekStartsOn,
 } from "./calendar-types";
 
+/**
+ * `process.env.NODE_ENV` gates the development-only warnings. Bundlers
+ * replace it at build time (Next.js, Vite, webpack), so it works without
+ * Node's types; declaring it here keeps type-checking and `no-undef`
+ * linting passing in projects that don't have them.
+ */
+declare const process: { env: { NODE_ENV?: string } };
+
 /** Title of a click-created event when no `createEvent` factory is given */
 const DEFAULT_NEW_EVENT_TITLE = "New event";
 

@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 import {
   CURRENT_WEEK_LABEL,
   calendarEvent,
+  calendarHeader,
   detailFields,
   detailTitle,
   expectHeader,
@@ -68,6 +69,107 @@ test("with the context panel closed, an event opens a popover that closes and do
   ).toHaveCount(0);
   await expect(detailTitle(page)).toHaveValue("Architecture Review");
   await expect(detailFields(page).endTime).toHaveValue("11:30 AM");
+});
+
+test("picking a type in the details popover keeps it open", async ({
+  page,
+}) => {
+  const popover = page.getByRole("dialog", { name: "Event details" });
+
+  // "/" closes the context panel, so the event opens a popover
+  await page.keyboard.press("/");
+  await calendarEvent(page, "Architecture Review").click();
+  await expect(popover).toBeVisible();
+
+  await popover.getByRole("button", { name: "Event", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Focus time/ }).click();
+
+  // The menu closes, the details stay, showing the new type
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(popover).toBeVisible();
+  await expect(
+    popover.getByRole("button", { name: "Focus time", exact: true }),
+  ).toBeVisible();
+});
+
+test("Tab and Shift+Tab loop inside the details popover", async ({ page }) => {
+  const popover = page.getByRole("dialog", { name: "Event details" });
+  const firstControl = popover.getByRole("button", {
+    name: "Event",
+    exact: true,
+  });
+
+  await page.keyboard.press("/");
+  await calendarEvent(page, "Architecture Review").click();
+  await expect(popover).toBeVisible();
+
+  // Shift+Tab on the first control wraps to the last one
+  await firstControl.focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(popover).toBeVisible();
+  await expect(firstControl).not.toBeFocused();
+  expect(
+    await popover.evaluate(
+      (details) =>
+        details !== document.activeElement &&
+        details.contains(document.activeElement),
+    ),
+  ).toBe(true);
+
+  // Tab on the last control wraps back to the first
+  await page.keyboard.press("Tab");
+  await expect(firstControl).toBeFocused();
+  await expect(popover).toBeVisible();
+});
+
+test("an event announces the details popover it opens", async ({ page }) => {
+  const event = calendarEvent(page, "Architecture Review");
+  const popover = page.getByRole("dialog", { name: "Event details" });
+
+  await page.keyboard.press("/");
+  await expect(event).toHaveAttribute("aria-haspopup", "dialog");
+  await expect(event).toHaveAttribute("aria-expanded", "false");
+  await expect(event).not.toHaveAttribute("aria-controls", /./);
+
+  await event.click();
+  await expect(popover).toBeVisible();
+  await expect(event).toHaveAttribute("aria-expanded", "true");
+  const detailsId = await event.getAttribute("aria-controls");
+  expect(detailsId).toBeTruthy();
+  await expect(popover).toHaveId(detailsId!);
+
+  // Month and agenda rows announce it the same way
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("m");
+  await expect(event).toHaveAttribute("aria-haspopup", "dialog");
+  await event.click();
+  await expect(popover).toBeVisible();
+  await expect(event).toHaveAttribute("aria-expanded", "true");
+  await expect(popover).toHaveId((await event.getAttribute("aria-controls"))!);
+});
+
+test("on touch, a scroll outside the details and a tap inside keep them open", async ({
+  page,
+}) => {
+  const popover = page.getByRole("dialog", { name: "Event details" });
+  const touchPress = { pointerType: "touch", pointerId: 7, isPrimary: true };
+
+  await page.keyboard.press("/");
+  await calendarEvent(page, "Architecture Review").click();
+  await expect(popover).toBeVisible();
+
+  // A touch press outside that no click follows: a scroll
+  await calendarHeader(page).dispatchEvent("pointerdown", touchPress);
+  await expect(popover).toBeVisible();
+  // The tap inside is a press that cancels it, then its click
+  await popover.getByPlaceholder("Title").click();
+  await expect(popover).toBeVisible();
+  await expect(popover.getByPlaceholder("Title")).toBeFocused();
+
+  // A touch press outside that its tap does follow closes the details
+  await calendarHeader(page).dispatchEvent("pointerdown", touchPress);
+  await calendarHeader(page).dispatchEvent("click");
+  await expect(popover).toHaveCount(0);
 });
 
 test("Cmd+K opens the command menu without changing the week", async ({

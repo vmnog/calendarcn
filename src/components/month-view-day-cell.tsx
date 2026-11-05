@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import {
   isSameMonth,
   isSameDay,
@@ -20,6 +20,7 @@ import {
   isMultiDayEvent,
 } from "@/lib/event-utils";
 import { EventDetailPopover } from "./event-detail-popover";
+import { getEventDetailsTriggerProps } from "./calendar-event-item";
 import { useCalendarConfig } from "./calendar-provider";
 import { MonthViewEventItem } from "./month-view-event-item";
 import { MonthViewEventBar } from "./month-view-event-bar";
@@ -104,6 +105,8 @@ export function MonthViewDayCell({
   const { locale } = useCalendarConfig();
   /** The cell: the selected event's details popover opens beside it */
   const cellRef = useRef<HTMLDivElement>(null);
+  /** The selected event's details popover, for its event's `aria-controls` */
+  const detailsId = useId();
   // `null` on the server and during hydration, so no cell is marked as today
   const today = useToday();
   const todayDate = today !== null && isSameDay(date, today);
@@ -133,6 +136,14 @@ export function MonthViewDayCell({
           return null;
         })()
       : null;
+
+  /** ARIA for an event in this cell: the selected one controls the popover */
+  const detailsTriggerProps = (eventId: string) =>
+    getEventDetailsTriggerProps({
+      showEventPopover: showEventPopover ?? false,
+      showPopover: selectedCellEvent?.id === eventId,
+      detailsId,
+    });
 
   const showPlaceholder =
     dragEventId &&
@@ -244,6 +255,7 @@ export function MonthViewDayCell({
                         }
                         isGhost={dragEventId === slot.event.id}
                         isResizing={resizeEventId === slot.event.id}
+                        detailsTriggerProps={detailsTriggerProps(slot.event.id)}
                         onClick={onEventClick}
                         onContextMenu={onContextMenu}
                         onDragPointerDown={onDragPointerDown}
@@ -262,6 +274,7 @@ export function MonthViewDayCell({
                       roundedRight={slot.roundedRight}
                       isSelected={selectedEventId === slot.event.id}
                       isResizing={resizeEventId === slot.event.id}
+                      detailsTriggerProps={detailsTriggerProps(slot.event.id)}
                       onClick={onEventClick}
                       onContextMenu={onContextMenu}
                       onDragPointerDown={onDragPointerDown}
@@ -305,6 +318,7 @@ export function MonthViewDayCell({
                 event={slot.event}
                 isSelected={selectedEventId === slot.event.id}
                 isGhost={dragEventId === slot.event.id}
+                detailsTriggerProps={detailsTriggerProps(slot.event.id)}
                 onClick={onEventClick}
                 onContextMenu={onContextMenu}
                 onDragPointerDown={onDragPointerDown}
@@ -339,6 +353,7 @@ export function MonthViewDayCell({
       {selectedCellEvent && (
         <EventDetailPopover
           event={selectedCellEvent}
+          id={detailsId}
           anchor={cellRef}
           onEventChange={onEventChange}
           onClose={() => onEventPopoverClose?.(selectedCellEvent.id)}

@@ -12,6 +12,7 @@ import type {
   CalendarEventItemProps,
   EventColor,
   EventContentProps,
+  EventDetailsTriggerProps,
   EventItemPopoverProps,
   PopoverAnchorRect,
 } from "./week-view-types";
@@ -134,6 +135,77 @@ export const EVENT_FOCUS_RING_CLASS =
  */
 const TIME_GRID_SLOT_CLASS = "relative h-full min-w-0 overflow-hidden pl-1";
 
+interface EventDetailsTriggerOptions {
+  /** Whether the event opens its details in a popover at all */
+  showEventPopover: boolean;
+  /** Whether the event's details popover is open */
+  showPopover: boolean;
+  /** The popover panel's id */
+  detailsId: string;
+}
+
+/**
+ * ARIA for an event element that opens the event's details in a popover:
+ * what it opens, whether that is open now, and the panel it controls.
+ */
+export function getEventDetailsTriggerProps({
+  showEventPopover,
+  showPopover,
+  detailsId,
+}: EventDetailsTriggerOptions): EventDetailsTriggerProps {
+  if (!showEventPopover) return {};
+  return {
+    "aria-haspopup": "dialog",
+    "aria-expanded": showPopover,
+    "aria-controls": showPopover ? detailsId : undefined,
+  };
+}
+
+interface EventDetailsToggleOptions {
+  /** Whether the event's details popover is open */
+  showPopover: boolean;
+  /** Whether the event opens its details in a popover at all */
+  showEventPopover: boolean;
+  close: () => void;
+}
+
+/**
+ * An event opens and closes its details popover. Gives the event element the
+ * popup's ARIA and keeps its click a toggle: a mouse press selects the event,
+ * and so opens the details, before its click arrives, so the click closes
+ * them only when they were already open at the press.
+ */
+function useEventDetailsToggle({
+  showPopover,
+  showEventPopover,
+  close,
+}: EventDetailsToggleOptions) {
+  const detailsId = React.useId();
+  /** Whether the details were open when the current press began */
+  const openOnPressRef = React.useRef<boolean | null>(null);
+
+  return {
+    detailsId,
+    /** For the event element, which opens the details, a dialog */
+    triggerProps: getEventDetailsTriggerProps({
+      showEventPopover,
+      showPopover,
+      detailsId,
+    }),
+    /** Call when a press on the event begins */
+    notePress() {
+      openOnPressRef.current = showPopover;
+    },
+    /** Call from the event's click, after it selected the event */
+    closeIfToggled() {
+      // A click with no press before it (assistive technology) toggles too
+      const wasOpen = openOnPressRef.current ?? showPopover;
+      openOnPressRef.current = null;
+      if (wasOpen && showPopover) close();
+    },
+  };
+}
+
 export function CalendarEventItem({
   positionedEvent,
   hourHeight,
@@ -171,8 +243,6 @@ export function CalendarEventItem({
 
   /** Ref to the event button element, used to measure its viewport rect. */
   const eventRef = React.useRef<HTMLDivElement>(null);
-  /** Whether the details were open when the current press began */
-  const popoverOpenOnPressRef = React.useRef<boolean | null>(null);
 
   /**
    * Viewport-relative top & height of the event element.
@@ -185,6 +255,11 @@ export function CalendarEventItem({
   } | null>(null);
 
   const showPopover = isSelected && showEventPopover;
+  const detailsToggle = useEventDetailsToggle({
+    showPopover: showPopover ?? false,
+    showEventPopover: showEventPopover ?? false,
+    close: () => onEventPopoverClose?.(event.id),
+  });
 
   // Measure the event element's viewport position when the popover opens in
   // day view. useLayoutEffect ensures the measurement happens before paint so
@@ -477,7 +552,7 @@ export function CalendarEventItem({
 
   function handlePointerDown(e: React.PointerEvent<HTMLElement>) {
     e.stopPropagation();
-    popoverOpenOnPressRef.current = showPopover ?? false;
+    detailsToggle.notePress();
 
     const rect = e.currentTarget.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
@@ -504,13 +579,8 @@ export function CalendarEventItem({
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
-    // A click with no press before it (assistive technology) toggles too
-    const wasOpen = popoverOpenOnPressRef.current ?? showPopover;
-    popoverOpenOnPressRef.current = null;
     onClick?.(event);
-    // A click on the event whose details were already open closes them (a
-    // mouse press selects the event, and so opens them, before its click)
-    if (wasOpen && showPopover) onEventPopoverClose?.(event.id);
+    detailsToggle.closeIfToggled();
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -534,6 +604,7 @@ export function CalendarEventItem({
       aria-hidden={isPreview || undefined}
       aria-label={getEventLabel(event, hourCycle, locale)}
       aria-pressed={isSelected ?? false}
+      {...(!isPreview && detailsToggle.triggerProps)}
       data-event-id={isPreview ? undefined : event.id}
       onPointerDown={handlePointerDown}
       onMouseMove={handleMouseMove}
@@ -639,6 +710,7 @@ export function CalendarEventItem({
       {showPopover && (
         <EventDetailPopover
           event={event}
+          id={detailsToggle.detailsId}
           anchor={isDayView ? dayViewAnchor : eventRef}
           triggerRef={eventRef}
           onEventChange={onEventChange}
@@ -737,9 +809,12 @@ export function AllDayEventItem({
 
   /** The event element: anchors and toggles its details popover */
   const eventRef = React.useRef<HTMLDivElement>(null);
-  /** Whether the details were open when the current press began */
-  const popoverOpenOnPressRef = React.useRef<boolean | null>(null);
   const showPopover = isSelected && showEventPopover;
+  const detailsToggle = useEventDetailsToggle({
+    showPopover: showPopover ?? false,
+    showEventPopover: showEventPopover ?? false,
+    close: () => onEventPopoverClose?.(event.id),
+  });
 
   /**
    * In day view, all-day events span the full width. Anchor the popover to
@@ -898,13 +973,8 @@ export function AllDayEventItem({
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
-    // A click with no press before it (assistive technology) toggles too
-    const wasOpen = popoverOpenOnPressRef.current ?? showPopover;
-    popoverOpenOnPressRef.current = null;
     onClick?.(event);
-    // A click on the event whose details were already open closes them (a
-    // mouse press selects the event, and so opens them, before its click)
-    if (wasOpen && showPopover) onEventPopoverClose?.(event.id);
+    detailsToggle.closeIfToggled();
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -935,7 +1005,7 @@ export function AllDayEventItem({
   }
 
   function handleAllDayPointerDown(e: React.PointerEvent<HTMLElement>) {
-    popoverOpenOnPressRef.current = showPopover ?? false;
+    detailsToggle.notePress();
     if (!onResizePointerDown) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -973,6 +1043,7 @@ export function AllDayEventItem({
       tabIndex={0}
       aria-label={getEventLabel(event, hourCycle, locale)}
       aria-pressed={isSelected ?? false}
+      {...detailsToggle.triggerProps}
       data-event-id={event.id}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
@@ -1074,6 +1145,7 @@ export function AllDayEventItem({
       {showPopover && (
         <EventDetailPopover
           event={event}
+          id={detailsToggle.detailsId}
           anchor={isDayView ? dayViewAnchor : eventRef}
           triggerRef={eventRef}
           onEventChange={onEventChange}
