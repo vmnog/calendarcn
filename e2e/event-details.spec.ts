@@ -70,6 +70,57 @@ test("with the context panel closed, an event opens a popover that closes and do
   await expect(detailFields(page).endTime).toHaveValue("11:30 AM");
 });
 
+test("picking a type in the details popover keeps it open", async ({
+  page,
+}) => {
+  const popover = page.getByRole("dialog", { name: "Event details" });
+
+  // "/" closes the context panel, so the event opens a popover
+  await page.keyboard.press("/");
+  await calendarEvent(page, "Architecture Review").click();
+  await expect(popover).toBeVisible();
+
+  await popover.getByRole("button", { name: "Event", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Focus time/ }).click();
+
+  // The menu closes, the details stay, showing the new type
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(popover).toBeVisible();
+  await expect(
+    popover.getByRole("button", { name: "Focus time", exact: true }),
+  ).toBeVisible();
+});
+
+test("Tab and Shift+Tab loop inside the details popover", async ({ page }) => {
+  const popover = page.getByRole("dialog", { name: "Event details" });
+  const firstControl = popover.getByRole("button", {
+    name: "Event",
+    exact: true,
+  });
+
+  await page.keyboard.press("/");
+  await calendarEvent(page, "Architecture Review").click();
+  await expect(popover).toBeVisible();
+
+  // Shift+Tab on the first control wraps to the last one
+  await firstControl.focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(popover).toBeVisible();
+  await expect(firstControl).not.toBeFocused();
+  expect(
+    await popover.evaluate(
+      (details) =>
+        details !== document.activeElement &&
+        details.contains(document.activeElement),
+    ),
+  ).toBe(true);
+
+  // Tab on the last control wraps back to the first
+  await page.keyboard.press("Tab");
+  await expect(firstControl).toBeFocused();
+  await expect(popover).toBeVisible();
+});
+
 test("Cmd+K opens the command menu without changing the week", async ({
   page,
 }) => {

@@ -204,6 +204,10 @@
         {
           "path": "src/components/event-context-menu.tsx",
           "type": "registry:component"
+        },
+        {
+          "path": "src/hooks/use-popover-dismiss.ts",
+          "type": "registry:hook"
         }
       ]
     },

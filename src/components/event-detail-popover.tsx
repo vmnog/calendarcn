@@ -15,10 +15,10 @@ import { PanelRightIcon, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { focusEventElement } from "@/hooks/use-event-keyboard";
+import { usePopoverDismiss } from "@/hooks/use-popover-dismiss";
 import { Button } from "@/components/ui/button";
 import { EventDetailPanel } from "./event-detail-panel";
 import {
-  isEventInsideCalendarPopover,
   isInsideCalendarPopover,
   useCalendarPopoverBoundary,
 } from "./calendar-popover-context";
@@ -32,163 +32,71 @@ const POPOVER_SIDE_OFFSET = 8;
 /** Collision padding on the bottom, left and right edges, in px */
 const POPOVER_COLLISION_PADDING = { bottom: 8, left: 16, right: 16 };
 
+/** Elements of the panel that Tab can reach, in order */
+function getTabbables(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>("*")).filter(
+    (el) =>
+      el.tabIndex >= 0 &&
+      !el.hidden &&
+      !(el as HTMLButtonElement).disabled &&
+      !(el instanceof HTMLInputElement && el.type === "hidden") &&
+      el.getClientRects().length > 0 &&
+      getComputedStyle(el).visibility !== "hidden",
+  );
+}
+
 /**
- * A menu, listbox or dialog opened from the details — the event type menu,
- * a select or a popover in custom details — owns Escape and outside presses
- * until it closes, the way stacked layers behave in shadcn/ui. Its content
- * has focus while it is open, in both the Radix and the Base UI styles.
+ * Tab and Shift+Tab cycle inside the details, as Radix's non-modal popover
+ * content does with a looping (not trapping) focus scope: Tab on the last
+ * control moves to the first, Shift+Tab on the first moves to the last.
  */
-function isLayerOpen(panel: HTMLElement | null): boolean {
+function loopFocus(e: React.KeyboardEvent<HTMLElement>) {
+  if (e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.defaultPrevented) return;
+  const tabbables = getTabbables(e.currentTarget);
+  const first = tabbables[0];
+  const last = tabbables[tabbables.length - 1];
   const active = document.activeElement;
-  if (!(active instanceof Element)) return false;
-  const layer = active.closest(
-    '[role="menu"], [role="listbox"], [role="dialog"]',
-  );
-  return layer !== null && layer !== panel;
+  if (!first || !last) {
+    if (active === e.currentTarget) e.preventDefault();
+    return;
+  }
+  const next =
+    !e.shiftKey && active === last
+      ? first
+      : e.shiftKey && active === first
+        ? last
+        : null;
+  if (!next) return;
+  e.preventDefault();
+  next.focus({ preventScroll: true });
+  if (next instanceof HTMLInputElement) next.select();
 }
 
-interface DismissOptions {
-  panelRef: React.RefObject<HTMLElement | null>;
-  triggerRef?: React.RefObject<Element | null>;
-  onEscape: () => void;
-  onDismiss: () => void;
-}
-
-/** Handlers for the panel element, so the hook sees presses in its React tree */
-interface DismissHandlers {
-  onPointerDownCapture: () => void;
-  onFocusCapture: () => void;
-}
-
-/**
- * Closes the popover the way a non-modal shadcn/ui popover does: on Escape,
- * on a press outside it and when focus moves outside it. Not outside: the
- * details and everything in their React tree, including what they render in
- * portals (their menus, a select's list in custom details); the trigger,
- * which toggles the popover itself; and a layer open above the details,
- * which takes the press or the Escape for itself.
- */
-function useDismiss({
-  panelRef,
-  triggerRef,
-  onEscape,
-  onDismiss,
-}: DismissOptions): DismissHandlers {
-  const onEscapeRef = React.useRef(onEscape);
-  const onDismissRef = React.useRef(onDismiss);
-  /**
-   * Set by the panel's React capture handlers, which run before the document
-   * listeners below (React listens on its root, under the document), and
-   * reset by those listeners' capture-phase twins, which run before React.
-   */
-  const pointerInsideRef = React.useRef(false);
-  const focusInsideRef = React.useRef(false);
-
-  React.useEffect(() => {
-    onEscapeRef.current = onEscape;
-    onDismissRef.current = onDismiss;
-  }, [onEscape, onDismiss]);
-
-  React.useEffect(() => {
-    function isOutside(e: Event): boolean {
-      const target = e.target;
-      if (!(target instanceof Node)) return false;
-      if (triggerRef?.current?.contains(target)) return false;
-      return !isEventInsideCalendarPopover(e);
-    }
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key !== "Escape" || isLayerOpen(panelRef.current)) return;
-      onEscapeRef.current();
-      onDismissRef.current();
-    }
-
-    /** On touch, the click that ends the press; a scroll never fires one */
-    let pendingClick: (() => void) | null = null;
-    function clearPendingClick() {
-      if (!pendingClick) return;
-      document.removeEventListener("click", pendingClick);
-      pendingClick = null;
-    }
-    function dismissOnClick() {
-      pendingClick = null;
-      onDismissRef.current();
-    }
-
-    /**
-     * Whether a layer above the details was open when the press began. Read
-     * before any library's own listener: a Base UI menu closes on a capture
-     * listener, so by the bubble phase it is gone and focus is back in the
-     * details.
-     */
-    let layerOpenOnPress = false;
-    function beginPointerDown() {
-      pointerInsideRef.current = false;
-      layerOpenOnPress = isLayerOpen(panelRef.current);
-    }
-
-    function handlePointerDown(e: PointerEvent) {
-      if (pointerInsideRef.current || layerOpenOnPress || !isOutside(e)) {
-        // A press inside cancels a touch outside still waiting for its click
-        clearPendingClick();
-        return;
-      }
-      if (e.pointerType !== "touch") {
-        onDismissRef.current();
-        return;
-      }
-      clearPendingClick();
-      pendingClick = dismissOnClick;
-      document.addEventListener("click", dismissOnClick, { once: true });
-    }
-
-    function beginFocusIn() {
-      focusInsideRef.current = false;
-    }
-
-    function handleFocusIn(e: FocusEvent) {
-      if (focusInsideRef.current || isLayerOpen(panelRef.current)) return;
-      if (!isOutside(e)) return;
-      onDismissRef.current();
-    }
-
-    // Escape is handled before it reaches the calendar's own key handlers
-    document.addEventListener("keydown", handleKeyDown, true);
-    document.addEventListener("pointerdown", beginPointerDown, true);
-    document.addEventListener("focusin", beginFocusIn, true);
-    document.addEventListener("focusin", handleFocusIn);
-    // Start listening for presses a tick later, so the press that opened the
-    // popover doesn't close it
-    const timer = window.setTimeout(() => {
-      document.addEventListener("pointerdown", handlePointerDown);
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timer);
-      document.removeEventListener("keydown", handleKeyDown, true);
-      document.removeEventListener("pointerdown", beginPointerDown, true);
-      document.removeEventListener("focusin", beginFocusIn, true);
-      document.removeEventListener("focusin", handleFocusIn);
-      document.removeEventListener("pointerdown", handlePointerDown);
-      clearPendingClick();
-    };
-  }, [panelRef, triggerRef]);
-
-  return React.useMemo(
-    () => ({
-      onPointerDownCapture: () => {
-        pointerInsideRef.current = true;
-      },
-      onFocusCapture: () => {
-        focusInsideRef.current = true;
-      },
-    }),
-    [],
-  );
+/** The panel grows out of the side and corner that face its anchor */
+function getTransformOrigin(placement: Placement): string {
+  const [side, align] = placement.split("-");
+  const isVertical = side === "top" || side === "bottom";
+  const facing = { top: "bottom", bottom: "top", left: "right", right: "left" }[
+    side
+  ];
+  const along =
+    align === "start"
+      ? isVertical
+        ? "left"
+        : "top"
+      : align === "end"
+        ? isVertical
+          ? "right"
+          : "bottom"
+        : "center";
+  return isVertical ? `${along} ${facing}` : `${facing} ${along}`;
 }
 
 interface EventDetailPopoverProps {
   event: CalendarEvent;
+  /** The panel's id, for the trigger's `aria-controls` */
+  id?: string;
   /** What the popover is placed beside */
   anchor: EventPopoverAnchor;
   /**
@@ -222,6 +130,7 @@ interface EventDetailPopoverProps {
  */
 export function EventDetailPopover({
   event,
+  id,
   anchor,
   triggerRef,
   onEventChange,
@@ -315,7 +224,7 @@ export function EventDetailPopover({
     });
   }, [boundary, event.id]);
 
-  const dismissHandlers = useDismiss({
+  const dismissHandlers = usePopoverDismiss({
     panelRef,
     triggerRef,
     onEscape: handleEscapeKeyDown,
@@ -360,9 +269,19 @@ export function EventDetailPopover({
     </>
   );
 
+  /**
+   * Inside a dialog (or a sheet or drawer), the panel goes into that dialog
+   * rather than the body: a modal dialog keeps focus inside its own element
+   * and turns off pointer events on the rest of the page.
+   */
+  const portalContainer =
+    boundary?.closest<HTMLElement>('[role="dialog"], [role="alertdialog"]') ??
+    document.body;
+
   return createPortal(
     <div
       ref={setPanel}
+      id={id}
       role="dialog"
       aria-label="Event details"
       data-calendar-popover=""
@@ -371,13 +290,14 @@ export function EventDetailPopover({
       // The views' own click handlers never see a press in the details, or in
       // anything the details render in a portal
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={loopFocus}
       {...dismissHandlers}
       // Off-screen until placed, but still focusable for the new event's title
-      style={
-        isPositioned
-          ? floatingStyles
-          : { ...floatingStyles, transform: "translate(0, -200%)" }
-      }
+      style={{
+        ...floatingStyles,
+        ...(!isPositioned && { transform: "translate(0, -200%)" }),
+        transformOrigin: getTransformOrigin(placedAt),
+      }}
       className={cn(
         "z-50 w-[320px] max-h-[80vh] overflow-y-auto rounded-lg border bg-popover/60 text-popover-foreground shadow-lg outline-hidden backdrop-blur-xl",
         "animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
@@ -397,6 +317,6 @@ export function EventDetailPopover({
         />
       )}
     </div>,
-    document.body,
+    portalContainer,
   );
 }
