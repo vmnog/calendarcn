@@ -48,50 +48,48 @@ function getTabbables(container: HTMLElement): HTMLElement[] {
 /**
  * Tab and Shift+Tab cycle inside the details, as Radix's non-modal popover
  * content does with a looping (not trapping) focus scope: Tab on the last
- * control moves to the first, Shift+Tab on the first moves to the last.
+ * control moves to the first, Shift+Tab on the first moves to the last. From
+ * the panel itself (focused by a press on a blank part of it), Tab enters at
+ * the first control and Shift+Tab at the last.
  */
 function loopFocus(e: React.KeyboardEvent<HTMLElement>) {
   if (e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
   if (e.defaultPrevented) return;
-  const tabbables = getTabbables(e.currentTarget);
+  const panel = e.currentTarget;
+  const tabbables = getTabbables(panel);
   const first = tabbables[0];
   const last = tabbables[tabbables.length - 1];
   const active = document.activeElement;
   if (!first || !last) {
-    if (active === e.currentTarget) e.preventDefault();
+    if (active === panel) e.preventDefault();
     return;
   }
-  const next =
-    !e.shiftKey && active === last
-      ? first
-      : e.shiftKey && active === first
-        ? last
-        : null;
-  if (!next) return;
+  const edge = e.shiftKey ? first : last;
+  if (active !== edge && active !== panel) return;
+  const next = e.shiftKey ? last : first;
   e.preventDefault();
   next.focus({ preventScroll: true });
   if (next instanceof HTMLInputElement) next.select();
 }
 
-/** The panel grows out of the side and corner that face its anchor */
-function getTransformOrigin(placement: Placement): string {
-  const [side, align] = placement.split("-");
-  const isVertical = side === "top" || side === "bottom";
-  const facing = { top: "bottom", bottom: "top", left: "right", right: "left" }[
-    side
-  ];
-  const along =
-    align === "start"
-      ? isVertical
-        ? "left"
-        : "top"
-      : align === "end"
-        ? isVertical
-          ? "right"
-          : "bottom"
-        : "center";
-  return isVertical ? `${along} ${facing}` : `${facing} ${along}`;
-}
+/**
+ * The transform origin for each placement: the panel grows out of the side
+ * and corner that face its anchor.
+ */
+const TRANSFORM_ORIGIN_BY_PLACEMENT: Record<Placement, string> = {
+  top: "center bottom",
+  "top-start": "left bottom",
+  "top-end": "right bottom",
+  bottom: "center top",
+  "bottom-start": "left top",
+  "bottom-end": "right top",
+  left: "right center",
+  "left-start": "right top",
+  "left-end": "right bottom",
+  right: "left center",
+  "right-start": "left top",
+  "right-end": "left bottom",
+};
 
 interface EventDetailPopoverProps {
   event: CalendarEvent;
@@ -169,7 +167,6 @@ export function EventDetailPopover({
   const {
     refs,
     floatingStyles,
-    isPositioned,
     placement: placedAt,
   } = useFloating({
     open: true,
@@ -269,13 +266,19 @@ export function EventDetailPopover({
     </>
   );
 
+  // The provider measures its boundary after it mounts. Until then there is
+  // nothing to place the panel against, and no way to tell whether the
+  // calendar sits in a dialog: rendering once that is known keeps the panel
+  // in one container, rather than moving it (and remounting it) a render later
+  if (!boundary) return null;
+
   /**
    * Inside a dialog (or a sheet or drawer), the panel goes into that dialog
    * rather than the body: a modal dialog keeps focus inside its own element
    * and turns off pointer events on the rest of the page.
    */
   const portalContainer =
-    boundary?.closest<HTMLElement>('[role="dialog"], [role="alertdialog"]') ??
+    boundary.closest<HTMLElement>('[role="dialog"], [role="alertdialog"]') ??
     document.body;
 
   return createPortal(
@@ -292,11 +295,9 @@ export function EventDetailPopover({
       onClick={(e) => e.stopPropagation()}
       onKeyDown={loopFocus}
       {...dismissHandlers}
-      // Off-screen until placed, but still focusable for the new event's title
       style={{
         ...floatingStyles,
-        ...(!isPositioned && { transform: "translate(0, -200%)" }),
-        transformOrigin: getTransformOrigin(placedAt),
+        transformOrigin: TRANSFORM_ORIGIN_BY_PLACEMENT[placedAt],
       }}
       className={cn(
         "z-50 w-[320px] max-h-[80vh] overflow-y-auto rounded-lg border bg-popover/60 text-popover-foreground shadow-lg outline-hidden backdrop-blur-xl",

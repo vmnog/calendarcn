@@ -60,6 +60,13 @@ export type EventPopoverAnchor =
   | React.RefObject<Element | null>
   | PopoverAnchorRect;
 
+/** ARIA of an event element that opens the event's details in a popover */
+export interface EventDetailsTriggerProps {
+  "aria-haspopup"?: "dialog";
+  "aria-expanded"?: boolean;
+  "aria-controls"?: string;
+}
+
 /**
  * Event popover options shared by the time grid views and MonthView
  */

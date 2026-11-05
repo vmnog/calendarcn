@@ -12,6 +12,7 @@ import type {
   CalendarEventItemProps,
   EventColor,
   EventContentProps,
+  EventDetailsTriggerProps,
   EventItemPopoverProps,
   PopoverAnchorRect,
 } from "./week-view-types";
@@ -134,6 +135,32 @@ export const EVENT_FOCUS_RING_CLASS =
  */
 const TIME_GRID_SLOT_CLASS = "relative h-full min-w-0 overflow-hidden pl-1";
 
+interface EventDetailsTriggerOptions {
+  /** Whether the event opens its details in a popover at all */
+  showEventPopover: boolean;
+  /** Whether the event's details popover is open */
+  showPopover: boolean;
+  /** The popover panel's id */
+  detailsId: string;
+}
+
+/**
+ * ARIA for an event element that opens the event's details in a popover:
+ * what it opens, whether that is open now, and the panel it controls.
+ */
+export function getEventDetailsTriggerProps({
+  showEventPopover,
+  showPopover,
+  detailsId,
+}: EventDetailsTriggerOptions): EventDetailsTriggerProps {
+  if (!showEventPopover) return {};
+  return {
+    "aria-haspopup": "dialog",
+    "aria-expanded": showPopover,
+    "aria-controls": showPopover ? detailsId : undefined,
+  };
+}
+
 interface EventDetailsToggleOptions {
   /** Whether the event's details popover is open */
   showPopover: boolean;
@@ -160,13 +187,11 @@ function useEventDetailsToggle({
   return {
     detailsId,
     /** For the event element, which opens the details, a dialog */
-    triggerProps: showEventPopover
-      ? {
-          "aria-haspopup": "dialog" as const,
-          "aria-expanded": showPopover,
-          "aria-controls": showPopover ? detailsId : undefined,
-        }
-      : {},
+    triggerProps: getEventDetailsTriggerProps({
+      showEventPopover,
+      showPopover,
+      detailsId,
+    }),
     /** Call when a press on the event begins */
     notePress() {
       openOnPressRef.current = showPopover;

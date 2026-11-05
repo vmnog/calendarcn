@@ -32,10 +32,13 @@ interface CalendarPopoverBoundaryValue {
 }
 
 /**
- * Floating layers that belong to the calendar's own popovers: the event
- * details, and the dropdown menus opened from inside them. Each sits in a
- * portal outside the calendar, yet React still bubbles its events through the
+ * Floating layers that belong to the calendar: the event details, and the
+ * dropdown menus and other popups opened from inside the calendar's own
+ * elements (a popover in custom event content, say). Each sits in a portal
+ * outside the calendar, yet React still bubbles its events through the
  * views, so presses inside them must not count as clicks on the calendar.
+ * The details panel stops its own clicks itself, and those of the popups it
+ * renders; these helpers cover the rest, and the details' focus checks.
  * Matches the stock shadcn/ui markup of both the Radix and the Base UI styles
  * (`data-slot` on the menus, the Radix wrapper for anything else it portals).
  */

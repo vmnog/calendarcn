@@ -7,6 +7,7 @@ import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
 import { EVENT_FOCUS_RING_CLASS } from "./calendar-event-item";
 import { formatTime, getEventLabel } from "@/lib/event-utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
+import type { EventDetailsTriggerProps } from "./week-view-types";
 
 export interface MonthViewEventItemProps {
   event: CalendarEvent;
@@ -14,6 +15,8 @@ export interface MonthViewEventItemProps {
   isGhost?: boolean;
   /** Whether this is the copy following the pointer during a drag */
   isDragging?: boolean;
+  /** ARIA for opening the event's details in a popover */
+  detailsTriggerProps?: EventDetailsTriggerProps;
   onClick?: (event: CalendarEvent) => void;
   onContextMenu?: (e: React.MouseEvent, event: CalendarEvent) => void;
   onDragPointerDown?: (
@@ -71,6 +74,7 @@ export function MonthViewEventItem({
   event,
   isSelected = false,
   isGhost,
+  detailsTriggerProps,
   isDragging = false,
   onClick,
   onContextMenu,
@@ -118,6 +122,7 @@ export function MonthViewEventItem({
       aria-hidden={isGhost || isDragging || undefined}
       aria-label={getEventLabel(event, hourCycle, locale)}
       aria-pressed={isSelected}
+      {...(!isGhost && !isDragging && detailsTriggerProps)}
       data-event-id={isGhost || isDragging ? undefined : event.id}
       onClick={handleClick}
       onContextMenu={handleContextMenu}

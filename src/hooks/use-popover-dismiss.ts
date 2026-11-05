@@ -12,15 +12,6 @@ import { isEventInsideCalendarPopover } from "@/components/calendar-popover-cont
 const OPEN_POPUP_TRIGGER_SELECTOR =
   '[aria-expanded="true"][aria-haspopup]:not([aria-haspopup="false"]), [aria-expanded="true"][role="combobox"]';
 
-/**
- * Whether a layer opened from the details is open. It owns Escape and
- * outside presses until it closes, the way stacked layers behave in
- * shadcn/ui. Layers opened anywhere else on the page don't count.
- */
-function hasOpenLayer(panel: HTMLElement | null): boolean {
-  return panel?.querySelector(OPEN_POPUP_TRIGGER_SELECTOR) != null;
-}
-
 interface PopoverDismissOptions {
   /** The popover's panel */
   panelRef: React.RefObject<HTMLElement | null>;
@@ -62,7 +53,13 @@ export function usePopoverDismiss({
    * them whether React listens on a container (Vite) or on the document
    * itself (Next.js App Router).
    */
-  const insideEventsRef = React.useRef(new WeakSet<Event>());
+  const [insideEvents] = React.useState(() => new WeakSet<Event>());
+  /**
+   * The element last focused through the panel's React tree while outside
+   * its DOM: focus is in a popup the details opened in a portal (a menu, a
+   * select's list, or a popover opened from inside one of those).
+   */
+  const portalFocusRef = React.useRef<Element | null>(null);
 
   React.useEffect(() => {
     onEscapeRef.current = onEscape;
@@ -70,7 +67,20 @@ export function usePopoverDismiss({
   }, [onEscape, onDismiss]);
 
   React.useEffect(() => {
-    const insideEvents = insideEventsRef.current;
+    /**
+     * Whether a layer opened from the details is open: a trigger in the panel
+     * says so, or focus sits in a popup the panel rendered in a portal. It
+     * owns Escape and outside presses until it closes, the way stacked layers
+     * behave in shadcn/ui. Layers opened anywhere else on the page don't
+     * count.
+     */
+    function hasOpenLayer(): boolean {
+      if (panelRef.current?.querySelector(OPEN_POPUP_TRIGGER_SELECTOR)) {
+        return true;
+      }
+      const focused = portalFocusRef.current;
+      return focused !== null && focused === document.activeElement;
+    }
 
     function isOutside(e: Event): boolean {
       const target = e.target;
@@ -81,7 +91,7 @@ export function usePopoverDismiss({
     }
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key !== "Escape" || hasOpenLayer(panelRef.current)) return;
+      if (e.key !== "Escape" || hasOpenLayer()) return;
       // Marks the Escape as taken, as Radix layers do: a Radix dialog the
       // calendar sits in then leaves it to the details and stays open
       e.preventDefault();
@@ -108,7 +118,7 @@ export function usePopoverDismiss({
      */
     let layerOpenOnPress = false;
     function notePointerDown() {
-      layerOpenOnPress = hasOpenLayer(panelRef.current);
+      layerOpenOnPress = hasOpenLayer();
     }
 
     function handlePointerDown(e: PointerEvent) {
@@ -127,7 +137,7 @@ export function usePopoverDismiss({
     }
 
     function handleFocusIn(e: FocusEvent) {
-      if (hasOpenLayer(panelRef.current) || !isOutside(e)) return;
+      if (hasOpenLayer() || !isOutside(e)) return;
       // Focus on an element the panel sits in (the dialog it's portaled into,
       // after a press on a blank part of it) hasn't left the panel
       const panel = panelRef.current;
@@ -154,17 +164,24 @@ export function usePopoverDismiss({
       document.removeEventListener("pointerdown", handlePointerDown);
       clearPendingClick();
     };
-  }, [panelRef, triggerRef]);
+  }, [panelRef, triggerRef, insideEvents]);
 
   return React.useMemo(
     () => ({
       onPointerDownCapture: (e: React.PointerEvent) => {
-        insideEventsRef.current.add(e.nativeEvent);
+        insideEvents.add(e.nativeEvent);
       },
       onFocusCapture: (e: React.FocusEvent) => {
-        insideEventsRef.current.add(e.nativeEvent);
+        insideEvents.add(e.nativeEvent);
+        const panel = panelRef.current;
+        const target = e.target;
+        const inPortal =
+          target instanceof Element &&
+          panel !== null &&
+          !panel.contains(target);
+        portalFocusRef.current = inPortal ? target : null;
       },
     }),
-    [],
+    [insideEvents, panelRef],
   );
 }
