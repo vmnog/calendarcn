@@ -67,3 +67,23 @@ test("dragging the bottom edge resizes an event", async ({ page }) => {
   await expect(fields.endTime).toHaveValue("1 PM");
   await expect(fields.startDate).toHaveValue("Mon Jun 1");
 });
+
+test("scrolling an event into view keeps it under its day header", async ({
+  page,
+}) => {
+  // Architecture Review: Thursday Jun 4, right of the visible days' center.
+  // Centering it, as automation tools do before a click, must not scroll the
+  // grid's buffer wrapper out of line with the headers.
+  const event = calendarEvent(page, "Architecture Review");
+  await expect(event).toHaveAccessibleName(/, Thursday, June 4$/);
+  await event.evaluate((el) =>
+    el.scrollIntoView({ block: "center", inline: "center" }),
+  );
+
+  const thursday = await boxOf(
+    page.getByRole("main").getByText("4", { exact: true }),
+  );
+  const box = await boxOf(event);
+  expect(box.x).toBeLessThan(thursday.x + thursday.width);
+  expect(box.x + box.width).toBeGreaterThan(thursday.x);
+});

@@ -102,7 +102,7 @@ export function WeekViewTimeIndicator({
 
         {/* Horizontal lines across day columns */}
         {scrollStyle ? (
-          <div className="flex-1 overflow-hidden">
+          <div className="min-w-0 flex-1 overflow-clip">
             <div style={scrollStyle}>{linesContent}</div>
           </div>
         ) : (
