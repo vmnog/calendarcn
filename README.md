@@ -38,7 +38,7 @@ Then add the full calendar, or only the pieces you need (`week-view`, `month-vie
 npx shadcn add @calendarcn/calendar
 ```
 
-CalendarCN uses the Radix version of the shadcn/ui components. The [installation guide](https://calendarcn.xyz/docs/installation) covers setup and every item.
+CalendarCN works with the Radix and the Base UI versions of the shadcn/ui components. The [installation guide](https://calendarcn.xyz/docs/installation) covers setup and every item.
 
 ## Usage
 

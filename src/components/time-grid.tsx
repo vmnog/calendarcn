@@ -43,7 +43,10 @@ import { CalendarDayHeaders } from "./calendar-day-headers";
 import { WeekViewGrid } from "./week-view-grid";
 import { WeekViewTimeAxis } from "./week-view-time-axis";
 import { WeekViewTimeIndicator } from "./week-view-time-indicator";
-import { CalendarPopoverBoundaryProvider } from "./calendar-popover-context";
+import {
+  CalendarPopoverBoundaryProvider,
+  isEventInsideCalendarPopover,
+} from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
 
 /** Minimum height of each hour row in pixels */
@@ -489,8 +492,7 @@ export function TimeGrid({
         aria-busy={loading || undefined}
         onKeyDown={handleEventKeyDown}
         onClick={(e) => {
-          const target = e.target as HTMLElement;
-          if (target.closest("[data-radix-popper-content-wrapper]")) return;
+          if (isEventInsideCalendarPopover(e)) return;
           clearSelection();
         }}
       >

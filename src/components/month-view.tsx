@@ -32,7 +32,10 @@ import { MonthViewGrid } from "./month-view-grid";
 import { MonthViewEventBar } from "./month-view-event-bar";
 import { MonthViewEventItem } from "./month-view-event-item";
 import { EventContextMenu } from "./event-context-menu";
-import { CalendarPopoverBoundaryProvider } from "./calendar-popover-context";
+import {
+  CalendarPopoverBoundaryProvider,
+  isEventInsideCalendarPopover,
+} from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
 import {
   useCalendar,
@@ -321,7 +324,7 @@ export function MonthView({
     (e: React.MouseEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
       if (
-        target.closest("[data-radix-popper-content-wrapper]") ||
+        isEventInsideCalendarPopover(e) ||
         target.closest("button") ||
         target.closest("[role='button']")
       ) {

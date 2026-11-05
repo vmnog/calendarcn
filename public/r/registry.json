@@ -181,12 +181,11 @@
       "type": "registry:component",
       "title": "Event Details",
       "description": "Event chips, the detail panel, the details popover and the right-click menu.",
-      "dependencies": ["date-fns", "lucide-react"],
+      "dependencies": ["@floating-ui/react-dom", "date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "button",
         "dropdown-menu",
-        "popover",
         "switch"
       ],
       "files": [
@@ -205,6 +204,10 @@
         {
           "path": "src/components/event-context-menu.tsx",
           "type": "registry:component"
+        },
+        {
+          "path": "src/hooks/use-popover-dismiss.ts",
+          "type": "registry:hook"
         }
       ]
     },
@@ -299,8 +302,7 @@
       "dependencies": ["date-fns"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
-        "@calendarcn/event-details",
-        "popover"
+        "@calendarcn/event-details"
       ],
       "files": [
         {
@@ -349,8 +351,7 @@
       "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
-        "@calendarcn/event-details",
-        "popover"
+        "@calendarcn/event-details"
       ],
       "files": [
         {

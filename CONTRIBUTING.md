@@ -85,7 +85,7 @@ src/
 
 `registry.json` lists the shadcn registry items (`calendar-core`, `time-grid`, `calendar` and the rest) and the files in each. `pnpm registry:build` turns it into `public/r/*.json`, which the site serves for `npx shadcn add @calendarcn/<item>`. After you change a file that ships in an item, or add a new one, run `pnpm registry:build` and commit `public/r`. CI fails when it's out of date.
 
-Files in the registry run in other people's projects, next to their own copies of the shadcn/ui components. Use only the stock shadcn/ui (Radix) API of `components/ui/*` in them, not variants added in this repo.
+Files in the registry run in other people's projects, next to their own copies of the shadcn/ui components, Radix or Base UI. Use only the stock shadcn/ui API of `components/ui/*` that both share in them, not variants added in this repo. [`src/components/CLAUDE.md`](src/components/CLAUDE.md#registry-files) lists what that rules out.
 
 ### Docs examples
 

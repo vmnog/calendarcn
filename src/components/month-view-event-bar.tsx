@@ -7,6 +7,7 @@ import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
 import { EVENT_FOCUS_RING_CLASS } from "./calendar-event-item";
 import { getEventLabel } from "@/lib/event-utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
+import type { EventDetailsTriggerProps } from "./week-view-types";
 
 /** Width in pixels of the resize hotzone at each edge */
 const RESIZE_HOTZONE_PX = 6;
@@ -29,6 +30,8 @@ export interface MonthViewEventBarProps {
   isDragging?: boolean;
   /** Whether the bar's edges are being dragged (passed to `renderEventContent`) */
   isResizing?: boolean;
+  /** ARIA for opening the event's details in a popover */
+  detailsTriggerProps?: EventDetailsTriggerProps;
   onClick?: (event: CalendarEvent) => void;
   onContextMenu?: (e: React.MouseEvent, event: CalendarEvent) => void;
   onDragPointerDown?: (
@@ -97,6 +100,7 @@ export function MonthViewEventBar({
   roundedRight,
   isSelected = false,
   isGhost,
+  detailsTriggerProps,
   isDragging = false,
   isResizing = false,
   onClick,
@@ -176,6 +180,7 @@ export function MonthViewEventBar({
       aria-hidden={isGhost || isDragging || undefined}
       aria-label={getEventLabel(event, hourCycle, locale)}
       aria-pressed={isSelected}
+      {...(!isGhost && !isDragging && detailsTriggerProps)}
       data-event-id={isGhost || isDragging ? undefined : event.id}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
