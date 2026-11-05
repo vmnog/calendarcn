@@ -144,6 +144,20 @@ Every event is a button you can reach with <Kbd>Tab</Kbd>. The views only handle
 
 `Calendar` also turns on the single-key [keyboard shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>A</Kbd>…). They listen on the whole page, so pass `shortcuts={false}` when several calendars share a page or the keys clash with your app's.
 
+## In a dialog
+
+The calendar works inside a shadcn/ui Dialog or Sheet. The event details then render inside the dialog rather than at the end of the page, so the dialog's focus trap and outside presses leave them alone. A dialog that clips or scrolls its content (`overflow-hidden`, `overflow-auto`) can clip the details too.
+
+Pressing <Kbd>Esc</Kbd> closes the details first. A Radix dialog stays open. A Base UI dialog closes as well, unless you keep it open on an <Kbd>Esc</Kbd> the details already handled:
+
+```tsx
+<Dialog
+  onOpenChange={(open, { reason, event, cancel }) => {
+    if (!open && reason === "escape-key" && event.defaultPrevented) cancel();
+  }}
+>
+```
+
 ## Theming
 
 The calendar uses your shadcn/ui theme (`--background`, `--foreground`, `--border`, `--muted-foreground`, `--popover`) plus a few tokens of its own, which the CLI adds to your CSS file for light mode (`:root`) and dark mode (`.dark`). Today's date and the current-time line use `--primary`.

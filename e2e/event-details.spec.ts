@@ -192,3 +192,18 @@ test("Cmd+K opens the command menu without changing the week", async ({
   await expect(menu).toHaveCount(0);
   await expectHeader(page, CURRENT_WEEK_LABEL);
 });
+
+test("Cmd+K closes the details popover", async ({ page }) => {
+  const popover = page.getByRole("dialog", { name: "Event details" });
+
+  await page.keyboard.press("/");
+  await calendarEvent(page, "Architecture Review").click();
+  await expect(popover).toBeVisible();
+
+  // The command menu takes focus, which leaves the details
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(
+    page.getByRole("dialog", { name: "Command Menu" }),
+  ).toBeVisible();
+  await expect(popover).toHaveCount(0);
+});
