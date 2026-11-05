@@ -189,12 +189,13 @@ pnpm typecheck        # TypeScript check
 pnpm format           # Prettier format
 pnpm format:check     # Prettier check (CI)
 pnpm test:e2e         # Playwright e2e regression suite (e2e/, see docs/runbooks/local-development.md)
+pnpm test:e2e:base-ui # Install the registry into a Base UI shadcn/ui project, build it and run e2e/base-ui/
 pnpm registry:build   # Rebuild public/r from registry.json (CI fails if it's stale)
 ```
 
 **Before committing:** `pnpm lint && pnpm typecheck && pnpm format:check`
 
-CI (`.github/workflows/ci.yml`) runs lint, typecheck, format check and build, plus `pnpm test:e2e`, on every PR and on pushes to `main`.
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, format check and build, plus `pnpm test:e2e` and `pnpm test:e2e:base-ui`, on every PR and on pushes to `main`.
 
 ## Docs
 

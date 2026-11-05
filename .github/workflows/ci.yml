@@ -81,3 +81,37 @@ jobs:
           name: playwright-traces
           path: test-results/
           retention-days: 7
+
+  e2e-base-ui:
+    name: E2E (registry in a Base UI project)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Installs the registry into the Base UI fixture with `shadcn add`,
+      # type-checks and builds it, then runs the base-ui project against it
+      # (see tools/scripts/base-ui-fixture.sh)
+      - run: pnpm test:e2e:base-ui
+
+      - name: Upload traces of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces-base-ui
+          path: test-results/
+          retention-days: 7
