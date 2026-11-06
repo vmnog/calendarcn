@@ -347,13 +347,12 @@ test.describe("the details panel", () => {
     });
 
     await calendarEvent(page, "Launch Review").click();
-    const details = page.getByRole("dialog", { name: "Event details" });
-    await expect(details.getByPlaceholder("Title")).toHaveValue(
-      "Launch Review",
-    );
+    await expect(detailTitle(page)).toHaveValue("Launch Review");
 
     await reminderInput(page).click();
-    const suggestions = page.getByRole("listbox", { name: "Reminders" });
+    const suggestions = page
+      .locator('[aria-modal="true"]')
+      .getByRole("listbox", { name: "Reminders" });
     await suggestions
       .getByRole("option", { name: "At start of event" })
       .click();

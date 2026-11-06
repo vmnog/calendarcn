@@ -18,18 +18,17 @@ import {
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_MUTED_CLASS,
   EVENT_DETAIL_ROW_HEIGHT_CLASS,
-  EventDetailSection,
-} from "./event-detail-parts";
-import {
   PANEL_MENU_ITEM_CLASS,
   PANEL_MENU_ITEM_CURRENT_CLASS,
   PANEL_MENU_LABEL_CLASS,
   PANEL_MENU_SURFACE_CLASS,
   PANEL_TRIGGER_OPEN_CLASS,
+  ROW_BOX_CLASS,
+  EventDetailSection,
   EventDetailTooltip,
   getPanelMenuSideOffset,
   stopEscapePropagation,
-} from "./event-detail-availability";
+} from "./event-detail-parts";
 import {
   EVENT_COLORS,
   groupCalendarsByEmail,
@@ -238,6 +237,32 @@ export function EventDetailCalendar<
     [event, onEventChange],
   );
 
+  const swatchAndName = (
+    <>
+      <span className="flex w-4 shrink-0 items-center justify-center">
+        <CalendarSwatch
+          calendarColor={shownCalendar?.color}
+          eventColor={shownColor}
+        />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{shownName}</span>
+    </>
+  );
+
+  // Read-only details: the calendar without its menu
+  if (!onEventChange) {
+    return (
+      <EventDetailSection name="calendar" className="px-2">
+        <div className={cn("flex items-center", EVENT_DETAIL_ROW_HEIGHT_CLASS)}>
+          <div className={cn(ROW_BOX_CLASS, "border border-transparent")}>
+            <span className="sr-only">Calendar: </span>
+            {swatchAndName}
+          </div>
+        </div>
+      </EventDetailSection>
+    );
+  }
+
   return (
     <EventDetailSection ref={sectionRef} name="calendar" className="px-2">
       <DropdownMenu open={open} onOpenChange={handleOpenChange}>
@@ -251,18 +276,13 @@ export function EventDetailCalendar<
               // before that reaches the trigger
               onKeyDown={open ? stopEscapePropagation : undefined}
               className={cn(
-                "group/trigger flex h-8 w-full items-center gap-[11px] pr-2 pl-[9px] text-left outline-none",
+                ROW_BOX_CLASS,
+                "group/trigger w-full text-left outline-none",
                 EVENT_DETAIL_HOVER_BORDER_CLASS,
                 open && PANEL_TRIGGER_OPEN_CLASS,
               )}
             >
-              <span className="flex w-4 shrink-0 items-center justify-center">
-                <CalendarSwatch
-                  calendarColor={shownCalendar?.color}
-                  eventColor={shownColor}
-                />
-              </span>
-              <span className="min-w-0 flex-1 truncate">{shownName}</span>
+              {swatchAndName}
               <ChevronDown
                 className={cn(
                   "size-3.5 shrink-0 opacity-0 group-hover/trigger:opacity-100 group-focus-visible/trigger:opacity-100",

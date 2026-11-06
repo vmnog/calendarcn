@@ -19,11 +19,14 @@ import {
   EVENT_DETAIL_ICON_CLASS,
   EVENT_DETAIL_INPUT_GROUP_CLASS,
   EVENT_DETAIL_MENU_CLASS,
+  EVENT_DETAIL_PLACEHOLDER_CLASS,
   EVENT_DETAIL_ROW_HEIGHT_CLASS,
   EVENT_DETAIL_SECONDARY_CLASS,
+  PANEL_MENU_SURFACE_CLASS,
+  ROW_BOX_CLASS,
   EventDetailSection,
+  getEventDetailPortalContainer,
 } from "./event-detail-parts";
-import { PANEL_MENU_SURFACE_CLASS } from "./event-detail-availability";
 import { addReminder, formatTime } from "@/lib/event-utils";
 import type {
   DetailedCalendarEvent,
@@ -181,26 +184,12 @@ function ReminderLabel({ reminder, beforeClassName }: ReminderLabelProps) {
 }
 
 /**
- * Where the suggestions render: next to the details popover when the panel
- * is in one, else in the dialog the panel sits in, else the body. A modal
- * dialog turns off pointer events outside its own element.
- */
-function getSuggestionsContainer(section: HTMLElement | null): HTMLElement {
-  const popover = section?.closest<HTMLElement>("[data-calendar-popover]");
-  if (popover?.parentElement) return popover.parentElement;
-  return (
-    section?.closest<HTMLElement>('[role="dialog"], [role="alertdialog"]') ??
-    document.body
-  );
-}
-
-/**
  * Props for ReminderSuggestions
  */
 interface ReminderSuggestionsProps {
   /** Element the list lines up with: the section, so it opens beside the panel */
   reference: HTMLElement | null;
-  /** Element the list renders into (`getSuggestionsContainer()`) */
+  /** Element the list renders into (`getEventDetailPortalContainer()`) */
   container: HTMLElement;
   suggestions: EventReminder[];
   /** Index of the highlighted suggestion, -1 for none */
@@ -295,6 +284,8 @@ export function EventDetailReminders<
   TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
 >({ event, onEventChange }: EventDetailSectionProps<TEvent>) {
   const { hourCycle, locale } = useCalendarConfig();
+  /** Without `onEventChange` the reminders are listed, never edited */
+  const readOnly = !onEventChange;
   const listId = React.useId();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [section, setSection] = React.useState<HTMLDivElement | null>(null);
@@ -416,50 +407,63 @@ export function EventDetailReminders<
     [suggestions.length, highlighted, handlePick],
   );
 
+  const bell = (
+    <span className="flex w-4 shrink-0 items-center justify-center">
+      <Bell className={EVENT_DETAIL_ICON_CLASS} />
+    </span>
+  );
+
   return (
     <EventDetailSection ref={setSection} name="reminders" className="px-2">
       <div className={cn("flex items-center", EVENT_DETAIL_ROW_HEIGHT_CLASS)}>
-        <div
-          className={cn(
-            "flex h-8 w-full items-center gap-[11px] pr-2 pl-[9px]",
-            EVENT_DETAIL_INPUT_GROUP_CLASS,
-          )}
-          onClick={() => inputRef.current?.focus()}
-        >
-          <span className="flex w-4 shrink-0 items-center justify-center">
-            <Bell className={EVENT_DETAIL_ICON_CLASS} />
-          </span>
-          <input
-            ref={inputRef}
-            type="text"
-            role="combobox"
-            aria-label="Add reminder"
-            aria-expanded={open}
-            aria-controls={open ? listId : undefined}
-            aria-autocomplete="list"
-            aria-activedescendant={
-              open && highlightedIndex >= 0
-                ? `${listId}-${highlightedIndex}`
-                : undefined
-            }
-            placeholder="Reminders"
-            value={shownText}
-            onChange={handleChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
+        {readOnly ? (
+          // Read-only details: the heading without the input
+          <div className={cn(ROW_BOX_CLASS, "border border-transparent")}>
+            {bell}
+            <span className={EVENT_DETAIL_PLACEHOLDER_CLASS}>Reminders</span>
+          </div>
+        ) : (
+          <div
             className={cn(
-              // The placeholder token (EVENT_DETAIL_PLACEHOLDER_CLASS), as the title sets it
-              "min-w-0 flex-1 placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",
-              EVENT_DETAIL_GROUPED_INPUT_CLASS,
+              ROW_BOX_CLASS,
+              "w-full",
+              EVENT_DETAIL_INPUT_GROUP_CLASS,
             )}
-          />
-        </div>
+            onClick={() => inputRef.current?.focus()}
+          >
+            {bell}
+            <input
+              ref={inputRef}
+              type="text"
+              role="combobox"
+              aria-label="Add reminder"
+              aria-expanded={open}
+              aria-controls={open ? listId : undefined}
+              aria-autocomplete="list"
+              aria-activedescendant={
+                open && highlightedIndex >= 0
+                  ? `${listId}-${highlightedIndex}`
+                  : undefined
+              }
+              placeholder="Reminders"
+              value={shownText}
+              onChange={handleChange}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              onKeyDown={handleKeyDown}
+              className={cn(
+                // The placeholder token (EVENT_DETAIL_PLACEHOLDER_CLASS), as the title sets it
+                "min-w-0 flex-1 placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",
+                EVENT_DETAIL_GROUPED_INPUT_CLASS,
+              )}
+            />
+          </div>
+        )}
       </div>
       {open && (
         <ReminderSuggestions
           reference={section}
-          container={getSuggestionsContainer(section)}
+          container={getEventDetailPortalContainer(section)}
           suggestions={suggestions}
           highlightedIndex={highlightedIndex}
           id={listId}
@@ -475,7 +479,13 @@ export function EventDetailReminders<
           data-testid="event-reminder"
           className={cn("flex items-center", EVENT_DETAIL_ROW_HEIGHT_CLASS)}
         >
-          <div className="group/reminder flex h-8 w-full items-center gap-[11px] rounded-sm border border-transparent pr-2 pl-[9px] hover:bg-[#F5F5F5] dark:hover:bg-[#242424]">
+          <div
+            className={cn(
+              ROW_BOX_CLASS,
+              "group/reminder w-full rounded-sm border border-transparent",
+              !readOnly && "hover:bg-[#F5F5F5] dark:hover:bg-[#242424]",
+            )}
+          >
             <span className="w-4 shrink-0" />
             <span className="min-w-0 flex-1 truncate">
               <ReminderLabel
@@ -483,14 +493,16 @@ export function EventDetailReminders<
                 beforeClassName={EVENT_DETAIL_SECONDARY_CLASS}
               />
             </span>
-            <button
-              type="button"
-              aria-label={`Remove reminder: ${formatReminderLabel(reminder, hourCycle, locale).replace("\u200A", " ")}`}
-              className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[#919091] opacity-0 group-hover/reminder:opacity-100 focus-visible:opacity-100 dark:text-[#818181]"
-              onClick={() => removeReminder(index)}
-            >
-              <X className="size-3.5" />
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                aria-label={`Remove reminder: ${formatReminderLabel(reminder, hourCycle, locale).replace("\u200A", " ")}`}
+                className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[#919091] opacity-0 group-hover/reminder:opacity-100 focus-visible:opacity-100 dark:text-[#818181]"
+                onClick={() => removeReminder(index)}
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
           </div>
         </div>
       ))}

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import * as ReactDOM from "react-dom";
 import {
   Check,
   ChevronDown,
@@ -22,100 +21,19 @@ import {
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_MUTED_CLASS,
   EVENT_DETAIL_ROW_HEIGHT_CLASS,
+  PANEL_MENU_ITEM_CLASS,
+  PANEL_MENU_ITEM_CURRENT_CLASS,
+  PANEL_MENU_SURFACE_CLASS,
+  PANEL_TRIGGER_OPEN_CLASS,
   EventDetailSection,
+  EventDetailTooltip,
+  getPanelMenuSideOffset,
+  stopEscapePropagation,
 } from "./event-detail-parts";
 import type {
   DetailedCalendarEvent,
   EventDetailSectionProps,
 } from "./week-view-types";
-
-/** Gap in px between a menu opened from the panel and the panel's left edge */
-const PANEL_MENU_GAP = 4;
-
-/** Gap in px between a tooltip and the element it describes */
-const TOOLTIP_GAP = 12;
-
-/** Surface of a menu opened from the bottom of the panel (with `EVENT_DETAIL_MENU_CLASS`) */
-export const PANEL_MENU_SURFACE_CLASS = "rounded-lg p-1.5 shadow-lg";
-
-/** An item of a `PANEL_MENU_SURFACE_CLASS` menu: 32px tall, highlight inset */
-export const PANEL_MENU_ITEM_CLASS =
-  "group/item h-8 gap-0 rounded-md px-2 py-0 text-xs text-[#CCCCCC] focus:!bg-[#303030] focus:!text-[#F0F0F0]";
-
-/**
- * The current item of a `PANEL_MENU_SURFACE_CLASS` menu while nothing else
- * is highlighted: Notion opens its menus with the current value highlighted
- */
-export const PANEL_MENU_ITEM_CURRENT_CLASS = "bg-[#303030] text-[#F0F0F0]";
-
-/** A muted heading in a `PANEL_MENU_SURFACE_CLASS` menu (an account, "Event color") */
-export const PANEL_MENU_LABEL_CLASS =
-  "flex h-8 items-center pr-2 pl-[31px] text-xs text-[#848484] select-none";
-
-/** A panel dropdown trigger while its menu is open: filled, border blended in */
-export const PANEL_TRIGGER_OPEN_CLASS =
-  "border-[#F5F5F5] bg-[#F5F5F5] hover:border-[#F5F5F5] dark:border-[#252525] dark:bg-[#252525] dark:hover:border-[#252525]";
-
-/**
- * Keydown handler for a panel menu: Escape closes the menu only, instead of
- * also reaching the calendar's shortcut that deselects the event
- */
-export function stopEscapePropagation(e: React.KeyboardEvent) {
-  if (e.key === "Escape") e.stopPropagation();
-}
-
-/**
- * `sideOffset` that puts a `side="left"` menu just outside the panel's left
- * edge, whichever column its trigger sits in, as Notion lines up its menus
- */
-export function getPanelMenuSideOffset(
-  triggerRef: React.RefObject<HTMLElement | null>,
-  sectionRef: React.RefObject<HTMLElement | null>,
-): number {
-  const trigger = triggerRef.current;
-  const section = sectionRef.current;
-  if (!trigger || !section) return PANEL_MENU_GAP;
-  return (
-    trigger.getBoundingClientRect().left -
-    section.getBoundingClientRect().left +
-    PANEL_MENU_GAP
-  );
-}
-
-/**
- * Props for EventDetailTooltip
- */
-interface EventDetailTooltipProps {
-  /** The described element's `getBoundingClientRect()`; null hides the tooltip */
-  rect: DOMRect | null;
-  children: React.ReactNode;
-}
-
-/**
- * A tooltip centered above a rectangle (from `getBoundingClientRect()`),
- * shown while `rect` is set. It ignores the pointer, so hovering it never
- * keeps it open.
- */
-export function EventDetailTooltip({
-  rect,
-  children,
-}: EventDetailTooltipProps) {
-  if (!rect) return null;
-
-  return ReactDOM.createPortal(
-    <div
-      role="tooltip"
-      className="pointer-events-none fixed z-[100] w-max max-w-[232px] -translate-x-1/2 -translate-y-full rounded-md border border-transparent bg-[#252525] px-2.5 py-1.5 text-xs leading-[18px] text-[#F0F0F0] shadow-md dark:border-[#303030]"
-      style={{
-        left: rect.left + rect.width / 2,
-        top: rect.top - TOOLTIP_GAP,
-      }}
-    >
-      {children}
-    </div>,
-    document.body,
-  );
-}
 
 /** One choice of a `PanelSelect` menu */
 interface PanelSelectOption<TValue extends string> {
@@ -250,7 +168,8 @@ interface PanelSelectProps<TValue extends string> {
   /** The section the menu lines up beside */
   sectionRef: React.RefObject<HTMLElement | null>;
   className?: string;
-  onValueChange: (value: TValue) => void;
+  /** Called with the picked choice; without it the value is read-only text */
+  onValueChange?: (value: TValue) => void;
 }
 
 /**
@@ -269,7 +188,7 @@ function PanelSelect<TValue extends string>({
 }: PanelSelectProps<TValue>) {
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [open, setOpen] = React.useState(false);
-  const [sideOffset, setSideOffset] = React.useState(PANEL_MENU_GAP);
+  const [sideOffset, setSideOffset] = React.useState(0);
   /** Choice hovered or highlighted in the open menu */
   const [preview, setPreview] = React.useState<TValue | null>(null);
   /** Whether a choice of the open menu has been hovered or highlighted yet */
@@ -295,6 +214,20 @@ function PanelSelect<TValue extends string>({
 
   const shown = options.find((o) => o.value === (preview ?? value));
   const current = options.find((o) => o.value === value);
+
+  if (!onValueChange) {
+    return (
+      <div
+        className={cn(
+          "flex h-8 min-w-0 items-center border border-transparent px-2",
+          className,
+        )}
+      >
+        <span className="sr-only">{name}: </span>
+        <span className="truncate">{current?.label ?? value}</span>
+      </div>
+    );
+  }
 
   return (
     <DropdownMenu open={open} onOpenChange={handleOpenChange}>
@@ -408,7 +341,7 @@ export function EventDetailAvailability<
           options={AVAILABILITY_OPTIONS}
           sectionRef={sectionRef}
           className="w-[102px] shrink-0"
-          onValueChange={handleStatusChange}
+          onValueChange={onEventChange && handleStatusChange}
         />
         <PanelSelect
           name="Visibility"
@@ -416,7 +349,7 @@ export function EventDetailAvailability<
           options={VISIBILITY_OPTIONS}
           sectionRef={sectionRef}
           className="flex-1"
-          onValueChange={handleVisibilityChange}
+          onValueChange={onEventChange && handleVisibilityChange}
         />
       </div>
     </EventDetailSection>
