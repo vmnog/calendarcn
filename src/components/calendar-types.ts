@@ -60,8 +60,9 @@ export interface HourSlot {
  * Represents an event reminder
  */
 export interface EventReminder {
+  /** How long before the event it fires; 0 fires at the start */
   amount: number;
-  unit: "minutes" | "hours" | "days";
+  unit: "minutes" | "hours" | "days" | "weeks";
   /**
    * Time of day the reminder fires, for all-day events ("1 day before at
    * 9 AM"). Timed events leave it out: their reminders count back from the
@@ -486,18 +487,28 @@ export interface VisibleRange {
 }
 
 /**
- * A calendar events can belong to (e.g. "Work"), listed by the event
- * context menu's "Block on calendar" submenu
+ * A calendar events can belong to (e.g. "Work"), listed by the details
+ * panel's calendar picker and the event context menu's "Block on calendar"
+ * submenu
  */
 export interface CalendarInfo {
   /** Stored in the event's `calendarId` when picked */
   id: string;
   /** Display name */
   name: string;
-  /** Swatch color shown beside the name */
+  /**
+   * The calendar's color. Its events take it until they are given their own
+   * `color`.
+   */
   color: EventColor;
   /** Account the calendar belongs to; calendars are grouped under it */
   email?: string;
+  /**
+   * Reminders an event gets on this calendar. An event moved here that still
+   * has its previous calendar's defaults takes these instead; reminders
+   * edited by hand are kept.
+   */
+  defaultReminders?: EventReminder[];
 }
 
 /**
@@ -516,7 +527,7 @@ export interface CalendarConfig {
   hourCycle: HourCycle;
   /** date-fns locale for day names, month names and dates */
   locale: Locale;
-  /** Calendars offered by the event context menu */
+  /** Calendars offered by the details panel's calendar picker and the event context menu */
   calendars: CalendarInfo[];
 }
 
@@ -720,8 +731,9 @@ interface CalendarProviderBaseProps<
    */
   locale?: Locale;
   /**
-   * Calendars the event context menu offers under "Block on calendar".
-   * The submenu is hidden when empty. Defaults to none
+   * Calendars the details panel's calendar picker offers, grouped by `email`,
+   * and the event context menu under "Block on calendar" (hidden when
+   * empty). Defaults to none
    */
   calendars?: CalendarInfo[];
   /** Called after a click-created event is added */

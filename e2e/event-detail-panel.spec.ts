@@ -87,11 +87,14 @@ test("the detail panel shows every field of an event that sets them all", async 
   await expect(detailSection(page, "description")).toHaveText(
     "Walk through the launch checklist, then sign off on the release notes.",
   );
-  await expect(detailSection(page, "calendar")).toHaveText("me@vmnog.com");
+  await expect(detailSection(page, "calendar")).toHaveText("Work");
   await expect(detailSection(page, "availability")).toHaveText("BusyPrivate");
-  await expect(detailSection(page, "reminders")).toHaveText(
-    "Reminders10min before1hour before",
-  );
+  await expect(
+    page.getByRole("combobox", { name: "Add reminder" }),
+  ).toHaveAttribute("placeholder", "Reminders");
+  await expect(
+    detailSection(page, "reminders").getByTestId("event-reminder"),
+  ).toHaveText([/^10\s?min before$/, /^1\s?hour before$/]);
 });
 
 test("the detail panel shows Notion's placeholders for an event without details", async ({
@@ -116,10 +119,13 @@ test("the detail panel shows Notion's placeholders for an event without details"
     ["description", "Description"],
     ["calendar", "Calendar"],
     ["availability", "BusyDefault visibility"],
-    ["reminders", "Reminders"],
   ]) {
     await expect(detailSection(page, name)).toHaveText(placeholder);
   }
+  await expect(
+    page.getByRole("combobox", { name: "Add reminder" }),
+  ).toHaveAttribute("placeholder", "Reminders");
+  await expect(page.getByTestId("event-reminder")).toHaveCount(0);
 });
 
 test("Enter commits the title, trimmed", async ({ page }) => {

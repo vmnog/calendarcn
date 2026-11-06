@@ -2,12 +2,78 @@ import { addDays, addMinutes, format, startOfWeek } from "date-fns";
 import type { Day } from "date-fns";
 
 import type {
+  CalendarInfo,
   DetailedCalendarEvent,
   EventColor,
 } from "@/components/week-view-types";
 
 /** Weekday the demo weeks start on (Sunday), matching the calendar views. */
 const WEEK_STARTS_ON = 0;
+
+/** Account of the demo's personal calendars, also its primary calendar's id */
+export const DEMO_PRIMARY_CALENDAR_ID = "you@example.com";
+
+/** Account of the demo's work calendars, also its primary calendar's id */
+const DEMO_WORK_ACCOUNT = "you@work.example.com";
+
+/** Reminders a timed event gets on the demo's personal primary calendar */
+const DEMO_DEFAULT_REMINDERS = [{ amount: 10, unit: "minutes" as const }];
+
+/** Reminders a timed event gets on the demo's work primary calendar */
+const DEMO_WORK_DEFAULT_REMINDERS = [{ amount: 30, unit: "minutes" as const }];
+
+/**
+ * The demo's calendars, in two made-up accounts: what the details panel's
+ * calendar picker and the context menu offer. Ids other than the primary
+ * calendars' are the names, matching the `calendarId`s of the mock events.
+ */
+export const DEMO_CALENDARS: CalendarInfo[] = [
+  {
+    id: DEMO_PRIMARY_CALENDAR_ID,
+    name: DEMO_PRIMARY_CALENDAR_ID,
+    color: "red",
+    email: DEMO_PRIMARY_CALENDAR_ID,
+    defaultReminders: DEMO_DEFAULT_REMINDERS,
+  },
+  {
+    id: "Personal",
+    name: "Personal",
+    color: "purple",
+    email: DEMO_PRIMARY_CALENDAR_ID,
+  },
+  {
+    id: "Family",
+    name: "Family",
+    color: "orange",
+    email: DEMO_PRIMARY_CALENDAR_ID,
+  },
+  {
+    id: "Side Projects",
+    name: "Side Projects",
+    color: "yellow",
+    email: DEMO_PRIMARY_CALENDAR_ID,
+  },
+  {
+    id: "Fitness",
+    name: "Fitness",
+    color: "green",
+    email: DEMO_PRIMARY_CALENDAR_ID,
+  },
+  {
+    id: "Holidays in Brazil",
+    name: "Holidays in Brazil",
+    color: "green",
+    email: DEMO_PRIMARY_CALENDAR_ID,
+  },
+  {
+    id: DEMO_WORK_ACCOUNT,
+    name: DEMO_WORK_ACCOUNT,
+    color: "gray",
+    email: DEMO_WORK_ACCOUNT,
+    defaultReminders: DEMO_WORK_DEFAULT_REMINDERS,
+  },
+  { id: "Work", name: "Work", color: "blue", email: DEMO_WORK_ACCOUNT },
+];
 
 /**
  * Builds a date relative to the current week: `dayOffset` days after the
@@ -250,7 +316,7 @@ const WEEKLY_ROUTINES: readonly WeeklyRoutine[] = [
     hour: 9,
     durationMinutes: 30,
     color: "red",
-    calendarId: "me@vmnog.com",
+    calendarId: DEMO_PRIMARY_CALENDAR_ID,
     opts: {
       description: "Daily sync — blockers, progress, priorities",
       reminders: [{ amount: 5, unit: "minutes" }],
@@ -268,7 +334,7 @@ const WEEKLY_ROUTINES: readonly WeeklyRoutine[] = [
     hour: 15,
     durationMinutes: 30,
     color: "red",
-    calendarId: "me@vmnog.com",
+    calendarId: DEMO_PRIMARY_CALENDAR_ID,
     opts: {
       description: "Weekly check-in",
       reminders: [{ amount: 10, unit: "minutes" }],

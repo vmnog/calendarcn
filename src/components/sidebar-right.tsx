@@ -63,11 +63,10 @@ export interface CalendarAccount {
 const data: { accounts: CalendarAccount[] } = {
   accounts: [
     {
-      email: "me@vmnog.com",
+      email: "you@example.com",
       calendars: [
-        { name: "me@vmnog.com", color: "red", visible: true },
+        { name: "you@example.com", color: "red", visible: true },
         { name: "Personal", color: "purple", visible: true },
-        { name: "Work", color: "blue", visible: true },
         { name: "Family", color: "orange", visible: true },
         { name: "Side Projects", color: "yellow", visible: true },
         { name: "Fitness", color: "green", visible: true },
@@ -77,6 +76,13 @@ const data: { accounts: CalendarAccount[] } = {
           visible: true,
           isSubscribed: true,
         },
+      ],
+    },
+    {
+      email: "you@work.example.com",
+      calendars: [
+        { name: "you@work.example.com", color: "gray", visible: true },
+        { name: "Work", color: "blue", visible: true },
       ],
     },
   ],

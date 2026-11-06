@@ -44,6 +44,8 @@ function SidePanel() {
 - Edit the title in place. With `onEventChange` wired to the calendar, the event updates as you type.
 - Edit the start and end times and dates. <Kbd>Enter</Kbd> saves, <Kbd>Esc</Kbd> restores the old value.
 - Fields the event doesn't set (participants, conferencing, location, links, description, reminders) show Notion's muted placeholders.
+- Move the event to another of the provider's `calendars` (grouped by account) or give it its own color, set it busy or free and pick who can see it, from menus that open beside the panel.
+- Add reminders from presets, or type a number to get it in minutes, hours, days or weeks. Hover a reminder to remove it.
 - Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
 
 ## Custom details
@@ -147,7 +149,8 @@ Passed to `renderEventDetails` on `CalendarProvider`.
     {
       name: "calendarEmail",
       type: "string",
-      description: "Account email shown beside the calendar.",
+      description:
+        "Account email shown when `calendarId` isn't one of the provider's `calendars`.",
     },
     { name: "description", type: "string", description: "Free-text notes." },
     { name: "location", type: "string", description: "Where it happens." },
@@ -210,7 +213,7 @@ Passed to `renderEventDetails` on `CalendarProvider`.
     },
     {
       name: "reminders",
-      type: '{ amount: number; unit: "minutes" | "hours" | "days"; time?: { hours: number; minutes: number } }[]',
+      type: '{ amount: number; unit: "minutes" | "hours" | "days" | "weeks"; time?: { hours: number; minutes: number } }[]',
       description:
         "Reminders before the event. `time` is the time of day for all-day events.",
     },
