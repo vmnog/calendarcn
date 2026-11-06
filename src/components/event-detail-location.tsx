@@ -10,13 +10,15 @@ import {
   EVENT_DETAIL_HOVER_BORDER_CLASS,
   EVENT_DETAIL_ICON_CLASS,
   EVENT_DETAIL_INPUT_GROUP_CLASS,
+  EVENT_DETAIL_LINK_CLASS,
+  EVENT_DETAIL_MENU_SECONDARY_CLASS,
   EVENT_DETAIL_MUTED_CLASS,
   EVENT_DETAIL_TEXT_CLASS,
   EventDetailSection,
+  ROW_BOX_CLASS,
 } from "./event-detail-parts";
 import {
   EVENT_DETAIL_INPUT_PLACEHOLDER_CLASS,
-  EVENT_DETAIL_MENU_SECONDARY_CLASS,
   EventDetailSuggestion,
   EventDetailSuggestions,
   HighlightedMatch,
@@ -36,10 +38,6 @@ const MAX_SUGGESTIONS = 5;
 
 /** A location that is a web address opens itself instead of a map */
 const URL_PATTERN = /^https?:\/\/\S+$/i;
-
-/** A row's 32px box, from 8px off the panel's edges, with the icon column at 26px */
-const ROW_BOX_CLASS =
-  "flex h-8 min-w-0 flex-1 items-center gap-[11px] pr-2 pl-[9px]";
 
 /** The location as it's saved: "Central Park, New York, NY, USA" */
 function formatSuggestion(place: LocationSuggestion): string {
@@ -190,7 +188,8 @@ export function EventDetailLocation<
               rel="noreferrer"
               data-testid="event-location-link"
               className={cn(
-                "min-w-0 cursor-pointer break-words underline decoration-[#EEEEEE] underline-offset-[3px] group-hover/location:decoration-current dark:decoration-[#262626] dark:group-hover/location:decoration-current",
+                "min-w-0 cursor-pointer break-words group-hover/location:decoration-current",
+                EVENT_DETAIL_LINK_CLASS,
                 EVENT_DETAIL_TEXT_CLASS,
               )}
               onClick={(e) => e.stopPropagation()}

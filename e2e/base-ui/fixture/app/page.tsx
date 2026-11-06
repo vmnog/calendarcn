@@ -1,3 +1,5 @@
+"use client"
+
 import { Calendar } from "@/components/calendar"
 import type {
   CalendarEvent,

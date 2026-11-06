@@ -24,17 +24,17 @@ import {
   EVENT_DETAIL_ICON_CLASS,
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_MENU_ITEM_CLASS,
+  EVENT_DETAIL_MENU_SECONDARY_CLASS,
   EVENT_DETAIL_MUTED_CLASS,
   EVENT_DETAIL_PLACEHOLDER_CLASS,
   EVENT_DETAIL_SECONDARY_CLASS,
   EVENT_DETAIL_TEXT_CLASS,
   EventDetailDivider,
   EventDetailSection,
-} from "./event-detail-parts";
-import {
-  EVENT_DETAIL_MENU_SECONDARY_CLASS,
+  PANEL_TRIGGER_OPEN_CLASS,
+  ROW_BOX_CLASS,
   closeMenuOnEscape,
-} from "./event-detail-suggestions";
+} from "./event-detail-parts";
 import type {
   ConferenceProvider,
   ConferenceProviderOption,
@@ -53,14 +53,6 @@ const PROVIDER_NAMES: Record<ConferenceProvider, string> = {
 
 /** Item text in the conferencing menu */
 const MENU_ITEM_CLASS = cn(EVENT_DETAIL_MENU_ITEM_CLASS, "gap-2 text-sm");
-
-/** A row's 32px box, from 8px off the panel's edges, with the icon column at 26px */
-const ROW_BOX_CLASS =
-  "flex h-8 min-w-0 flex-1 items-center gap-[11px] pr-2 pl-[9px]";
-
-/** Fill of the empty row while its menu is open */
-const OPEN_ROW_CLASS =
-  "border-[#F5F5F5] bg-[#F5F5F5] dark:border-[#242424] dark:bg-[#242424]";
 
 /** The fallback camera's color in the (dark) menu */
 const MENU_ICON_CLASS = cn(
@@ -348,6 +340,8 @@ export function EventDetailConferencing<
                 ROW_BOX_CLASS,
                 "gap-2",
                 EVENT_DETAIL_HOVER_BORDER_CLASS,
+                // Keyboard focus in the row shows its hover border
+                "has-[:focus-visible]:border-[#E8E8E4] dark:has-[:focus-visible]:border-[#373737]",
                 menuOpen && "border-[#E8E8E4] dark:border-[#373737]",
               )}
             >
@@ -425,7 +419,7 @@ export function EventDetailConferencing<
                   "group/conferencing text-left",
                   ROW_BOX_CLASS,
                   EVENT_DETAIL_HOVER_BORDER_CLASS,
-                  menuOpen && OPEN_ROW_CLASS,
+                  menuOpen && PANEL_TRIGGER_OPEN_CLASS,
                 )}
               >
                 <ProviderIcon icon={shown?.icon} />

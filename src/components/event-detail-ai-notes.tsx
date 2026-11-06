@@ -11,15 +11,12 @@ import {
   EVENT_DETAIL_SECONDARY_CLASS,
   EVENT_DETAIL_TEXT_CLASS,
   EventDetailSection,
+  ROW_BOX_CLASS,
 } from "./event-detail-parts";
 import type {
   DetailedCalendarEvent,
   EventDetailSectionProps,
 } from "./week-view-types";
-
-/** A row's 32px box, from 8px off the panel's edges, with the icon column at 26px */
-const ROW_BOX_CLASS =
-  "flex h-8 min-w-0 flex-1 items-center gap-[11px] pr-2 pl-[9px]";
 
 /**
  * AI meeting notes, as in Notion Calendar. Off: a muted "Add AI meeting

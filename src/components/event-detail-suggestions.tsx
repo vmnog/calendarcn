@@ -4,19 +4,18 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 
 import { cn } from "@/lib/utils";
-import { EVENT_DETAIL_MENU_CLASS } from "./event-detail-parts";
+import {
+  EVENT_DETAIL_MENU_CLASS,
+  EVENT_DETAIL_MENU_SECONDARY_CLASS,
+  EVENT_DETAIL_MENU_TEXT_CLASS,
+  getEventDetailPortalContainer,
+} from "./event-detail-parts";
 
 /** Gap between the suggestions and the field they belong to (Notion: 13px) */
 const SUGGESTIONS_GAP = 13;
 
 /** Closest the suggestions get to the viewport's edges */
 const VIEWPORT_MARGIN = 8;
-
-/** Secondary text in a menu: an email under a name, an address, a hint */
-export const EVENT_DETAIL_MENU_SECONDARY_CLASS = "text-[#8B8B8B]";
-
-/** Main text of a menu item */
-export const EVENT_DETAIL_MENU_TEXT_CLASS = "text-[#E0E0E0]";
 
 /** `EVENT_DETAIL_PLACEHOLDER_CLASS`'s colors on an input's placeholder */
 export const EVENT_DETAIL_INPUT_PLACEHOLDER_CLASS =
@@ -46,21 +45,6 @@ interface EventDetailSuggestionsProps {
 interface SuggestionsPosition {
   top: number;
   left: number;
-}
-
-/**
- * Where the list portals: the dialog the calendar is in (a modal one turns
- * off pointer events on the rest of the page), else the body. The details
- * popover is itself a dialog, but its scrolling and blur would clip the
- * list, so the search starts past it.
- */
-function getPortalContainer(anchor: HTMLElement): HTMLElement {
-  const start =
-    anchor.closest("[data-calendar-popover]")?.parentElement ?? anchor;
-  return (
-    start.closest<HTMLElement>('[role="dialog"], [role="alertdialog"]') ??
-    document.body
-  );
 }
 
 /**
@@ -107,7 +91,7 @@ export function EventDetailSuggestions({
 
   React.useLayoutEffect(() => {
     const anchor = anchorRef.current;
-    if (anchor) setContainer(getPortalContainer(anchor));
+    if (anchor) setContainer(getEventDetailPortalContainer(anchor));
   }, [anchorRef]);
 
   // Follow the field while the page scrolls or resizes
@@ -289,18 +273,4 @@ export function handleSuggestionKey(
     return true;
   }
   return false;
-}
-
-/**
- * `onKeyDown` for a details menu's content: Escape closes only the menu.
- * The calendar's global Escape would also deselect the event, so the key
- * stops here, and the menu is closed through its `open` state, which works
- * whichever library's own Escape handling runs.
- */
-export function closeMenuOnEscape(close: () => void) {
-  return (e: React.KeyboardEvent) => {
-    if (e.key !== "Escape") return;
-    e.stopPropagation();
-    close();
-  };
 }

@@ -1,3 +1,5 @@
+"use client"
+
 import { CalendarProvider } from "@/components/calendar-provider"
 import { EventDetailPanel } from "@/components/event-detail-panel"
 import type {

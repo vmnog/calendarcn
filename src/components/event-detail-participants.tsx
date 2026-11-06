@@ -31,20 +31,20 @@ import {
   EVENT_DETAIL_INPUT_GROUP_CLASS,
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_MENU_ITEM_CLASS,
+  EVENT_DETAIL_MENU_SECONDARY_CLASS,
   EVENT_DETAIL_PLACEHOLDER_CLASS,
   EVENT_DETAIL_ROW_HEIGHT_CLASS,
   EVENT_DETAIL_SECONDARY_CLASS,
   EVENT_DETAIL_TEXT_CLASS,
   EventDetailDivider,
   EventDetailSection,
+  closeMenuOnEscape,
 } from "./event-detail-parts";
 import {
   EVENT_DETAIL_INPUT_PLACEHOLDER_CLASS,
-  EVENT_DETAIL_MENU_SECONDARY_CLASS,
   EventDetailSuggestion,
   EventDetailSuggestions,
   HighlightedMatch,
-  closeMenuOnEscape,
   handleSuggestionKey,
 } from "./event-detail-suggestions";
 import type {
