@@ -302,6 +302,48 @@ test.describe("the details panel", () => {
     ]);
   });
 
+  test("adding a reminder closes the list until typing or a new focus", async ({
+    page,
+  }) => {
+    await calendarEvent(page, "Launch Review").click();
+    const suggestions = page.getByRole("listbox", { name: "Reminders" });
+
+    // A click on a preset adds it; the input stays focused and empty
+    await reminderInput(page).click();
+    await suggestions.getByRole("option", { name: /^5\s?min before$/ }).click();
+    await expect(suggestions).toHaveCount(0);
+    await expect(reminderInput(page)).toBeFocused();
+    await expect(reminderInput(page)).toHaveValue("");
+    await expect(reminderInput(page)).toHaveAttribute("aria-expanded", "false");
+
+    // Down and a click on the focused input leave it closed
+    await page.keyboard.press("ArrowDown");
+    await reminderInput(page).click();
+    await expect(suggestions).toHaveCount(0);
+    await expect(reminderInput(page)).toHaveValue("");
+
+    // Typing opens it; Enter adds and closes it again
+    await page.keyboard.type("2");
+    await expect(suggestions).toBeVisible();
+    await page.keyboard.press("Enter");
+    await expect(suggestions).toHaveCount(0);
+    await expect(reminderInput(page)).toBeFocused();
+    await expect(reminderInput(page)).toHaveValue("");
+    await expect(reminderRows(page)).toHaveText([
+      reminderText("2", "min"),
+      reminderText("5", "min"),
+      reminderText("10", "min"),
+      reminderText("1", "hour"),
+    ]);
+
+    // Focusing the input again lists the presets
+    await detailTitle(page).focus();
+    await reminderInput(page).click();
+    await expect(suggestions.getByRole("option").first()).toHaveText(
+      "At start of event",
+    );
+  });
+
   test("Escape closes the reminder list and keeps the reminders", async ({
     page,
   }) => {

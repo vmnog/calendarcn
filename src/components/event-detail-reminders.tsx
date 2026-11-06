@@ -277,8 +277,9 @@ function ReminderSuggestions({
  * the start. Focusing the input lists presets beside the panel, typing a
  * number offers it in minutes, hours, days and weeks; picking one adds it
  * unless a reminder firing at the same moment is set ("60min" and "1hour").
- * Escape closes the list and clears the input. Hovering a reminder shows an
- * × that removes it.
+ * As in Notion, adding one closes the list and keeps the input focused and
+ * empty: typing, or focusing the input again, opens it. Escape closes the
+ * list and clears the input. Hovering a reminder shows an × that removes it.
  */
 export function EventDetailReminders<
   TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
@@ -291,8 +292,12 @@ export function EventDetailReminders<
   const [section, setSection] = React.useState<HTMLDivElement | null>(null);
   const [focused, setFocused] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  /** Whether the query has been typed since focus (clearing it then hides the list) */
-  const [typed, setTyped] = React.useState(false);
+  /**
+   * Whether the list stays closed while the input is empty: after typing
+   * and clearing the text, or after adding a reminder. Typing opens it
+   * again, and so does a new focus.
+   */
+  const [closedWhenEmpty, setClosedWhenEmpty] = React.useState(false);
   const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
   /**
    * Whether the highlighted suggestion is previewed in the input: after
@@ -312,7 +317,7 @@ export function EventDetailReminders<
   const highlighted =
     highlightedIndex >= 0 ? suggestions[highlightedIndex] : undefined;
   const open =
-    focused && suggestions.length > 0 && (query.length > 0 || !typed);
+    focused && suggestions.length > 0 && (query.length > 0 || !closedWhenEmpty);
 
   const preview = previewing ? highlighted : undefined;
   /** Text the input shows: the previewed suggestion, or what was typed */
@@ -334,7 +339,7 @@ export function EventDetailReminders<
   const handlePick = React.useCallback(
     (reminder: EventReminder) => {
       setQuery("");
-      setTyped(false);
+      setClosedWhenEmpty(true);
       setHighlightedIndex(-1);
       setPreviewing(false);
       const next = addReminder(reminders, reminder);
@@ -358,7 +363,7 @@ export function EventDetailReminders<
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const next = e.target.value;
       setQuery(next);
-      setTyped(true);
+      setClosedWhenEmpty(true);
       // A typed value highlights its first suggestion, ready for Enter
       setHighlightedIndex(next.trim().length > 0 ? 0 : -1);
       setPreviewing(false);
@@ -373,7 +378,7 @@ export function EventDetailReminders<
   const handleBlur = React.useCallback(() => {
     setFocused(false);
     setQuery("");
-    setTyped(false);
+    setClosedWhenEmpty(false);
     setHighlightedIndex(-1);
     setPreviewing(false);
   }, []);
@@ -381,7 +386,8 @@ export function EventDetailReminders<
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        if (suggestions.length === 0) return;
+        // A closed list stays closed, as in Notion
+        if (!open) return;
         e.preventDefault();
         const step = e.key === "ArrowDown" ? 1 : -1;
         setHighlightedIndex((index) => {
@@ -393,7 +399,7 @@ export function EventDetailReminders<
       }
       if (e.key === "Enter") {
         e.preventDefault();
-        if (highlighted) handlePick(highlighted);
+        if (open && highlighted) handlePick(highlighted);
         return;
       }
       if (e.key === "Escape") {
@@ -404,7 +410,7 @@ export function EventDetailReminders<
         inputRef.current?.blur();
       }
     },
-    [suggestions.length, highlighted, handlePick],
+    [open, suggestions.length, highlighted, handlePick],
   );
 
   const bell = (
