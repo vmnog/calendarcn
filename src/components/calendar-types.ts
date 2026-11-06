@@ -115,6 +115,13 @@ export interface RecurrenceRule {
    * Defaults to "day-of-month".
    */
   monthlyBy?: "day-of-month" | "weekday-of-month";
+  /**
+   * Which of its weekdays in the month a `"weekday-of-month"` rule falls on:
+   * 1 to 4 for the first to the fourth, -1 for the last (RRULE's
+   * `BYDAY=-1TH`). Defaults to the start's position in its month, so set -1
+   * to keep "the last Thu" when the start is also the fourth one.
+   */
+  weekOfMonth?: 1 | 2 | 3 | 4 | -1;
   /** When the series stops. Defaults to never */
   end?: RecurrenceEnd;
 }
@@ -593,7 +600,10 @@ export interface EventDetailSectionProps<
 > {
   /** The event shown */
   event: TEvent;
-  /** Called with the edited event; leave it out for read-only details */
+  /**
+   * Called with the edited event. Without it a section renders read-only:
+   * no menus, no inputs that accept typing.
+   */
   onEventChange?: (event: TEvent) => void;
 }
 

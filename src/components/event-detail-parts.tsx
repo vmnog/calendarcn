@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import * as ReactDOM from "react-dom";
 
 import { cn } from "@/lib/utils";
 
@@ -62,10 +63,145 @@ export const EVENT_DETAIL_MENU_CLASS = "bg-[#252525] border-[#303030]";
 export const EVENT_DETAIL_MENU_ITEM_CLASS =
   "text-xs text-white focus:!bg-[#303030] focus:!text-white";
 
+/** Main text of a menu item */
+export const EVENT_DETAIL_MENU_TEXT_CLASS = "text-[#E0E0E0]";
+
+/** Secondary text in a menu: an email under a name, an address, a hint */
+export const EVENT_DETAIL_MENU_SECONDARY_CLASS = "text-[#8B8B8B]";
+
+/** Surface of a menu opened from the bottom of the panel (with `EVENT_DETAIL_MENU_CLASS`) */
+export const PANEL_MENU_SURFACE_CLASS = "rounded-lg p-1.5 shadow-lg";
+
+/** An item of a `PANEL_MENU_SURFACE_CLASS` menu: 32px tall, highlight inset */
+export const PANEL_MENU_ITEM_CLASS =
+  "group/item h-8 gap-0 rounded-md px-2 py-0 text-xs text-[#CCCCCC] focus:!bg-[#303030] focus:!text-[#F0F0F0]";
+
 /**
- * Props for EventDetailSection
+ * The current item of a `PANEL_MENU_SURFACE_CLASS` menu while nothing else
+ * is highlighted: Notion opens its menus with the current value highlighted
  */
-interface EventDetailSectionProps extends React.ComponentProps<"div"> {
+export const PANEL_MENU_ITEM_CURRENT_CLASS = "bg-[#303030] text-[#F0F0F0]";
+
+/** A muted heading in a `PANEL_MENU_SURFACE_CLASS` menu (an account, "Event color") */
+export const PANEL_MENU_LABEL_CLASS =
+  "flex h-8 items-center pr-2 pl-[31px] text-xs text-[#848484] select-none";
+
+/** A panel dropdown trigger while its menu is open: filled, border blended in */
+export const PANEL_TRIGGER_OPEN_CLASS =
+  "border-[#F5F5F5] bg-[#F5F5F5] hover:border-[#F5F5F5] dark:border-[#252525] dark:bg-[#252525] dark:hover:border-[#252525]";
+
+/** A row's 32px box, from 8px off the panel's edges, with the icon column at 26px */
+export const ROW_BOX_CLASS =
+  "flex h-8 min-w-0 flex-1 items-center gap-[11px] pr-2 pl-[9px]";
+
+/**
+ * Link text in the details panel: a faint underline that takes the text
+ * color on hover, as Notion's links do
+ */
+export const EVENT_DETAIL_LINK_CLASS =
+  "underline decoration-[#EEEEEE] decoration-1 underline-offset-2 hover:decoration-current dark:decoration-[#242424]";
+
+/** Gap in px between a menu opened from the panel and the panel's left edge */
+const PANEL_MENU_GAP = 4;
+
+/** Gap in px between a tooltip and the element it describes */
+const TOOLTIP_GAP = 12;
+
+/**
+ * Containers a floating layer of the details mounts in: a dialog, sheet or
+ * drawer, but not the details popover (also a dialog), which is transformed
+ * and would clip and misplace a layer beside it
+ */
+const PORTAL_CONTAINER_SELECTOR =
+  '[role="dialog"]:not([data-calendar-popover]), [role="alertdialog"]';
+
+/**
+ * Keydown handler for a panel menu whose library closes it on Escape: the
+ * key stops there, instead of also reaching the calendar's shortcut that
+ * deselects the event
+ */
+export function stopEscapePropagation(e: React.KeyboardEvent) {
+  if (e.key === "Escape") e.stopPropagation();
+}
+
+/**
+ * `onKeyDown` for a details menu's content: Escape closes only the menu.
+ * The calendar's global Escape would also deselect the event, so the key
+ * stops here, and the menu is closed through its `open` state, which works
+ * whichever library's own Escape handling runs.
+ */
+export function closeMenuOnEscape(close: () => void) {
+  return (e: React.KeyboardEvent) => {
+    if (e.key !== "Escape") return;
+    e.stopPropagation();
+    close();
+  };
+}
+
+/**
+ * `sideOffset` that puts a `side="left"` menu just outside the panel's left
+ * edge, whichever column its trigger sits in, as Notion lines up its menus
+ */
+export function getPanelMenuSideOffset(
+  triggerRef: React.RefObject<HTMLElement | null>,
+  sectionRef: React.RefObject<HTMLElement | null>,
+): number {
+  const trigger = triggerRef.current;
+  const section = sectionRef.current;
+  if (!trigger || !section) return PANEL_MENU_GAP;
+  return (
+    trigger.getBoundingClientRect().left -
+    section.getBoundingClientRect().left +
+    PANEL_MENU_GAP
+  );
+}
+
+/**
+ * Where a floating layer opened from the details (a suggestion list, a
+ * menu) mounts: inside the dialog, sheet or drawer that holds `node`, since
+ * a modal dialog turns off pointer events on the rest of the page, else the
+ * body. The same rule the details popover follows for itself.
+ */
+export function getEventDetailPortalContainer(
+  node: Element | null | undefined,
+): HTMLElement {
+  return node?.closest<HTMLElement>(PORTAL_CONTAINER_SELECTOR) ?? document.body;
+}
+
+/**
+ * A tooltip centered above a rectangle (from `getBoundingClientRect()`),
+ * shown while `rect` is set. It ignores the pointer, so hovering it never
+ * keeps it open.
+ */
+export function EventDetailTooltip({
+  rect,
+  children,
+}: {
+  rect: DOMRect | null;
+  children: React.ReactNode;
+}) {
+  if (!rect) return null;
+
+  return ReactDOM.createPortal(
+    <div
+      role="tooltip"
+      className="pointer-events-none fixed z-[100] w-max max-w-[232px] -translate-x-1/2 -translate-y-full rounded-md border border-transparent bg-[#252525] px-2.5 py-1.5 text-xs leading-[18px] text-[#F0F0F0] shadow-md dark:border-[#303030]"
+      style={{
+        left: rect.left + rect.width / 2,
+        top: rect.top - TOOLTIP_GAP,
+      }}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
+/**
+ * Props for EventDetailSection (the container; a section's own props are
+ * `EventDetailSectionProps` from `week-view-types`)
+ */
+interface EventDetailSectionContainerProps extends React.ComponentProps<"div"> {
   /** Names the section in `data-section`, e.g. "time" or "location" */
   name: string;
 }
@@ -78,7 +214,7 @@ export function EventDetailSection({
   name,
   className,
   ...props
-}: EventDetailSectionProps) {
+}: EventDetailSectionContainerProps) {
   return (
     <div
       data-section={name}

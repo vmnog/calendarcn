@@ -89,6 +89,8 @@ Key files:
 
 The event detail panel follows Notion Calendar's interaction patterns. Reuse these exact patterns when adding new editable fields.
 
+**Escape rule:** Escape closes the open menu and restores the value from before it opened; hovering a row only previews it. A value commits on Enter, on click, or on blur after typing or arrow keys. Unlike Notion, Escape never commits the highlighted item. Use `closeMenuOnEscape` / `stopEscapePropagation` from `event-detail-parts.tsx` so the key never reaches the global deselect.
+
 #### Color Tokens (hardcoded, not CSS variables)
 
 Every interactive color needs BOTH a light value and a `dark:` value. The dark values alone are near-black and break light mode (e.g. a focused input becomes unreadable).

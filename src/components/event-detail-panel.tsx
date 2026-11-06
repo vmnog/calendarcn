@@ -44,6 +44,8 @@ import {
   EVENT_DETAIL_TEXT_CLASS,
   EventDetailDivider,
   EventDetailGroup,
+  closeMenuOnEscape,
+  stopEscapePropagation,
 } from "./event-detail-parts";
 import { EventDetailParticipants } from "./event-detail-participants";
 import { EventDetailRecurrence } from "./event-detail-recurrence";
@@ -206,6 +208,9 @@ export function EventDetailPanel<
     onRestore: (text) => onEventChange?.({ ...event, title: text }),
     onCommit: (text) => {
       const trimmed = text.trim();
+      // Only spaces: back to the title from before editing. Deleting the
+      // whole title still clears it.
+      if (text && !trimmed) return null;
       if (trimmed !== text) onEventChange?.({ ...event, title: trimmed });
       return trimmed;
     },
@@ -237,7 +242,12 @@ export function EventDetailPanel<
   const showOptionRows =
     optionsExpanded ||
     event.isAllDay ||
-    Boolean(event.recurrenceRule ?? event.recurrence ?? event.timeZone);
+    Boolean(
+      event.recurrenceRule ??
+      event.recurrence ??
+      event.timeZone ??
+      event.timezone,
+    );
 
   return (
     <div
@@ -263,9 +273,13 @@ export function EventDetailPanel<
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              // Read-only details show the kind without its menu
+              disabled={!onEventChange}
               className={cn(
                 "flex h-7 items-center gap-[7px] px-[7px]",
                 EVENT_DETAIL_HOVER_BORDER_CLASS,
+                !onEventChange &&
+                  "hover:border-transparent dark:hover:border-transparent",
                 kindMenuOpen && "bg-[#252525] text-white",
               )}
             >
@@ -285,6 +299,7 @@ export function EventDetailPanel<
             alignOffset={-4}
             className={cn("min-w-[180px]", EVENT_DETAIL_MENU_CLASS)}
             onMouseLeave={() => setHoveredOther(false)}
+            onKeyDown={closeMenuOnEscape(() => setKindMenuOpen(false))}
           >
             <DropdownMenuItem
               className={cn(
@@ -332,6 +347,7 @@ export function EventDetailPanel<
               align="start"
               side="left"
               className={cn("min-w-[180px]", EVENT_DETAIL_MENU_CLASS)}
+              onKeyDown={stopEscapePropagation}
             >
               <DropdownMenuItem className={EVENT_DETAIL_MENU_ITEM_CLASS}>
                 <SquareDashed className="size-3.5" />
@@ -375,6 +391,7 @@ export function EventDetailPanel<
           {...title.inputProps}
           type="text"
           placeholder="Title"
+          readOnly={!onEventChange}
           className={cn(
             "h-[35px] px-[7px] placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",
             EVENT_DETAIL_INPUT_CLASS,

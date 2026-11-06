@@ -15,7 +15,10 @@ export interface UseInlineEditOptions {
   onCommit: (text: string) => string | null;
   /** Called on every keystroke, e.g. to preview a title on the calendar */
   onInput?: (text: string) => void;
-  /** Called with the text from focus after Escape, e.g. to undo a preview */
+  /**
+   * Called with the text from focus after Escape or a rejected commit, e.g.
+   * to undo a preview
+   */
   onRestore?: (text: string) => void;
   /** Selects the whole text on focus, as the time and date fields do */
   selectOnFocus?: boolean;
@@ -90,8 +93,13 @@ export function useInlineEdit({
       return;
     }
     const committed = onCommit(text);
-    setText(committed ?? valueOnFocusRef.current);
-  }, [onCommit, text]);
+    if (committed !== null) {
+      setText(committed);
+      return;
+    }
+    setText(valueOnFocusRef.current);
+    onRestore?.(valueOnFocusRef.current);
+  }, [onCommit, onRestore, text]);
 
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {

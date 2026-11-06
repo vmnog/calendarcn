@@ -121,3 +121,67 @@ test("the detail panel shows Notion's placeholders for an event without details"
     await expect(detailSection(page, name)).toHaveText(placeholder);
   }
 });
+
+test("Enter commits the title, trimmed", async ({ page }) => {
+  await calendarEvent(page, "Quick Sync").click();
+  const title = detailTitle(page);
+
+  await title.fill("  Retro  ");
+  await title.press("Enter");
+
+  await expect(title).not.toBeFocused();
+  await expect(title).toHaveValue("Retro");
+  await expect(calendarEvent(page, "Retro")).toBeVisible();
+});
+
+test("Escape restores the title without deselecting the event", async ({
+  page,
+}) => {
+  await calendarEvent(page, "Quick Sync").click();
+  const title = detailTitle(page);
+
+  // Typing previews the title on the calendar
+  await title.fill("Something else");
+  await expect(calendarEvent(page, "Something else")).toBeVisible();
+
+  await title.press("Escape");
+  await expect(title).not.toBeFocused();
+  await expect(title).toHaveValue("Quick Sync");
+  await expect(calendarEvent(page, "Quick Sync")).toBeVisible();
+
+  // The next Escape, outside the field, deselects
+  await page.keyboard.press("Escape");
+  await expect(title).toHaveCount(0);
+});
+
+test("a title of only spaces reverts to the title from before editing", async ({
+  page,
+}) => {
+  await calendarEvent(page, "Quick Sync").click();
+  const title = detailTitle(page);
+
+  await title.fill("   ");
+  await title.press("Enter");
+
+  await expect(title).toHaveValue("Quick Sync");
+  await expect(calendarEvent(page, "Quick Sync")).toBeVisible();
+});
+
+test("Escape closes the panel's menus without deselecting the event", async ({
+  page,
+}) => {
+  await calendarEvent(page, "Quick Sync").click();
+  const menu = page.getByRole("menu");
+
+  await page.getByRole("button", { name: "Event", exact: true }).click();
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(detailTitle(page)).toHaveValue("Quick Sync");
+
+  await page.getByRole("button", { name: "More actions" }).click();
+  await expect(menu).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(detailTitle(page)).toHaveValue("Quick Sync");
+});

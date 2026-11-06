@@ -264,6 +264,10 @@
         {
           "path": "src/hooks/use-inline-edit.ts",
           "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-hover-tooltip.ts",
+          "type": "registry:hook"
         }
       ]
     },

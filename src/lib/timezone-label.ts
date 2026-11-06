@@ -31,11 +31,18 @@ export function getTimeZoneCity(timeZone: string): string {
 /**
  * Returns the short timezone label followed by the zone's city, e.g.
  * "GMT-3 Sao Paulo" or "EDT New York", for `timeZone` (the runtime's zone
- * when omitted). Zones without a city return the label alone.
+ * when omitted). Zones without a city return the label alone, and a name
+ * the runtime doesn't know ("Mars/Olympus") is returned as given.
  */
 export function getTimeZoneDisplayName(date: Date, timeZone?: string): string {
   const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const label = getTimeZoneLabel(date, zone);
+  let label: string;
+  try {
+    label = getTimeZoneLabel(date, zone);
+  } catch {
+    // `Intl` throws a RangeError on an unknown zone
+    return zone;
+  }
   const city = getTimeZoneCity(zone);
   if (!city) return label;
   return `${label} ${city}`;
