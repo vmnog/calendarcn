@@ -26,7 +26,11 @@ import type {
   AgendaEntry,
   CalendarConfig,
   CalendarEvent,
+  CalendarGroup,
+  CalendarInfo,
+  DetailedCalendarEvent,
   EventColor,
+  EventReminder,
   HourCycle,
   PositionedEvent,
   ViewType,
@@ -55,6 +59,22 @@ export function pickRandomEventColor(
 ): EventColor {
   const choices = EVENT_COLORS.filter((color) => color !== previous);
   return choices[Math.floor(Math.random() * choices.length)];
+}
+
+/** Color of an event that sets none and whose calendar isn't listed */
+export const DEFAULT_EVENT_COLOR: EventColor = "blue";
+
+/**
+ * The color an event is drawn in: its own `color`, else the color of the
+ * calendar its `calendarId` names, else blue
+ */
+export function resolveEventColor(
+  event: Pick<DetailedCalendarEvent, "color" | "calendarId">,
+  calendars: readonly CalendarInfo[],
+): EventColor {
+  if (event.color) return event.color;
+  const calendar = calendars.find((c) => c.id === event.calendarId);
+  return calendar?.color ?? DEFAULT_EVENT_COLOR;
 }
 
 /** Duration in minutes of an event created by clicking an empty time slot */
@@ -1365,4 +1385,105 @@ export function getKeyboardEventChange(
     start: toDate(nextStart),
     end: toDate(nextStart + length),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Calendars and reminders
+// ---------------------------------------------------------------------------
+
+/** Minutes in one of each reminder unit */
+const MINUTES_PER_REMINDER_UNIT: Record<EventReminder["unit"], number> = {
+  minutes: 1,
+  hours: 60,
+  days: 24 * 60,
+  weeks: 7 * 24 * 60,
+};
+
+/** Groups calendars by account email, keeping the order they were given in */
+export function groupCalendarsByEmail(
+  calendars: readonly CalendarInfo[],
+): CalendarGroup[] {
+  const groups: CalendarGroup[] = [];
+  for (const calendar of calendars) {
+    const group = groups.find((g) => g.email === calendar.email);
+    if (group) {
+      group.calendars.push(calendar);
+      continue;
+    }
+    groups.push({ email: calendar.email, calendars: [calendar] });
+  }
+  return groups;
+}
+
+/**
+ * How many minutes before the event's start a reminder fires. An all-day
+ * reminder's `time` moves it later in its day: "1 day before at 9 AM" fires
+ * 15 hours before the event's midnight start.
+ */
+export function getReminderMinutes(reminder: EventReminder): number {
+  const minutes = reminder.amount * MINUTES_PER_REMINDER_UNIT[reminder.unit];
+  if (!reminder.time) return minutes;
+  return minutes - (reminder.time.hours * 60 + reminder.time.minutes);
+}
+
+/** Whether two reminders fire at the same moment, as "60min" and "1hour" do */
+export function isSameReminder(a: EventReminder, b: EventReminder): boolean {
+  return getReminderMinutes(a) === getReminderMinutes(b);
+}
+
+/**
+ * Adds a reminder, keeping the list sorted from the one closest to the start
+ * to the earliest. Returns `reminders` itself when one firing at the same
+ * moment is already set.
+ */
+export function addReminder(
+  reminders: EventReminder[],
+  reminder: EventReminder,
+): EventReminder[] {
+  if (reminders.some((r) => isSameReminder(r, reminder))) return reminders;
+  return [...reminders, reminder].sort(
+    (a, b) => getReminderMinutes(a) - getReminderMinutes(b),
+  );
+}
+
+/** Whether two reminder lists fire at the same moments, in any order */
+function isSameReminderList(
+  a: readonly EventReminder[],
+  b: readonly EventReminder[],
+): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((reminder) =>
+    b.some((other) => isSameReminder(reminder, other)),
+  );
+}
+
+/**
+ * Moves an event to another calendar, as Notion Calendar does: an event
+ * drawn in its calendar's color takes the new calendar's, and one that kept
+ * its calendar's default reminders takes the new calendar's defaults. A
+ * color or reminders set by hand stay. `calendarEmail` becomes the new
+ * calendar's account.
+ */
+export function moveEventToCalendar<TEvent extends DetailedCalendarEvent>(
+  event: TEvent,
+  to: CalendarInfo,
+  calendars: readonly CalendarInfo[],
+): TEvent {
+  const from = calendars.find((c) => c.id === event.calendarId);
+  const moved: TEvent = {
+    ...event,
+    calendarId: to.id,
+    calendarEmail: to.email,
+  };
+  if (event.color !== undefined && event.color === from?.color) {
+    moved.color = to.color;
+  }
+  if (
+    to.defaultReminders &&
+    from?.defaultReminders &&
+    isSameReminderList(event.reminders ?? [], from.defaultReminders)
+  ) {
+    moved.reminders = [...to.defaultReminders];
+  }
+  return moved;
 }

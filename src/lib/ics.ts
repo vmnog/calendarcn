@@ -5,6 +5,7 @@ import type {
   EventColor,
   EventReminder,
 } from "@/components/calendar-types";
+import { getReminderMinutes } from "@/lib/event-utils";
 
 /**
  * Longest content line allowed by RFC 5545, in octets, excluding the line
@@ -845,9 +846,18 @@ function eventToLines(
   return lines;
 }
 
-/** `-PT15M`, `-PT2H` or `-P1D` */
+/**
+ * `-PT15M`, `-PT2H`, `-P1D` or `-P1W`. An all-day reminder with a time of
+ * day counts in minutes from the event's midnight start: "1 day before at
+ * 9 AM" is `-PT900M`, "on the day at 9 AM" is `PT540M`.
+ */
 function formatReminderTrigger(reminder: EventReminder): string {
+  if (reminder.time) {
+    const minutes = Math.round(getReminderMinutes(reminder));
+    return `${minutes < 0 ? "" : "-"}PT${Math.abs(minutes)}M`;
+  }
   const amount = Math.max(0, Math.round(reminder.amount));
+  if (reminder.unit === "weeks") return `-P${amount}W`;
   if (reminder.unit === "days") return `-P${amount}D`;
   if (reminder.unit === "hours") return `-PT${amount}H`;
   return `-PT${amount}M`;

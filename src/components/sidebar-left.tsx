@@ -30,8 +30,10 @@ import {
 } from "@/components/ui/tooltip";
 import { SidebarOverlay } from "@/components/sidebar-overlay";
 import { eventColorStyles } from "./calendar-event-item";
+import { useCalendarConfig } from "./calendar-provider";
 import { EventDetailPanel } from "./event-detail-panel";
 import { useEventTitleFocus } from "./event-title-focus-context";
+import { resolveEventColor } from "@/lib/event-utils";
 import type { DetailedCalendarEvent } from "./week-view-types";
 
 /** Width of the context panel when it renders as an overlay (shadcn sidebar default) */
@@ -507,6 +509,7 @@ function SearchResultItem({
   isPast?: boolean;
   onClick?: (event: DetailedCalendarEvent) => void;
 }) {
+  const { calendars } = useCalendarConfig();
   const timeRange = formatTimeRange(event);
   const duration = event.isAllDay ? "" : formatDuration(event.start, event.end);
   const colors = isPast
@@ -519,7 +522,7 @@ function SearchResultItem({
       onClick={() => onClick?.(event)}
     >
       <div
-        className={`-mt-1 -mb-1 w-1 shrink-0 self-stretch rounded-full ${eventColorStyles[event.color ?? "blue"].border} ${isPast ? "opacity-40" : ""}`}
+        className={`-mt-1 -mb-1 w-1 shrink-0 self-stretch rounded-full ${eventColorStyles[resolveEventColor(event, calendars)].border} ${isPast ? "opacity-40" : ""}`}
       />
       <div className="flex min-w-0 flex-col gap-0.5">
         <p

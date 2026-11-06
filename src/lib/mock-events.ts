@@ -1945,7 +1945,9 @@ function demoEvents(rel: RelativeDate): DetailedCalendarEvent[] {
         description:
           "Long weekend getaway — hiking, antique shops, farm-to-table dinners",
         location: "Hudson, NY",
-        reminders: [{ amount: 1, unit: "days" }],
+        reminders: [
+          { amount: 1, unit: "days", time: { hours: 9, minutes: 0 } },
+        ],
         calendarEmail: "me@vmnog.com",
       },
     ),

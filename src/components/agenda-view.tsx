@@ -41,6 +41,7 @@ import {
   getAgendaDays,
   getEventLabel,
   getVisibleDays,
+  resolveEventColor,
 } from "@/lib/event-utils";
 import type {
   AgendaDay,
@@ -472,11 +473,11 @@ function AgendaEventRow({
   onPopoverExpand,
 }: AgendaEventRowProps) {
   const { event } = entry;
-  const color = event.color ?? "blue";
+  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
   const eventIsPast = useIsPast(event.end);
-  const { hourCycle, locale } = useCalendarConfig();
   // Every field is optional: plain events read as details without any
   const { location }: DetailedCalendarEvent = event;
   const timeLabel = formatAgendaTime(entry, hourCycle, locale);

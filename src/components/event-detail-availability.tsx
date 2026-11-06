@@ -21,6 +21,7 @@ import {
   EVENT_DETAIL_HOVER_BORDER_CLASS,
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_MUTED_CLASS,
+  EVENT_DETAIL_ROW_HEIGHT_CLASS,
   EventDetailSection,
 } from "./event-detail-parts";
 import type {
@@ -82,6 +83,15 @@ export function getPanelMenuSideOffset(
 }
 
 /**
+ * Props for EventDetailTooltip
+ */
+interface EventDetailTooltipProps {
+  /** The described element's `getBoundingClientRect()`; null hides the tooltip */
+  rect: DOMRect | null;
+  children: React.ReactNode;
+}
+
+/**
  * A tooltip centered above a rectangle (from `getBoundingClientRect()`),
  * shown while `rect` is set. It ignores the pointer, so hovering it never
  * keeps it open.
@@ -89,10 +99,7 @@ export function getPanelMenuSideOffset(
 export function EventDetailTooltip({
   rect,
   children,
-}: {
-  rect: DOMRect | null;
-  children: React.ReactNode;
-}) {
+}: EventDetailTooltipProps) {
   if (!rect) return null;
 
   return ReactDOM.createPortal(
@@ -122,8 +129,14 @@ interface PanelSelectOption<TValue extends string> {
   separatorAfter?: boolean;
 }
 
+/** Busy or free: `DetailedCalendarEvent["status"]` once set */
+type EventStatus = NonNullable<DetailedCalendarEvent["status"]>;
+
+/** Who can see the event: `DetailedCalendarEvent["visibility"]` once set */
+type EventVisibility = NonNullable<DetailedCalendarEvent["visibility"]>;
+
 /** Choices of the busy/free menu */
-const AVAILABILITY_OPTIONS: PanelSelectOption<"busy" | "free">[] = [
+const AVAILABILITY_OPTIONS: PanelSelectOption<EventStatus>[] = [
   {
     value: "busy",
     label: "Busy",
@@ -137,9 +150,7 @@ const AVAILABILITY_OPTIONS: PanelSelectOption<"busy" | "free">[] = [
 ];
 
 /** Choices of the visibility menu */
-const VISIBILITY_OPTIONS: PanelSelectOption<
-  "default" | "public" | "private"
->[] = [
+const VISIBILITY_OPTIONS: PanelSelectOption<EventVisibility>[] = [
   {
     value: "default",
     label: "Default visibility",
@@ -162,10 +173,17 @@ const VISIBILITY_OPTIONS: PanelSelectOption<
 ];
 
 /**
+ * Props for HelpTextWithLink
+ */
+interface HelpTextWithLinkProps {
+  text: string;
+}
+
+/**
  * Help text ending with the external-link icon, kept on the line of the
  * last word as Notion wraps it
  */
-function HelpTextWithLink({ text }: { text: string }) {
+function HelpTextWithLink({ text }: HelpTextWithLinkProps) {
   const lastSpace = text.lastIndexOf(" ");
   return (
     <>
@@ -182,16 +200,18 @@ function HelpTextWithLink({ text }: { text: string }) {
 }
 
 /**
- * The "?" at the end of a highlighted menu item, explaining it in a tooltip
+ * Props for HelpIcon
  */
-function HelpIcon({
-  option,
-  visible,
-}: {
+interface HelpIconProps {
   option: PanelSelectOption<string>;
   /** Shows the icon without the item being highlighted */
   visible: boolean;
-}) {
+}
+
+/**
+ * The "?" at the end of a highlighted menu item, explaining it in a tooltip
+ */
+function HelpIcon({ option, visible }: HelpIconProps) {
   const [rect, setRect] = React.useState<DOMRect | null>(null);
 
   return (
@@ -220,19 +240,9 @@ function HelpIcon({
 }
 
 /**
- * A value of the panel picked from a menu that opens beside the panel: the
- * value with a chevron on hover, the menu with a check on the current value
- * and a "?" explaining each choice. Hovering or highlighting a choice
- * previews it in the trigger.
+ * Props for PanelSelect
  */
-function PanelSelect<TValue extends string>({
-  name,
-  value,
-  options,
-  sectionRef,
-  className,
-  onValueChange,
-}: {
+interface PanelSelectProps<TValue extends string> {
   /** Accessible name of the trigger, e.g. "Availability" */
   name: string;
   value: TValue;
@@ -241,25 +251,47 @@ function PanelSelect<TValue extends string>({
   sectionRef: React.RefObject<HTMLElement | null>;
   className?: string;
   onValueChange: (value: TValue) => void;
-}) {
+}
+
+/**
+ * A value of the panel picked from a menu that opens beside the panel: the
+ * value with a chevron on hover, the menu with a check on the current value
+ * and a "?" explaining each choice. Hovering or highlighting a choice
+ * previews it in the trigger; Escape closes the menu and keeps the value.
+ */
+function PanelSelect<TValue extends string>({
+  name,
+  value,
+  options,
+  sectionRef,
+  className,
+  onValueChange,
+}: PanelSelectProps<TValue>) {
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [open, setOpen] = React.useState(false);
   const [sideOffset, setSideOffset] = React.useState(PANEL_MENU_GAP);
   /** Choice hovered or highlighted in the open menu */
   const [preview, setPreview] = React.useState<TValue | null>(null);
+  /** Whether a choice of the open menu has been hovered or highlighted yet */
+  const [pointed, setPointed] = React.useState(false);
 
   const handleOpenChange = React.useCallback(
     (next: boolean) => {
-      if (next) {
-        setSideOffset(getPanelMenuSideOffset(triggerRef, sectionRef));
-      }
-      if (!next) {
-        setPreview(null);
-      }
       setOpen(next);
+      setPreview(null);
+      if (!next) return;
+      setSideOffset(getPanelMenuSideOffset(triggerRef, sectionRef));
+      setPointed(false);
     },
     [sectionRef],
   );
+
+  const showPreview = React.useCallback((next: TValue) => {
+    setPointed(true);
+    setPreview(next);
+  }, []);
+
+  const hidePreview = React.useCallback(() => setPreview(null), []);
 
   const shown = options.find((o) => o.value === (preview ?? value));
   const current = options.find((o) => o.value === value);
@@ -275,7 +307,7 @@ function PanelSelect<TValue extends string>({
           // that reaches the trigger
           onKeyDown={open ? stopEscapePropagation : undefined}
           className={cn(
-            "group/trigger text-foreground flex h-8 min-w-0 items-center justify-between gap-2 px-2 text-left text-xs outline-none",
+            "group/trigger flex h-8 min-w-0 items-center justify-between gap-2 px-2 text-left outline-none",
             EVENT_DETAIL_HOVER_BORDER_CLASS,
             open && PANEL_TRIGGER_OPEN_CLASS,
             className,
@@ -312,22 +344,21 @@ function PanelSelect<TValue extends string>({
                 aria-checked={selected}
                 className={cn(
                   PANEL_MENU_ITEM_CLASS,
-                  selected && preview === null && PANEL_MENU_ITEM_CURRENT_CLASS,
+                  selected && !pointed && PANEL_MENU_ITEM_CURRENT_CLASS,
                 )}
                 onClick={() => {
                   if (option.value !== value) onValueChange(option.value);
                 }}
-                onMouseEnter={() => setPreview(option.value)}
-                onFocus={() => setPreview(option.value)}
+                onMouseEnter={() => showPreview(option.value)}
+                onMouseLeave={hidePreview}
+                onFocus={() => showPreview(option.value)}
+                onBlur={hidePreview}
               >
                 <span className="flex w-3.5 shrink-0 items-center justify-center">
                   {selected && <Check className="size-3.5 !text-current" />}
                 </span>
                 <span className="ml-2 truncate">{option.label}</span>
-                <HelpIcon
-                  option={option}
-                  visible={selected && preview === null}
-                />
+                <HelpIcon option={option} visible={selected && !pointed} />
               </DropdownMenuItem>
               {option.separatorAfter && (
                 <DropdownMenuSeparator className="mx-1 my-[5px] bg-[#303030]" />
@@ -350,14 +381,14 @@ export function EventDetailAvailability<
   const sectionRef = React.useRef<HTMLDivElement>(null);
 
   const handleStatusChange = React.useCallback(
-    (status: "busy" | "free") => {
+    (status: EventStatus) => {
       onEventChange?.({ ...event, status });
     },
     [event, onEventChange],
   );
 
   const handleVisibilityChange = React.useCallback(
-    (visibility: "default" | "public" | "private") => {
+    (visibility: EventVisibility) => {
       onEventChange?.({ ...event, visibility });
     },
     [event, onEventChange],
@@ -365,7 +396,12 @@ export function EventDetailAvailability<
 
   return (
     <EventDetailSection ref={sectionRef} name="availability">
-      <div className="flex items-center gap-[5px] pr-2 pl-9">
+      <div
+        className={cn(
+          "flex items-center gap-[5px] pr-2 pl-9",
+          EVENT_DETAIL_ROW_HEIGHT_CLASS,
+        )}
+      >
         <PanelSelect
           name="Availability"
           value={event.status ?? "busy"}

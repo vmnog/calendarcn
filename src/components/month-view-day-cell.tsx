@@ -18,6 +18,7 @@ import {
   formatCellDate,
   formatFullDate,
   isMultiDayEvent,
+  resolveEventColor,
 } from "@/lib/event-utils";
 import { EventDetailPopover } from "./event-detail-popover";
 import { getEventDetailsTriggerProps } from "./calendar-event-item";
@@ -102,7 +103,7 @@ export function MonthViewDayCell({
   className,
 }: MonthViewDayCellProps) {
   const dayNumber = date.getDate();
-  const { locale } = useCalendarConfig();
+  const { calendars, locale } = useCalendarConfig();
   /** The cell: the selected event's details popover opens beside it */
   const cellRef = useRef<HTMLDivElement>(null);
   /** The selected event's details popover, for its event's `aria-controls` */
@@ -151,7 +152,7 @@ export function MonthViewDayCell({
     dragEvent &&
     isSameDay(date, dragTargetDate);
   const placeholderBorder = dragEvent
-    ? placeholderBorderStyles[dragEvent.color ?? "blue"]
+    ? placeholderBorderStyles[resolveEventColor(dragEvent, calendars)]
     : "border-event-blue-border";
 
   // Calculate placeholder span for multi-day events

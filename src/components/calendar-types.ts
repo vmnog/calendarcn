@@ -229,7 +229,10 @@ export interface CalendarEvent {
   end: Date;
   /** Whether this is an all-day event */
   isAllDay?: boolean;
-  /** Event color (for styling) */
+  /**
+   * The event's own color. Without one it takes its calendar's color (the
+   * `CalendarInfo` its `calendarId` names), else blue.
+   */
   color?: EventColor;
 }
 
@@ -243,7 +246,11 @@ export interface DetailedCalendarEvent extends CalendarEvent {
   kind?: EventKind;
   /** Calendar ID this event belongs to */
   calendarId?: string;
-  /** Calendar account email for display */
+  /**
+   * Account email of the event's calendar, shown when the calendar isn't
+   * listed. Moving the event to a listed calendar sets it to that calendar's
+   * `email`.
+   */
   calendarEmail?: string;
   /** Optional description */
   description?: string;
@@ -504,11 +511,22 @@ export interface CalendarInfo {
   /** Account the calendar belongs to; calendars are grouped under it */
   email?: string;
   /**
-   * Reminders an event gets on this calendar. An event moved here that still
-   * has its previous calendar's defaults takes these instead; reminders
-   * edited by hand are kept.
+   * Reminders an event gets on this calendar. Only moving an event applies
+   * them: one moved here that still has its previous calendar's defaults
+   * takes these instead, and reminders edited by hand are kept. Creating an
+   * event never adds them; give new events reminders in `createEvent`.
    */
   defaultReminders?: EventReminder[];
+}
+
+/**
+ * Calendars that share an account, listed under its email by the calendar
+ * pickers (`groupCalendarsByEmail()`)
+ */
+export interface CalendarGroup {
+  /** Account email shown above the group; absent for calendars without one */
+  email?: string;
+  calendars: CalendarInfo[];
 }
 
 /**
@@ -733,7 +751,8 @@ interface CalendarProviderBaseProps<
   /**
    * Calendars the details panel's calendar picker offers, grouped by `email`,
    * and the event context menu under "Block on calendar" (hidden when
-   * empty). Defaults to none
+   * empty). Both move the event with `moveEventToCalendar()`. An event
+   * without its own `color` is drawn in its calendar's. Defaults to none
    */
   calendars?: CalendarInfo[];
   /** Called after a click-created event is added */

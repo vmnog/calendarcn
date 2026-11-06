@@ -222,7 +222,7 @@ interface Meeting extends CalendarEvent {
       type: "CalendarInfo[]",
       default: "[]",
       description:
-        'Calendars the event context menu offers under "Block on calendar". The submenu is hidden when the list is empty.',
+        "Calendars the details panel's calendar picker offers, grouped by account `email`, and the event context menu under \"Block on calendar\" (hidden when the list is empty). Picking one moves the event with `moveEventToCalendar()`. An event without its own `color` is drawn in its calendar's.",
     },
     {
       name: "createEvent",
@@ -475,7 +475,8 @@ Returns the resolved settings of the nearest provider. Outside a provider it ret
     {
       name: "calendars",
       type: "CalendarInfo[]",
-      description: "Calendars the context menu offers.",
+      description:
+        "Calendars the calendar picker and the context menu offer. Pass them to `resolveEventColor(event, calendars)` to draw an event in the color the calendar does.",
     },
   ]}
 />
@@ -522,7 +523,7 @@ The fields the calendar needs to place and draw an event. [`DetailedCalendarEven
       name: "color",
       type: '"red" | "orange" | "yellow" | "green" | "blue" | "purple" | "gray"',
       description:
-        "Event color, from the `--event-*` theme tokens. Defaults to blue.",
+        "The event's own color, from the `--event-*` theme tokens. Without one it's drawn in its calendar's color (the `CalendarInfo` its `calendarId` names), else blue. `resolveEventColor(event, calendars)` from `@/lib/event-utils` returns the color an event is drawn in.",
     },
   ]}
 />
@@ -650,13 +651,20 @@ An entry of the `calendars` prop.
       name: "color",
       type: "EventColor",
       required: true,
-      description: "Swatch color shown beside the name.",
+      description:
+        "Swatch color shown beside the name. Events without their own `color` are drawn in it, and an event moved here that was drawn in its old calendar's color takes this one.",
     },
     {
       name: "email",
       type: "string",
       description:
-        "Account the calendar belongs to. The menu groups calendars by it.",
+        "Account the calendar belongs to. The picker and the menu group calendars by it, and a moved event's `calendarEmail` becomes it.",
+    },
+    {
+      name: "defaultReminders",
+      type: "EventReminder[]",
+      description:
+        "Reminders of events on this calendar. Only moving an event applies them: an event moved here that still has its old calendar's defaults takes these, and reminders edited by hand stay. Creating an event never adds them, so give new events reminders in `createEvent`.",
     },
   ]}
 />

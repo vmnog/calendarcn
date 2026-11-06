@@ -321,6 +321,53 @@ test.describe("toIcs", () => {
     expect(parseIcs(toIcs(events, { timestamp }))).toEqual(events);
   });
 
+  test("writes each reminder unit as its own trigger", () => {
+    const ics = toIcs(
+      [
+        {
+          id: "review",
+          title: "Review",
+          start: new Date("2026-06-02T15:00:00Z"),
+          end: new Date("2026-06-02T16:00:00Z"),
+          reminders: [
+            { amount: 0, unit: "minutes" },
+            { amount: 2, unit: "hours" },
+            { amount: 3, unit: "days" },
+            { amount: 1, unit: "weeks" },
+          ],
+        },
+        {
+          id: "offsite",
+          title: "Offsite",
+          start: new Date(2026, 5, 3),
+          end: new Date(2026, 5, 3),
+          isAllDay: true,
+          reminders: [
+            { amount: 1, unit: "days", time: { hours: 9, minutes: 0 } },
+            { amount: 0, unit: "days", time: { hours: 8, minutes: 30 } },
+          ],
+        },
+      ],
+      { timestamp },
+    );
+
+    const triggers = ics.match(/^TRIGGER:.*$/gm)?.map((line) => line.trim());
+    expect(triggers).toEqual([
+      "TRIGGER:-PT0M",
+      "TRIGGER:-PT2H",
+      "TRIGGER:-P3D",
+      "TRIGGER:-P1W",
+      // From the all-day event's midnight start: 15 hours before, 8:30 after
+      "TRIGGER:-PT900M",
+      "TRIGGER:PT510M",
+    ]);
+    // A week reads back as the same moment, in days
+    expect(parseIcs(ics)[0].reminders?.at(-1)).toEqual({
+      amount: 7,
+      unit: "days",
+    });
+  });
+
   test("leaves out recurrence that isn't a rule", () => {
     const ics = toIcs(
       [

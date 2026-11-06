@@ -12,10 +12,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCalendarConfig } from "./calendar-provider";
+import { EVENT_COLOR_SWATCH_CLASS } from "./event-context-menu";
 import {
   EVENT_DETAIL_HOVER_BORDER_CLASS,
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_MUTED_CLASS,
+  EVENT_DETAIL_ROW_HEIGHT_CLASS,
   EventDetailSection,
 } from "./event-detail-parts";
 import {
@@ -28,43 +30,18 @@ import {
   getPanelMenuSideOffset,
   stopEscapePropagation,
 } from "./event-detail-availability";
-import { EVENT_COLORS } from "@/lib/event-utils";
+import {
+  EVENT_COLORS,
+  groupCalendarsByEmail,
+  moveEventToCalendar,
+  resolveEventColor,
+} from "@/lib/event-utils";
 import type {
   CalendarInfo,
   DetailedCalendarEvent,
   EventColor,
   EventDetailSectionProps,
-  EventReminder,
 } from "./week-view-types";
-
-/**
- * Swatch of an event's own color: Notion Calendar's event palette, the same
- * in both themes
- */
-const EVENT_COLOR_SWATCH_CLASS: Record<EventColor, string> = {
-  red: "bg-[#ED201E]",
-  orange: "bg-[#FD7842]",
-  yellow: "bg-[#F4BE41]",
-  green: "bg-[#5DCB89]",
-  blue: "bg-[#4EA7E0]",
-  purple: "bg-[#965DF3]",
-  gray: "bg-[#B8B8B8]",
-};
-
-/**
- * Swatch of a calendar's color. Light matches the events' border colors;
- * Notion lightens calendar colors in dark mode (purple, green and blue
- * measured, the others follow the same shift).
- */
-const CALENDAR_COLOR_SWATCH_CLASS: Record<EventColor, string> = {
-  red: "bg-event-red-border dark:bg-[#DB182C]",
-  orange: "bg-event-orange-border dark:bg-[#E67F4B]",
-  yellow: "bg-event-yellow-border dark:bg-[#DEBF41]",
-  green: "bg-event-green-border dark:bg-[#63D08D]",
-  blue: "bg-event-blue-border dark:bg-[#51ACE3]",
-  purple: "bg-event-purple-border dark:bg-[#9C61F9]",
-  gray: "bg-event-gray-border dark:bg-[#B7B7B7]",
-};
 
 /** Name of each event color, shown in the swatch tooltips */
 const COLOR_NAMES: Record<EventColor, string> = {
@@ -77,101 +54,29 @@ const COLOR_NAMES: Record<EventColor, string> = {
   gray: "Gray",
 };
 
-/** Color of an event that sets none and belongs to no listed calendar */
-const DEFAULT_EVENT_COLOR: EventColor = "blue";
-
-/** Calendars that share an account, listed under its email */
-interface CalendarGroup {
-  /** Account email shown above the group; absent for calendars without one */
-  email?: string;
-  calendars: CalendarInfo[];
-}
-
-/** Groups calendars by account email, keeping the order they were given in */
-function groupCalendarsByEmail(calendars: CalendarInfo[]): CalendarGroup[] {
-  const groups: CalendarGroup[] = [];
-  for (const calendar of calendars) {
-    const group = groups.find((g) => g.email === calendar.email);
-    if (group) {
-      group.calendars.push(calendar);
-      continue;
-    }
-    groups.push({ email: calendar.email, calendars: [calendar] });
-  }
-  return groups;
-}
-
-/** Whether two reminder lists hold the same reminders, in any order */
-function sameReminders(a: EventReminder[], b: EventReminder[]): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((reminder) =>
-    b.some(
-      (other) =>
-        other.amount === reminder.amount && other.unit === reminder.unit,
-    ),
-  );
-}
+/** A 14px color swatch */
+const SWATCH_CLASS = "size-3.5 shrink-0 rounded-[4px]";
 
 /**
- * Moves an event to another calendar. An event that kept its calendar's
- * color takes the new calendar's, and one that kept its calendar's default
- * reminders takes the new calendar's defaults, as in Notion Calendar.
+ * Props for CalendarSwatch
  */
-function moveToCalendar<TEvent extends DetailedCalendarEvent>(
-  event: TEvent,
-  from: CalendarInfo | undefined,
-  to: CalendarInfo,
-): TEvent {
-  const keptCalendarColor =
-    event.color === undefined || event.color === from?.color;
-  const reminders = event.reminders ?? [];
-  const keptDefaultReminders =
-    to.defaultReminders !== undefined &&
-    from?.defaultReminders !== undefined &&
-    sameReminders(reminders, from.defaultReminders);
-
-  return {
-    ...event,
-    calendarId: to.id,
-    calendarEmail: to.email ?? event.calendarEmail,
-    color: keptCalendarColor ? to.color : event.color,
-    reminders: keptDefaultReminders ? to.defaultReminders : event.reminders,
-  };
+interface CalendarSwatchProps {
+  /** Color of the event's calendar, when it is listed */
+  calendarColor?: EventColor;
+  /** The color the event is drawn in: its own, else its calendar's */
+  eventColor: EventColor;
 }
 
 /**
  * The calendar's color, with the event's own color in front of it when it
  * has a different one, as Notion draws it
  */
-function CalendarSwatch({
-  calendarColor,
-  eventColor,
-}: {
-  /** Color of the event's calendar, when it is listed */
-  calendarColor?: EventColor;
-  /** The event's own color, when it sets one */
-  eventColor?: EventColor;
-}) {
-  if (!calendarColor) {
+function CalendarSwatch({ calendarColor, eventColor }: CalendarSwatchProps) {
+  if (!calendarColor || eventColor === calendarColor) {
     return (
       <span
         data-testid="event-calendar-swatch"
-        className={cn(
-          "size-3.5 shrink-0 rounded-[4px]",
-          EVENT_COLOR_SWATCH_CLASS[eventColor ?? DEFAULT_EVENT_COLOR],
-        )}
-      />
-    );
-  }
-
-  if (!eventColor || eventColor === calendarColor) {
-    return (
-      <span
-        data-testid="event-calendar-swatch"
-        className={cn(
-          "size-3.5 shrink-0 rounded-[4px]",
-          CALENDAR_COLOR_SWATCH_CLASS[calendarColor],
-        )}
+        className={cn(SWATCH_CLASS, EVENT_COLOR_SWATCH_CLASS[eventColor])}
       />
     );
   }
@@ -183,18 +88,32 @@ function CalendarSwatch({
     >
       <span
         className={cn(
-          "absolute top-0 left-0 size-3.5 rounded-[4px]",
-          CALENDAR_COLOR_SWATCH_CLASS[calendarColor],
+          "absolute top-0 left-0",
+          SWATCH_CLASS,
+          EVENT_COLOR_SWATCH_CLASS[calendarColor],
         )}
       />
       <span
         className={cn(
-          "absolute top-0 right-0 size-3.5 rounded-[4px]",
+          "absolute top-0 right-0",
+          SWATCH_CLASS,
           EVENT_COLOR_SWATCH_CLASS[eventColor],
         )}
       />
     </span>
   );
+}
+
+/**
+ * Props for ColorSwatchItem
+ */
+interface ColorSwatchItemProps {
+  color: EventColor;
+  /** Whether the event is drawn in this color */
+  checked: boolean;
+  onPick: (color: EventColor) => void;
+  /** Called with the color while it is hovered or focused, null after */
+  onPreview: (color: EventColor | null) => void;
 }
 
 /**
@@ -205,12 +124,7 @@ function ColorSwatchItem({
   checked,
   onPick,
   onPreview,
-}: {
-  color: EventColor;
-  checked: boolean;
-  onPick: (color: EventColor) => void;
-  onPreview: (color: EventColor | null) => void;
-}) {
+}: ColorSwatchItemProps) {
   const [rect, setRect] = React.useState<DOMRect | null>(null);
 
   const show = React.useCallback(
@@ -281,31 +195,39 @@ export function EventDetailCalendar<
     [calendars],
   );
   const calendar = calendars.find((c) => c.id === event.calendarId);
-  /** The color the event shows: its own, else its calendar's */
-  const eventColor = event.color ?? calendar?.color ?? DEFAULT_EVENT_COLOR;
+  /** The color the event is drawn in: its own, else its calendar's */
+  const eventColor = resolveEventColor(event, calendars);
   const shownCalendar = previewCalendar ?? calendar;
+  /** The color the row shows: the previewed one, or the event's once moved */
+  const shownColor =
+    previewColor ??
+    (previewCalendar
+      ? resolveEventColor(
+          moveEventToCalendar(event, previewCalendar, calendars),
+          calendars,
+        )
+      : eventColor);
   const name =
     calendar?.name ?? event.calendarEmail ?? event.calendarId ?? "Calendar";
   const shownName = previewCalendar?.name ?? name;
 
   const handleOpenChange = React.useCallback((next: boolean) => {
-    if (next) {
-      setSideOffset(getPanelMenuSideOffset(triggerRef, sectionRef));
-      setPointed(false);
-    }
+    setOpen(next);
     if (!next) {
       setPreviewColor(null);
       setPreviewCalendar(null);
+      return;
     }
-    setOpen(next);
+    setSideOffset(getPanelMenuSideOffset(triggerRef, sectionRef));
+    setPointed(false);
   }, []);
 
   const handleCalendarPick = React.useCallback(
     (to: CalendarInfo) => {
       if (to.id === event.calendarId) return;
-      onEventChange?.(moveToCalendar(event, calendar, to));
+      onEventChange?.(moveEventToCalendar(event, to, calendars));
     },
-    [event, calendar, onEventChange],
+    [event, calendars, onEventChange],
   );
 
   const handleColorPick = React.useCallback(
@@ -319,38 +241,38 @@ export function EventDetailCalendar<
   return (
     <EventDetailSection ref={sectionRef} name="calendar" className="px-2">
       <DropdownMenu open={open} onOpenChange={handleOpenChange}>
-        <DropdownMenuTrigger asChild>
-          <button
-            ref={triggerRef}
-            type="button"
-            aria-label={`Calendar: ${name}`}
-            // Base UI moves focus into the menu after it opens: an Escape before
-            // that reaches the trigger
-            onKeyDown={open ? stopEscapePropagation : undefined}
-            className={cn(
-              "group/trigger flex min-h-8 w-full items-center gap-3 px-2 text-left text-xs outline-none",
-              EVENT_DETAIL_HOVER_BORDER_CLASS,
-              open && PANEL_TRIGGER_OPEN_CLASS,
-            )}
-          >
-            <span className="flex w-4 shrink-0 items-center justify-center">
-              <CalendarSwatch
-                calendarColor={shownCalendar?.color}
-                eventColor={previewColor ?? event.color}
-              />
-            </span>
-            <span className="text-foreground min-w-0 flex-1 truncate">
-              {shownName}
-            </span>
-            <ChevronDown
+        <div className={cn("flex items-center", EVENT_DETAIL_ROW_HEIGHT_CLASS)}>
+          <DropdownMenuTrigger asChild>
+            <button
+              ref={triggerRef}
+              type="button"
+              aria-label={`Calendar: ${name}`}
+              // Base UI moves focus into the menu after it opens: an Escape
+              // before that reaches the trigger
+              onKeyDown={open ? stopEscapePropagation : undefined}
               className={cn(
-                "size-3.5 shrink-0 opacity-0 group-hover/trigger:opacity-100 group-focus-visible/trigger:opacity-100",
-                EVENT_DETAIL_MUTED_CLASS,
-                open && "opacity-100",
+                "group/trigger flex h-8 w-full items-center gap-[11px] pr-2 pl-[9px] text-left outline-none",
+                EVENT_DETAIL_HOVER_BORDER_CLASS,
+                open && PANEL_TRIGGER_OPEN_CLASS,
               )}
-            />
-          </button>
-        </DropdownMenuTrigger>
+            >
+              <span className="flex w-4 shrink-0 items-center justify-center">
+                <CalendarSwatch
+                  calendarColor={shownCalendar?.color}
+                  eventColor={shownColor}
+                />
+              </span>
+              <span className="min-w-0 flex-1 truncate">{shownName}</span>
+              <ChevronDown
+                className={cn(
+                  "size-3.5 shrink-0 opacity-0 group-hover/trigger:opacity-100 group-focus-visible/trigger:opacity-100",
+                  EVENT_DETAIL_MUTED_CLASS,
+                  open && "opacity-100",
+                )}
+              />
+            </button>
+          </DropdownMenuTrigger>
+        </div>
         <DropdownMenuContent
           side="left"
           align="start"
@@ -392,8 +314,9 @@ export function EventDetailCalendar<
                     </span>
                     <span
                       className={cn(
-                        "ml-[9px] size-3.5 shrink-0 rounded-[4px]",
-                        CALENDAR_COLOR_SWATCH_CLASS[item.color],
+                        "ml-[9px]",
+                        SWATCH_CLASS,
+                        EVENT_COLOR_SWATCH_CLASS[item.color],
                       )}
                     />
                     <span className="ml-[11px] truncate">{item.name}</span>
