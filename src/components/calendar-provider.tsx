@@ -24,6 +24,7 @@ import type {
   CalendarInfo,
   CalendarProviderProps,
   CalendarRenderSlots,
+  ConferenceProviderOption,
   EventContact,
   EventContentProps,
   EventRoom,
@@ -74,6 +75,9 @@ const NO_CONTACTS: EventContact[] = [];
 /** Rooms offered when `rooms` is not set (stable identity) */
 const NO_ROOMS: EventRoom[] = [];
 
+/** Conferencing offered when `conferenceProviders` is not set (stable identity) */
+const NO_CONFERENCE_PROVIDERS: ConferenceProviderOption[] = [];
+
 /** Places suggested when `locationSuggestions` is not set (stable identity) */
 const NO_LOCATION_SUGGESTIONS: LocationSuggestion[] = [];
 
@@ -87,6 +91,7 @@ const DEFAULT_CALENDAR_CONFIG: CalendarConfig = {
   calendars: NO_CALENDARS,
   contacts: NO_CONTACTS,
   rooms: NO_ROOMS,
+  conferenceProviders: NO_CONFERENCE_PROVIDERS,
   locationSuggestions: NO_LOCATION_SUGGESTIONS,
 };
 
@@ -369,7 +374,7 @@ function CalendarStateProvider({
   calendars = NO_CALENDARS,
   contacts = NO_CONTACTS,
   rooms = NO_ROOMS,
-  conferenceProviders,
+  conferenceProviders = NO_CONFERENCE_PROVIDERS,
   locationSuggestions = NO_LOCATION_SUGGESTIONS,
   createEvent,
   onEventCreate,

@@ -225,6 +225,34 @@ interface Meeting extends CalendarEvent {
         'Calendars the event context menu offers under "Block on calendar". The submenu is hidden when the list is empty.',
     },
     {
+      name: "contacts",
+      type: "EventContact[]",
+      default: "[]",
+      description:
+        "People the details' participants field suggests: the `recent` ones on focus, the matches while typing. A typed email can be invited without one.",
+    },
+    {
+      name: "rooms",
+      type: "EventRoom[]",
+      default: "[]",
+      description:
+        'Meeting rooms the participants field lists under "View rooms and resources", and among the matches while typing. That list is hidden when this is empty.',
+    },
+    {
+      name: "conferenceProviders",
+      type: "ConferenceProviderOption[]",
+      default: "[]",
+      description:
+        "Video call services the details' Conferencing menu offers, each creating calls with its own `createConference`. The row is hidden when this is empty, unless the event already has a call.",
+    },
+    {
+      name: "locationSuggestions",
+      type: "LocationSuggestion[]",
+      default: "[]",
+      description:
+        "Places the details' location field lists under the typed text while typing.",
+    },
+    {
       name: "createEvent",
       type: "(range: NewEventRange) => TEvent | null",
       description:
@@ -477,6 +505,26 @@ Returns the resolved settings of the nearest provider. Outside a provider it ret
       type: "CalendarInfo[]",
       description: "Calendars the context menu offers.",
     },
+    {
+      name: "contacts",
+      type: "EventContact[]",
+      description: "People the participants field suggests.",
+    },
+    {
+      name: "rooms",
+      type: "EventRoom[]",
+      description: "Meeting rooms the participants field offers.",
+    },
+    {
+      name: "conferenceProviders",
+      type: "ConferenceProviderOption[]",
+      description: "Video call services the details offer.",
+    },
+    {
+      name: "locationSuggestions",
+      type: "LocationSuggestion[]",
+      description: "Places the location field suggests.",
+    },
   ]}
 />
 
@@ -657,6 +705,115 @@ An entry of the `calendars` prop.
       type: "string",
       description:
         "Account the calendar belongs to. The menu groups calendars by it.",
+    },
+  ]}
+/>
+
+### EventContact
+
+An entry of the `contacts` prop.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "email",
+      type: "string",
+      required: true,
+      description: "Address, the participant's identity once invited.",
+    },
+    {
+      name: "name",
+      type: "string",
+      description: "Display name. Defaults to the email.",
+    },
+    {
+      name: "recent",
+      type: "boolean",
+      description:
+        "Listed on focus, before typing, with a history icon, as a recently invited contact.",
+    },
+  ]}
+/>
+
+### ConferenceProviderOption
+
+An entry of the `conferenceProviders` prop: one item of the Conferencing menu. CalendarCN ships none, so it carries no service's brand: pass your own logos through `icon`.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "provider",
+      type: '"google-meet" | "zoom" | "microsoft-teams" | "other"',
+      required: true,
+      description: "Service the call is hosted on, stored in the call.",
+    },
+    {
+      name: "label",
+      type: "string",
+      required: true,
+      description:
+        "Name shown in the menu and on the event, unique among the options. Stored in the call, which tells apart two options of the same `provider`.",
+    },
+    {
+      name: "icon",
+      type: "React.ReactNode",
+      description:
+        "16px icon in the menu and on the event. Defaults to a camera.",
+    },
+    {
+      name: "hint",
+      type: "string",
+      description: 'Muted text at the end of the menu item, e.g. "Connect".',
+    },
+    {
+      name: "createConference",
+      type: "(event: DetailedCalendarEvent) => EventConference | Promise<EventConference>",
+      required: true,
+      description:
+        "Creates the call for the event, e.g. through the service's API. The row shows the option as pending until a returned promise settles; a rejected one adds no call, and a call that arrives after the panel moved to another event is dropped.",
+    },
+  ]}
+/>
+
+```tsx
+const conferenceProviders: ConferenceProviderOption[] = [
+  {
+    provider: "zoom",
+    label: "Zoom",
+    icon: <ZoomIcon />,
+    // Your server asks Zoom for a meeting
+    createConference: async (event) => {
+      const meeting = await createZoomMeeting(event.title);
+      return { provider: "zoom", url: meeting.joinUrl, meetingId: meeting.id };
+    },
+  },
+];
+
+<CalendarProvider conferenceProviders={conferenceProviders}>
+  <WeekView />
+</CalendarProvider>;
+```
+
+### LocationSuggestion
+
+An entry of the `locationSuggestions` prop.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "name",
+      type: "string",
+      required: true,
+      description: 'Name of the place, e.g. "Central Park".',
+    },
+    {
+      name: "address",
+      type: "string",
+      description:
+        'Shown under the name, and saved after it: "Central Park, New York, NY, USA".',
     },
   ]}
 />

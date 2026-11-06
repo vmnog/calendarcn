@@ -58,6 +58,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
+import { DEMO_CONFERENCE_PROVIDERS } from "./demo-conference-providers";
 
 /** Title given to an event created by clicking an empty time slot */
 const NEW_EVENT_TITLE = "New event";
@@ -256,6 +257,7 @@ function PageContent({ isWideLayout }: PageContentProps) {
       calendars={DEMO_CALENDARS}
       contacts={DEMO_CONTACTS}
       rooms={DEMO_ROOMS}
+      conferenceProviders={DEMO_CONFERENCE_PROVIDERS}
       locationSuggestions={DEMO_LOCATION_SUGGESTIONS}
       createEvent={createDemoEvent}
       onEventSelect={handleEventSelect}

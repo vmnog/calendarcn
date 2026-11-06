@@ -18,6 +18,10 @@ export const EVENT_DETAIL_MENU_SECONDARY_CLASS = "text-[#8B8B8B]";
 /** Main text of a menu item */
 export const EVENT_DETAIL_MENU_TEXT_CLASS = "text-[#E0E0E0]";
 
+/** `EVENT_DETAIL_PLACEHOLDER_CLASS`'s colors on an input's placeholder */
+export const EVENT_DETAIL_INPUT_PLACEHOLDER_CLASS =
+  "placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]";
+
 /**
  * Props for EventDetailSuggestions
  */
@@ -32,13 +36,31 @@ interface EventDetailSuggestionsProps {
   width: number;
   /** Options (`EventDetailSuggestion`) */
   children: React.ReactNode;
-  /** Row under the options, after a separator (e.g. "Rooms and resources") */
+  /**
+   * Option under the others, after a separator (e.g. "View rooms and
+   * resources"); the field counts it after them
+   */
   footer?: React.ReactNode;
 }
 
 interface SuggestionsPosition {
   top: number;
   left: number;
+}
+
+/**
+ * Where the list portals: the dialog the calendar is in (a modal one turns
+ * off pointer events on the rest of the page), else the body. The details
+ * popover is itself a dialog, but its scrolling and blur would clip the
+ * list, so the search starts past it.
+ */
+function getPortalContainer(anchor: HTMLElement): HTMLElement {
+  const start =
+    anchor.closest("[data-calendar-popover]")?.parentElement ?? anchor;
+  return (
+    start.closest<HTMLElement>('[role="dialog"], [role="alertdialog"]') ??
+    document.body
+  );
 }
 
 /**
@@ -64,9 +86,9 @@ function getSuggestionsPosition(
 /**
  * The floating list a details field shows while it's focused (the
  * participants' contacts, the location's places). The field keeps focus and
- * drives it as a combobox (`aria-activedescendant`); the list is a portal in
- * the details' React tree, so the details popover counts presses on it as
- * inside. Rendered only while open.
+ * drives it as a combobox (`aria-activedescendant`), the footer's option
+ * included; the list is a portal in the details' React tree, so the details
+ * popover counts presses on it as inside. Rendered only while open.
  */
 export function EventDetailSuggestions({
   id,
@@ -76,18 +98,35 @@ export function EventDetailSuggestions({
   children,
   footer,
 }: EventDetailSuggestionsProps) {
+  /** Marks the viewport's top-left corner as the list's `fixed` frame sees it */
+  const originRef = React.useRef<HTMLSpanElement>(null);
+  const [container, setContainer] = React.useState<HTMLElement | null>(null);
   const [position, setPosition] = React.useState<SuggestionsPosition | null>(
     null,
   );
 
+  React.useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    if (anchor) setContainer(getPortalContainer(anchor));
+  }, [anchorRef]);
+
   // Follow the field while the page scrolls or resizes
   React.useLayoutEffect(() => {
+    if (!container) return;
     function update() {
       const anchor = anchorRef.current;
-      if (!anchor) return;
-      setPosition(
-        getSuggestionsPosition(anchor.getBoundingClientRect(), width),
+      const origin = originRef.current;
+      if (!anchor || !origin) return;
+      // A transformed dialog moves `fixed` boxes along with it
+      const offset = origin.getBoundingClientRect();
+      const next = getSuggestionsPosition(
+        anchor.getBoundingClientRect(),
+        width,
       );
+      setPosition({
+        top: next.top - offset.top,
+        left: next.left - offset.left,
+      });
     }
     update();
     window.addEventListener("resize", update);
@@ -96,32 +135,45 @@ export function EventDetailSuggestions({
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
-  }, [anchorRef, width]);
+  }, [anchorRef, container, width]);
 
-  if (!position) return null;
+  if (!container) return null;
 
   return ReactDOM.createPortal(
-    <div
-      data-slot="event-detail-suggestions"
-      className={cn(
-        "fixed z-[9999] overflow-hidden rounded-lg border p-1.5 text-sm font-medium shadow-md",
-        EVENT_DETAIL_MENU_CLASS,
+    <>
+      <span
+        ref={originRef}
+        aria-hidden="true"
+        className="pointer-events-none fixed top-0 left-0 size-0"
+      />
+      {position && (
+        <div
+          id={id}
+          role="listbox"
+          aria-label={label}
+          data-slot="event-detail-suggestions"
+          className={cn(
+            "fixed z-[9999] overflow-hidden rounded-lg border p-1.5 text-sm font-medium shadow-md",
+            EVENT_DETAIL_MENU_CLASS,
+          )}
+          style={{ top: position.top, left: position.left, width }}
+          // Presses keep focus in the field
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {children}
+          {footer && (
+            <>
+              <div
+                role="none"
+                className="-mx-1.5 my-1.5 border-t border-[#303030]"
+              />
+              {footer}
+            </>
+          )}
+        </div>
       )}
-      style={{ top: position.top, left: position.left, width }}
-      // Presses keep focus in the field
-      onMouseDown={(e) => e.preventDefault()}
-    >
-      <div id={id} role="listbox" aria-label={label}>
-        {children}
-      </div>
-      {footer && (
-        <>
-          <div className="-mx-1.5 my-1.5 border-t border-[#303030]" />
-          {footer}
-        </>
-      )}
-    </div>,
-    document.body,
+    </>,
+    container,
   );
 }
 

@@ -182,6 +182,11 @@ export type ConferenceProvider =
 export interface EventConference {
   /** Service that hosts the call */
   provider: ConferenceProvider;
+  /**
+   * Label of the `conferenceProviders` option that created it, which tells
+   * apart two options of the same `provider` (e.g. two Zoom accounts)
+   */
+  label?: string;
   /** Link that joins the call */
   url: string;
   /** Meeting code or ID shown beside the link (e.g. "abc-defg-hij") */
@@ -209,14 +214,25 @@ export interface EventContact {
  * `createConference`, whose result is set as the event's `conference`.
  */
 export interface ConferenceProviderOption {
-  /** Service, which picks the icon */
+  /** Service the call is hosted on */
   provider: ConferenceProvider;
-  /** Name shown in the menu and on the event (e.g. "Google Meet") */
+  /**
+   * Name shown in the menu and on the event (e.g. "Video call"), unique
+   * among the options
+   */
   label: string;
+  /** 16px icon shown in the menu and on the event. Defaults to a camera */
+  icon?: React.ReactNode;
   /** Muted text at the end of the menu item, e.g. "Connect" */
   hint?: string;
-  /** Creates the call, e.g. by asking the service for a meeting link */
-  createConference: () => EventConference;
+  /**
+   * Creates the call for the event, e.g. by asking the service for a
+   * meeting link. The panel shows the option as pending until a returned
+   * promise settles; a rejected one adds no call.
+   */
+  createConference: (
+    event: DetailedCalendarEvent,
+  ) => EventConference | Promise<EventConference>;
 }
 
 /**
@@ -563,11 +579,8 @@ export interface CalendarConfig {
   contacts: EventContact[];
   /** Meeting rooms the details' participants field offers */
   rooms: EventRoom[];
-  /**
-   * Conferencing services the details offer; `undefined` keeps the panel's
-   * defaults
-   */
-  conferenceProviders?: ConferenceProviderOption[];
+  /** Conferencing services the details offer; none hides the row */
+  conferenceProviders: ConferenceProviderOption[];
   /** Places the details' location field suggests */
   locationSuggestions: LocationSuggestion[];
 }
@@ -788,9 +801,9 @@ interface CalendarProviderBaseProps<
    */
   rooms?: EventRoom[];
   /**
-   * Conferencing services the details' "Conferencing" menu offers. Defaults
-   * to Google Meet, Zoom and Microsoft Teams with placeholder links: pass
-   * your own `createConference` to create real meetings
+   * Conferencing services the details' "Conferencing" menu offers, each
+   * creating its calls with its own `createConference`. Defaults to none,
+   * which hides the row (an event's existing call still shows)
    */
   conferenceProviders?: ConferenceProviderOption[];
   /**

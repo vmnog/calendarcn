@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MapPin } from "lucide-react";
+import { MapPin, Pencil } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useCalendarConfig } from "./calendar-provider";
@@ -10,10 +10,12 @@ import {
   EVENT_DETAIL_HOVER_BORDER_CLASS,
   EVENT_DETAIL_ICON_CLASS,
   EVENT_DETAIL_INPUT_GROUP_CLASS,
+  EVENT_DETAIL_MUTED_CLASS,
   EVENT_DETAIL_TEXT_CLASS,
   EventDetailSection,
 } from "./event-detail-parts";
 import {
+  EVENT_DETAIL_INPUT_PLACEHOLDER_CLASS,
   EVENT_DETAIL_MENU_SECONDARY_CLASS,
   EventDetailSuggestion,
   EventDetailSuggestions,
@@ -55,7 +57,8 @@ function getLocationHref(location: string): string {
  * field; typing lists the typed text first, then matching places (name
  * over address) from `CalendarProvider`'s `locationSuggestions`. Set: the
  * location, underlined, opening in Google Maps (or itself, for a link);
- * clicking the rest of the row edits it, and clearing the text removes it.
+ * clicking the rest of the row, or its edit button, edits it, and clearing
+ * the text removes it. Escape restores the location from before editing.
  */
 export function EventDetailLocation<
   TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
@@ -69,17 +72,26 @@ export function EventDetailLocation<
   const [text, setText] = React.useState(location);
   const [open, setOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(-1);
+  const linkRef = React.useRef<HTMLAnchorElement>(null);
   /** Set by Escape and by a pick, so the blur that follows doesn't commit */
   const skipCommitRef = React.useRef(false);
+  /** Set when a key ends editing: focus goes back to the location */
+  const refocusRef = React.useRef(false);
 
   // Follow the event while the field isn't being typed into
   React.useEffect(() => {
     if (!editing) setText(location);
   }, [location, editing]);
 
-  // Focus the field when the set location switches to editing
+  // Focus the field when the set location switches to editing, and the
+  // location (the edit button comes next) when a key ends it
   React.useEffect(() => {
-    if (!editing) return;
+    if (!editing) {
+      if (!refocusRef.current) return;
+      refocusRef.current = false;
+      linkRef.current?.focus();
+      return;
+    }
     inputRef.current?.focus();
     inputRef.current?.select();
   }, [editing]);
@@ -111,11 +123,20 @@ export function EventDetailLocation<
     onEventChange?.({ ...event, location: value || undefined });
   };
 
+  /**
+   * Leaves the field. After editing a set location, focus returns to the
+   * location
+   */
+  const finishEditing = () => {
+    refocusRef.current = editing;
+    inputRef.current?.blur();
+  };
+
   const pick = (place: LocationSuggestion) => {
     skipCommitRef.current = true;
     commit(formatSuggestion(place));
     setOpen(false);
-    inputRef.current?.blur();
+    finishEditing();
   };
 
   const handleBlur = () => {
@@ -134,12 +155,12 @@ export function EventDetailLocation<
       e.stopPropagation();
       skipCommitRef.current = true;
       setText(location);
-      inputRef.current?.blur();
+      finishEditing();
       return;
     }
     if (e.key === "Enter" && !listOpen) {
       e.preventDefault();
-      inputRef.current?.blur();
+      finishEditing();
       return;
     }
     if (!listOpen) return;
@@ -163,6 +184,7 @@ export function EventDetailLocation<
           >
             <MapPin className={cn("mt-0.5", EVENT_DETAIL_ICON_CLASS)} />
             <a
+              ref={linkRef}
               href={getLocationHref(location)}
               target="_blank"
               rel="noreferrer"
@@ -175,6 +197,24 @@ export function EventDetailLocation<
             >
               {location}
             </a>
+            {onEventChange && (
+              <>
+                <span className="flex-1" />
+                {/* Shown on hover, and once the location has focus */}
+                <button
+                  type="button"
+                  aria-label="Edit location"
+                  title="Edit location"
+                  className={cn(
+                    "hidden size-5 shrink-0 items-center justify-center group-focus-within/location:flex group-hover/location:flex",
+                    EVENT_DETAIL_MUTED_CLASS,
+                  )}
+                  onClick={() => setEditing(true)}
+                >
+                  <Pencil className="size-3.5" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </EventDetailSection>
@@ -216,7 +256,7 @@ export function EventDetailLocation<
               "min-w-0 flex-1",
               EVENT_DETAIL_GROUPED_INPUT_CLASS,
               EVENT_DETAIL_TEXT_CLASS,
-              "placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",
+              EVENT_DETAIL_INPUT_PLACEHOLDER_CLASS,
             )}
           />
         </div>

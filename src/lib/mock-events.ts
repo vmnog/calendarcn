@@ -1938,7 +1938,7 @@ function demoEvents(rel: RelativeDate): DetailedCalendarEvent[] {
         ],
         conference: {
           provider: "google-meet",
-          url: "https://meet.google.com/abc-defg-hij",
+          url: "https://example.com/meet/abc-defg-hij",
           meetingId: "abc-defg-hij",
         },
         aiMeetingNotes: true,

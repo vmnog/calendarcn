@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, NotepadText, X } from "lucide-react";
+import { NotepadText, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -24,8 +24,9 @@ const ROW_BOX_CLASS =
 /**
  * AI meeting notes, as in Notion Calendar. Off: a muted "Add AI meeting
  * notes" row, or, once the event has a call, Notion's full-width "Add
- * meeting note" button (the panel shows it above the call). On: "AI meeting
- * notes" with a button that turns them off. Toggles `aiMeetingNotes`.
+ * meeting note" button (the panel shows it above the call; Notion's
+ * chevron menu is left out). On: "AI meeting notes" with a button that
+ * turns them off. Toggles `aiMeetingNotes`.
  */
 export function EventDetailAiNotes<
   TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
@@ -80,9 +81,6 @@ export function EventDetailAiNotes<
             <span className="flex flex-1 items-center justify-center gap-1.5">
               <NotepadText className="size-4" />
               Add meeting note
-            </span>
-            <span className="flex h-full w-8 items-center justify-center border-l border-[#F0F0F0] dark:border-[#303030]">
-              <ChevronDown className="size-4" />
             </span>
           </button>
         </div>

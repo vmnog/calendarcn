@@ -1,7 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown, Link2, Video, VideoOff } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Link2,
+  LoaderCircle,
+  Video,
+  VideoOff,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -44,138 +51,88 @@ const PROVIDER_NAMES: Record<ConferenceProvider, string> = {
   other: "Video call",
 };
 
-/** Letters of a placeholder Google Meet code */
-const LETTERS = "abcdefghijklmnopqrstuvwxyz";
+/** Item text in the conferencing menu */
+const MENU_ITEM_CLASS = cn(EVENT_DETAIL_MENU_ITEM_CLASS, "gap-2 text-sm");
 
-/** A run of random lowercase letters */
-function randomLetters(length: number): string {
-  return Array.from(
-    { length },
-    () => LETTERS[Math.floor(Math.random() * LETTERS.length)],
-  ).join("");
+/** A row's 32px box, from 8px off the panel's edges, with the icon column at 26px */
+const ROW_BOX_CLASS =
+  "flex h-8 min-w-0 flex-1 items-center gap-[11px] pr-2 pl-[9px]";
+
+/** Fill of the empty row while its menu is open */
+const OPEN_ROW_CLASS =
+  "border-[#F5F5F5] bg-[#F5F5F5] dark:border-[#242424] dark:bg-[#242424]";
+
+/** The fallback camera's color in the (dark) menu */
+const MENU_ICON_CLASS = cn(
+  "size-4 shrink-0",
+  EVENT_DETAIL_MENU_SECONDARY_CLASS,
+);
+
+/** A call being created by an option whose `createConference` is async */
+interface PendingConference {
+  option: ConferenceProviderOption;
+  /** Event it's created for: another event's panel doesn't show it */
+  eventId: string;
 }
 
-/** A run of random digits */
-function randomDigits(length: number): string {
-  return Array.from({ length }, () => Math.floor(Math.random() * 10)).join("");
+/** Whether `createConference` returned a promise rather than the call */
+function isPromiseLike(
+  value: EventConference | PromiseLike<EventConference>,
+): value is PromiseLike<EventConference> {
+  return "then" in value;
 }
 
 /**
- * Services the "Conferencing" menu offers when `CalendarProvider` sets no
- * `conferenceProviders`. Their links are placeholders in each service's
- * format, made up on the spot; pass your own `createConference` to create
- * real meetings.
+ * The option that created the call: the one with its label, or, for a call
+ * without one (imported, or set by the app), the first of its service
  */
-export const DEFAULT_CONFERENCE_PROVIDERS: ConferenceProviderOption[] = [
-  {
-    provider: "google-meet",
-    label: "Google Meet",
-    createConference: () => {
-      const code = `${randomLetters(3)}-${randomLetters(4)}-${randomLetters(3)}`;
-      return {
-        provider: "google-meet",
-        url: `https://meet.google.com/${code}`,
-        meetingId: code,
-      };
-    },
-  },
-  {
-    provider: "zoom",
-    label: "Zoom",
-    createConference: () => {
-      const id = randomDigits(10);
-      return {
-        provider: "zoom",
-        url: `https://zoom.us/j/${id}`,
-        meetingId: `${id.slice(0, 3)} ${id.slice(3, 6)} ${id.slice(6)}`,
-      };
-    },
-  },
-  {
-    provider: "microsoft-teams",
-    label: "Microsoft Teams",
-    createConference: () => {
-      const id = randomDigits(12);
-      return {
-        provider: "microsoft-teams",
-        url: `https://teams.microsoft.com/meet/${id}`,
-        meetingId: id.replace(/(\d{3})(?=\d)/g, "$1 "),
-      };
-    },
-  },
-];
+function findOption(
+  providers: ConferenceProviderOption[],
+  conference: EventConference,
+): ConferenceProviderOption | undefined {
+  if (conference.label) {
+    const labeled = providers.find(
+      (option) => option.label === conference.label,
+    );
+    if (labeled) return labeled;
+  }
+  return providers.find((option) => option.provider === conference.provider);
+}
 
-/** Google Meet's four-color camera */
-function GoogleMeetLogo({ className }: { className?: string }) {
+/**
+ * Props for ProviderIcon
+ */
+interface ProviderIconProps {
+  /** The option's icon */
+  icon?: React.ReactNode;
+  /** Classes of the camera drawn without an icon */
+  fallbackClassName?: string;
+}
+
+/** A service's 16px icon, or a camera for one without an icon */
+function ProviderIcon({
+  icon,
+  fallbackClassName = EVENT_DETAIL_ICON_CLASS,
+}: ProviderIconProps) {
+  if (!icon) {
+    return <Video className={fallbackClassName} />;
+  }
   return (
-    <svg viewBox="0 0 87.5 72" aria-hidden="true" className={className}>
-      <path
-        fill="#00832d"
-        d="M49.5 36l8.53 9.75 11.47 7.33 2-17.02-2-16.64-11.69 6.44z"
-      />
-      <path
-        fill="#0066da"
-        d="M0 51.5V66c0 3.315 2.685 6 6 6h14.5l3-10.96-3-9.54-9.95-3z"
-      />
-      <path fill="#e94235" d="M20.5 0L0 20.5l10.55 3 9.95-3 2.95-9.41z" />
-      <path fill="#2684fc" d="M20.5 20.5H0v31h20.5z" />
-      <path
-        fill="#00ac47"
-        d="M82.6 8.68L69.5 19.42v33.66l13.16 10.79c1.97 1.54 4.85.135 4.85-2.37V11c0-2.535-2.945-3.925-4.91-2.32zM49.5 36v15.5h-29V72h43c3.315 0 6-2.685 6-6V53.08z"
-      />
-      <path
-        fill="#ffba00"
-        d="M63.5 0h-43v20.5h29V36l20-16.57V6c0-3.315-2.685-6-6-6z"
-      />
-    </svg>
+    <span className="flex size-4 shrink-0 items-center justify-center [&>svg]:size-4">
+      {icon}
+    </span>
   );
 }
-
-/** Zoom's white camera on a blue rounded square */
-function ZoomLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className={className}>
-      <rect width="16" height="16" rx="4" fill="#2D8CFF" />
-      <rect x="3" y="5.25" width="7" height="5.5" rx="1.25" fill="#fff" />
-      <path d="M10.5 7.4l2.5-1.65v4.5L10.5 8.6z" fill="#fff" />
-    </svg>
-  );
-}
-
-/** Microsoft Teams' white "T" on a purple rounded square */
-function TeamsLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className={className}>
-      <rect width="16" height="16" rx="4" fill="#5B5FC7" />
-      <path d="M4.5 4.75h7v1.6H8.8v5.9H7.2v-5.9H4.5z" fill="#fff" />
-    </svg>
-  );
-}
-
-/** The service's logo at 16px, or a muted camera for any other service */
-function ProviderLogo({ provider }: { provider: ConferenceProvider }) {
-  if (provider === "google-meet") {
-    return <GoogleMeetLogo className="size-4 shrink-0" />;
-  }
-  if (provider === "zoom") {
-    return <ZoomLogo className="size-4 shrink-0" />;
-  }
-  if (provider === "microsoft-teams") {
-    return <TeamsLogo className="size-4 shrink-0" />;
-  }
-  return <Video className={EVENT_DETAIL_ICON_CLASS} />;
-}
-
-/** Item text in the conferencing menu */
-const MENU_ITEM_CLASS = cn(EVENT_DETAIL_MENU_ITEM_CLASS, "gap-2 text-sm");
 
 /**
  * Props for ConferencingMenuContent
  */
 interface ConferencingMenuContentProps {
   providers: ConferenceProviderOption[];
-  /** The event's call, checked in the list and removable */
-  current?: EventConference;
+  /** Whether the event has a call, which adds "No conferencing" */
+  hasCall: boolean;
+  /** Option of the event's call, checked in the list */
+  currentOption?: ConferenceProviderOption;
   onPick: (option: ConferenceProviderOption) => void;
   onRemove: () => void;
   /** Called with the item under the pointer or keyboard, previewed in the trigger */
@@ -191,7 +148,8 @@ interface ConferencingMenuContentProps {
  */
 function ConferencingMenuContent({
   providers,
-  current,
+  hasCall,
+  currentOption,
   onPick,
   onRemove,
   onPreview,
@@ -206,7 +164,7 @@ function ConferencingMenuContent({
       onMouseLeave={() => onPreview(null)}
       onKeyDown={closeMenuOnEscape(onClose)}
     >
-      {current && (
+      {hasCall && (
         <>
           <DropdownMenuItem
             className={MENU_ITEM_CLASS}
@@ -217,23 +175,28 @@ function ConferencingMenuContent({
             <VideoOff className="size-4 text-white" />
             No conferencing
           </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-[#303030]" />
+          {providers.length > 0 && (
+            <DropdownMenuSeparator className="bg-[#303030]" />
+          )}
         </>
       )}
       {providers.map((option) => (
         <DropdownMenuItem
-          key={`${option.provider}-${option.label}`}
+          key={option.label}
           className={MENU_ITEM_CLASS}
           onClick={() => onPick(option)}
           onMouseEnter={() => onPreview(option)}
           onFocus={() => onPreview(option)}
         >
           <span className="flex w-4 shrink-0 items-center justify-center">
-            {current?.provider === option.provider && (
+            {option === currentOption && (
               <Check className="size-4 text-white" />
             )}
           </span>
-          <ProviderLogo provider={option.provider} />
+          <ProviderIcon
+            icon={option.icon}
+            fallbackClassName={MENU_ICON_CLASS}
+          />
           <span className="flex-1">{option.label}</span>
           {option.hint && (
             <span className={cn("ml-3", EVENT_DETAIL_MENU_SECONDARY_CLASS)}>
@@ -246,30 +209,50 @@ function ConferencingMenuContent({
   );
 }
 
-/** A row's 32px box, from 8px off the panel's edges, with the icon column at 26px */
-const ROW_BOX_CLASS =
-  "flex h-8 min-w-0 flex-1 items-center gap-[11px] pr-2 pl-[9px]";
-
 /**
  * The event's video call, as in Notion Calendar. Without one, a muted
- * "Conferencing" row opens the services menu. With one, the service's logo
- * and name (a link that joins the call) and its meeting code, with a copy
- * link button and the menu (switch service, "No conferencing") on hover.
- * Services come from `CalendarProvider`'s `conferenceProviders`, or
- * `DEFAULT_CONFERENCE_PROVIDERS`.
+ * "Conferencing" row opens the services menu; an option whose
+ * `createConference` is async shows as pending until its call arrives.
+ * With one, the service's icon and name (a link that joins the call) and
+ * its meeting code, with a copy link button and the menu (switch service,
+ * "No conferencing") on hover. Services come from `CalendarProvider`'s
+ * `conferenceProviders`; without any, the row is hidden unless the event
+ * already has a call.
  */
 export function EventDetailConferencing<
   TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
 >({ event, onEventChange }: EventDetailSectionProps<TEvent>) {
-  const { conferenceProviders } = useCalendarConfig();
-  const providers = conferenceProviders ?? DEFAULT_CONFERENCE_PROVIDERS;
+  const { conferenceProviders: providers } = useCalendarConfig();
   const conference = event.conference;
+  const sectionRef = React.useRef<HTMLDivElement>(null);
+  const joinRef = React.useRef<HTMLAnchorElement>(null);
+  /** The latest event and handler, for a call that arrives after a wait */
+  const eventRef = React.useRef(event);
+  const onEventChangeRef = React.useRef(onEventChange);
+  /** Bumped by every change, so only the latest pending call is applied */
+  const requestRef = React.useRef(0);
+  /** Set when a pending call arrives with focus in the row: focus moves to it */
+  const focusCallRef = React.useRef(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
   /** Service under the pointer while the empty row's menu is open */
   const [preview, setPreview] = React.useState<ConferenceProviderOption | null>(
     null,
   );
+  const [pending, setPending] = React.useState<PendingConference | null>(null);
   const [copied, setCopied] = React.useState(false);
+
+  React.useEffect(() => {
+    eventRef.current = event;
+    onEventChangeRef.current = onEventChange;
+  }, [event, onEventChange]);
+
+  // A call that arrives after the panel closes is dropped
+  React.useEffect(() => {
+    const requests = requestRef;
+    return () => {
+      requests.current += 1;
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!copied) return;
@@ -277,18 +260,63 @@ export function EventDetailConferencing<
     return () => window.clearTimeout(timer);
   }, [copied]);
 
+  React.useEffect(() => {
+    if (!conference || !focusCallRef.current) return;
+    focusCallRef.current = false;
+    joinRef.current?.focus();
+  }, [conference]);
+
+  const currentOption = conference
+    ? findOption(providers, conference)
+    : undefined;
+  const pendingOption =
+    pending?.eventId === event.id ? pending.option : undefined;
+
+  if (!conference && providers.length === 0) return null;
+
   const handleOpenChange = (open: boolean) => {
+    if (open && pendingOption) return;
     setMenuOpen(open);
     if (!open) setPreview(null);
   };
 
-  const pick = (option: ConferenceProviderOption) => {
-    if (conference?.provider === option.provider) return;
-    onEventChange?.({ ...event, conference: option.createConference() });
+  const setCall = (next: EventConference | undefined) => {
+    requestRef.current += 1;
+    setPending(null);
+    onEventChange?.({ ...event, conference: next });
   };
 
-  const remove = () => {
-    onEventChange?.({ ...event, conference: undefined });
+  const pick = (option: ConferenceProviderOption) => {
+    if (option === currentOption) return;
+    const result = option.createConference(event);
+    if (!isPromiseLike(result)) {
+      // Picked from the menu, which hands focus back to the row
+      focusCallRef.current = true;
+      setCall({ ...result, label: option.label });
+      return;
+    }
+
+    requestRef.current += 1;
+    const request = requestRef.current;
+    const eventId = event.id;
+    setPending({ option, eventId });
+    result.then(
+      (created) => {
+        if (request !== requestRef.current) return;
+        setPending(null);
+        const latest = eventRef.current;
+        if (latest.id !== eventId) return;
+        focusCallRef.current =
+          sectionRef.current?.contains(document.activeElement) ?? false;
+        onEventChangeRef.current?.({
+          ...latest,
+          conference: { ...created, label: option.label },
+        });
+      },
+      () => {
+        if (request === requestRef.current) setPending(null);
+      },
+    );
   };
 
   const copyLink = () => {
@@ -298,140 +326,150 @@ export function EventDetailConferencing<
     });
   };
 
-  const menu = (
-    <ConferencingMenuContent
-      providers={providers}
-      current={conference}
-      onPick={pick}
-      onRemove={remove}
-      onPreview={setPreview}
-      onClose={() => handleOpenChange(false)}
-    />
-  );
+  const shown = pendingOption ?? preview;
+  /** The call the row shows: none while a new one is being created */
+  const shownCall = pendingOption ? undefined : conference;
+  const callLabel = shownCall
+    ? (currentOption?.label ??
+      shownCall.label ??
+      PROVIDER_NAMES[shownCall.provider])
+    : "";
 
-  if (!conference) {
-    return (
-      <EventDetailSection name="conferencing">
+  return (
+    <EventDetailSection name="conferencing" ref={sectionRef}>
+      {/* One menu for both states, so focus returns to the call's menu
+          button once a pick replaces the empty row */}
+      <DropdownMenu open={menuOpen} onOpenChange={handleOpenChange}>
         <div className="flex min-h-[35px] items-center px-2">
-          <DropdownMenu open={menuOpen} onOpenChange={handleOpenChange}>
+          {shownCall ? (
+            <div
+              className={cn(
+                "group/conferencing",
+                ROW_BOX_CLASS,
+                "gap-2",
+                EVENT_DETAIL_HOVER_BORDER_CLASS,
+                menuOpen && "border-[#E8E8E4] dark:border-[#373737]",
+              )}
+            >
+              <a
+                ref={joinRef}
+                href={shownCall.url}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Join ${callLabel}`}
+                data-testid="event-conference-join"
+                className="flex shrink-0 items-center gap-[11px] outline-none"
+              >
+                <ProviderIcon icon={currentOption?.icon} />
+                <span className={cn("shrink-0", EVENT_DETAIL_TEXT_CLASS)}>
+                  {callLabel}
+                </span>
+              </a>
+              {shownCall.meetingId && (
+                <span
+                  className={cn(
+                    "min-w-0 truncate",
+                    EVENT_DETAIL_PLACEHOLDER_CLASS,
+                  )}
+                >
+                  {shownCall.meetingId}
+                </span>
+              )}
+              <button
+                type="button"
+                aria-label={copied ? "Link copied" : "Copy link"}
+                title={copied ? "Copied" : "Copy link"}
+                className={cn(
+                  "hidden size-5 shrink-0 items-center justify-center rounded-sm group-focus-within/conferencing:flex group-hover/conferencing:flex",
+                  (menuOpen || copied) && "flex",
+                  EVENT_DETAIL_SECONDARY_CLASS,
+                )}
+                onClick={copyLink}
+              >
+                {copied ? (
+                  <Check className="size-3.5" />
+                ) : (
+                  <Link2 className="size-3.5 -rotate-45" />
+                )}
+              </button>
+              <span className="flex-1" />
+              {onEventChange && (
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Change conferencing"
+                    className={cn(
+                      "hidden size-5 shrink-0 items-center justify-center group-focus-within/conferencing:flex group-hover/conferencing:flex",
+                      menuOpen && "flex",
+                      EVENT_DETAIL_MUTED_CLASS,
+                    )}
+                  >
+                    <ChevronDown className="size-4" />
+                  </button>
+                </DropdownMenuTrigger>
+              )}
+            </div>
+          ) : (
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
                 disabled={!onEventChange}
+                aria-busy={pendingOption ? true : undefined}
+                aria-label={
+                  pendingOption
+                    ? `Creating ${pendingOption.label} call`
+                    : undefined
+                }
                 data-testid="event-conferencing-trigger"
                 className={cn(
                   "group/conferencing text-left",
                   ROW_BOX_CLASS,
                   EVENT_DETAIL_HOVER_BORDER_CLASS,
-                  menuOpen &&
-                    "border-[#F5F5F5] bg-[#F5F5F5] dark:border-[#242424] dark:bg-[#242424]",
+                  menuOpen && OPEN_ROW_CLASS,
                 )}
               >
-                {preview ? (
-                  <ProviderLogo provider={preview.provider} />
-                ) : (
-                  <Video className={EVENT_DETAIL_ICON_CLASS} />
-                )}
+                <ProviderIcon icon={shown?.icon} />
                 <span
                   className={cn(
                     "flex-1 truncate",
-                    preview
+                    shown
                       ? EVENT_DETAIL_TEXT_CLASS
                       : EVENT_DETAIL_PLACEHOLDER_CLASS,
                   )}
                 >
-                  {preview ? preview.label : "Conferencing"}
+                  {shown ? shown.label : "Conferencing"}
                 </span>
-                <ChevronDown
-                  className={cn(
-                    "size-4 shrink-0 opacity-0 group-hover/conferencing:opacity-100",
-                    menuOpen && "opacity-100",
-                    EVENT_DETAIL_MUTED_CLASS,
-                  )}
-                />
-              </button>
-            </DropdownMenuTrigger>
-            {menu}
-          </DropdownMenu>
-        </div>
-      </EventDetailSection>
-    );
-  }
-
-  const label =
-    providers.find((option) => option.provider === conference.provider)
-      ?.label ?? PROVIDER_NAMES[conference.provider];
-
-  return (
-    <EventDetailSection name="conferencing">
-      <div className="flex min-h-[35px] items-center px-2">
-        <div
-          className={cn(
-            "group/conferencing",
-            ROW_BOX_CLASS,
-            "gap-2",
-            EVENT_DETAIL_HOVER_BORDER_CLASS,
-            menuOpen && "border-[#E8E8E4] dark:border-[#373737]",
-          )}
-        >
-          <a
-            href={conference.url}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`Join ${label}`}
-            data-testid="event-conference-join"
-            className="flex shrink-0 items-center gap-[11px]"
-          >
-            <ProviderLogo provider={conference.provider} />
-            <span className={cn("shrink-0", EVENT_DETAIL_TEXT_CLASS)}>
-              {label}
-            </span>
-          </a>
-          {conference.meetingId && (
-            <span
-              className={cn("min-w-0 truncate", EVENT_DETAIL_PLACEHOLDER_CLASS)}
-            >
-              {conference.meetingId}
-            </span>
-          )}
-          <button
-            type="button"
-            aria-label={copied ? "Link copied" : "Copy link"}
-            title={copied ? "Copied" : "Copy link"}
-            className={cn(
-              "hidden size-5 shrink-0 items-center justify-center rounded-sm group-focus-within/conferencing:flex group-hover/conferencing:flex",
-              (menuOpen || copied) && "flex",
-              EVENT_DETAIL_SECONDARY_CLASS,
-            )}
-            onClick={copyLink}
-          >
-            {copied ? (
-              <Check className="size-3.5" />
-            ) : (
-              <Link2 className="size-3.5 -rotate-45" />
-            )}
-          </button>
-          <span className="flex-1" />
-          <DropdownMenu open={menuOpen} onOpenChange={handleOpenChange}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label="Change conferencing"
-                disabled={!onEventChange}
-                className={cn(
-                  "hidden size-5 shrink-0 items-center justify-center group-focus-within/conferencing:flex group-hover/conferencing:flex",
-                  menuOpen && "flex",
-                  EVENT_DETAIL_MUTED_CLASS,
+                {pendingOption ? (
+                  <LoaderCircle
+                    className={cn(
+                      "size-4 shrink-0 animate-spin",
+                      EVENT_DETAIL_MUTED_CLASS,
+                    )}
+                  />
+                ) : (
+                  <ChevronDown
+                    className={cn(
+                      "size-4 shrink-0 opacity-0 group-hover/conferencing:opacity-100",
+                      menuOpen && "opacity-100",
+                      EVENT_DETAIL_MUTED_CLASS,
+                    )}
+                  />
                 )}
-              >
-                <ChevronDown className="size-4" />
               </button>
             </DropdownMenuTrigger>
-            {menu}
-          </DropdownMenu>
+          )}
         </div>
-      </div>
-      <EventDetailDivider className="my-2" />
+        <ConferencingMenuContent
+          providers={providers}
+          hasCall={Boolean(conference)}
+          currentOption={currentOption}
+          onPick={pick}
+          onRemove={() => setCall(undefined)}
+          onPreview={setPreview}
+          onClose={() => handleOpenChange(false)}
+        />
+      </DropdownMenu>
+      {conference && <EventDetailDivider className="my-2" />}
     </EventDetailSection>
   );
 }
