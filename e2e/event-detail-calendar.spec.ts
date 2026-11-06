@@ -281,6 +281,32 @@ test.describe("the details panel", () => {
       reminderText("2", "hours"),
     ]);
 
+    // Nothing fires more than 4 weeks before (40320 minutes), as in Notion
+    await reminderInput(page).fill("4");
+    await expect(suggestions.getByRole("option")).toHaveText([
+      reminderText("4", "min"),
+      reminderText("4", "hours"),
+      reminderText("4", "days"),
+      reminderText("4", "weeks"),
+    ]);
+    await reminderInput(page).fill("5");
+    await expect(suggestions.getByRole("option")).toHaveText([
+      reminderText("5", "min"),
+      reminderText("5", "hours"),
+      reminderText("5", "days"),
+    ]);
+    await reminderInput(page).fill("29");
+    await expect(suggestions.getByRole("option")).toHaveText([
+      reminderText("29", "min"),
+      reminderText("29", "hours"),
+    ]);
+    await reminderInput(page).fill("700");
+    await expect(suggestions.getByRole("option")).toHaveText([
+      reminderText("700", "min"),
+    ]);
+    await reminderInput(page).fill("5w");
+    await expect(suggestions).toHaveCount(0);
+
     // 60min fires with the 1hour already set, so it isn't added
     await reminderInput(page).fill("60");
     await page.keyboard.press("Enter");

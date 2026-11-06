@@ -27,7 +27,7 @@ import {
   EventDetailSection,
   getEventDetailPortalContainer,
 } from "./event-detail-parts";
-import { addReminder, formatTime } from "@/lib/event-utils";
+import { addReminder, formatTime, getReminderMinutes } from "@/lib/event-utils";
 import type {
   DetailedCalendarEvent,
   EventDetailSectionProps,
@@ -64,6 +64,12 @@ const REMINDER_UNIT_NAMES: Record<EventReminder["unit"], string[]> = {
   days: ["days"],
   weeks: ["weeks", "wks"],
 };
+
+/**
+ * Furthest a suggested reminder fires before the event: 4 weeks, Google
+ * Calendar's limit, which Notion follows ("2" offers 2weeks, "5" no weeks)
+ */
+const MAX_REMINDER_MINUTES = 4 * 7 * 24 * 60;
 
 /** A reminder at the start of the event */
 const AT_START_REMINDER: EventReminder = { amount: 0, unit: "minutes" };
@@ -128,8 +134,9 @@ function formatReminderLabel(
 
 /**
  * Suggestions for what was typed: a number is offered in every unit its
- * text can start ("2h" in hours, "10 mins" in minutes), 0 once as "At start
- * of event", other text filters the presets. Empty text offers the presets.
+ * text can start ("2h" in hours, "10 mins" in minutes) up to 4 weeks before
+ * (`MAX_REMINDER_MINUTES`: "5" offers no weeks), 0 once as "At start of
+ * event", other text filters the presets. Empty text offers the presets.
  */
 function getSuggestions(
   query: string,
@@ -147,7 +154,11 @@ function getSuggestions(
     );
     if (units.length === 0) return [];
     if (amount === 0) return [AT_START_REMINDER];
-    return units.map((unit) => ({ amount, unit }));
+    return units
+      .map((unit) => ({ amount, unit }))
+      .filter(
+        (reminder) => getReminderMinutes(reminder) <= MAX_REMINDER_MINUTES,
+      );
   }
 
   return presets.filter((preset) =>
