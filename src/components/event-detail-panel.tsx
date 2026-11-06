@@ -3,36 +3,18 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import {
-  addDays,
-  differenceInCalendarDays,
-  differenceInMinutes,
-  format,
-  parse,
-} from "date-fns";
-import type { Locale } from "date-fns";
-import {
-  Bell,
   Check,
   ChevronDown,
   CircleHelp,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
   Copy,
-  Globe,
-  MapPin,
   MoreHorizontal,
-  NotepadText,
-  RefreshCcw,
   SquareDashed,
   TabletSmartphone,
   Trash2,
-  User,
-  Video,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useTimeZoneDisplayName } from "@/hooks/use-timezone-label";
+import { useInlineEdit } from "@/hooks/use-inline-edit";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -42,10 +24,35 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
-import { useCalendarConfig } from "./calendar-provider";
-import { formatTime } from "@/lib/event-utils";
-import type { DetailedCalendarEvent, EventColor } from "./week-view-types";
+import { EventDetailAiNotes } from "./event-detail-ai-notes";
+import { EventDetailAvailability } from "./event-detail-availability";
+import { EventDetailCalendar } from "./event-detail-calendar";
+import { EventDetailConferencing } from "./event-detail-conferencing";
+import { EventDetailDescription } from "./event-detail-description";
+import { EventDetailLinks } from "./event-detail-links";
+import { EventDetailLocation } from "./event-detail-location";
+import {
+  EVENT_DETAIL_HOVER_BORDER_CLASS,
+  EVENT_DETAIL_ICON_BUTTON_CLASS,
+  EVENT_DETAIL_INPUT_CLASS,
+  EVENT_DETAIL_MENU_CLASS,
+  EVENT_DETAIL_MENU_ITEM_CLASS,
+  EVENT_DETAIL_MUTED_CLASS,
+  EVENT_DETAIL_PLACEHOLDER_CLASS,
+  EVENT_DETAIL_ROW_HEIGHT_CLASS,
+  EVENT_DETAIL_SECONDARY_CLASS,
+  EVENT_DETAIL_TEXT_CLASS,
+  EventDetailDivider,
+  EventDetailGroup,
+  closeMenuOnEscape,
+  stopEscapePropagation,
+} from "./event-detail-parts";
+import { EventDetailParticipants } from "./event-detail-participants";
+import { EventDetailRecurrence } from "./event-detail-recurrence";
+import { EventDetailReminders } from "./event-detail-reminders";
+import { EventDetailAllDay, EventDetailTime } from "./event-detail-time";
+import { EventDetailTimezone } from "./event-detail-timezone";
+import type { DetailedCalendarEvent, EventKind } from "./week-view-types";
 
 /**
  * Props for EventDetailPanel. `TEvent` is the app's event type; detail fields
@@ -56,7 +63,9 @@ interface EventDetailPanelProps<
 > {
   event: TEvent;
   onEventChange?: (event: TEvent) => void;
+  /** Shows the previous event of a repeating series */
   onPrevWeek?: () => void;
+  /** Shows the next event of a repeating series */
   onNextWeek?: () => void;
   /** Extra action buttons rendered in the header row (after the "..." menu). */
   headerActions?: React.ReactNode;
@@ -66,230 +75,33 @@ interface EventDetailPanelProps<
   onTitleAutoFocused?: () => void;
 }
 
-const colorDotClass: Record<EventColor, string> = {
-  red: "bg-event-red-border",
-  orange: "bg-event-orange-border",
-  yellow: "bg-event-yellow-border",
-  green: "bg-event-green-border",
-  blue: "bg-event-blue-border",
-  purple: "bg-event-purple-border",
-  gray: "bg-event-gray-border",
+/** Event kinds in the header menu's order */
+const EVENT_KINDS: EventKind[] = [
+  "event",
+  "focus-time",
+  "out-of-office",
+  "birthday",
+];
+
+/** Name of each event kind in the header menu */
+const EVENT_KIND_LABELS: Record<EventKind, string> = {
+  event: "Event",
+  "focus-time": "Focus time",
+  "out-of-office": "Out of office",
+  birthday: "Birthday",
 };
 
-function formatDuration(start: Date, end: Date): string {
-  const totalMinutes = differenceInMinutes(end, start);
-
-  if (totalMinutes < 60) {
-    return `${totalMinutes}min`;
-  }
-
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (minutes === 0) {
-    return `${hours}h`;
-  }
-
-  return `${hours}h ${minutes}min`;
-}
-
-interface ParsedTime {
-  hours: number;
-  minutes: number;
-}
-
-/**
- * Parses a user-typed time string into hours and minutes.
- * Accepts formats: "3 PM", "3:30 PM", "15:00", "3pm", "330pm", "3:30pm".
- * Returns null if the input cannot be parsed.
- */
-function parseTimeInput(input: string): ParsedTime | null {
-  const trimmed = input.trim().toLowerCase();
-  if (trimmed.length === 0) {
-    return null;
-  }
-
-  const isPM = /pm$/.test(trimmed);
-  const isAM = /am$/.test(trimmed);
-  const stripped = trimmed.replace(/\s*(am|pm)\s*$/, "").trim();
-
-  if (stripped.length === 0) {
-    return null;
-  }
-
-  let hours: number;
-  let minutes: number;
-
-  if (stripped.includes(":")) {
-    const parts = stripped.split(":");
-    if (parts.length !== 2) {
-      return null;
-    }
-    hours = Number.parseInt(parts[0], 10);
-    minutes = Number.parseInt(parts[1], 10);
-  } else {
-    const num = Number.parseInt(stripped, 10);
-    if (Number.isNaN(num)) {
-      return null;
-    }
-    if (stripped.length > 2 && num > 99) {
-      // e.g., "330" → 3:30, "1230" → 12:30
-      minutes = num % 100;
-      hours = Math.floor(num / 100);
-    } else {
-      hours = num;
-      minutes = 0;
-    }
-  }
-
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-    return null;
-  }
-
-  // Apply AM/PM conversion
-  if (isPM && hours < 12) {
-    hours += 12;
-  }
-  if (isAM && hours === 12) {
-    hours = 0;
-  }
-
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-    return null;
-  }
-
-  return { hours, minutes };
-}
-
-/**
- * Returns a new Date with the same year/month/day as `base`
- * but with hours and minutes replaced.
- */
-function applyTimeToDate(base: Date, hours: number, minutes: number): Date {
-  const result = new Date(base);
-  result.setHours(hours, minutes, 0, 0);
-  return result;
-}
-
-function formatDateDisplay(date: Date, locale: Locale): string {
-  return format(date, "EEE MMM d", { locale });
-}
-
-/**
- * Parses a user-typed date string into a Date.
- * Strips any leading weekday name and parses "MMM d" (e.g., "Mar 11") in
- * the calendar's locale. Uses the reference date's year. Returns null if
- * unparseable.
- */
-function parseDateInput(
-  input: string,
-  referenceDate: Date,
-  locale: Locale,
-): Date | null {
-  const trimmed = input.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-
-  // Strip an optional leading weekday ("Tue ", "sáb ") when a month name follows
-  const withoutWeekday = trimmed.replace(/^[^\s\d]+\s+(?=[^\s\d])/, "");
-
-  const parsed = parse(withoutWeekday, "MMM d", referenceDate, { locale });
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return parsed;
-}
-
-function formatVisibility(
-  visibility?: "default" | "public" | "private",
-): string {
-  if (visibility === "public") {
-    return "Public";
-  }
-  if (visibility === "private") {
-    return "Private";
-  }
-  return "Default visibility";
-}
-
-function FieldRow({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value?: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <Icon className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-      <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">
-        {label}
-      </span>
-      {value && <span className="text-muted-foreground text-xs">{value}</span>}
-    </div>
-  );
-}
-
-function TimezoneDisplay({ timezone }: { timezone: string }) {
-  const spaceIdx = timezone.indexOf(" ");
-  if (spaceIdx === -1) {
-    return (
-      <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">
-        {timezone}
-      </span>
-    );
-  }
-
-  const code = timezone.substring(0, spaceIdx);
-  const city = timezone.substring(spaceIdx + 1);
-
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs">
-      <span className="text-[#C7C5C1] dark:text-[#595959]">{code}</span>
-      <span className="text-foreground">{city}</span>
-    </span>
-  );
-}
-
-function RecurrenceDisplay({ recurrence }: { recurrence: string }) {
-  const onIdx = recurrence.indexOf(" on ");
-  if (onIdx === -1) {
-    return <span className="text-foreground text-xs">{recurrence}</span>;
-  }
-
-  const main = recurrence.substring(0, onIdx);
-  const suffix = recurrence.substring(onIdx);
-
-  return (
-    <span className="text-xs">
-      <span className="text-foreground">{main}</span>
-      <span className="text-[#C7C5C1] dark:text-[#595959]">{suffix}</span>
-    </span>
-  );
-}
-
-const EVENT_TYPES = [
-  "Event",
-  "Focus time",
-  "Out of office",
-  "Birthday",
-] as const;
-type EventType = (typeof EVENT_TYPES)[number];
-
-const EVENT_TYPE_TOOLTIPS: Partial<Record<EventType, string>> = {
-  "Focus time":
+/** Help shown beside a kind in the header menu */
+const EVENT_KIND_TOOLTIPS: Partial<Record<EventKind, string>> = {
+  "focus-time":
     "Create a focus time event with the option to automatically decline meetings during this time. Available for work and school accounts.",
-  "Out of office":
+  "out-of-office":
     "Create an out of office (OOO) event with the option to automatically decline meetings during this time. Available for work and school accounts.",
-  Birthday:
+  birthday:
     "Create a birthday event to keep track of a person's upcoming birthdays. Birthdays from your Google Contacts may appear on a separate Birthday calendar.",
 };
 
-function EventTypeHelpIcon({ tooltip }: { tooltip?: string }) {
+function EventKindHelpIcon({ tooltip }: { tooltip?: string }) {
   const [tooltipPos, setTooltipPos] = React.useState<{
     top: number;
     left: number;
@@ -335,6 +147,42 @@ function EventTypeHelpIcon({ tooltip }: { tooltip?: string }) {
   );
 }
 
+/**
+ * The muted "All-day  Time zone  Repeat" line a plain timed event shows
+ * under its date. Clicking it opens the three rows.
+ */
+function EventDetailOptionsRow({ onExpand }: { onExpand: () => void }) {
+  const labelClass = cn(
+    EVENT_DETAIL_PLACEHOLDER_CLASS,
+    "group-hover/options:text-[#A5A5A5] dark:group-hover/options:text-[#636363]",
+  );
+
+  return (
+    <div
+      className={cn(
+        "flex items-center pl-[36px]",
+        EVENT_DETAIL_ROW_HEIGHT_CLASS,
+      )}
+    >
+      <div
+        className="group/options flex h-[31px] cursor-default items-center gap-[18px] rounded-md px-[9px] hover:bg-[#F5F5F5] dark:hover:bg-[#242424]"
+        onClick={onExpand}
+      >
+        <span className={labelClass}>All-day</span>
+        <span className={labelClass}>Time zone</span>
+        <span className={labelClass}>Repeat</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Notion Calendar-style event details: the kind menu, the title, then one
+ * section per field (time, time zone, repeat, participants, conferencing,
+ * AI notes, location, links, description, calendar, availability,
+ * reminders) in Notion's order and groups. Each section edits its own
+ * fields through `onEventChange`.
+ */
 export function EventDetailPanel<
   TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
 >({
@@ -346,36 +194,27 @@ export function EventDetailPanel<
   autoFocusTitle,
   onTitleAutoFocused,
 }: EventDetailPanelProps<TEvent>) {
-  const color = event.color ?? "blue";
-  const [eventType, setEventType] = React.useState<EventType>("Event");
-  const [eventDropdownOpen, setEventDropdownOpen] = React.useState(false);
+  const kind = event.kind ?? "event";
+  const [kindMenuOpen, setKindMenuOpen] = React.useState(false);
   const [hoveredOther, setHoveredOther] = React.useState(false);
   /** Whether the compact "All-day / Time zone / Repeat" row is expanded into individual rows. */
   const [optionsExpanded, setOptionsExpanded] = React.useState(false);
-  const [titleValue, setTitleValue] = React.useState(event.title);
+
   const titleRef = React.useRef<HTMLInputElement>(null);
-  const escapePressedRef = React.useRef(false);
-  /** Stores the title when the input gains focus, used to restore on Escape. */
-  const titleOnFocusRef = React.useRef(event.title);
-  const { hourCycle, locale } = useCalendarConfig();
-  // Empty on the server and during hydration, the viewer's zone afterwards
-  const timeZoneDisplayName = useTimeZoneDisplayName();
-
-  /** "3 PM" / "3:30 PM", or "15:00" / "15:30" on a 24-hour clock */
-  const formatTimeValue = React.useCallback(
-    (date: Date) => formatTime(date, hourCycle, locale),
-    [hourCycle, locale],
-  );
-
-  /** "Tue Mar 11" in the calendar's locale */
-  const formatDateValue = React.useCallback(
-    (date: Date) => formatDateDisplay(date, locale),
-    [locale],
-  );
-
-  React.useEffect(() => {
-    setTitleValue(event.title);
-  }, [event.title]);
+  const title = useInlineEdit({
+    inputRef: titleRef,
+    value: event.title,
+    onInput: (text) => onEventChange?.({ ...event, title: text }),
+    onRestore: (text) => onEventChange?.({ ...event, title: text }),
+    onCommit: (text) => {
+      const trimmed = text.trim();
+      // Only spaces: back to the title from before editing. Deleting the
+      // whole title still clears it.
+      if (text && !trimmed) return null;
+      if (trimmed !== text) onEventChange?.({ ...event, title: trimmed });
+      return trimmed;
+    },
+  });
 
   // Reset expanded options when switching to a different event
   React.useEffect(() => {
@@ -392,393 +231,63 @@ export function EventDetailPanel<
       onTitleAutoFocused?.();
     });
     return () => cancelAnimationFrame(frame);
-  }, [autoFocusTitle, onTitleAutoFocused]);
+  }, [autoFocusTitle, onTitleAutoFocused, titleRef]);
 
-  const handleTitleChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const next = e.target.value;
-      setTitleValue(next);
-      onEventChange?.({ ...event, title: next });
-    },
-    [event, onEventChange],
-  );
+  const selectKind = (next: EventKind) => {
+    if (next === kind) return;
+    onEventChange?.({ ...event, kind: next });
+  };
 
-  const handleTitleFocus = React.useCallback(() => {
-    titleOnFocusRef.current = event.title;
-  }, [event.title]);
-
-  const commitTitle = React.useCallback(() => {
-    if (escapePressedRef.current) {
-      escapePressedRef.current = false;
-      return;
-    }
-    const trimmed = titleValue.trim();
-    if (trimmed === titleValue) {
-      return;
-    }
-    onEventChange?.({ ...event, title: trimmed });
-  }, [titleValue, event, onEventChange]);
-
-  const handleTitleKeyDown = React.useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        titleRef.current?.blur();
-        return;
-      }
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        escapePressedRef.current = true;
-        const original = titleOnFocusRef.current;
-        setTitleValue(original);
-        onEventChange?.({ ...event, title: original });
-        titleRef.current?.blur();
-      }
-    },
-    [event, onEventChange],
-  );
-
-  // --- Start time input state & handlers ---
-  const [startTimeValue, setStartTimeValue] = React.useState(() =>
-    formatTimeValue(event.start),
-  );
-  const startTimeRef = React.useRef<HTMLInputElement>(null);
-  const startTimeEscapePressedRef = React.useRef(false);
-  const startTimeOnFocusRef = React.useRef(formatTimeValue(event.start));
-
-  React.useEffect(() => {
-    setStartTimeValue(formatTimeValue(event.start));
-  }, [event.start, formatTimeValue]);
-
-  const handleStartTimeChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setStartTimeValue(e.target.value);
-    },
-    [],
-  );
-
-  const handleStartTimeFocus = React.useCallback(() => {
-    startTimeOnFocusRef.current = formatTimeValue(event.start);
-    requestAnimationFrame(() => {
-      startTimeRef.current?.select();
-    });
-  }, [event.start, formatTimeValue]);
-
-  const commitStartTime = React.useCallback(() => {
-    if (startTimeEscapePressedRef.current) {
-      startTimeEscapePressedRef.current = false;
-      return;
-    }
-    const parsed = parseTimeInput(startTimeValue);
-    if (!parsed) {
-      setStartTimeValue(startTimeOnFocusRef.current);
-      return;
-    }
-    const newStart = applyTimeToDate(event.start, parsed.hours, parsed.minutes);
-    if (newStart.getTime() >= event.end.getTime()) {
-      setStartTimeValue(startTimeOnFocusRef.current);
-      return;
-    }
-    setStartTimeValue(formatTimeValue(newStart));
-    onEventChange?.({ ...event, start: newStart });
-  }, [startTimeValue, event, onEventChange, formatTimeValue]);
-
-  const handleStartTimeKeyDown = React.useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        startTimeRef.current?.blur();
-        return;
-      }
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        startTimeEscapePressedRef.current = true;
-        setStartTimeValue(startTimeOnFocusRef.current);
-        startTimeRef.current?.blur();
-      }
-    },
-    [],
-  );
-
-  // --- End time input state & handlers ---
-  const [endTimeValue, setEndTimeValue] = React.useState(() =>
-    formatTimeValue(event.end),
-  );
-  const endTimeRef = React.useRef<HTMLInputElement>(null);
-  const endTimeEscapePressedRef = React.useRef(false);
-  const endTimeOnFocusRef = React.useRef(formatTimeValue(event.end));
-
-  React.useEffect(() => {
-    setEndTimeValue(formatTimeValue(event.end));
-  }, [event.end, formatTimeValue]);
-
-  const handleEndTimeChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setEndTimeValue(e.target.value);
-    },
-    [],
-  );
-
-  const handleEndTimeFocus = React.useCallback(() => {
-    endTimeOnFocusRef.current = formatTimeValue(event.end);
-    requestAnimationFrame(() => {
-      endTimeRef.current?.select();
-    });
-  }, [event.end, formatTimeValue]);
-
-  const commitEndTime = React.useCallback(() => {
-    if (endTimeEscapePressedRef.current) {
-      endTimeEscapePressedRef.current = false;
-      return;
-    }
-    const parsed = parseTimeInput(endTimeValue);
-    if (!parsed) {
-      setEndTimeValue(endTimeOnFocusRef.current);
-      return;
-    }
-    const newEnd = applyTimeToDate(event.end, parsed.hours, parsed.minutes);
-    if (newEnd.getTime() <= event.start.getTime()) {
-      setEndTimeValue(endTimeOnFocusRef.current);
-      return;
-    }
-    setEndTimeValue(formatTimeValue(newEnd));
-    onEventChange?.({ ...event, end: newEnd });
-  }, [endTimeValue, event, onEventChange, formatTimeValue]);
-
-  const handleEndTimeKeyDown = React.useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        endTimeRef.current?.blur();
-        return;
-      }
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        endTimeEscapePressedRef.current = true;
-        setEndTimeValue(endTimeOnFocusRef.current);
-        endTimeRef.current?.blur();
-      }
-    },
-    [],
-  );
-
-  // --- Date input state & handlers ---
-  const [dateValue, setDateValue] = React.useState(() =>
-    formatDateValue(event.start),
-  );
-  const dateRef = React.useRef<HTMLInputElement>(null);
-  const dateEscapePressedRef = React.useRef(false);
-  const dateOnFocusRef = React.useRef(formatDateValue(event.start));
-
-  React.useEffect(() => {
-    setDateValue(formatDateValue(event.start));
-  }, [event.start, formatDateValue]);
-
-  const handleDateChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setDateValue(e.target.value);
-    },
-    [],
-  );
-
-  const handleDateFocus = React.useCallback(() => {
-    dateOnFocusRef.current = formatDateValue(event.start);
-    requestAnimationFrame(() => {
-      dateRef.current?.select();
-    });
-  }, [event.start, formatDateValue]);
-
-  const commitDate = React.useCallback(() => {
-    if (dateEscapePressedRef.current) {
-      dateEscapePressedRef.current = false;
-      return;
-    }
-    const parsed = parseDateInput(dateValue, event.start, locale);
-    if (!parsed) {
-      setDateValue(dateOnFocusRef.current);
-      return;
-    }
-    const dayDiff = differenceInCalendarDays(parsed, event.start);
-    if (dayDiff === 0) {
-      setDateValue(formatDateValue(event.start));
-      return;
-    }
-    const newStart = addDays(event.start, dayDiff);
-    const newEnd = addDays(event.end, dayDiff);
-    setDateValue(formatDateValue(newStart));
-    onEventChange?.({ ...event, start: newStart, end: newEnd });
-  }, [dateValue, event, onEventChange, formatDateValue, locale]);
-
-  const handleDateKeyDown = React.useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        dateRef.current?.blur();
-        return;
-      }
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        dateEscapePressedRef.current = true;
-        setDateValue(dateOnFocusRef.current);
-        dateRef.current?.blur();
-      }
-    },
-    [],
-  );
-
-  // --- End date input state & handlers (shown only for all-day events) ---
-  const [endDateValue, setEndDateValue] = React.useState(() =>
-    formatDateValue(event.end),
-  );
-  const endDateRef = React.useRef<HTMLInputElement>(null);
-  const endDateEscapePressedRef = React.useRef(false);
-  const endDateOnFocusRef = React.useRef(formatDateValue(event.end));
-
-  React.useEffect(() => {
-    setEndDateValue(formatDateValue(event.end));
-  }, [event.end, formatDateValue]);
-
-  const handleEndDateChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setEndDateValue(e.target.value);
-    },
-    [],
-  );
-
-  const handleEndDateFocus = React.useCallback(() => {
-    endDateOnFocusRef.current = formatDateValue(event.end);
-    requestAnimationFrame(() => {
-      endDateRef.current?.select();
-    });
-  }, [event.end, formatDateValue]);
-
-  const commitEndDate = React.useCallback(() => {
-    if (endDateEscapePressedRef.current) {
-      endDateEscapePressedRef.current = false;
-      return;
-    }
-    const parsed = parseDateInput(endDateValue, event.end, locale);
-    if (!parsed) {
-      setEndDateValue(endDateOnFocusRef.current);
-      return;
-    }
-    const dayDiff = differenceInCalendarDays(parsed, event.end);
-    if (dayDiff === 0) {
-      setEndDateValue(formatDateValue(event.end));
-      return;
-    }
-    const newEnd = addDays(event.end, dayDiff);
-    if (newEnd.getTime() < event.start.getTime()) {
-      setEndDateValue(endDateOnFocusRef.current);
-      return;
-    }
-    setEndDateValue(formatDateValue(newEnd));
-    onEventChange?.({ ...event, end: newEnd });
-  }, [endDateValue, event, onEventChange, formatDateValue, locale]);
-
-  const handleEndDateKeyDown = React.useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        endDateRef.current?.blur();
-        return;
-      }
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        endDateEscapePressedRef.current = true;
-        setEndDateValue(endDateOnFocusRef.current);
-        endDateRef.current?.blur();
-      }
-    },
-    [],
-  );
-
-  // --- All-day toggle handler ---
-  /**
-   * Stores the original hours/minutes before toggling to all-day.
-   * When toggling off, these are applied to the current (possibly resized) dates.
-   */
-  const savedTimeOfDayRef = React.useRef<{
-    startHours: number;
-    startMinutes: number;
-    endHours: number;
-    endMinutes: number;
-  } | null>(null);
-
-  const handleAllDayToggle = React.useCallback(
-    (checked: boolean) => {
-      if (checked) {
-        savedTimeOfDayRef.current = {
-          startHours: event.start.getHours(),
-          startMinutes: event.start.getMinutes(),
-          endHours: event.end.getHours(),
-          endMinutes: event.end.getMinutes(),
-        };
-        onEventChange?.({ ...event, isAllDay: true });
-        return;
-      }
-
-      if (savedTimeOfDayRef.current) {
-        const { startHours, startMinutes, endHours, endMinutes } =
-          savedTimeOfDayRef.current;
-        onEventChange?.({
-          ...event,
-          isAllDay: false,
-          start: applyTimeToDate(event.start, startHours, startMinutes),
-          end: applyTimeToDate(event.end, endHours, endMinutes),
-        });
-        savedTimeOfDayRef.current = null;
-        return;
-      }
-
-      /** Default 9 AM – 10 AM when no saved times (e.g., existing all-day event). */
-      const DEFAULT_START_HOUR = 9;
-      const DEFAULT_END_HOUR = 10;
-      onEventChange?.({
-        ...event,
-        isAllDay: false,
-        start: applyTimeToDate(event.start, DEFAULT_START_HOUR, 0),
-        end: applyTimeToDate(event.end, DEFAULT_END_HOUR, 0),
-      });
-    },
-    [event, onEventChange],
-  );
-
-  const otherTypes = EVENT_TYPES.filter((t) => t !== eventType);
+  const otherKinds = EVENT_KINDS.filter((k) => k !== kind);
+  const showOptionRows =
+    optionsExpanded ||
+    event.isAllDay ||
+    Boolean(
+      event.recurrenceRule ??
+      event.recurrence ??
+      event.timeZone ??
+      event.timezone,
+    );
 
   return (
-    <div className="flex flex-col gap-3 py-3">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4">
+    <div
+      className={cn(
+        "flex flex-col pt-3 text-sm font-medium",
+        EVENT_DETAIL_TEXT_CLASS,
+      )}
+    >
+      {/* Header: kind menu, "..." menu and the host's actions */}
+      <div
+        className={cn(
+          "flex items-center justify-between pr-3 pl-2",
+          EVENT_DETAIL_ROW_HEIGHT_CLASS,
+        )}
+      >
         <DropdownMenu
-          open={eventDropdownOpen}
+          open={kindMenuOpen}
           onOpenChange={(open) => {
-            setEventDropdownOpen(open);
+            setKindMenuOpen(open);
             if (open) setHoveredOther(false);
           }}
         >
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              // Read-only details show the kind without its menu
+              disabled={!onEventChange}
               className={cn(
-                "flex items-center gap-0.5 text-xs font-medium rounded-sm border border-transparent px-2.5 py-1.5 -ml-2.5 gap-1.5 hover:border-[#E8E8E4] dark:hover:border-[#373737]",
-                eventDropdownOpen
-                  ? "bg-[#252525] text-white"
-                  : "text-foreground",
+                "flex h-7 items-center gap-[7px] px-[7px]",
+                EVENT_DETAIL_HOVER_BORDER_CLASS,
+                !onEventChange &&
+                  "hover:border-transparent dark:hover:border-transparent",
+                kindMenuOpen && "bg-[#252525] text-white",
               )}
             >
-              {eventType}
+              {EVENT_KIND_LABELS[kind]}
               <ChevronDown
                 className={cn(
-                  "size-3.5",
-                  eventDropdownOpen
-                    ? "text-[#595959]"
-                    : "text-[#C7C5C1] dark:text-[#595959]",
+                  "size-4",
+                  kindMenuOpen ? "text-[#595959]" : EVENT_DETAIL_MUTED_CLASS,
                 )}
               />
             </button>
@@ -788,31 +297,32 @@ export function EventDetailPanel<
             side="left"
             sideOffset={12}
             alignOffset={-4}
-            className="min-w-[180px] bg-[#252525] border-[#303030]"
+            className={cn("min-w-[180px]", EVENT_DETAIL_MENU_CLASS)}
             onMouseLeave={() => setHoveredOther(false)}
+            onKeyDown={closeMenuOnEscape(() => setKindMenuOpen(false))}
           >
             <DropdownMenuItem
               className={cn(
                 "group/item text-xs text-white focus:bg-[#303030] focus:text-white",
                 !hoveredOther && "bg-[#303030]",
               )}
-              onClick={() => setEventType(eventType)}
+              onClick={() => selectKind(kind)}
               onMouseEnter={() => setHoveredOther(false)}
             >
               <Check className="size-3.5" />
-              <span className="flex-1">{eventType}</span>
-              <EventTypeHelpIcon tooltip={EVENT_TYPE_TOOLTIPS[eventType]} />
+              <span className="flex-1">{EVENT_KIND_LABELS[kind]}</span>
+              <EventKindHelpIcon tooltip={EVENT_KIND_TOOLTIPS[kind]} />
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-[#303030]" />
-            {otherTypes.map((type) => (
+            {otherKinds.map((other) => (
               <DropdownMenuItem
-                key={type}
+                key={other}
                 className="group/item text-xs text-white focus:bg-[#303030] focus:text-white pl-8"
-                onClick={() => setEventType(type)}
+                onClick={() => selectKind(other)}
                 onMouseEnter={() => setHoveredOther(true)}
               >
-                <span className="flex-1">{type}</span>
-                <EventTypeHelpIcon tooltip={EVENT_TYPE_TOOLTIPS[type]} />
+                <span className="flex-1">{EVENT_KIND_LABELS[other]}</span>
+                <EventKindHelpIcon tooltip={EVENT_KIND_TOOLTIPS[other]} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -823,31 +333,37 @@ export function EventDetailPanel<
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 border border-transparent hover:border-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:border-[#242424] dark:hover:bg-[#242424] text-[#C7C5C1] dark:text-[#595959]"
+                aria-label="More actions"
+                className={cn(
+                  "size-7",
+                  EVENT_DETAIL_ICON_BUTTON_CLASS,
+                  EVENT_DETAIL_SECONDARY_CLASS,
+                )}
               >
-                <MoreHorizontal className="size-4" />
+                <MoreHorizontal className="size-[18px]" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
               side="left"
-              className="min-w-[180px] bg-[#252525] border-[#303030]"
+              className={cn("min-w-[180px]", EVENT_DETAIL_MENU_CLASS)}
+              onKeyDown={stopEscapePropagation}
             >
-              <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
+              <DropdownMenuItem className={EVENT_DETAIL_MENU_ITEM_CLASS}>
                 <SquareDashed className="size-3.5" />
                 Cut
                 <DropdownMenuShortcut className="text-white/40">
                   ⌘X
                 </DropdownMenuShortcut>
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
+              <DropdownMenuItem className={EVENT_DETAIL_MENU_ITEM_CLASS}>
                 <TabletSmartphone className="size-3.5" />
                 Copy
                 <DropdownMenuShortcut className="text-white/40">
                   ⌘C
                 </DropdownMenuShortcut>
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-xs text-white focus:!bg-[#303030] focus:!text-white">
+              <DropdownMenuItem className={EVENT_DETAIL_MENU_ITEM_CLASS}>
                 <Copy className="size-3.5" />
                 Duplicate
                 <DropdownMenuShortcut className="text-white/40">
@@ -869,301 +385,79 @@ export function EventDetailPanel<
       </div>
 
       {/* Title */}
-      <input
-        ref={titleRef}
-        type="text"
-        value={titleValue}
-        onChange={handleTitleChange}
-        onFocus={handleTitleFocus}
-        onBlur={commitTitle}
-        onKeyDown={handleTitleKeyDown}
-        placeholder="Title"
-        className="text-foreground placeholder:text-[#C7C5C1] dark:placeholder:text-[#595959] mx-2 rounded-sm border border-transparent bg-transparent px-2 py-1.5 text-xs outline-none hover:border-[#E8E8E4] dark:hover:border-[#373737] focus:border-[#F5F5F5] focus:bg-[#F5F5F5] dark:focus:border-[#242424] dark:focus:bg-[#242424]"
-      />
-
-      {/* Divider */}
-      <div className="border-border border-t" />
-
-      {/* Time — muted and non-interactive for all-day events */}
-      {(event.start.getHours() !== 0 ||
-        event.start.getMinutes() !== 0 ||
-        event.end.getHours() !== 0 ||
-        event.end.getMinutes() !== 0) && (
-        <div className="flex min-w-0 items-center gap-1 px-2 text-xs">
-          {/* Start time group — Clock icon + input in one bordered container */}
-          <div
-            className={cn(
-              "flex shrink-0 items-center gap-2 rounded-sm border border-transparent px-2 py-1.5",
-              event.isAllDay
-                ? "cursor-default"
-                : "cursor-text hover:border-[#E8E8E4] dark:hover:border-[#373737] has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]",
-            )}
-            onClick={
-              event.isAllDay ? undefined : () => startTimeRef.current?.focus()
-            }
-          >
-            <Clock className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-            <input
-              ref={startTimeRef}
-              data-testid="event-start-time"
-              type="text"
-              value={startTimeValue}
-              onChange={handleStartTimeChange}
-              onFocus={handleStartTimeFocus}
-              onBlur={commitStartTime}
-              onKeyDown={handleStartTimeKeyDown}
-              readOnly={event.isAllDay}
-              tabIndex={event.isAllDay ? -1 : undefined}
-              className={cn(
-                "w-[8ch] font-medium text-xs bg-transparent outline-none border-none p-0",
-                event.isAllDay
-                  ? "text-[#C7C5C1] dark:text-[#595959] pointer-events-none"
-                  : "text-foreground",
-              )}
-            />
-          </div>
-          {/* End time group — arrow + input + duration in one bordered container */}
-          <div
-            className={cn(
-              "flex min-w-0 flex-1 items-center rounded-sm border border-transparent px-2 py-1.5",
-              event.isAllDay
-                ? "cursor-default"
-                : "cursor-text hover:border-[#E8E8E4] dark:hover:border-[#373737] has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]",
-            )}
-            onClick={
-              event.isAllDay ? undefined : () => endTimeRef.current?.focus()
-            }
-          >
-            <span className="mr-2 shrink-0 text-base leading-4 text-[#C7C5C1] dark:text-[#595959]">
-              →
-            </span>
-            <input
-              ref={endTimeRef}
-              data-testid="event-end-time"
-              type="text"
-              value={endTimeValue}
-              onChange={handleEndTimeChange}
-              onFocus={handleEndTimeFocus}
-              onBlur={commitEndTime}
-              onKeyDown={handleEndTimeKeyDown}
-              readOnly={event.isAllDay}
-              tabIndex={event.isAllDay ? -1 : undefined}
-              className={cn(
-                "min-w-0 font-medium text-xs bg-transparent outline-none border-none p-0",
-                event.isAllDay
-                  ? "text-[#C7C5C1] dark:text-[#595959] pointer-events-none"
-                  : "text-foreground",
-              )}
-              size={endTimeValue.length}
-            />
-            <span className="shrink-0 text-[#C7C5C1] dark:text-[#595959]">
-              {formatDuration(event.start, event.end)}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Date — editable inline input(s), indented to align with time text */}
-      <div
-        className={cn(
-          "flex items-center gap-2 -mt-2",
-          event.start.getHours() !== 0 ||
-            event.start.getMinutes() !== 0 ||
-            event.end.getHours() !== 0 ||
-            event.end.getMinutes() !== 0
-            ? "ml-8"
-            : "ml-4",
-        )}
-      >
-        {/* Start date */}
-        <div
-          className="mr-0 flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#E8E8E4] dark:hover:border-[#373737] has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]"
-          onClick={() => dateRef.current?.focus()}
-        >
-          <input
-            ref={dateRef}
-            data-testid="event-start-date"
-            type="text"
-            value={dateValue}
-            onChange={handleDateChange}
-            onFocus={handleDateFocus}
-            onBlur={commitDate}
-            onKeyDown={handleDateKeyDown}
-            className="text-foreground text-xs bg-transparent outline-none border-none p-0"
-            size={dateValue.length}
-          />
-        </div>
-        {/* End date — only visible for all-day events */}
-        {event.isAllDay && (
-          <div
-            className="flex min-w-[6.5rem] self-start cursor-text items-center rounded-sm border border-transparent px-2 py-1.5 hover:border-[#E8E8E4] dark:hover:border-[#373737] has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]"
-            onClick={() => endDateRef.current?.focus()}
-          >
-            <input
-              ref={endDateRef}
-              type="text"
-              value={endDateValue}
-              onChange={handleEndDateChange}
-              onFocus={handleEndDateFocus}
-              onBlur={commitEndDate}
-              onKeyDown={handleEndDateKeyDown}
-              className="text-foreground text-xs bg-transparent outline-none border-none p-0"
-              size={endDateValue.length}
-            />
-          </div>
-        )}
-      </div>
-
-      {optionsExpanded || event.isAllDay ? (
-        <>
-          {/* All-day toggle row — clicking label or row triggers toggle */}
-          <div
-            className="flex cursor-default items-center gap-3 px-4"
-            onClick={() => handleAllDayToggle(!(event.isAllDay ?? false))}
-          >
-            <Switch
-              size="sm"
-              checked={event.isAllDay ?? false}
-              onCheckedChange={handleAllDayToggle}
-              onClick={(e) => e.stopPropagation()}
-              // data-[state=*] is the Radix switch, data-checked/data-unchecked Base UI's
-              className="data-[state=unchecked]:!bg-[#C7C5C1] data-unchecked:!bg-[#C7C5C1] dark:data-[state=unchecked]:!bg-[#595959] dark:data-unchecked:!bg-[#595959] data-[state=checked]:!bg-[#3A85D3] data-checked:!bg-[#3A85D3]"
-            />
-            <span className="text-foreground text-xs">All-day</span>
-          </div>
-
-          {/* Timezone row — hidden when all-day */}
-          {!event.isAllDay && (
-            <div className="flex items-center gap-3 px-4">
-              <Globe className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-              <TimezoneDisplay
-                timezone={event.timezone ?? timeZoneDisplayName}
-              />
-            </div>
+      <div className="mt-1.5 flex flex-col px-2 pb-2">
+        <input
+          ref={titleRef}
+          {...title.inputProps}
+          type="text"
+          placeholder="Title"
+          readOnly={!onEventChange}
+          className={cn(
+            "h-[35px] px-[7px] placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",
+            EVENT_DETAIL_INPUT_CLASS,
           )}
-
-          {/* Recurrence row — active display for recurring, placeholder for non-recurring */}
-          {event.recurrence ? (
-            <div className="flex items-center gap-3 px-4">
-              <RefreshCcw className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-              <div className="flex flex-1 items-center justify-between">
-                <RecurrenceDisplay recurrence={event.recurrence} />
-                <div className="flex items-center">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 text-[#C7C5C1] dark:text-[#595959]"
-                    onClick={onPrevWeek}
-                  >
-                    <ChevronLeft className="size-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-6 text-[#C7C5C1] dark:text-[#595959]"
-                    onClick={onNextWeek}
-                  >
-                    <ChevronRight className="size-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 px-4">
-              <RefreshCcw className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
-              <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">
-                Repeat
-              </span>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="-mt-2 flex items-center pl-8">
-          <div
-            className="group/options flex cursor-default items-center gap-4 rounded-sm px-2 py-1.5 hover:bg-[#E8E8E4] dark:hover:bg-[#242424]"
-            onClick={() => setOptionsExpanded(true)}
-          >
-            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">
-              All-day
-            </span>
-            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">
-              Time zone
-            </span>
-            <span className="text-xs text-[#C7C5C1] dark:text-[#595959] dark:group-hover/options:text-[#636363]">
-              Repeat
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Divider */}
-      <div className="border-border border-t" />
-
-      {/* Field sections */}
-      <div className="flex flex-col px-4">
-        <FieldRow icon={User} label="Participants and Rooms" />
-        <FieldRow icon={Video} label="Conferencing" />
-        <FieldRow icon={NotepadText} label="AI Meeting Notes and Docs" />
-        <FieldRow icon={MapPin} label="Location" value={event.location} />
+        />
       </div>
 
-      {/* Divider */}
-      <div className="border-border border-t" />
+      <EventDetailDivider />
 
-      {/* Description */}
-      <div className="flex flex-col gap-1 px-4">
-        <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">
-          Description
-        </span>
-        {event.description && (
-          <span className="text-foreground text-xs">{event.description}</span>
-        )}
-      </div>
-
-      {/* Divider */}
-      <div className="border-border border-t" />
-
-      {/* Calendar */}
-      <div className="flex items-center gap-2 px-4">
-        <div className={cn("size-3 rounded-xs", colorDotClass[color])} />
-        <span className="text-foreground text-xs">
-          {event.calendarEmail ?? event.calendarId ?? "Calendar"}
-        </span>
-      </div>
-
-      {/* Status */}
-      <div className="mt-1 grid grid-cols-2 pl-9">
-        <span className="text-foreground text-xs font-medium capitalize">
-          {event.status ?? "Busy"}
-        </span>
-        <span className="text-foreground text-xs font-medium">
-          {formatVisibility(event.visibility)}
-        </span>
-      </div>
-
-      {/* Reminders */}
-      <div className="mt-1 flex flex-col gap-3 px-4">
-        <div className="flex items-center gap-2">
-          <Bell className="size-4 text-[#C7C5C1] dark:text-[#595959]" />
-          <span className="text-xs text-[#C7C5C1] dark:text-[#595959]">
-            Reminders
-          </span>
-        </div>
-        {event.reminders &&
-          event.reminders.length > 0 &&
-          event.reminders.map((reminder) => (
-            <span
-              key={`${reminder.amount}-${reminder.unit}`}
-              className="text-foreground pl-6 text-xs"
+      {/* When: time and date, then all-day, time zone and repeat */}
+      <EventDetailGroup name="when">
+        <EventDetailTime event={event} onEventChange={onEventChange} />
+        {showOptionRows ? (
+          <>
+            <div
+              className={cn(
+                "flex flex-col justify-center",
+                EVENT_DETAIL_ROW_HEIGHT_CLASS,
+              )}
             >
-              <span className="font-medium">
-                {reminder.amount}
-                {reminder.unit.replace(/s$/, "")}
-              </span>{" "}
-              before
-            </span>
-          ))}
-      </div>
+              <EventDetailAllDay event={event} onEventChange={onEventChange} />
+            </div>
+            <EventDetailTimezone event={event} onEventChange={onEventChange} />
+            <EventDetailRecurrence
+              event={event}
+              onEventChange={onEventChange}
+              onPrevious={onPrevWeek}
+              onNext={onNextWeek}
+            />
+          </>
+        ) : (
+          <EventDetailOptionsRow onExpand={() => setOptionsExpanded(true)} />
+        )}
+      </EventDetailGroup>
+
+      <EventDetailDivider />
+
+      {/* Who and where */}
+      <EventDetailGroup name="who">
+        <EventDetailParticipants event={event} onEventChange={onEventChange} />
+        <EventDetailConferencing event={event} onEventChange={onEventChange} />
+        <EventDetailAiNotes event={event} onEventChange={onEventChange} />
+        <EventDetailLocation event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
+
+      <EventDetailDivider />
+
+      <EventDetailGroup name="links">
+        <EventDetailLinks event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
+
+      <EventDetailDivider />
+
+      {/* At least one 35px row, empty or not */}
+      <EventDetailGroup name="description" className="min-h-[51px]">
+        <EventDetailDescription event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
+
+      <EventDetailDivider />
+
+      {/* Calendar, availability and reminders */}
+      <EventDetailGroup name="calendar">
+        <EventDetailCalendar event={event} onEventChange={onEventChange} />
+        <EventDetailAvailability event={event} onEventChange={onEventChange} />
+        <EventDetailReminders event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
     </div>
   );
 }

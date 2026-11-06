@@ -198,6 +198,58 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/event-detail-parts.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-time.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-timezone.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-recurrence.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-participants.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-conferencing.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-ai-notes.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-location.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-links.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-description.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-calendar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-availability.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-reminders.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/event-detail-popover.tsx",
           "type": "registry:component"
         },
@@ -207,6 +259,14 @@
         },
         {
           "path": "src/hooks/use-popover-dismiss.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-inline-edit.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-hover-tooltip.ts",
           "type": "registry:hook"
         }
       ]

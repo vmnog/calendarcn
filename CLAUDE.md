@@ -22,12 +22,17 @@ src/
 │   ├── agenda-view.tsx   # AgendaView — the coming days' events as a list
 │   ├── calendar-event-*   # Event rendering & interactions
 │   ├── event-*            # Context menu, detail panel, detail popover
+│   ├── event-detail-<section>.tsx # One file per details panel section (time, timezone, recurrence, participants…)
+│   ├── event-detail-parts.tsx # Details panel building blocks: rows, groups, class constants, menu helpers
 │   ├── sidebar-*          # Left/right sidebars
 │   ├── nav-*              # Navigation components
 │   └── theme-*            # Dark mode provider & toggle
 ├── hooks/                # Custom hooks (drag, resize, all-day-resize, scroll)
+│   ├── use-inline-edit.ts # Inline text field: Enter commits, Escape restores
+│   └── use-hover-tooltip.ts # Open state of a tooltip shown on hover
 └── lib/
     ├── event-utils.ts    # Event positioning & column assignment algorithms
+    ├── timezone-label.ts # Short time zone labels ("GMT-3 Sao Paulo")
     ├── mock-events.ts    # Sample data
     └── utils.ts          # cn() helper
 ```
@@ -89,6 +94,8 @@ Key files:
 
 The event detail panel follows Notion Calendar's interaction patterns. Reuse these exact patterns when adding new editable fields.
 
+**Escape rule:** Escape closes the open menu and restores the value from before it opened; hovering a row only previews it. A value commits on Enter, on click, or on blur after typing or arrow keys. Unlike Notion, Escape never commits the highlighted item. Use `closeMenuOnEscape` / `stopEscapePropagation` from `event-detail-parts.tsx` so the key never reaches the global deselect.
+
 #### Color Tokens (hardcoded, not CSS variables)
 
 Every interactive color needs BOTH a light value and a `dark:` value. The dark values alone are near-black and break light mode (e.g. a focused input becomes unreadable).
@@ -104,73 +111,36 @@ Every interactive color needs BOTH a light value and a `dark:` value. The dark v
 
 #### Inline Editable Input Pattern
 
-For any text field that should be editable inline (title, time, etc.):
+For any text field that edits inline (title, time, date), use `useInlineEdit` from `src/hooks/use-inline-edit.ts`. Spread its `inputProps` on the `<input>` and pass the input's ref:
 
 ```tsx
-// State
-const [value, setValue] = useState(initialValue);
 const inputRef = useRef<HTMLInputElement>(null);
-const escapePressedRef = useRef(false);
-const valueOnFocusRef = useRef(initialValue);
-
-// Sync from parent
-useEffect(() => { setValue(derivedValue); }, [derivedValue]);
-
-// Handlers
-onFocus  → store current value in valueOnFocusRef (for Escape restore)
-onChange → update local state (+ optionally call onEventChange for real-time preview)
-onBlur   → validate & commit (skip if escapePressedRef is true)
-onKeyDown Enter → blur (triggers commit via onBlur)
-onKeyDown Escape → e.stopPropagation() + set escapePressedRef + restore original + blur
+const { inputProps } = useInlineEdit({
+  inputRef,
+  value: derivedValue, // what the field shows while it isn't being edited
+  onCommit: (text) => (isValid(text) ? text : null), // null rejects and restores
+  onInput: previewOnCalendar, // optional, every keystroke
+  onRestore: undoPreview, // optional, after Escape or a rejected commit
+  selectOnFocus: true, // time and date fields
+});
 ```
 
-Key details:
-
-- `e.stopPropagation()` on Escape prevents the global keydown handler from deselecting the event
-- `escapePressedRef` prevents the blur handler from committing stale state after Escape
-- For title: call `onEventChange` on every keystroke for real-time calendar preview
-- For time inputs: only call `onEventChange` on blur (mid-edit text like "3:" is invalid)
-- Time inputs auto-select text on focus via `requestAnimationFrame(() => ref.current?.select())`
+It does what the hand-written handlers did: Enter commits by blurring, blur commits, Escape restores the value from focus without committing and stops the key from reaching the global deselect. The title previews with `onInput` on every keystroke; time inputs only commit on blur (mid-edit text like "3:" is invalid). Set `readOnly={!onEventChange}` on the input: without a change handler a section is read-only.
 
 #### Editable Input Styling
 
-**Standalone input** (e.g., title):
+Use the class constants in `src/components/event-detail-parts.tsx` instead of writing the classes out. Each carries the light and `dark:` values from the table above.
 
-```
-rounded-sm border border-transparent bg-transparent outline-none
-hover:border-[#E8E8E4] dark:hover:border-[#373737]
-focus:border-[#F5F5F5] focus:bg-[#F5F5F5]
-dark:focus:border-[#242424] dark:focus:bg-[#242424]
-```
+| Element                                                     | Class                                                                                                                   |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Standalone input (the title)                                | `EVENT_DETAIL_INPUT_CLASS`                                                                                              |
+| Grouped input (icon + input, or arrow + input + label)      | `EVENT_DETAIL_INPUT_GROUP_CLASS` on the wrapper, `EVENT_DETAIL_GROUPED_INPUT_CLASS` on the input                        |
+| Dropdown trigger, clickable row                             | `EVENT_DETAIL_HOVER_BORDER_CLASS`                                                                                       |
+| Icon button (the "..." menu): hover border blends into fill | `EVENT_DETAIL_ICON_BUTTON_CLASS`                                                                                        |
+| Text, secondary text, muted icons, placeholders             | `EVENT_DETAIL_TEXT_CLASS`, `EVENT_DETAIL_SECONDARY_CLASS`, `EVENT_DETAIL_MUTED_CLASS`, `EVENT_DETAIL_PLACEHOLDER_CLASS` |
+| Menus                                                       | `EVENT_DETAIL_MENU_CLASS`, `EVENT_DETAIL_MENU_ITEM_CLASS`, `PANEL_MENU_*_CLASS`                                         |
 
-**Grouped input** (e.g., icon + input, or arrow + input + label in one bordered container):
-
-- Wrapper div gets the border/hover/focus styling using `has-[:focus]`:
-  ```
-  rounded-sm border border-transparent cursor-text
-  hover:border-[#E8E8E4] dark:hover:border-[#373737]
-  has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5]
-  dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]
-  ```
-- Wrapper gets `onClick={() => inputRef.current?.focus()}` so clicking anywhere focuses the input
-- Inner input gets `border-none p-0 bg-transparent outline-none` (no border, wrapper handles it)
-
-#### Non-Input Interactive Elements
-
-**Dropdown trigger buttons** (e.g., event type selector):
-
-```
-rounded-sm border border-transparent hover:border-[#E8E8E4] dark:hover:border-[#373737]
-```
-
-**Icon buttons** (e.g., "..." more menu):
-
-```
-border border-transparent hover:border-[#F5F5F5] hover:bg-[#F5F5F5]
-dark:hover:border-[#242424] dark:hover:bg-[#242424]
-```
-
-This makes the hover border blend with the hover background (invisible border effect).
+A grouped input's wrapper gets `onClick={() => inputRef.current?.focus()}` so clicking anywhere in it focuses the input.
 
 ### Hooks Pattern
 

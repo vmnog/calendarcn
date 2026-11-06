@@ -39,11 +39,17 @@ function SidePanel() {
 </CalendarProvider>;
 ```
 
+Leave out `onEventChange` to show an event read-only, for example one from a calendar people can only view. The title and the other fields don't accept typing and the menus that change the event are disabled, so no edit looks saved when it isn't.
+
+```tsx
+<EventDetailPanel event={event} />
+```
+
 ## Features
 
 - Edit the title in place. With `onEventChange` wired to the calendar, the event updates as you type.
 - Edit the start and end times and dates. <Kbd>Enter</Kbd> saves, <Kbd>Esc</Kbd> restores the old value.
-- Fields the event doesn't set (location, description, reminders) show placeholders.
+- Fields the event doesn't set (participants, conferencing, location, links, description, reminders) show Notion's muted placeholders.
 - Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
 
 ## Custom details
@@ -51,6 +57,57 @@ function SidePanel() {
 <ComponentPreview name="custom-event-details-demo" />
 
 Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. It gets the selected event, a `close` function and `isNew`, which is true right after the event was created by clicking an empty slot, so you can focus its title. Render a component from it when you need hooks: `useCalendar()` to save edits, `useCalendarConfig()` to format times like the calendar does.
+
+## Build your own panel
+
+`EventDetailPanel` is one component per section, and they install with it. Render the ones you need, in your own order, to build a smaller panel or a different layout. Each section takes `EventDetailSectionProps`: the `event`, and `onEventChange`, without which the section is read-only.
+
+```tsx
+import type { EventDetailSectionProps } from "@/components/calendar-types";
+import { EventDetailParticipants } from "@/components/event-detail-participants";
+import {
+  EventDetailDivider,
+  EventDetailGroup,
+} from "@/components/event-detail-parts";
+import { EventDetailTime } from "@/components/event-detail-time";
+
+export function CompactDetails({
+  event,
+  onEventChange,
+}: EventDetailSectionProps) {
+  return (
+    <div className="flex flex-col text-sm font-medium">
+      <EventDetailGroup name="when">
+        <EventDetailTime event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
+      <EventDetailDivider />
+      <EventDetailGroup name="who">
+        <EventDetailParticipants event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
+    </div>
+  );
+}
+```
+
+| Import from                              | Exports                                                                                                                             | What it is                                                                                                                                                                |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@/components/event-detail-time`         | `EventDetailTime`, `EventDetailAllDay`                                                                                              | Start and end times and dates; the all-day switch.                                                                                                                        |
+| `@/components/event-detail-timezone`     | `EventDetailTimezone`                                                                                                               | The time zone.                                                                                                                                                            |
+| `@/components/event-detail-recurrence`   | `EventDetailRecurrence`                                                                                                             | The repeat rule. `onPrevious` and `onNext` add the arrows that step through the series.                                                                                   |
+| `@/components/event-detail-participants` | `EventDetailParticipants`                                                                                                           | Guests and rooms.                                                                                                                                                         |
+| `@/components/event-detail-conferencing` | `EventDetailConferencing`                                                                                                           | The video call.                                                                                                                                                           |
+| `@/components/event-detail-ai-notes`     | `EventDetailAiNotes`                                                                                                                | Whether AI meeting notes are on.                                                                                                                                          |
+| `@/components/event-detail-location`     | `EventDetailLocation`                                                                                                               | The location.                                                                                                                                                             |
+| `@/components/event-detail-links`        | `EventDetailLinks`                                                                                                                  | Links and attached files.                                                                                                                                                 |
+| `@/components/event-detail-description`  | `EventDetailDescription`                                                                                                            | The description.                                                                                                                                                          |
+| `@/components/event-detail-calendar`     | `EventDetailCalendar`                                                                                                               | The calendar and its color.                                                                                                                                               |
+| `@/components/event-detail-availability` | `EventDetailAvailability`                                                                                                           | Busy or free, and visibility.                                                                                                                                             |
+| `@/components/event-detail-reminders`    | `EventDetailReminders`                                                                                                              | Reminders.                                                                                                                                                                |
+| `@/components/event-detail-parts`        | `EventDetailGroup`, `EventDetailDivider`, `EventDetailSection`, `EventDetailRow`, `EventDetailPlaceholderRow`, `EventDetailTooltip` | Layout: groups of sections between dividers, rows on the panel's icon column, Notion's muted placeholder row, and the hover tooltip.                                      |
+| `@/components/event-detail-parts`        | `EVENT_DETAIL_*_CLASS`, `PANEL_*_CLASS`, `ROW_BOX_CLASS`                                                                            | The panel's colors and the styles of its inputs, rows and menus, in light and dark.                                                                                       |
+| `@/components/event-detail-parts`        | `closeMenuOnEscape`, `stopEscapePropagation`, `getPanelMenuSideOffset`, `getEventDetailPortalContainer`                             | Menu helpers: <Kbd>Esc</Kbd> closes a menu without deselecting the event, menus line up with the panel's edge, and lists portal into the dialog around the panel, if any. |
+| `@/hooks/use-inline-edit`                | `useInlineEdit`                                                                                                                     | A text field that edits in place: <Kbd>Enter</Kbd> or blur commits, <Kbd>Esc</Kbd> restores the value from before, and `onCommit` can reject a value by returning `null`. |
+| `@/hooks/use-hover-tooltip`              | `useHoverTooltip`                                                                                                                   | Open state for a tooltip that shows after the pointer rests on its trigger and stays while the pointer moves onto it.                                                     |
 
 ## API Reference
 
@@ -70,7 +127,7 @@ Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. I
       name: "onEventChange",
       type: "(event: TEvent) => void",
       description:
-        "Called with the edited event: on every keystroke in the title, and when a time, date or option is committed. Without it, edits are not saved.",
+        "Called with the edited event: on every keystroke in the title, and when a time, date or option is committed. Without it the panel is read-only: nothing accepts typing and the menus that change the event are disabled.",
     },
     {
       name: "headerActions",
@@ -134,39 +191,91 @@ Passed to `renderEventDetails` on `CalendarProvider`.
   nameHeader="Field"
   rows={[
     {
+      name: "kind",
+      type: '"event" | "focus-time" | "out-of-office" | "birthday"',
+      description: 'Kind picked in the header menu. Defaults to "event".',
+    },
+    {
       name: "calendarId",
       type: "string",
       description:
         "Calendar the event belongs to, an `id` from the provider's `calendars`.",
     },
+    {
+      name: "calendarEmail",
+      type: "string",
+      description: "Account email shown beside the calendar.",
+    },
     { name: "description", type: "string", description: "Free-text notes." },
     { name: "location", type: "string", description: "Where it happens." },
+    {
+      name: "timeZone",
+      type: "string",
+      description:
+        'IANA time zone, e.g. "America/Sao_Paulo", shown as "GMT-3 Sao Paulo". Defaults to the viewer\'s zone.',
+    },
     {
       name: "timezone",
       type: "string",
       description:
-        'Time zone label, e.g. "GMT-3 Sao Paulo". Defaults to the viewer\'s zone.',
+        'Deprecated: a time zone label, e.g. "GMT-3 Sao Paulo", shown when `timeZone` is not set.',
+    },
+    {
+      name: "recurrenceRule",
+      type: "RecurrenceRule",
+      description:
+        'Repeat rule: `frequency`, `interval`, `weekdays`, `monthlyBy`, `weekOfMonth` (1 to 4, or -1 for the last) and `end`. Read as "Every 2 weeks on Mon, Thu".',
     },
     {
       name: "recurrence",
       type: "string",
-      description: 'Repeat rule as display text, e.g. "Every week on Thu".',
+      description:
+        'Repeat rule as display text, e.g. "Every week on Thu", or an RRULE (from `.ics` import). Shown when `recurrenceRule` is not set.',
+    },
+    {
+      name: "participants",
+      type: "EventParticipant[]",
+      description:
+        "Guests: `email`, `name`, `response` (accepted, declined, tentative, needs-action), `organizer`, `optional`.",
+    },
+    {
+      name: "rooms",
+      type: "EventRoom[]",
+      description:
+        "Meeting rooms: `id`, `name`, `location`, `capacity`, `response`.",
+    },
+    {
+      name: "conference",
+      type: "EventConference",
+      description:
+        'Video call: `provider` ("google-meet", "zoom", "microsoft-teams" or "other"), `url`, `meetingId`.',
+    },
+    {
+      name: "aiMeetingNotes",
+      type: "boolean",
+      description: "Whether AI meeting notes are taken.",
+    },
+    {
+      name: "links",
+      type: "{ url: string; title?: string }[]",
+      description: "Links attached to the event.",
+    },
+    {
+      name: "attachments",
+      type: "{ name: string; url: string; size?: number; type?: string }[]",
+      description: "Files attached to the event (size in bytes, MIME type).",
     },
     {
       name: "reminders",
-      type: '{ amount: number; unit: "minutes" | "hours" | "days" }[]',
-      description: "Reminders before the event.",
+      type: '{ amount: number; unit: "minutes" | "hours" | "days"; time?: { hours: number; minutes: number } }[]',
+      description:
+        "Reminders before the event. `time` is the time of day for all-day events.",
     },
     { name: "status", type: '"busy" | "free"', description: "Busy or free." },
     {
       name: "visibility",
       type: '"default" | "public" | "private"',
       description: "Visibility setting.",
-    },
-    {
-      name: "calendarEmail",
-      type: "string",
-      description: "Account email shown beside the calendar.",
     },
   ]}
 />

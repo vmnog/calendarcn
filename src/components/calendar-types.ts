@@ -62,6 +62,154 @@ export interface HourSlot {
 export interface EventReminder {
   amount: number;
   unit: "minutes" | "hours" | "days";
+  /**
+   * Time of day the reminder fires, for all-day events ("1 day before at
+   * 9 AM"). Timed events leave it out: their reminders count back from the
+   * start.
+   */
+  time?: { hours: number; minutes: number };
+}
+
+/**
+ * Kind of event, picked from the menu at the top of the details panel
+ */
+export type EventKind = "event" | "focus-time" | "out-of-office" | "birthday";
+
+/**
+ * How often a repeat rule repeats
+ */
+export type RecurrenceFrequency = "daily" | "weekly" | "monthly" | "yearly";
+
+/**
+ * Day of the week in a repeat rule, using the date-fns convention
+ * (0 = Sunday ... 6 = Saturday)
+ */
+export type RecurrenceWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/**
+ * When a repeating event stops: never, on a date (inclusive), or after a
+ * number of occurrences
+ */
+export type RecurrenceEnd =
+  | { type: "never" }
+  | { type: "on"; date: Date }
+  | { type: "after"; count: number };
+
+/**
+ * A structured repeat rule, the subset of RFC 5545 RRULE the details panel
+ * edits ("Every 2 weeks on Mon, Thu", "Every month on the first Thu")
+ */
+export interface RecurrenceRule {
+  /** How often it repeats */
+  frequency: RecurrenceFrequency;
+  /** Repeats every `interval` days, weeks, months or years. Defaults to 1 */
+  interval?: number;
+  /**
+   * Days a weekly rule falls on. Defaults to the weekday of the event's
+   * start. Monday to Friday reads as "Every weekday".
+   */
+  weekdays?: RecurrenceWeekday[];
+  /**
+   * What a monthly rule repeats on: the start's day of the month ("on the
+   * 5th") or its weekday and position in the month ("on the first Thu").
+   * Defaults to "day-of-month".
+   */
+  monthlyBy?: "day-of-month" | "weekday-of-month";
+  /**
+   * Which of its weekdays in the month a `"weekday-of-month"` rule falls on:
+   * 1 to 4 for the first to the fourth, -1 for the last (RRULE's
+   * `BYDAY=-1TH`). Defaults to the start's position in its month, so set -1
+   * to keep "the last Thu" when the start is also the fourth one.
+   */
+  weekOfMonth?: 1 | 2 | 3 | 4 | -1;
+  /** When the series stops. Defaults to never */
+  end?: RecurrenceEnd;
+}
+
+/**
+ * A guest's answer to an invitation
+ */
+export type ParticipantResponse =
+  | "accepted"
+  | "declined"
+  | "tentative"
+  | "needs-action";
+
+/**
+ * A person invited to an event
+ */
+export interface EventParticipant {
+  /** Email address, also the participant's identity */
+  email: string;
+  /** Display name. Defaults to the email */
+  name?: string;
+  /** Their answer to the invitation. Defaults to "needs-action" */
+  response?: ParticipantResponse;
+  /** Whether they organize the event */
+  organizer?: boolean;
+  /** Whether their attendance is optional */
+  optional?: boolean;
+}
+
+/**
+ * A meeting room booked for an event
+ */
+export interface EventRoom {
+  /** Unique identifier for the room (its resource email in Google Calendar) */
+  id: string;
+  /** Display name (e.g. "Room 3A") */
+  name: string;
+  /** Building or floor shown under the name */
+  location?: string;
+  /** Number of seats */
+  capacity?: number;
+  /** Whether the room accepted the booking. Defaults to "needs-action" */
+  response?: ParticipantResponse;
+}
+
+/**
+ * Video conferencing service attached to an event
+ */
+export type ConferenceProvider =
+  | "google-meet"
+  | "zoom"
+  | "microsoft-teams"
+  | "other";
+
+/**
+ * A video call attached to an event
+ */
+export interface EventConference {
+  /** Service that hosts the call */
+  provider: ConferenceProvider;
+  /** Link that joins the call */
+  url: string;
+  /** Meeting code or ID shown beside the link (e.g. "abc-defg-hij") */
+  meetingId?: string;
+}
+
+/**
+ * A link attached to an event
+ */
+export interface EventLink {
+  /** Address the link opens */
+  url: string;
+  /** Text shown instead of the address */
+  title?: string;
+}
+
+/**
+ * A file attached to an event
+ */
+export interface EventAttachment {
+  /** File name (e.g. "agenda.pdf") */
+  name: string;
+  /** Address the file opens from (a download link or an object URL) */
+  url: string;
+  /** Size in bytes */
+  size?: number;
+  /** MIME type (e.g. "application/pdf"), picks the file icon */
+  type?: string;
 }
 
 /**
@@ -90,24 +238,53 @@ export interface CalendarEvent {
  * detail is optional; a missing one shows a placeholder.
  */
 export interface DetailedCalendarEvent extends CalendarEvent {
+  /** Kind picked in the header menu. Defaults to "event" */
+  kind?: EventKind;
   /** Calendar ID this event belongs to */
   calendarId?: string;
+  /** Calendar account email for display */
+  calendarEmail?: string;
   /** Optional description */
   description?: string;
   /** Optional location */
   location?: string;
-  /** Timezone string (e.g. "GMT-3 Sao Paulo") */
+  /**
+   * IANA time zone the event is set in (e.g. "America/Sao_Paulo"), shown
+   * as "GMT-3 Sao Paulo". Defaults to the viewer's zone.
+   */
+  timeZone?: string;
+  /**
+   * Time zone label (e.g. "GMT-3 Sao Paulo"), shown when `timeZone` is not
+   * set.
+   * @deprecated Set `timeZone` to an IANA zone instead.
+   */
   timezone?: string;
-  /** Recurrence rule display string (e.g. "Every week on Thu") */
+  /** Repeat rule. Takes precedence over `recurrence` for display */
+  recurrenceRule?: RecurrenceRule;
+  /**
+   * Repeat rule as display text (e.g. "Every week on Thu") or an RFC 5545
+   * RRULE ("FREQ=WEEKLY;BYDAY=TH", as `.ics` import fills it). Shown when
+   * `recurrenceRule` is not set.
+   */
   recurrence?: string;
+  /** People invited, the organizer included */
+  participants?: EventParticipant[];
+  /** Meeting rooms booked */
+  rooms?: EventRoom[];
+  /** Video call */
+  conference?: EventConference;
+  /** Whether AI meeting notes are taken during the event */
+  aiMeetingNotes?: boolean;
+  /** Links attached to the event */
+  links?: EventLink[];
+  /** Files attached to the event */
+  attachments?: EventAttachment[];
   /** Reminders list */
   reminders?: EventReminder[];
   /** Busy/Free status */
   status?: "busy" | "free";
   /** Visibility setting */
   visibility?: "default" | "public" | "private";
-  /** Calendar account email for display */
-  calendarEmail?: string;
 }
 
 /**
@@ -410,6 +587,24 @@ export interface EventDetailsRenderProps<
    * title should be focused. True on the first render after creation only.
    */
   isNew: boolean;
+}
+
+/**
+ * Props every section of the event details panel takes (time, time zone,
+ * repeat, participants, and so on). A section reads its fields from `event`
+ * and calls `onEventChange` with the whole event and its edit applied,
+ * keeping the app's other fields.
+ */
+export interface EventDetailSectionProps<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> {
+  /** The event shown */
+  event: TEvent;
+  /**
+   * Called with the edited event. Without it a section renders read-only:
+   * no menus, no inputs that accept typing.
+   */
+  onEventChange?: (event: TEvent) => void;
 }
 
 /**
