@@ -42,7 +42,12 @@ function SidePanel() {
 ## Features
 
 - Edit the title in place. With `onEventChange` wired to the calendar, the event updates as you type.
-- Edit the start and end times and dates. <Kbd>Enter</Kbd> saves, <Kbd>Esc</Kbd> restores the old value.
+- Pick the start and end times from a menu in 15-minute steps. End times show how long the event lasts (`1h 30min`).
+- Type a time and the menu lists what it can mean, daytime first: `7` gives 7 PM, then 7 AM. In the end field a number is also a duration: `45` gives 45 minutes later.
+- Hovering a time previews it. <Kbd>Enter</Kbd>, a click, or leaving the field after typing or arrow keys saves it. <Kbd>Esc</Kbd> restores the old value.
+- Pick dates from a date picker, or type one (`Nov 12`). From the input, <Kbd>↑</Kbd> and <Kbd>↓</Kbd> move a day, and <Kbd>Page Up</Kbd> and <Kbd>Page Down</Kbd> a month.
+- Switch an event to all-day and back: it gets its own times back, or 9–10 AM when it had none.
+- Time options follow the wall clock, so they stay right on the days daylight saving time starts and ends.
 - Fields the event doesn't set (participants, conferencing, location, links, description, reminders) show Notion's muted placeholders.
 - Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
 

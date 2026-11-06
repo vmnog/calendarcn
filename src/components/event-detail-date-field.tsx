@@ -159,7 +159,7 @@ export function EventDetailDateField({
   readOnly = false,
   className,
 }: EventDetailDateFieldProps) {
-  const { locale } = useCalendarConfig();
+  const { locale, weekStartsOn } = useCalendarConfig();
   const pickerId = React.useId();
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -321,7 +321,8 @@ export function EventDetailDateField({
         fixedWeeks
         hideNavigation
         locale={locale}
-        weekStartsOn={locale.options?.weekStartsOn ?? 0}
+        // The calendar's first day; the locale's outside a provider
+        weekStartsOn={weekStartsOn ?? locale.options?.weekStartsOn ?? 0}
         formatters={{
           formatWeekdayName: (date) => format(date, "EEEEEE", { locale }),
         }}

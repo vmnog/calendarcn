@@ -2,8 +2,9 @@ import { Calendar } from "@/components/calendar"
 import type { CalendarEvent } from "@/components/calendar-types"
 
 /**
- * The calendar on a 24-hour clock, for the time menu's spec: "Design Review"
- * on Thursday, June 4 2026, 10:00-11:00 in America/New_York
+ * The calendar on a 24-hour clock with weeks from Monday, for the time menu
+ * and date picker spec: "Design Review" on Thursday, June 4 2026,
+ * 10:00-11:00 in America/New_York
  */
 const EVENTS: CalendarEvent[] = [
   {
@@ -18,7 +19,7 @@ const EVENTS: CalendarEvent[] = [
 export default function Page() {
   return (
     <main className="h-svh">
-      <Calendar defaultEvents={EVENTS} hourCycle={24} />
+      <Calendar defaultEvents={EVENTS} hourCycle={24} weekStartsOn={1} />
     </main>
   )
 }

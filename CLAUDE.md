@@ -26,9 +26,11 @@ src/
 │   ├── nav-*              # Navigation components
 │   └── theme-*            # Dark mode provider & toggle
 ├── hooks/                # Custom hooks (drag, resize, all-day-resize, scroll)
+│   └── use-field-popover.ts # Focus, blur and Escape for the details' time and date fields
 └── lib/
     ├── event-utils.ts    # Event positioning & column assignment algorithms
     ├── mock-events.ts    # Sample data
+    ├── time-input.ts     # Time menu options, typed times and durations, date parsing
     └── utils.ts          # cn() helper
 ```
 

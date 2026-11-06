@@ -126,7 +126,7 @@ test("the time menu and the date picker set times and days inside the details", 
   await expect(startMenu).toHaveCount(0);
 });
 
-test("on a 24-hour clock the time menu and typed times read as written", async ({
+test("on a 24-hour clock the time menu and typed times read as written, and the date picker starts on Monday", async ({
   page,
 }) => {
   await page.goto("/24-hour");
@@ -151,6 +151,15 @@ test("on a 24-hour clock the time menu and typed times read as written", async (
   await startTime.press("Enter");
   await expect(startTime).toHaveValue("19:00");
   await expect(endTime).toHaveValue("20:00");
+
+  // The date picker's weeks start on the provider's weekStartsOn, Monday
+  await details.getByTestId("event-start-date").click();
+  const picker = page.locator("[data-event-detail-field-popover]");
+  await expect(picker.locator("thead th").first()).toHaveText("Mo");
+  await expect(picker.locator("[data-day]").first()).toHaveAttribute(
+    "data-day",
+    "2026-06-01",
+  );
 });
 
 test("the all-day switch is blue when checked", async ({ page }) => {

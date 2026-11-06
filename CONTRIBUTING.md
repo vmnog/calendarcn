@@ -74,10 +74,12 @@ src/
 │   └── sidebar-*.tsx, nav-*.tsx  # Demo sidebars and navigation
 ├── examples/                     # Live docs examples, shown with their source
 ├── hooks/                        # Drag, resize, keyboard, scroll and gesture hooks
+│   └── use-field-popover.ts      # Focus, blur and Escape for the details' time and date fields
 └── lib/
     ├── event-utils.ts            # Event positioning and filtering
     ├── mock-events.ts            # Demo event data
     ├── sample-events.ts          # Docs example event data
+    ├── time-input.ts             # Time menu options, typed times and durations, date parsing
     └── utils.ts                  # General utilities (cn)
 ```
 

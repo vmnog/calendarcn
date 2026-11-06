@@ -280,6 +280,8 @@ test("the date picker marks a typed date, Enter or a click on a day moves the ev
   const picker = datePicker(page);
   await expect(picker).toBeVisible();
   await expect(picker).toContainText("June 2026");
+  // Weeks start on the provider's weekStartsOn, Sunday by default
+  await expect(picker.locator("thead th").first()).toHaveText("Su");
   await expect(picker.getByRole("gridcell", { selected: true })).toHaveText(
     "6",
   );
