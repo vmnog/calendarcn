@@ -81,6 +81,53 @@ test("a typed link is added, text that isn't a link is dropped, and a link is re
   await expect(links).toHaveText("Add links and attachments");
 });
 
+test("Tab onto a link shows its address, and Tab reaches the copy button", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await calendarEvent(page, "Quick Sync").click();
+  const links = linksSection(page);
+  await links
+    .getByRole("button", { name: "Add links and attachments" })
+    .click();
+  await page.keyboard.type("https://example.com");
+  await page.keyboard.press("Enter");
+  // Keep the pointer off the new row, so only focus opens its tooltip
+  await page.mouse.move(0, 0);
+
+  const link = links.getByRole("link", { name: "https://example.com" });
+  await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  // Shift+Tab from the remove button after it, so the focus is the keyboard's
+  const removeButton = links.getByRole("button", {
+    name: "Remove https://example.com",
+  });
+  await removeButton.focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(link).toBeFocused();
+  const tooltip = page.getByRole("tooltip");
+  await expect(tooltip).toHaveText("https://example.com");
+
+  // The tooltip is portaled, but Tab goes into it and back out after the link
+  await page.keyboard.press("Tab");
+  await expect(
+    tooltip.getByRole("button", { name: "Copy link" }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(
+    tooltip.getByRole("button", { name: "Link copied" }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    "https://example.com",
+  );
+  await page.keyboard.press("Shift+Tab");
+  await expect(link).toBeFocused();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  await expect(removeButton).toBeFocused();
+  await expect(tooltip).toHaveCount(0);
+});
+
 test("Escape closes the link menu, then leaves the input, and the event stays selected", async ({
   page,
 }) => {
@@ -130,7 +177,7 @@ test("a file is attached from the link menu, with its size, and removed", async 
   await expect(links).toHaveText("Add links and attachments");
 });
 
-test("the description edits in place: its links join the list, Escape puts it back, blur keeps it", async ({
+test("the description edits in place: its links join the list on blur, Escape puts it back", async ({
   page,
 }) => {
   const original =
@@ -147,24 +194,26 @@ test("the description edits in place: its links join the list, Escape puts it ba
   const editorHeight = (await editor.boundingBox())?.height ?? 0;
   expect(editorHeight).toBeGreaterThanOrEqual(72);
 
-  // An address typed in the description shows with the links, marked
+  // An address being typed stays out of the links list
   await page.keyboard.press("Enter");
   await page.keyboard.type("Notes: https://example.com/notes.");
   await expect(
-    links.getByRole("link", { name: "https://example.com/notes" }),
-  ).toBeVisible();
-  await expect(
-    links.getByRole("img", { name: "Linked in event description" }),
-  ).toBeAttached();
+    links.locator('[data-link-url^="https://example.com/n"]'),
+  ).toHaveCount(0);
 
-  // The editor grows with its text
+  // The editor grows with its text, and again when it gets narrower
   for (let line = 0; line < 4; line++) {
     await page.keyboard.press("Enter");
     await page.keyboard.type("More notes");
   }
-  expect((await editor.boundingBox())?.height ?? 0).toBeGreaterThan(
-    editorHeight,
-  );
+  const grownHeight = (await editor.boundingBox())?.height ?? 0;
+  expect(grownHeight).toBeGreaterThan(editorHeight);
+  await editor.evaluate((textarea) => {
+    textarea.style.width = "140px";
+  });
+  await expect
+    .poll(async () => (await editor.boundingBox())?.height ?? 0)
+    .toBeGreaterThan(grownHeight);
 
   // Escape puts the description back and keeps the event selected
   await page.keyboard.press("Escape");
@@ -173,16 +222,63 @@ test("the description edits in place: its links join the list, Escape puts it ba
   await expect(links.getByRole("link", { name: /notes$/ })).toHaveCount(0);
   await expect(detailTitle(page)).toHaveValue("Launch Review");
 
-  // Blur keeps the edit, and its address reads as a link
+  // Blur keeps the edit: its address reads as a link, and joins the list
   await description.getByRole("textbox", { name: "Description" }).click();
   await page.keyboard.type(" See https://example.com/brief");
   await detailTitle(page).click();
   await expect(description).toHaveText(
     `${original} See https://example.com/brief`,
   );
+  const inlineLink = description.getByRole("link", {
+    name: "https://example.com/brief",
+  });
+  await expect(inlineLink).toHaveAttribute("href", "https://example.com/brief");
+  await expect(inlineLink).toHaveAttribute("rel", "noopener noreferrer");
   await expect(
-    description.getByRole("link", { name: "https://example.com/brief" }),
-  ).toHaveAttribute("href", "https://example.com/brief");
+    links.getByRole("link", { name: "https://example.com/brief" }),
+  ).toBeVisible();
+  await expect(
+    links.getByRole("img", { name: "Linked in event description" }),
+  ).toBeAttached();
+});
+
+test("a link in the description opens instead of the editor, and Tab still opens it", async ({
+  page,
+}) => {
+  await page
+    .context()
+    .route("https://example.com/**", (route) =>
+      route.fulfill({ contentType: "text/html", body: "<p>Brief</p>" }),
+    );
+  await calendarEvent(page, "Launch Review").click();
+  const description = descriptionSection(page);
+  const box = description.getByRole("textbox", { name: "Description" });
+  await box.click();
+  await page.keyboard.type(" See https://example.com/brief");
+  await detailTitle(page).click();
+
+  // Safari focuses the box, not the link, when the link is pressed
+  await box.evaluate((element) => {
+    element.addEventListener(
+      "mousedown",
+      (e) => {
+        e.preventDefault();
+        (element as HTMLElement).focus();
+      },
+      { capture: true },
+    );
+  });
+  const popup = page.waitForEvent("popup");
+  await description
+    .getByRole("link", { name: "https://example.com/brief" })
+    .click();
+  expect((await popup).url()).toBe("https://example.com/brief");
+  await expect(description.locator("textarea")).toHaveCount(0);
+
+  // Focus that doesn't come from a press opens the editor
+  await detailTitle(page).focus();
+  await box.focus();
+  await expect(description.locator("textarea")).toBeFocused();
 });
 
 test("an empty description shows Notion's placeholder and grows to three lines when edited", async ({

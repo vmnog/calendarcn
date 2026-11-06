@@ -204,7 +204,13 @@ export interface EventLink {
 export interface EventAttachment {
   /** File name (e.g. "agenda.pdf") */
   name: string;
-  /** Address the file opens from (a download link or an object URL) */
+  /**
+   * Address the file opens from: a web address, or the object URL the
+   * details panel makes for a file attached there. Removing the file in the
+   * panel revokes its object URL; otherwise it's yours to revoke
+   * (`URL.revokeObjectURL`), e.g. when you delete the event or drop the
+   * change. Other schemes, like `javascript:` or `data:`, never open.
+   */
   url: string;
   /** Size in bytes */
   size?: number;

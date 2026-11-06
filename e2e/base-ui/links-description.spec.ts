@@ -68,3 +68,22 @@ test("the description is edited in place and kept on blur", async ({
       .getByRole("link", { name: "https://example.com/agenda" }),
   ).toBeVisible();
 });
+
+test("links and files that come with the event open only web pages", async ({
+  page,
+}) => {
+  await calendarEvent(page, "Link Check").click();
+  const links = eventDetails(page).locator('[data-section="links"]');
+
+  // React 19 blocks javascript: hrefs, but not data:, and React 18 neither
+  for (const label of ["Script link", "Data link", "payload.html"]) {
+    const row = links.getByText(label, { exact: true });
+    await expect(row).toBeVisible();
+    await expect(row).not.toHaveAttribute("href");
+  }
+  await expect(links.getByRole("link")).toHaveText(["Brief"]);
+  await expect(links.getByRole("link", { name: "Brief" })).toHaveAttribute(
+    "href",
+    "https://example.com/brief",
+  );
+});

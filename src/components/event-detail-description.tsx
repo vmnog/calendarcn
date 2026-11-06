@@ -91,12 +91,50 @@ export function findDescriptionUrls(description: string | undefined): string[] {
   return Array.from(new Set(urls));
 }
 
+/** Sets a textarea's height to fit its text; its `rows` keep the minimum */
+function fitToText(textarea: HTMLTextAreaElement) {
+  textarea.style.height = "auto";
+  const border = textarea.offsetHeight - textarea.clientHeight;
+  textarea.style.height = `${textarea.scrollHeight + border}px`;
+}
+
+/**
+ * The description at rest: its text, with each web address a link, or a
+ * muted "Description" when there's none
+ */
+function DescriptionText({ description }: { description: string }) {
+  if (!description) {
+    return <span className={EVENT_DETAIL_PLACEHOLDER_CLASS}>Description</span>;
+  }
+
+  return (
+    <span className={EVENT_DETAIL_TEXT_CLASS}>
+      {splitDescriptionLinks(description).map((part, index) => {
+        if (!part.url) {
+          return <React.Fragment key={index}>{part.text}</React.Fragment>;
+        }
+        return (
+          <a
+            key={index}
+            href={part.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(EVENT_DETAIL_LINK_CLASS, "cursor-pointer")}
+          >
+            {part.text}
+          </a>
+        );
+      })}
+    </span>
+  );
+}
+
 /**
  * The event's notes. At rest they read as text whose web addresses are
- * links, or a muted "Description"; clicking turns them into an editor that
- * is three lines tall and grows with the text. Typing updates the event as
- * it goes, Escape puts back the text from before, blur keeps it. It has no
- * icon: the text starts on the panel's left column.
+ * links, or a muted "Description"; clicking (anywhere but a link) or Tab
+ * turns them into an editor that is three lines tall and grows with the
+ * text. Blur keeps the edit and Escape puts back the text from before. It
+ * has no icon: the text starts on the panel's left column.
  */
 export function EventDetailDescription<
   TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
@@ -108,14 +146,20 @@ export function EventDetailDescription<
   const escapePressedRef = React.useRef(false);
   /** Description when editing started, put back on Escape */
   const descriptionOnFocusRef = React.useRef(description);
+  /**
+   * Set while a press is on the box: its focus waits for the click, which
+   * knows whether a link was pressed. Safari focuses the box, not the link.
+   */
+  const isPressingRef = React.useRef(false);
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [text, setText] = React.useState(description);
 
   // Follow the event while the description isn't being typed into
   React.useEffect(() => {
+    if (isEditing) return;
     setText(description);
-  }, [description]);
+  }, [description, isEditing]);
 
   // Open the editor with the caret after the text
   React.useLayoutEffect(() => {
@@ -126,24 +170,24 @@ export function EventDetailDescription<
     textarea.setSelectionRange(textarea.value.length, textarea.value.length);
   }, [isEditing]);
 
-  // Grow the editor with its text; `rows` keeps it three lines tall at least
+  // Grow the editor with its text
   React.useLayoutEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = "auto";
-    const border = textarea.offsetHeight - textarea.clientHeight;
-    textarea.style.height = `${textarea.scrollHeight + border}px`;
+    if (textareaRef.current) fitToText(textareaRef.current);
   }, [text, isEditing]);
 
-  const updateDescription = React.useCallback(
-    (next: string) => {
-      onEventChange?.({
-        ...event,
-        description: next === "" ? undefined : next,
-      });
-    },
-    [event, onEventChange],
-  );
+  // Fit it again when a new panel width rewraps the text
+  React.useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!isEditing || !textarea) return;
+    let width = textarea.offsetWidth;
+    const observer = new ResizeObserver(() => {
+      if (textarea.offsetWidth === width) return;
+      width = textarea.offsetWidth;
+      fitToText(textarea);
+    });
+    observer.observe(textarea);
+    return () => observer.disconnect();
+  }, [isEditing]);
 
   const startEditing = React.useCallback(() => {
     if (!onEventChange) return;
@@ -151,12 +195,11 @@ export function EventDetailDescription<
     setIsEditing(true);
   }, [description, onEventChange]);
 
+  // The event takes the text on blur, so an address being typed doesn't
+  // show up in the links list one letter at a time
   const handleChange = React.useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setText(e.target.value);
-      updateDescription(e.target.value);
-    },
-    [updateDescription],
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value),
+    [],
   );
 
   const handleBlur = React.useCallback(() => {
@@ -165,8 +208,9 @@ export function EventDetailDescription<
       escapePressedRef.current = false;
       return;
     }
-    if (text !== description) updateDescription(text);
-  }, [description, text, updateDescription]);
+    if (text === description) return;
+    onEventChange?.({ ...event, description: text === "" ? undefined : text });
+  }, [description, event, onEventChange, text]);
 
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -175,18 +219,36 @@ export function EventDetailDescription<
       e.preventDefault();
       e.stopPropagation();
       escapePressedRef.current = true;
-      const original = descriptionOnFocusRef.current;
-      setText(original);
-      if (original !== description) updateDescription(original);
+      setText(descriptionOnFocusRef.current);
       textareaRef.current?.blur();
     },
-    [description, updateDescription],
+    [],
   );
 
-  // Focus that lands on the box itself (a click or Tab), not on a link in it
+  const handleBoxPointerDown = React.useCallback(() => {
+    isPressingRef.current = true;
+  }, []);
+
+  // Tab onto the box opens the editor; a press leaves that to its click
   const handleBoxFocus = React.useCallback(
     (e: React.FocusEvent<HTMLDivElement>) => {
-      if (e.target !== e.currentTarget) return;
+      const isPress = isPressingRef.current;
+      isPressingRef.current = false;
+      if (isPress || e.target !== e.currentTarget) return;
+      startEditing();
+    },
+    [startEditing],
+  );
+
+  const handleBoxBlur = React.useCallback(() => {
+    isPressingRef.current = false;
+  }, []);
+
+  // A click opens the editor, unless it's on a link in the text
+  const handleBoxClick = React.useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      isPressingRef.current = false;
+      if (e.target instanceof Element && e.target.closest("a")) return;
       startEditing();
     },
     [startEditing],
@@ -215,43 +277,34 @@ export function EventDetailDescription<
     );
   }
 
-  const isEditable = Boolean(onEventChange);
+  if (!onEventChange) {
+    return (
+      <EventDetailSection name="description">
+        <div className={cn(DESCRIPTION_BOX_CLASS, "border-transparent")}>
+          <DescriptionText description={description} />
+        </div>
+      </EventDetailSection>
+    );
+  }
 
   return (
     <EventDetailSection name="description">
       <div
-        role={isEditable ? "textbox" : undefined}
-        aria-multiline={isEditable ? true : undefined}
-        aria-label={isEditable ? "Description" : undefined}
-        tabIndex={isEditable ? 0 : undefined}
+        role="textbox"
+        aria-multiline
+        aria-label="Description"
+        tabIndex={0}
+        onPointerDown={handleBoxPointerDown}
         onFocus={handleBoxFocus}
+        onBlur={handleBoxBlur}
+        onClick={handleBoxClick}
         className={cn(
           DESCRIPTION_BOX_CLASS,
-          "border-transparent",
-          isEditable && cn(EVENT_DETAIL_HOVER_BORDER_CLASS, "cursor-text"),
+          "cursor-text border-transparent",
+          EVENT_DETAIL_HOVER_BORDER_CLASS,
         )}
       >
-        {description ? (
-          <span className={EVENT_DETAIL_TEXT_CLASS}>
-            {splitDescriptionLinks(description).map((part, index) =>
-              part.url ? (
-                <a
-                  key={index}
-                  href={part.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={cn(EVENT_DETAIL_LINK_CLASS, "cursor-pointer")}
-                >
-                  {part.text}
-                </a>
-              ) : (
-                <React.Fragment key={index}>{part.text}</React.Fragment>
-              ),
-            )}
-          </span>
-        ) : (
-          <span className={EVENT_DETAIL_PLACEHOLDER_CLASS}>Description</span>
-        )}
+        <DescriptionText description={description} />
       </div>
     </EventDetailSection>
   );

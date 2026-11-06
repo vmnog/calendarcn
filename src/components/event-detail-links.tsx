@@ -76,6 +76,19 @@ const BARE_DOMAIN_PATTERN = /^[\w-]+(\.[\w-]+)+(:\d+)?([/?#]\S*)?$/;
 /** Floating layers sit above the panel and every calendar layer */
 const FLOATING_LAYER_Z_CLASS = "z-[9999]";
 
+/** Schemes a link may open: web pages, never script or inline data */
+const LINK_PROTOCOLS = ["http:", "https:"];
+
+/** A file can also open from the object URL made when it was attached here */
+const ATTACHMENT_PROTOCOLS = [...LINK_PROTOCOLS, "blob:"];
+
+/** Base a relative address resolves against while its scheme is checked */
+const RELATIVE_URL_BASE = "https://relative.invalid";
+
+/** Elements Tab can stop at, before checking they're shown */
+const TABBABLE_SELECTOR =
+  'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
 /**
  * A row of the list: Notion's 32px box, 8px in from the panel's edges, in
  * a 35px row, with its icon centered 26px from the edge and its text from
@@ -138,6 +151,40 @@ function parseLinkInput(text: string): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * `url` when it opens with one of `protocols`, else undefined. Links and
+ * files come in with the event, so a `javascript:` or `data:` address must
+ * never reach an `href`. A relative address keeps the page's own scheme.
+ */
+function safeHref(
+  url: string,
+  protocols: readonly string[] = LINK_PROTOCOLS,
+): string | undefined {
+  try {
+    const { protocol } = new URL(url, RELATIVE_URL_BASE);
+    return protocols.includes(protocol) ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Focuses what Tab reaches after `element`, skipping `layer`: Tab out of a
+ * layer portaled away from the element it opened from
+ */
+function focusNextTabbable(element: HTMLElement, layer: HTMLElement | null) {
+  const tabbables = Array.from(
+    element.ownerDocument.querySelectorAll<HTMLElement>(TABBABLE_SELECTOR),
+  ).filter(
+    (candidate) =>
+      candidate.tabIndex >= 0 &&
+      !layer?.contains(candidate) &&
+      !candidate.closest("[inert]") &&
+      candidate.getClientRects().length > 0,
+  );
+  tabbables[tabbables.indexOf(element) + 1]?.focus();
 }
 
 /** File size the way Finder writes it: "248 KB", "1.2 MB" */
@@ -349,10 +396,17 @@ interface LinkTooltipProps {
   url: string;
   /** Row the tooltip is centered above */
   owner: Element;
+  /**
+   * The row's link. Tab from it reaches the copy button; Shift+Tab and
+   * Escape go back to it, and Tab moves on to what follows it.
+   */
+  link: HTMLElement | null;
   floatingRef: (node: HTMLElement | null) => void;
   style: React.CSSProperties;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  /** Focus left the copy button for somewhere other than the link */
+  onFocusLeave: () => void;
 }
 
 /**
@@ -361,11 +415,16 @@ interface LinkTooltipProps {
 function LinkTooltip({
   url,
   owner,
+  link,
   floatingRef,
   style,
   onMouseEnter,
   onMouseLeave,
+  onFocusLeave,
 }: LinkTooltipProps) {
+  const [layerElement, setLayerElement] = React.useState<HTMLElement | null>(
+    null,
+  );
   const [isCopied, setIsCopied] = React.useState(false);
 
   React.useEffect(() => {
@@ -377,13 +436,51 @@ function LinkTooltip({
     return () => window.clearTimeout(timer);
   }, [isCopied]);
 
+  const setLayer = React.useCallback(
+    (node: HTMLElement | null) => {
+      floatingRef(node);
+      setLayerElement(node);
+    },
+    [floatingRef],
+  );
+
   const copyUrl = React.useCallback(() => {
-    void navigator.clipboard?.writeText(url).then(() => setIsCopied(true));
+    // A denied permission or an insecure page leaves the button as it was
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => setIsCopied(true))
+      .catch(() => {});
   }, [url]);
+
+  // The layer is portaled away from the row, so Tab is routed by hand
+  const handleCopyKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (!link) return;
+      if (e.key === "Escape" || (e.key === "Tab" && e.shiftKey)) {
+        // Keep the calendar's Escape from deselecting the event
+        e.preventDefault();
+        e.stopPropagation();
+        link.focus();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      e.preventDefault();
+      focusNextTabbable(link, layerElement);
+    },
+    [layerElement, link],
+  );
+
+  const handleCopyBlur = React.useCallback(
+    (e: React.FocusEvent<HTMLButtonElement>) => {
+      if (link && e.relatedTarget === link) return;
+      onFocusLeave();
+    },
+    [link, onFocusLeave],
+  );
 
   return (
     <FloatingLayer
-      ref={floatingRef}
+      ref={setLayer}
       owner={owner}
       role="tooltip"
       style={style}
@@ -396,7 +493,9 @@ function LinkTooltip({
         type="button"
         aria-label={isCopied ? "Link copied" : "Copy link"}
         onClick={copyUrl}
-        className="flex size-4 shrink-0 items-center justify-center text-[#9B9B9B] hover:text-white"
+        onKeyDown={handleCopyKeyDown}
+        onBlur={handleCopyBlur}
+        className="flex size-4 shrink-0 items-center justify-center rounded-sm text-[#9B9B9B] outline-none hover:text-white focus-visible:text-white focus-visible:ring-1 focus-visible:ring-white/60"
       >
         {isCopied ? (
           <Check className="size-3.5" />
@@ -427,15 +526,23 @@ interface LinkRowProps {
 /**
  * A link: icon and underlined text that opens it. Hovering shows the
  * address above the row, and a remove button (or a "?" for a link written
- * in the description) at its end.
+ * in the description) at its end; Tab onto the link shows the address too.
+ * An address that isn't a web page shows as text that opens nothing.
  */
 function LinkRow({ url, label, onRemove, isFromDescription }: LinkRowProps) {
+  const href = safeHref(url);
+
   const [rowElement, setRowElement] = React.useState<HTMLElement | null>(null);
+  const [linkElement, setLinkElement] =
+    React.useState<HTMLAnchorElement | null>(null);
   /** The "?" shows its own tooltip, in place of the address */
   const [isHelpHovered, setIsHelpHovered] = React.useState(false);
+  /** The link or the tooltip's copy button has keyboard focus */
+  const [hasKeyboardFocus, setHasKeyboardFocus] = React.useState(false);
   const tooltip = useHoverTooltip();
+  const isTooltipOpen = tooltip.isOpen || hasKeyboardFocus;
   const { refs, floatingStyles } = useFloating({
-    open: tooltip.isOpen,
+    open: isTooltipOpen,
     placement: "top",
     strategy: "fixed",
     whileElementsMounted: autoUpdate,
@@ -458,6 +565,43 @@ function LinkRow({ url, label, onRemove, isFromDescription }: LinkRowProps) {
     [refs],
   );
 
+  const handleLinkFocus = React.useCallback(
+    (e: React.FocusEvent<HTMLAnchorElement>) => {
+      if (e.currentTarget.matches(":focus-visible")) setHasKeyboardFocus(true);
+    },
+    [],
+  );
+
+  // Moving on to the tooltip's copy button keeps it open
+  const handleLinkBlur = React.useCallback(
+    (e: React.FocusEvent<HTMLAnchorElement>) => {
+      const next = e.relatedTarget;
+      if (next instanceof Node && refs.floating.current?.contains(next)) {
+        return;
+      }
+      setHasKeyboardFocus(false);
+    },
+    [refs],
+  );
+
+  // Tab goes from the link into its tooltip, which is portaled elsewhere
+  const handleLinkKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLAnchorElement>) => {
+      if (e.key !== "Tab" || e.shiftKey || !hasKeyboardFocus) return;
+      const layer = refs.floating.current;
+      const copyButton = layer?.querySelector("button");
+      if (!copyButton) return;
+      e.preventDefault();
+      copyButton.focus();
+    },
+    [hasKeyboardFocus, refs],
+  );
+
+  const handleTooltipFocusLeave = React.useCallback(
+    () => setHasKeyboardFocus(false),
+    [],
+  );
+
   return (
     <div
       ref={setRow}
@@ -470,13 +614,17 @@ function LinkRow({ url, label, onRemove, isFromDescription }: LinkRowProps) {
         <Link className={EVENT_DETAIL_ICON_CLASS} />
       </span>
       <a
-        href={url}
+        ref={setLinkElement}
+        href={href}
         target="_blank"
-        rel="noreferrer"
+        rel="noopener noreferrer"
+        onFocus={handleLinkFocus}
+        onBlur={handleLinkBlur}
+        onKeyDown={handleLinkKeyDown}
         className={cn(
           "min-w-0 truncate",
           EVENT_DETAIL_TEXT_CLASS,
-          EVENT_DETAIL_LINK_CLASS,
+          href && EVENT_DETAIL_LINK_CLASS,
         )}
       >
         {label}
@@ -504,14 +652,16 @@ function LinkRow({ url, label, onRemove, isFromDescription }: LinkRowProps) {
           </button>
         )}
       </span>
-      {tooltip.isOpen && !isHelpHovered && rowElement && (
+      {isTooltipOpen && !isHelpHovered && rowElement && (
         <LinkTooltip
           url={url}
           owner={rowElement}
+          link={linkElement}
           floatingRef={setTooltip}
           style={floatingStyles}
           onMouseEnter={tooltip.keepOpen}
           onMouseLeave={tooltip.scheduleClose}
+          onFocusLeave={handleTooltipFocusLeave}
         />
       )}
     </div>
@@ -529,9 +679,12 @@ interface AttachmentRowProps {
 
 /**
  * An attached file: its type's icon, its name (opening the file), its size
- * muted after it, and a remove button on hover
+ * muted after it, and a remove button on hover. A file whose address isn't
+ * a web page or an object URL shows its name only.
  */
 function AttachmentRow({ attachment, onRemove }: AttachmentRowProps) {
+  const href = safeHref(attachment.url, ATTACHMENT_PROTOCOLS);
+
   return (
     <div
       data-attachment-name={attachment.name}
@@ -541,16 +694,14 @@ function AttachmentRow({ attachment, onRemove }: AttachmentRowProps) {
         <FileTypeIcon type={attachment.type} />
       </span>
       <a
-        href={attachment.url}
+        href={href}
         target="_blank"
-        rel="noreferrer"
-        download={
-          attachment.url.startsWith("blob:") ? attachment.name : undefined
-        }
+        rel="noopener noreferrer"
+        download={href?.startsWith("blob:") ? attachment.name : undefined}
         className={cn(
           "min-w-0 truncate",
           EVENT_DETAIL_TEXT_CLASS,
-          EVENT_DETAIL_LINK_CLASS,
+          href && EVENT_DETAIL_LINK_CLASS,
         )}
       >
         {attachment.name}
