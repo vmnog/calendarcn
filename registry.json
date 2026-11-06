@@ -184,6 +184,7 @@
       "dependencies": ["@floating-ui/react-dom", "date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
+        "avatar",
         "button",
         "dropdown-menu",
         "switch"
@@ -227,6 +228,10 @@
         },
         {
           "path": "src/components/event-detail-location.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-suggestions.tsx",
           "type": "registry:component"
         },
         {

@@ -432,8 +432,24 @@ export function EventDetailPanel<
       {/* Who and where */}
       <EventDetailGroup name="who">
         <EventDetailParticipants event={event} onEventChange={onEventChange} />
-        <EventDetailConferencing event={event} onEventChange={onEventChange} />
-        <EventDetailAiNotes event={event} onEventChange={onEventChange} />
+        {/* With a call, Notion moves the meeting-note button above it */}
+        {event.conference ? (
+          <>
+            <EventDetailAiNotes event={event} onEventChange={onEventChange} />
+            <EventDetailConferencing
+              event={event}
+              onEventChange={onEventChange}
+            />
+          </>
+        ) : (
+          <>
+            <EventDetailConferencing
+              event={event}
+              onEventChange={onEventChange}
+            />
+            <EventDetailAiNotes event={event} onEventChange={onEventChange} />
+          </>
+        )}
         <EventDetailLocation event={event} onEventChange={onEventChange} />
       </EventDetailGroup>
 

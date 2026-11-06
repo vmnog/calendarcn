@@ -24,8 +24,11 @@ import type {
   CalendarInfo,
   CalendarProviderProps,
   CalendarRenderSlots,
+  EventContact,
   EventContentProps,
+  EventRoom,
   HourCycle,
+  LocationSuggestion,
   NewEventRange,
   ViewSettings,
   ViewType,
@@ -65,6 +68,15 @@ const DEFAULT_HOUR_CYCLE: HourCycle = 12;
 /** Calendars offered by the context menu when `calendars` is not set (stable identity) */
 const NO_CALENDARS: CalendarInfo[] = [];
 
+/** Contacts suggested when `contacts` is not set (stable identity) */
+const NO_CONTACTS: EventContact[] = [];
+
+/** Rooms offered when `rooms` is not set (stable identity) */
+const NO_ROOMS: EventRoom[] = [];
+
+/** Places suggested when `locationSuggestions` is not set (stable identity) */
+const NO_LOCATION_SUGGESTIONS: LocationSuggestion[] = [];
+
 /** Config used outside a provider, and for every provider prop left unset */
 const DEFAULT_CALENDAR_CONFIG: CalendarConfig = {
   snapMinutes: DEFAULT_SNAP_MINUTES,
@@ -73,6 +85,9 @@ const DEFAULT_CALENDAR_CONFIG: CalendarConfig = {
   hourCycle: DEFAULT_HOUR_CYCLE,
   locale: enUS,
   calendars: NO_CALENDARS,
+  contacts: NO_CONTACTS,
+  rooms: NO_ROOMS,
+  locationSuggestions: NO_LOCATION_SUGGESTIONS,
 };
 
 /** View settings used for every field `defaultViewSettings` leaves unset */
@@ -352,6 +367,10 @@ function CalendarStateProvider({
   hourCycle = DEFAULT_HOUR_CYCLE,
   locale = enUS,
   calendars = NO_CALENDARS,
+  contacts = NO_CONTACTS,
+  rooms = NO_ROOMS,
+  conferenceProviders,
+  locationSuggestions = NO_LOCATION_SUGGESTIONS,
   createEvent,
   onEventCreate,
   onEventUpdate,
@@ -823,8 +842,23 @@ function CalendarStateProvider({
       hourCycle,
       locale,
       calendars,
+      contacts,
+      rooms,
+      conferenceProviders,
+      locationSuggestions,
     }),
-    [snapMinutes, dayStartHour, dayEndHour, hourCycle, locale, calendars],
+    [
+      snapMinutes,
+      dayStartHour,
+      dayEndHour,
+      hourCycle,
+      locale,
+      calendars,
+      contacts,
+      rooms,
+      conferenceProviders,
+      locationSuggestions,
+    ],
   );
 
   return (

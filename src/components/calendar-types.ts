@@ -189,6 +189,47 @@ export interface EventConference {
 }
 
 /**
+ * A person the participants field suggests while typing (an address book
+ * entry, a coworker)
+ */
+export interface EventContact {
+  /** Email address, the participant's identity once added */
+  email: string;
+  /** Display name. Defaults to the email */
+  name?: string;
+  /**
+   * Whether they were invited recently. Recent contacts are listed before
+   * typing, with a history icon
+   */
+  recent?: boolean;
+}
+
+/**
+ * A video conferencing service the details panel offers. Picking it calls
+ * `createConference`, whose result is set as the event's `conference`.
+ */
+export interface ConferenceProviderOption {
+  /** Service, which picks the icon */
+  provider: ConferenceProvider;
+  /** Name shown in the menu and on the event (e.g. "Google Meet") */
+  label: string;
+  /** Muted text at the end of the menu item, e.g. "Connect" */
+  hint?: string;
+  /** Creates the call, e.g. by asking the service for a meeting link */
+  createConference: () => EventConference;
+}
+
+/**
+ * A place the location field suggests while typing
+ */
+export interface LocationSuggestion {
+  /** Name of the place (e.g. "Central Park") */
+  name: string;
+  /** Address shown under the name and kept after it (e.g. "New York, NY, USA") */
+  address?: string;
+}
+
+/**
  * A link attached to an event
  */
 export interface EventLink {
@@ -518,6 +559,17 @@ export interface CalendarConfig {
   locale: Locale;
   /** Calendars offered by the event context menu */
   calendars: CalendarInfo[];
+  /** People the details' participants field suggests */
+  contacts: EventContact[];
+  /** Meeting rooms the details' participants field offers */
+  rooms: EventRoom[];
+  /**
+   * Conferencing services the details offer; `undefined` keeps the panel's
+   * defaults
+   */
+  conferenceProviders?: ConferenceProviderOption[];
+  /** Places the details' location field suggests */
+  locationSuggestions: LocationSuggestion[];
 }
 
 /**
@@ -724,6 +776,28 @@ interface CalendarProviderBaseProps<
    * The submenu is hidden when empty. Defaults to none
    */
   calendars?: CalendarInfo[];
+  /**
+   * People the details' participants field suggests: recent ones before
+   * typing, the matches while typing. Defaults to none (a typed email can
+   * still be invited)
+   */
+  contacts?: EventContact[];
+  /**
+   * Meeting rooms the details' participants field lists under "Rooms and
+   * resources". Defaults to none, which hides that list
+   */
+  rooms?: EventRoom[];
+  /**
+   * Conferencing services the details' "Conferencing" menu offers. Defaults
+   * to Google Meet, Zoom and Microsoft Teams with placeholder links: pass
+   * your own `createConference` to create real meetings
+   */
+  conferenceProviders?: ConferenceProviderOption[];
+  /**
+   * Places the details' location field suggests while typing. Defaults to
+   * none (the typed text is kept as the location)
+   */
+  locationSuggestions?: LocationSuggestion[];
   /** Called after a click-created event is added */
   onEventCreate?: (event: TEvent) => void;
   /** Called after an event is changed (drag, resize, or an edit in the details) */

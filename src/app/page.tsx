@@ -16,7 +16,12 @@ import {
 } from "@/hooks/use-calendar-shortcuts";
 import { useIsClient } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { generateMockEvents } from "@/lib/mock-events";
+import {
+  DEMO_CONTACTS,
+  DEMO_LOCATION_SUGGESTIONS,
+  DEMO_ROOMS,
+  generateMockEvents,
+} from "@/lib/mock-events";
 import {
   AGENDA_DAYS,
   getPeriodStart,
@@ -249,6 +254,9 @@ function PageContent({ isWideLayout }: PageContentProps) {
       onEventsChange={setEvents}
       defaultViewSettings={DEMO_VIEW_SETTINGS}
       calendars={DEMO_CALENDARS}
+      contacts={DEMO_CONTACTS}
+      rooms={DEMO_ROOMS}
+      locationSuggestions={DEMO_LOCATION_SUGGESTIONS}
       createEvent={createDemoEvent}
       onEventSelect={handleEventSelect}
     >

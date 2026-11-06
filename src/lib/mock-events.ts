@@ -4,6 +4,9 @@ import type { Day } from "date-fns";
 import type {
   DetailedCalendarEvent,
   EventColor,
+  EventContact,
+  EventRoom,
+  LocationSuggestion,
 } from "@/components/week-view-types";
 
 /** Weekday the demo weeks start on (Sunday), matching the calendar views. */
@@ -2090,3 +2093,52 @@ export function generateMockEvents(
   const rel = createRelativeDate(today);
   return [...demoEvents(rel), ...routineEvents(rel), ...holidayEvents(today)];
 }
+
+/**
+ * Made-up contacts the demo's participants field suggests. The first ones
+ * are recent, listed before typing.
+ */
+export const DEMO_CONTACTS: EventContact[] = [
+  { name: "Priya Shah", email: "priya@example.com", recent: true },
+  { name: "Alex Rivera", email: "alex@example.com", recent: true },
+  { email: "jordan@example.com", recent: true },
+  { name: "Sam Lee", email: "sam@example.com", recent: true },
+  { name: "Morgan Diaz", email: "morgan.diaz@example.com", recent: true },
+  { name: "Taylor Kim", email: "taylor@example.com" },
+  { name: "Jamie Chen", email: "jamie.chen@example.com" },
+  { name: "Casey Brooks", email: "casey@example.com" },
+  { name: "Riley Park", email: "riley.park@example.com" },
+];
+
+/** Made-up meeting rooms the demo's participants field offers */
+export const DEMO_ROOMS: EventRoom[] = [
+  {
+    id: "room-4b@example.com",
+    name: "Room 4B",
+    location: "5th floor",
+    capacity: 8,
+  },
+  {
+    id: "atlas@example.com",
+    name: "Atlas",
+    location: "3rd floor",
+    capacity: 12,
+  },
+  {
+    id: "phone-booth-2@example.com",
+    name: "Phone Booth 2",
+    location: "3rd floor",
+    capacity: 1,
+  },
+];
+
+/** Public places the demo's location field suggests */
+export const DEMO_LOCATION_SUGGESTIONS: LocationSuggestion[] = [
+  { name: "Central Park", address: "New York, NY, USA" },
+  { name: "Central Park Zoo", address: "East 64th Street, New York, NY, USA" },
+  { name: "Golden Gate Park", address: "San Francisco, CA, USA" },
+  { name: "Hyde Park", address: "London, UK" },
+  { name: "Ibirapuera Park", address: "São Paulo, Brazil" },
+  { name: "Millennium Park", address: "Chicago, IL, USA" },
+  { name: "Stanley Park", address: "Vancouver, BC, Canada" },
+];
