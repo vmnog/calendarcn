@@ -13,9 +13,16 @@ import type {
   EventReminder,
 } from "./week-view-types";
 
+/** Unit shown after a reminder's amount, as in Notion's "10min before" */
+const REMINDER_UNIT_LABELS: Record<EventReminder["unit"], string> = {
+  minutes: "min",
+  hours: "hour",
+  days: "day",
+};
+
 /** "10min", "1hour", "1day" */
 function formatReminderAmount(reminder: EventReminder): string {
-  return `${reminder.amount}${reminder.unit.replace(/s$/, "")}`;
+  return `${reminder.amount}${REMINDER_UNIT_LABELS[reminder.unit]}`;
 }
 
 /**
