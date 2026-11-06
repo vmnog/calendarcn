@@ -789,12 +789,16 @@ export function EventDetailRecurrence<
                     </span>
                   )}
                 </span>
-                <ChevronDown
-                  className={cn(
-                    "size-3.5 shrink-0 opacity-0 group-hover/repeat:opacity-100 group-data-[state=open]/repeat:opacity-100 group-data-popup-open/repeat:opacity-100 group-disabled/repeat:opacity-0",
-                    EVENT_DETAIL_MUTED_CLASS,
-                  )}
-                />
+                {onEventChange && (
+                  // Takes room only while it shows, so a rule at rest gets
+                  // the whole width, as in Notion Calendar
+                  <ChevronDown
+                    className={cn(
+                      "hidden size-4 shrink-0 group-hover/repeat:block group-data-[state=open]/repeat:block group-data-popup-open/repeat:block",
+                      EVENT_DETAIL_MUTED_CLASS,
+                    )}
+                  />
+                )}
               </button>
             </DropdownMenuTrigger>
           </HoverTooltip>
