@@ -181,11 +181,18 @@
       "type": "registry:component",
       "title": "Event Details",
       "description": "Event chips, the detail panel, the details popover and the right-click menu.",
-      "dependencies": ["@floating-ui/react-dom", "date-fns", "lucide-react"],
+      "dependencies": [
+        "@floating-ui/react-dom",
+        "date-fns",
+        "lucide-react",
+        "react-day-picker"
+      ],
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "button",
+        "calendar",
         "dropdown-menu",
+        "popover",
         "switch"
       ],
       "files": [

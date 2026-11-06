@@ -76,6 +76,53 @@ test("Escape closes the type menu first, then the details", async ({
   await expect(event).toBeFocused();
 });
 
+test("the time menu and the date picker set times and days inside the details", async ({
+  page,
+}) => {
+  await calendarEvent(page, "Design Review").click();
+  const details = eventDetails(page);
+  const startTime = details.getByTestId("event-start-time");
+  const endTime = details.getByTestId("event-end-time");
+
+  // The Popover takes focus as it opens and hands it back to the field
+  await startTime.click();
+  const startMenu = page.getByRole("listbox", { name: "Start time" });
+  await expect(startMenu).toBeVisible();
+  await expect(startTime).toBeFocused();
+  await startTime.press("ArrowDown");
+  await expect(startTime).toHaveValue("10:15 AM");
+  await startTime.press("Enter");
+  await expect(startMenu).toHaveCount(0);
+  await expect(endTime).toHaveValue("11:15 AM");
+
+  // A press in the menu sets the time and keeps the details open
+  await endTime.click();
+  await page
+    .getByRole("listbox", { name: "End time" })
+    .getByRole("option", { name: /^11:45 AM/ })
+    .click();
+  await expect(endTime).toHaveValue("11:45 AM");
+  await expect(details).toBeVisible();
+
+  const startDate = details.getByTestId("event-start-date");
+  await startDate.click();
+  const picker = page.locator("[data-event-detail-field-popover]");
+  await picker.locator('[data-day="2026-06-05"]').click();
+  await expect(picker).toHaveCount(0);
+  await expect(startDate).toHaveValue("Fri Jun 5");
+  await expect(details).toBeVisible();
+
+  // Escape closes the menu, not the details
+  await startTime.click();
+  await expect(startMenu).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(startMenu).toHaveCount(0);
+  await expect(details).toBeVisible();
+  // Base UI hands focus back to the field as the menu closes; it stays left
+  await expect(startTime).not.toBeFocused();
+  await expect(startMenu).toHaveCount(0);
+});
+
 test("the all-day switch is blue when checked", async ({ page }) => {
   await calendarEvent(page, "Team Offsite").click();
 
