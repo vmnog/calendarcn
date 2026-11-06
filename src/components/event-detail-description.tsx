@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   EVENT_DETAIL_HOVER_BORDER_CLASS,
   EVENT_DETAIL_INPUT_CLASS,
+  EVENT_DETAIL_LINK_CLASS,
   EVENT_DETAIL_PLACEHOLDER_CLASS,
   EVENT_DETAIL_TEXT_CLASS,
   EventDetailSection,
@@ -26,13 +27,6 @@ const TRAILING_PUNCTUATION_PATTERN = /[.,;:!?'"]+$/;
  * it grows with the text, as Notion's is
  */
 const DESCRIPTION_MIN_LINES = 3;
-
-/**
- * Link text in the details panel: a faint underline that takes the text
- * color on hover, as Notion's links do
- */
-export const EVENT_DETAIL_LINK_CLASS =
-  "underline decoration-[#EEEEEE] decoration-1 underline-offset-2 hover:decoration-current dark:decoration-[#242424]";
 
 /**
  * The description box, read or edited: 8px in from the panel's edges, with

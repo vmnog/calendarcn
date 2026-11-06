@@ -27,33 +27,27 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import {
-  EVENT_DETAIL_LINK_CLASS,
-  findDescriptionUrls,
-} from "./event-detail-description";
+import { useHoverTooltip } from "@/hooks/use-hover-tooltip";
+import { findDescriptionUrls } from "./event-detail-description";
 import {
   EVENT_DETAIL_GROUPED_INPUT_CLASS,
   EVENT_DETAIL_HOVER_BORDER_CLASS,
   EVENT_DETAIL_ICON_CLASS,
   EVENT_DETAIL_INPUT_GROUP_CLASS,
+  EVENT_DETAIL_LINK_CLASS,
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_PLACEHOLDER_CLASS,
   EVENT_DETAIL_SECONDARY_CLASS,
   EVENT_DETAIL_TEXT_CLASS,
   EventDetailPlaceholderRow,
   EventDetailSection,
+  getEventDetailPortalContainer,
 } from "./event-detail-parts";
 import type {
   DetailedCalendarEvent,
   EventAttachment,
   EventDetailSectionProps,
 } from "./week-view-types";
-
-/** How long the pointer rests on a link before its address shows, in ms */
-const TOOLTIP_OPEN_DELAY = 500;
-
-/** Time to move the pointer from a row onto its tooltip, in ms */
-const TOOLTIP_CLOSE_DELAY = 120;
 
 /** How long the copy button shows its check mark, in ms */
 const COPIED_FEEDBACK_DURATION = 1500;
@@ -235,60 +229,6 @@ function FileTypeIcon({ type }: { type: string | undefined }) {
 }
 
 /**
- * Where a floating layer of `element` mounts: inside the dialog, sheet or
- * drawer holding the panel (a modal turns off pointer events on the rest of
- * the page), else the body. The details popover doesn't count: its own
- * bounds would clip a menu beside it, and the body works there.
- */
-function floatingRoot(element: Element): HTMLElement {
-  return (
-    element.closest<HTMLElement>(
-      '[role="dialog"]:not([data-calendar-popover]), [role="alertdialog"]',
-    ) ?? element.ownerDocument.body
-  );
-}
-
-/**
- * Open state of a tooltip that shows after the pointer rests on its
- * trigger, and stays while the pointer moves onto it
- */
-function useHoverTooltip() {
-  const [isOpen, setIsOpen] = React.useState(false);
-  const timerRef = React.useRef<number | null>(null);
-
-  const clearTimer = React.useCallback(() => {
-    if (timerRef.current === null) return;
-    window.clearTimeout(timerRef.current);
-    timerRef.current = null;
-  }, []);
-
-  React.useEffect(() => clearTimer, [clearTimer]);
-
-  /** The pointer entered the trigger */
-  const scheduleOpen = React.useCallback(() => {
-    clearTimer();
-    timerRef.current = window.setTimeout(
-      () => setIsOpen(true),
-      TOOLTIP_OPEN_DELAY,
-    );
-  }, [clearTimer]);
-
-  /** The pointer left the trigger or the tooltip */
-  const scheduleClose = React.useCallback(() => {
-    clearTimer();
-    timerRef.current = window.setTimeout(
-      () => setIsOpen(false),
-      TOOLTIP_CLOSE_DELAY,
-    );
-  }, [clearTimer]);
-
-  /** The pointer reached the tooltip before it closed */
-  const keepOpen = clearTimer;
-
-  return { isOpen, scheduleOpen, scheduleClose, keepOpen };
-}
-
-/**
  * Props for FloatingLayer
  */
 interface FloatingLayerProps extends React.ComponentProps<"div"> {
@@ -308,7 +248,7 @@ function FloatingLayer({ owner, className, ...props }: FloatingLayerProps) {
       className={cn(FLOATING_LAYER_Z_CLASS, className)}
       {...props}
     />,
-    floatingRoot(owner),
+    getEventDetailPortalContainer(owner),
   );
 }
 
