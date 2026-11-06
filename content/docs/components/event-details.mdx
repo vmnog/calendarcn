@@ -39,7 +39,13 @@ function SidePanel() {
 </CalendarProvider>;
 ```
 
-The repeat row's arrows step through a series. In the views' popover they work on their own: the provider finds the selected event's neighbors (`previousInSeries` and `nextInSeries` from `useCalendar()`, `null` at the series' ends) and `showSeriesOccurrence` selects one and moves to it. An occurrence your events have no event for yet is added as a copy of the selected event, through `onEventsChange`. Pass the same to a panel you render yourself:
+Leave out `onEventChange` to show an event read-only, for example one from a calendar people can only view. The title and the other fields don't accept typing and the menus that change the event are disabled, so no edit looks saved when it isn't.
+
+```tsx
+<EventDetailPanel event={event} />
+```
+
+The repeat row's arrows step through a series. In the views' popover they work on their own: the provider finds the selected event's neighbors (`previousInSeries` and `nextInSeries` from `useCalendar()`, `null` at the series' ends) and `showSeriesOccurrence` selects one and moves to it. An occurrence your events have no event for yet is added as a copy of the selected event, through `onEventsChange` and `onEventCreate`. Pass the same to a panel you render yourself:
 
 ```tsx
 const { previousInSeries, nextInSeries, showSeriesOccurrence } =
@@ -75,6 +81,57 @@ Outside a provider, `findSeriesOccurrence(events, event, "next")` (from `@/lib/r
 
 Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. It gets the selected event, a `close` function and `isNew`, which is true right after the event was created by clicking an empty slot, so you can focus its title. Render a component from it when you need hooks: `useCalendar()` to save edits, `useCalendarConfig()` to format times like the calendar does.
 
+## Build your own panel
+
+`EventDetailPanel` is one component per section, and they install with it. Render the ones you need, in your own order, to build a smaller panel or a different layout. Each section takes `EventDetailSectionProps`: the `event`, and `onEventChange`, without which the section is read-only.
+
+```tsx
+import type { EventDetailSectionProps } from "@/components/calendar-types";
+import { EventDetailParticipants } from "@/components/event-detail-participants";
+import {
+  EventDetailDivider,
+  EventDetailGroup,
+} from "@/components/event-detail-parts";
+import { EventDetailTime } from "@/components/event-detail-time";
+
+export function CompactDetails({
+  event,
+  onEventChange,
+}: EventDetailSectionProps) {
+  return (
+    <div className="flex flex-col text-sm font-medium">
+      <EventDetailGroup name="when">
+        <EventDetailTime event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
+      <EventDetailDivider />
+      <EventDetailGroup name="who">
+        <EventDetailParticipants event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
+    </div>
+  );
+}
+```
+
+| Import from                              | Exports                                                                                                                             | What it is                                                                                                                                                                                         |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@/components/event-detail-time`         | `EventDetailTime`, `EventDetailAllDay`                                                                                              | Start and end times and dates; the all-day switch.                                                                                                                                                 |
+| `@/components/event-detail-timezone`     | `EventDetailTimezone`                                                                                                               | The time zone.                                                                                                                                                                                     |
+| `@/components/event-detail-recurrence`   | `EventDetailRecurrence`                                                                                                             | The repeat rule, with arrows that step through the series when it repeats: `onPrevious` and `onNext` show the neighbors (`previousInSeries` / `nextInSeries`); leave one out to disable its arrow. |
+| `@/components/event-detail-participants` | `EventDetailParticipants`                                                                                                           | Guests and rooms.                                                                                                                                                                                  |
+| `@/components/event-detail-conferencing` | `EventDetailConferencing`                                                                                                           | The video call.                                                                                                                                                                                    |
+| `@/components/event-detail-ai-notes`     | `EventDetailAiNotes`                                                                                                                | Whether AI meeting notes are on.                                                                                                                                                                   |
+| `@/components/event-detail-location`     | `EventDetailLocation`                                                                                                               | The location.                                                                                                                                                                                      |
+| `@/components/event-detail-links`        | `EventDetailLinks`                                                                                                                  | Links and attached files.                                                                                                                                                                          |
+| `@/components/event-detail-description`  | `EventDetailDescription`                                                                                                            | The description.                                                                                                                                                                                   |
+| `@/components/event-detail-calendar`     | `EventDetailCalendar`                                                                                                               | The calendar and its color.                                                                                                                                                                        |
+| `@/components/event-detail-availability` | `EventDetailAvailability`                                                                                                           | Busy or free, and visibility.                                                                                                                                                                      |
+| `@/components/event-detail-reminders`    | `EventDetailReminders`                                                                                                              | Reminders.                                                                                                                                                                                         |
+| `@/components/event-detail-parts`        | `EventDetailGroup`, `EventDetailDivider`, `EventDetailSection`, `EventDetailRow`, `EventDetailPlaceholderRow`, `EventDetailTooltip` | Layout: groups of sections between dividers, rows on the panel's icon column, Notion's muted placeholder row, and the hover tooltip.                                                               |
+| `@/components/event-detail-parts`        | `EVENT_DETAIL_*_CLASS`, `PANEL_*_CLASS`, `ROW_BOX_CLASS`                                                                            | The panel's colors and the styles of its inputs, rows and menus, in light and dark.                                                                                                                |
+| `@/components/event-detail-parts`        | `closeMenuOnEscape`, `stopEscapePropagation`, `getPanelMenuSideOffset`, `getEventDetailPortalContainer`                             | Menu helpers: <Kbd>Esc</Kbd> closes a menu without deselecting the event, menus line up with the panel's edge, and lists portal into the dialog around the panel, if any.                          |
+| `@/hooks/use-inline-edit`                | `useInlineEdit`                                                                                                                     | A text field that edits in place: <Kbd>Enter</Kbd> or blur commits, <Kbd>Esc</Kbd> restores the value from before, and `onCommit` can reject a value by returning `null`.                          |
+| `@/hooks/use-hover-tooltip`              | `useHoverTooltip`                                                                                                                   | Open state for a tooltip that shows after the pointer rests on its trigger and stays while the pointer moves onto it.                                                                              |
+
 ## API Reference
 
 ### EventDetailPanel
@@ -93,7 +150,7 @@ Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. I
       name: "onEventChange",
       type: "(event: TEvent) => void",
       description:
-        "Called with the edited event: on every keystroke in the title, and when a time, date or option is committed. Without it, edits are not saved.",
+        "Called with the edited event: on every keystroke in the title, and when a time, date or option is committed. Without it the panel is read-only: nothing accepts typing and the menus that change the event are disabled.",
     },
     {
       name: "headerActions",
