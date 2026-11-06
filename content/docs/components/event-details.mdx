@@ -39,10 +39,24 @@ function SidePanel() {
 </CalendarProvider>;
 ```
 
+The repeat row's arrows step through a series. `findSeriesOccurrence` (from `@/lib/recurrence`) finds the previous or next occurrence in your events: the event when you have one for it, else only its start, so you can create it with `createSeriesOccurrence`:
+
+```tsx
+const next = findSeriesOccurrence(events, selectedEvent, "next")?.event;
+
+<EventDetailPanel
+  event={selectedEvent}
+  onEventChange={updateEvent}
+  onNextWeek={next ? () => selectEvent(next.id) : undefined}
+/>;
+```
+
 ## Features
 
 - Edit the title in place. With `onEventChange` wired to the calendar, the event updates as you type.
 - Edit the start and end times and dates. <Kbd>Enter</Kbd> saves, <Kbd>Esc</Kbd> restores the old value.
+- Pick the event's time zone from a searchable list of every zone, with recent and popular ones first. The times keep their wall-clock value in the new zone.
+- Set a repeat rule from Notion's presets or the custom dialog (every N days, weeks, months or years, on chosen days, until a date or N times).
 - Fields the event doesn't set (participants, conferencing, location, links, description, reminders) show Notion's muted placeholders.
 - Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
 
@@ -93,13 +107,13 @@ Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. I
       name: "onPrevWeek",
       type: "() => void",
       description:
-        "Called by the previous arrow on a recurring event's repeat row.",
+        "Shows the previous event of a repeating series (the repeat row's ‹). Leave it out at the start of the series to disable the arrow; `findSeriesOccurrence` finds the occurrence.",
     },
     {
       name: "onNextWeek",
       type: "() => void",
       description:
-        "Called by the next arrow on a recurring event's repeat row.",
+        "Shows the next event of a repeating series (the repeat row's ›). Leave it out at the end of the series to disable the arrow.",
     },
   ]}
 />
@@ -155,7 +169,7 @@ Passed to `renderEventDetails` on `CalendarProvider`.
       name: "timeZone",
       type: "string",
       description:
-        'IANA time zone, e.g. "America/Sao_Paulo", shown as "GMT-3 Sao Paulo". Defaults to the viewer\'s zone.',
+        'IANA time zone, e.g. "America/Sao_Paulo", shown as "GMT−3 Sao Paulo". Defaults to the viewer\'s zone. Picking another zone in the details keeps the event\'s wall-clock time.',
     },
     {
       name: "timezone",

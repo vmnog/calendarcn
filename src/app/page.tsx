@@ -23,6 +23,8 @@ import {
   pickRandomEventColor,
 } from "@/lib/event-utils";
 import { parseIcs, toIcs } from "@/lib/ics";
+import { createSeriesOccurrence, findSeriesOccurrence } from "@/lib/recurrence";
+import type { SeriesOccurrence } from "@/lib/recurrence";
 import { AgendaView } from "@/components/agenda-view";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { CommandMenu } from "@/components/command-menu";
@@ -288,6 +290,7 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
     goToDate,
     switchView,
     setNumberOfDays,
+    selectEvent,
     updateEvent,
     toggleWeekends,
     toggleDeclinedEvents,
@@ -354,6 +357,50 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
       );
     },
     [onImportEvents, goToDate, view, weekStartsOn, numberOfDays],
+  );
+
+  /** The selected event's series neighbors, for the repeat row's arrows */
+  const previousInSeries = React.useMemo(
+    () =>
+      selectedEvent
+        ? findSeriesOccurrence(events, selectedEvent, "previous")
+        : null,
+    [events, selectedEvent],
+  );
+  const nextInSeries = React.useMemo(
+    () =>
+      selectedEvent
+        ? findSeriesOccurrence(events, selectedEvent, "next")
+        : null,
+    [events, selectedEvent],
+  );
+
+  /**
+   * Selects an occurrence of the selected event's series and shows its
+   * period. An occurrence the demo has no event for (a rule set in the
+   * details) is added first, as a copy of the selected event.
+   */
+  const showSeriesOccurrence = React.useCallback(
+    (occurrence: SeriesOccurrence<DetailedCalendarEvent>) => {
+      if (!selectedEvent) return;
+      const target =
+        occurrence.event ??
+        createSeriesOccurrence(selectedEvent, occurrence.start);
+      if (!occurrence.event) onImportEvents([target]);
+      selectEvent(target.id);
+      goToDate(
+        getPeriodStart(occurrence.start, view, weekStartsOn, numberOfDays),
+      );
+    },
+    [
+      selectedEvent,
+      onImportEvents,
+      selectEvent,
+      goToDate,
+      view,
+      weekStartsOn,
+      numberOfDays,
+    ],
   );
 
   const exportIcs = React.useCallback(() => {
@@ -590,8 +637,14 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
         events={events}
         selectedEvent={selectedEvent}
         onEventChange={updateEvent}
-        onPrevWeek={goToPrev}
-        onNextWeek={goToNext}
+        onPrevWeek={
+          previousInSeries
+            ? () => showSeriesOccurrence(previousInSeries)
+            : undefined
+        }
+        onNextWeek={
+          nextInSeries ? () => showSeriesOccurrence(nextInSeries) : undefined
+        }
       />
     </>
   );

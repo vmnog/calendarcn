@@ -85,6 +85,44 @@ test("the all-day switch is blue when checked", async ({ page }) => {
   await expect(allDay).toHaveCSS("background-color", SWITCH_CHECKED_BACKGROUND);
 });
 
+test("the time zone and repeat rows edit the event", async ({ page }) => {
+  await calendarEvent(page, "Design Review").click();
+  const details = eventDetails(page);
+  await settle(details);
+  await details.getByText("Time zone", { exact: true }).click();
+
+  // The zone list renders beside the details and keeps them open. Toronto
+  // shares New York's offset, so the event stays where it is.
+  const timezone = details.locator('[data-section="timezone"]');
+  await timezone.getByRole("button").click();
+  const input = details.getByRole("combobox", { name: "Time zone" });
+  await input.fill("toronto");
+  await page
+    .getByRole("listbox", { name: "Time zones" })
+    .getByRole("option", { name: /Toronto$/ })
+    .click();
+  // Escape would close the details here (no layer is open): Tab leaves the field
+  await expect(input).toHaveValue("Toronto");
+  await input.press("Tab");
+  await expect(timezone).toHaveText("GMT−4Toronto");
+
+  // Base UI's menu and dialog: a preset, then the custom rule
+  const recurrence = details.locator('[data-section="recurrence"]');
+  await recurrence.getByRole("button", { name: /^Repeat:/ }).click();
+  await page.getByRole("menuitem", { name: "Every week on Thu" }).click();
+  await expect(recurrence).toContainText("Every week on Thu");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+
+  await recurrence.getByRole("button", { name: /^Repeat:/ }).click();
+  await page.getByRole("menuitem", { name: "Custom…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Repeat" });
+  await dialog.getByRole("button", { name: "Monday" }).click();
+  await dialog.getByRole("button", { name: "Done" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(recurrence).toContainText("Every week on Mon, Thu");
+  await expect(details).toBeVisible();
+});
+
 test("the details open in month and agenda views", async ({ page }) => {
   const details = eventDetails(page);
 

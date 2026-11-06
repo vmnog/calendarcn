@@ -185,6 +185,8 @@
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "button",
+        "command",
+        "dialog",
         "dropdown-menu",
         "switch"
       ],
@@ -268,6 +270,14 @@
         {
           "path": "src/hooks/use-hover-tooltip.ts",
           "type": "registry:hook"
+        },
+        {
+          "path": "src/lib/recurrence.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/time-zones.ts",
+          "type": "registry:lib"
         }
       ]
     },
