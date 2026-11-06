@@ -38,7 +38,12 @@ import {
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_MENU_ITEM_CLASS,
   EVENT_DETAIL_MUTED_CLASS,
+  EVENT_DETAIL_PLACEHOLDER_CLASS,
+  EVENT_DETAIL_ROW_HEIGHT_CLASS,
+  EVENT_DETAIL_SECONDARY_CLASS,
+  EVENT_DETAIL_TEXT_CLASS,
   EventDetailDivider,
+  EventDetailGroup,
 } from "./event-detail-parts";
 import { EventDetailParticipants } from "./event-detail-participants";
 import { EventDetailRecurrence } from "./event-detail-recurrence";
@@ -146,15 +151,19 @@ function EventKindHelpIcon({ tooltip }: { tooltip?: string }) {
  */
 function EventDetailOptionsRow({ onExpand }: { onExpand: () => void }) {
   const labelClass = cn(
-    "text-xs",
-    EVENT_DETAIL_MUTED_CLASS,
-    "dark:group-hover/options:text-[#636363]",
+    EVENT_DETAIL_PLACEHOLDER_CLASS,
+    "group-hover/options:text-[#A5A5A5] dark:group-hover/options:text-[#636363]",
   );
 
   return (
-    <div className="-mt-2 flex items-center pl-8">
+    <div
+      className={cn(
+        "flex items-center pl-[36px]",
+        EVENT_DETAIL_ROW_HEIGHT_CLASS,
+      )}
+    >
       <div
-        className="group/options flex cursor-default items-center gap-4 rounded-sm px-2 py-1.5 hover:bg-[#E8E8E4] dark:hover:bg-[#242424]"
+        className="group/options flex h-[31px] cursor-default items-center gap-[18px] rounded-md px-[9px] hover:bg-[#F5F5F5] dark:hover:bg-[#242424]"
         onClick={onExpand}
       >
         <span className={labelClass}>All-day</span>
@@ -231,9 +240,19 @@ export function EventDetailPanel<
     Boolean(event.recurrenceRule ?? event.recurrence ?? event.timeZone);
 
   return (
-    <div className="flex flex-col gap-3 py-3">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4">
+    <div
+      className={cn(
+        "flex flex-col pt-3 text-sm font-medium",
+        EVENT_DETAIL_TEXT_CLASS,
+      )}
+    >
+      {/* Header: kind menu, "..." menu and the host's actions */}
+      <div
+        className={cn(
+          "flex items-center justify-between pr-3 pl-2",
+          EVENT_DETAIL_ROW_HEIGHT_CLASS,
+        )}
+      >
         <DropdownMenu
           open={kindMenuOpen}
           onOpenChange={(open) => {
@@ -245,15 +264,15 @@ export function EventDetailPanel<
             <button
               type="button"
               className={cn(
-                "flex items-center text-xs font-medium px-2.5 py-1.5 -ml-2.5 gap-1.5",
+                "flex h-7 items-center gap-[7px] px-[7px]",
                 EVENT_DETAIL_HOVER_BORDER_CLASS,
-                kindMenuOpen ? "bg-[#252525] text-white" : "text-foreground",
+                kindMenuOpen && "bg-[#252525] text-white",
               )}
             >
               {EVENT_KIND_LABELS[kind]}
               <ChevronDown
                 className={cn(
-                  "size-3.5",
+                  "size-4",
                   kindMenuOpen ? "text-[#595959]" : EVENT_DETAIL_MUTED_CLASS,
                 )}
               />
@@ -303,10 +322,10 @@ export function EventDetailPanel<
                 className={cn(
                   "size-7",
                   EVENT_DETAIL_ICON_BUTTON_CLASS,
-                  EVENT_DETAIL_MUTED_CLASS,
+                  EVENT_DETAIL_SECONDARY_CLASS,
                 )}
               >
-                <MoreHorizontal className="size-4" />
+                <MoreHorizontal className="size-[18px]" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -350,62 +369,78 @@ export function EventDetailPanel<
       </div>
 
       {/* Title */}
-      <input
-        ref={titleRef}
-        {...title.inputProps}
-        type="text"
-        placeholder="Title"
-        className={cn(
-          "text-foreground placeholder:text-[#C7C5C1] dark:placeholder:text-[#595959] mx-2 px-2 py-1.5 text-xs",
-          EVENT_DETAIL_INPUT_CLASS,
-        )}
-      />
+      <div className="mt-1.5 flex flex-col px-2 pb-2">
+        <input
+          ref={titleRef}
+          {...title.inputProps}
+          type="text"
+          placeholder="Title"
+          className={cn(
+            "h-[35px] px-[7px] placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",
+            EVENT_DETAIL_INPUT_CLASS,
+          )}
+        />
+      </div>
 
       <EventDetailDivider />
 
       {/* When: time and date, then all-day, time zone and repeat */}
-      <EventDetailTime event={event} onEventChange={onEventChange} />
-      {showOptionRows ? (
-        <>
-          <EventDetailAllDay event={event} onEventChange={onEventChange} />
-          <EventDetailTimezone event={event} onEventChange={onEventChange} />
-          <EventDetailRecurrence
-            event={event}
-            onEventChange={onEventChange}
-            onPrevious={onPrevWeek}
-            onNext={onNextWeek}
-          />
-        </>
-      ) : (
-        <EventDetailOptionsRow onExpand={() => setOptionsExpanded(true)} />
-      )}
+      <EventDetailGroup name="when">
+        <EventDetailTime event={event} onEventChange={onEventChange} />
+        {showOptionRows ? (
+          <>
+            <div
+              className={cn(
+                "flex flex-col justify-center",
+                EVENT_DETAIL_ROW_HEIGHT_CLASS,
+              )}
+            >
+              <EventDetailAllDay event={event} onEventChange={onEventChange} />
+            </div>
+            <EventDetailTimezone event={event} onEventChange={onEventChange} />
+            <EventDetailRecurrence
+              event={event}
+              onEventChange={onEventChange}
+              onPrevious={onPrevWeek}
+              onNext={onNextWeek}
+            />
+          </>
+        ) : (
+          <EventDetailOptionsRow onExpand={() => setOptionsExpanded(true)} />
+        )}
+      </EventDetailGroup>
 
       <EventDetailDivider />
 
       {/* Who and where */}
-      <div className="flex flex-col">
+      <EventDetailGroup name="who">
         <EventDetailParticipants event={event} onEventChange={onEventChange} />
         <EventDetailConferencing event={event} onEventChange={onEventChange} />
         <EventDetailAiNotes event={event} onEventChange={onEventChange} />
         <EventDetailLocation event={event} onEventChange={onEventChange} />
-      </div>
+      </EventDetailGroup>
 
       <EventDetailDivider />
 
-      <EventDetailLinks event={event} onEventChange={onEventChange} />
+      <EventDetailGroup name="links">
+        <EventDetailLinks event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
 
       <EventDetailDivider />
 
-      <EventDetailDescription event={event} onEventChange={onEventChange} />
+      {/* At least one 35px row, empty or not */}
+      <EventDetailGroup name="description" className="min-h-[51px]">
+        <EventDetailDescription event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
 
       <EventDetailDivider />
 
       {/* Calendar, availability and reminders */}
-      <div className="flex flex-col">
+      <EventDetailGroup name="calendar">
         <EventDetailCalendar event={event} onEventChange={onEventChange} />
         <EventDetailAvailability event={event} onEventChange={onEventChange} />
         <EventDetailReminders event={event} onEventChange={onEventChange} />
-      </div>
+      </EventDetailGroup>
     </div>
   );
 }

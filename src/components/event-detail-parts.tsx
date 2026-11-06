@@ -4,8 +4,22 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/** Muted text and icons: placeholders, labels, secondary values */
+/** Main text: values, the title, the header's kind (Notion: #D4D4D4 dark) */
+export const EVENT_DETAIL_TEXT_CLASS = "text-[#32302C] dark:text-[#D4D4D4]";
+
+/** Secondary text: a duration, an offset ("GMT-3"), a rule's " on Thu", "before" */
+export const EVENT_DETAIL_SECONDARY_CLASS =
+  "text-[#787774] dark:text-[#7F7F7F]";
+
+/** Muted icons: a row's leading icon, the arrow between times, chevrons */
 export const EVENT_DETAIL_MUTED_CLASS = "text-[#C7C5C1] dark:text-[#595959]";
+
+/** Placeholder text of an empty field ("Location", "Description") */
+export const EVENT_DETAIL_PLACEHOLDER_CLASS =
+  "text-[#ABABA9] dark:text-[#595959]";
+
+/** Height of one row of the panel (Notion: 35px, at 14px medium text) */
+export const EVENT_DETAIL_ROW_HEIGHT_CLASS = "min-h-[35px]";
 
 /** Size and color of a row's leading icon */
 export const EVENT_DETAIL_ICON_CLASS = cn(
@@ -79,7 +93,39 @@ export function EventDetailSection({
  */
 export function EventDetailDivider({ className }: { className?: string }) {
   return (
-    <div role="separator" className={cn("border-border border-t", className)} />
+    <div
+      role="separator"
+      className={cn(
+        "border-t border-[#EEEEEE] dark:border-[#262626]",
+        className,
+      )}
+    />
+  );
+}
+
+/**
+ * Props for EventDetailGroup
+ */
+interface EventDetailGroupProps extends React.ComponentProps<"div"> {
+  /** Names the group in `data-group`, e.g. "when" or "calendar" */
+  name: string;
+}
+
+/**
+ * Sections between two dividers, with Notion's 8px above the first row and
+ * below the last
+ */
+export function EventDetailGroup({
+  name,
+  className,
+  ...props
+}: EventDetailGroupProps) {
+  return (
+    <div
+      data-group={name}
+      className={cn("flex flex-col py-2", className)}
+      {...props}
+    />
   );
 }
 
@@ -100,9 +146,10 @@ interface EventDetailRowProps extends Omit<
 }
 
 /**
- * A row with the icon column: a 16px icon (or `leading`), the content
- * aligned after it, and optional `actions` at the end. Every row of the
- * panel lines its content up on the same column.
+ * A row with the icon column: a 16px icon (or `leading`) centered 26px from
+ * the panel's left edge, the content from 45px, and optional `actions` at
+ * the end. Every row of the panel lines its content up on the same column.
+ * Text size and weight come from the panel (14px medium).
  */
 export function EventDetailRow({
   icon: Icon,
@@ -114,7 +161,11 @@ export function EventDetailRow({
 }: EventDetailRowProps) {
   return (
     <div
-      className={cn("flex min-h-8 items-center gap-3 px-4 text-xs", className)}
+      className={cn(
+        "flex items-center gap-[11px] pr-4 pl-[18px]",
+        EVENT_DETAIL_ROW_HEIGHT_CLASS,
+        className,
+      )}
       {...props}
     >
       <span className="flex w-4 shrink-0 items-center justify-center">
@@ -140,7 +191,7 @@ interface EventDetailPlaceholderRowProps {
 }
 
 /**
- * Notion's empty field: muted icon and muted label. A section shows it
+ * Notion's empty field: muted icon and placeholder label. A section shows it
  * until its field is set.
  */
 export function EventDetailPlaceholderRow({
@@ -149,7 +200,9 @@ export function EventDetailPlaceholderRow({
   onClick,
   className,
 }: EventDetailPlaceholderRowProps) {
-  const content = <span className={EVENT_DETAIL_MUTED_CLASS}>{label}</span>;
+  const content = (
+    <span className={EVENT_DETAIL_PLACEHOLDER_CLASS}>{label}</span>
+  );
 
   if (!onClick) {
     return (
