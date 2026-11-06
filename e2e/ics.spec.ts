@@ -124,7 +124,10 @@ test.describe("parseIcs", () => {
     expect(birthday.start).toEqual(new Date(2026, 5, 5));
     expect(birthday.end).toEqual(new Date(2026, 5, 5));
     expect(birthday.recurrence).toBe("FREQ=YEARLY");
-    expect(birthday.reminders).toEqual([{ amount: 15, unit: "hours" }]);
+    // Apple's all-day default, -PT15H: the day before at 9 AM
+    expect(birthday.reminders).toEqual([
+      { amount: 1, unit: "days", time: { hours: 9, minutes: 0 } },
+    ]);
 
     // December: EST, UTC-5
     const dentist = findEvent(events, "E1F2A3B4-C5D6-4E7F-8A9B-0C1D2E3F4A5B");
@@ -237,7 +240,7 @@ test.describe("parseIcs", () => {
     // Alarms after the start or relative to the end are skipped
     expect(byId("alarms").title).toBe("Alarms");
     expect(byId("alarms").reminders).toEqual([
-      { amount: 7, unit: "days" },
+      { amount: 1, unit: "weeks" },
       { amount: 2, unit: "hours" },
       { amount: 0, unit: "minutes" },
     ]);
@@ -361,11 +364,19 @@ test.describe("toIcs", () => {
       "TRIGGER:-PT900M",
       "TRIGGER:PT510M",
     ]);
-    // A week reads back as the same moment, in days
-    expect(parseIcs(ics)[0].reminders?.at(-1)).toEqual({
-      amount: 7,
-      unit: "days",
-    });
+    // Every reminder reads back as written: weeks as weeks, and an all-day
+    // reminder with its day and time of day
+    const [review, offsite] = parseIcs(ics);
+    expect(review.reminders).toEqual([
+      { amount: 0, unit: "minutes" },
+      { amount: 2, unit: "hours" },
+      { amount: 3, unit: "days" },
+      { amount: 1, unit: "weeks" },
+    ]);
+    expect(offsite.reminders).toEqual([
+      { amount: 1, unit: "days", time: { hours: 9, minutes: 0 } },
+      { amount: 0, unit: "days", time: { hours: 8, minutes: 30 } },
+    ]);
   });
 
   test("leaves out recurrence that isn't a rule", () => {
