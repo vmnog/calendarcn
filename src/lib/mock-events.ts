@@ -4,7 +4,6 @@ import type { Day } from "date-fns";
 import type {
   DetailedCalendarEvent,
   EventColor,
-  EventReminder,
 } from "@/components/week-view-types";
 
 /** Weekday the demo weeks start on (Sunday), matching the calendar views. */
@@ -31,17 +30,11 @@ function createRelativeDate(today: Date): RelativeDate {
   };
 }
 
-interface EventOpts {
-  isAllDay?: boolean;
-  description?: string;
-  location?: string;
-  timezone?: string;
-  recurrence?: string;
-  reminders?: EventReminder[];
-  status?: "busy" | "free";
-  visibility?: "default" | "public" | "private";
-  calendarEmail?: string;
-}
+/** Every detail field an event can set besides the ones `ev()` takes */
+type EventOpts = Omit<
+  DetailedCalendarEvent,
+  "id" | "title" | "start" | "end" | "color" | "calendarId"
+>;
 
 function ev(
   id: string,
@@ -1890,6 +1883,91 @@ function demoEvents(rel: RelativeDate): DetailedCalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
+
+    // The details panel with every field set, and with none (Saturday)
+    ev(
+      "panel-every-field",
+      "Launch Review",
+      rel(6, 10),
+      rel(6, 11, 30),
+      "green",
+      "Work",
+      {
+        kind: "event",
+        description:
+          "Walk through the launch checklist, then sign off on the release notes.",
+        location: "Room 4B, 5th floor",
+        timeZone: "America/Sao_Paulo",
+        recurrenceRule: {
+          frequency: "weekly",
+          interval: 2,
+          weekdays: [6],
+          end: { type: "after", count: 6 },
+        },
+        participants: [
+          {
+            name: "Alex Rivera",
+            email: "alex@example.com",
+            response: "accepted",
+            organizer: true,
+          },
+          {
+            name: "Priya Shah",
+            email: "priya@example.com",
+            response: "tentative",
+          },
+          {
+            name: "Sam Lee",
+            email: "sam@example.com",
+            response: "needs-action",
+            optional: true,
+          },
+          { email: "jordan@example.com", response: "declined" },
+        ],
+        rooms: [
+          {
+            id: "room-4b@example.com",
+            name: "Room 4B",
+            location: "5th floor",
+            capacity: 8,
+            response: "accepted",
+          },
+        ],
+        conference: {
+          provider: "google-meet",
+          url: "https://meet.google.com/abc-defg-hij",
+          meetingId: "abc-defg-hij",
+        },
+        aiMeetingNotes: true,
+        links: [
+          {
+            url: "https://example.com/launch-checklist",
+            title: "Launch checklist",
+          },
+        ],
+        attachments: [
+          {
+            name: "release-notes.pdf",
+            url: "https://example.com/release-notes.pdf",
+            size: 248_000,
+            type: "application/pdf",
+          },
+        ],
+        reminders: [
+          { amount: 10, unit: "minutes" },
+          { amount: 1, unit: "hours" },
+        ],
+        status: "busy",
+        visibility: "private",
+        calendarEmail: "me@vmnog.com",
+      },
+    ),
+    {
+      id: "panel-no-fields",
+      title: "Quick Sync",
+      start: rel(6, 14),
+      end: rel(6, 14, 30),
+    },
 
     // Week 1 (days 7 to 13)
     ev("may32", "Roadmap Sync", rel(8, 14), rel(8, 15), "blue", "Work", {

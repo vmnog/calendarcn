@@ -43,7 +43,7 @@ function SidePanel() {
 
 - Edit the title in place. With `onEventChange` wired to the calendar, the event updates as you type.
 - Edit the start and end times and dates. <Kbd>Enter</Kbd> saves, <Kbd>Esc</Kbd> restores the old value.
-- Fields the event doesn't set (location, description, reminders) show placeholders.
+- Fields the event doesn't set (participants, conferencing, location, links, description, reminders) show Notion's muted placeholders.
 - Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
 
 ## Custom details
@@ -134,39 +134,91 @@ Passed to `renderEventDetails` on `CalendarProvider`.
   nameHeader="Field"
   rows={[
     {
+      name: "kind",
+      type: '"event" | "focus-time" | "out-of-office" | "birthday"',
+      description: 'Kind picked in the header menu. Defaults to "event".',
+    },
+    {
       name: "calendarId",
       type: "string",
       description:
         "Calendar the event belongs to, an `id` from the provider's `calendars`.",
     },
+    {
+      name: "calendarEmail",
+      type: "string",
+      description: "Account email shown beside the calendar.",
+    },
     { name: "description", type: "string", description: "Free-text notes." },
     { name: "location", type: "string", description: "Where it happens." },
+    {
+      name: "timeZone",
+      type: "string",
+      description:
+        'IANA time zone, e.g. "America/Sao_Paulo", shown as "GMT-3 Sao Paulo". Defaults to the viewer\'s zone.',
+    },
     {
       name: "timezone",
       type: "string",
       description:
-        'Time zone label, e.g. "GMT-3 Sao Paulo". Defaults to the viewer\'s zone.',
+        'Deprecated: a time zone label, e.g. "GMT-3 Sao Paulo", shown when `timeZone` is not set.',
+    },
+    {
+      name: "recurrenceRule",
+      type: "RecurrenceRule",
+      description:
+        'Repeat rule: `frequency`, `interval`, `weekdays`, `monthlyBy` and `end`. Read as "Every 2 weeks on Mon, Thu".',
     },
     {
       name: "recurrence",
       type: "string",
-      description: 'Repeat rule as display text, e.g. "Every week on Thu".',
+      description:
+        'Repeat rule as display text, e.g. "Every week on Thu", or an RRULE (from `.ics` import). Shown when `recurrenceRule` is not set.',
+    },
+    {
+      name: "participants",
+      type: "EventParticipant[]",
+      description:
+        "Guests: `email`, `name`, `response` (accepted, declined, tentative, needs-action), `organizer`, `optional`.",
+    },
+    {
+      name: "rooms",
+      type: "EventRoom[]",
+      description:
+        "Meeting rooms: `id`, `name`, `location`, `capacity`, `response`.",
+    },
+    {
+      name: "conference",
+      type: "EventConference",
+      description:
+        'Video call: `provider` ("google-meet", "zoom", "microsoft-teams" or "other"), `url`, `meetingId`.',
+    },
+    {
+      name: "aiMeetingNotes",
+      type: "boolean",
+      description: "Whether AI meeting notes are taken.",
+    },
+    {
+      name: "links",
+      type: "{ url: string; title?: string }[]",
+      description: "Links attached to the event.",
+    },
+    {
+      name: "attachments",
+      type: "{ name: string; url: string; size?: number; type?: string }[]",
+      description: "Files attached to the event (size in bytes, MIME type).",
     },
     {
       name: "reminders",
-      type: '{ amount: number; unit: "minutes" | "hours" | "days" }[]',
-      description: "Reminders before the event.",
+      type: '{ amount: number; unit: "minutes" | "hours" | "days"; time?: { hours: number; minutes: number } }[]',
+      description:
+        "Reminders before the event. `time` is the time of day for all-day events.",
     },
     { name: "status", type: '"busy" | "free"', description: "Busy or free." },
     {
       name: "visibility",
       type: '"default" | "public" | "private"',
       description: "Visibility setting.",
-    },
-    {
-      name: "calendarEmail",
-      type: "string",
-      description: "Account email shown beside the calendar.",
     },
   ]}
 />
