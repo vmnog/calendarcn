@@ -145,6 +145,41 @@ test("the time zone and repeat rows edit the event", async ({ page }) => {
   );
 });
 
+test("an occurrence the series arrows add is reported to onEventCreate", async ({
+  page,
+}) => {
+  // /series: a weekly "Standup" on Thursday, June 4, the ids onEventCreate
+  // reports listed above the calendar
+  await page.goto("/series");
+  const created = page.getByLabel("Created events");
+  await calendarEvent(page, "Standup").click();
+  const details = eventDetails(page);
+  const recurrence = details.locator('[data-section="recurrence"]');
+  const next = recurrence.getByRole("button", {
+    name: "Go to next event in this series",
+  });
+  const previous = recurrence.getByRole("button", {
+    name: "Go to previous event in this series",
+  });
+
+  await next.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 11",
+  );
+  await expect(created).toHaveText("standup-2026-06-11");
+
+  // Opening it again reports nothing new
+  await previous.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 4",
+  );
+  await next.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 11",
+  );
+  await expect(created).toHaveText("standup-2026-06-11");
+});
+
 test("the details open in month and agenda views", async ({ page }) => {
   const details = eventDetails(page);
 

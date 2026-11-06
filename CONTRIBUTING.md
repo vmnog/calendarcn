@@ -76,6 +76,8 @@ src/
 ├── hooks/                        # Drag, resize, keyboard, scroll and gesture hooks
 └── lib/
     ├── event-utils.ts            # Event positioning and filtering
+    ├── recurrence.ts             # Repeat rules: RRULE, labels, series occurrences
+    ├── time-zones.ts             # Time zone list, offsets and zone changes
     ├── mock-events.ts            # Demo event data
     ├── sample-events.ts          # Docs example event data
     └── utils.ts                  # General utilities (cn)

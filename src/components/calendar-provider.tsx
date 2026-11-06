@@ -596,7 +596,10 @@ function CalendarStateProvider({
         // An occurrence opened before (and maybe moved or renamed since)
         // keeps its edits rather than being replaced by a fresh copy
         const opened = eventsRef.current.find((e) => e.id === copy.id);
-        if (!opened) setEvents((prev) => [...prev, copy]);
+        if (!opened) {
+          setEvents((prev) => [...prev, copy]);
+          onEventCreate?.(copy);
+        }
         target = opened ?? copy;
       }
       selectEvent(target.id);
@@ -617,6 +620,7 @@ function CalendarStateProvider({
     [
       selectedEvent,
       setEvents,
+      onEventCreate,
       selectEvent,
       view,
       displayMonth,

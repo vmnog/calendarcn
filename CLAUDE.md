@@ -28,6 +28,8 @@ src/
 ├── hooks/                # Custom hooks (drag, resize, all-day-resize, scroll)
 └── lib/
     ├── event-utils.ts    # Event positioning & column assignment algorithms
+    ├── recurrence.ts     # Repeat rules: RRULE parse/format, labels, series occurrences
+    ├── time-zones.ts     # IANA zone list, offsets, zone days, wall-clock zone changes
     ├── mock-events.ts    # Sample data
     └── utils.ts          # cn() helper
 ```

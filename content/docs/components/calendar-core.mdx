@@ -44,7 +44,7 @@ const [events, setEvents] = React.useState(initialEvents);
 </CalendarProvider>;
 ```
 
-Use `onEventCreate`, `onEventUpdate` and `onEventSelect` to react to one change at a time, for example to save it to a server. To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/loading-events).
+Use `onEventCreate`, `onEventUpdate` and `onEventSelect` to react to one change at a time, for example to save it to a server. `onEventCreate` also gets the occurrence copies the details' series arrows add, so a repeating event's next occurrence is saved like a clicked-in event. To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/loading-events).
 
 ### Server rendering
 
@@ -233,7 +233,8 @@ interface Meeting extends CalendarEvent {
     {
       name: "onEventCreate",
       type: "(event: TEvent) => void",
-      description: "Called after a click-created event is added.",
+      description:
+        "Called after an event is added: one created by clicking an empty slot, or an occurrence copy the series arrows add (`showSeriesOccurrence`).",
     },
     {
       name: "onEventUpdate",
@@ -352,7 +353,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "previousInSeries",
       type: "SeriesOccurrence<TEvent> | null",
       description:
-        "The selected event's previous occurrence in its repeating series (`findSeriesOccurrence`): `{ start, event? }`, with `event` when the events have one for it. `null` when nothing is selected, the event doesn't repeat, or it is the first.",
+        "The selected event's previous occurrence in its repeating series (`findSeriesOccurrence`): `{ id, start, event? }`, with `event` when the events have one for it, and otherwise the `id` a copy of it gets. `null` when nothing is selected, the event doesn't repeat, or it is the first.",
     },
     {
       name: "nextInSeries",
@@ -364,7 +365,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "showSeriesOccurrence",
       type: "(occurrence: SeriesOccurrence<TEvent>) => void",
       description:
-        "Selects an occurrence and moves to its period when it is off screen. One the events don't have yet is added first, as a copy of the selected event (through `onEventsChange`). The details' series arrows call it.",
+        "Selects an occurrence and moves to its period when it is off screen. One the events don't have yet is added first, as a copy of the selected event, through `onEventsChange` and `onEventCreate`. The details' series arrows call it.",
     },
     {
       name: "highlightedDate",

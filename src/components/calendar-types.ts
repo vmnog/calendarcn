@@ -805,7 +805,10 @@ interface CalendarProviderBaseProps<
    * The submenu is hidden when empty. Defaults to none
    */
   calendars?: CalendarInfo[];
-  /** Called after a click-created event is added */
+  /**
+   * Called after an event is added: one created by clicking an empty slot,
+   * or an occurrence copy the series arrows add (`showSeriesOccurrence`)
+   */
   onEventCreate?: (event: TEvent) => void;
   /** Called after an event is changed (drag, resize, or an edit in the details) */
   onEventUpdate?: (event: TEvent) => void;
@@ -892,7 +895,8 @@ export interface CalendarContextValue<
    * Selects an occurrence of the selected event's series (`previousInSeries`
    * or `nextInSeries`) and shows it, moving to its period when it is off
    * screen. An occurrence the events have no event for yet is added first,
-   * as a copy of the selected event (`createSeriesOccurrence`).
+   * as a copy of the selected event (`createSeriesOccurrence`), through
+   * `onEventsChange` and `onEventCreate`.
    */
   showSeriesOccurrence: (occurrence: SeriesOccurrence<TEvent>) => void;
   /** Day briefly highlighted after `showDay`, or `null` */
