@@ -112,15 +112,45 @@ test("the time menu and the date picker set times and days inside the details", 
   await expect(startDate).toHaveValue("Fri Jun 5");
   await expect(details).toBeVisible();
 
-  // Escape closes the menu, not the details
+  // Escape closes the menu, not the details, and puts back a hovered time
   await startTime.click();
   await expect(startMenu).toBeVisible();
+  await startMenu.getByRole("option", { name: "9 AM", exact: true }).hover();
+  await expect(startTime).toHaveValue("9 AM");
   await page.keyboard.press("Escape");
   await expect(startMenu).toHaveCount(0);
   await expect(details).toBeVisible();
+  await expect(startTime).toHaveValue("10:15 AM");
   // Base UI hands focus back to the field as the menu closes; it stays left
   await expect(startTime).not.toBeFocused();
   await expect(startMenu).toHaveCount(0);
+});
+
+test("on a 24-hour clock the time menu and typed times read as written", async ({
+  page,
+}) => {
+  await page.goto("/24-hour");
+  await calendarEvent(page, "Design Review").click();
+  const details = eventDetails(page);
+  const startTime = details.getByTestId("event-start-time");
+  const endTime = details.getByTestId("event-end-time");
+  await expect(startTime).toHaveValue("10:00");
+
+  await startTime.click();
+  const options = page
+    .getByRole("listbox", { name: "Start time" })
+    .getByRole("option");
+  await expect(options.first()).toHaveText("00:00");
+  await expect(options.last()).toHaveText("23:45");
+
+  await startTime.fill("7");
+  await expect(options).toHaveText(["07:00", "19:00"]);
+  await startTime.fill("12");
+  await expect(options).toHaveText(["12:00", "00:00", "01:20", "13:20"]);
+  await startTime.fill("19");
+  await startTime.press("Enter");
+  await expect(startTime).toHaveValue("19:00");
+  await expect(endTime).toHaveValue("20:00");
 });
 
 test("the all-day switch is blue when checked", async ({ page }) => {

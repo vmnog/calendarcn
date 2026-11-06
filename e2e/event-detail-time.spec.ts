@@ -139,6 +139,10 @@ test("typing lists the times the text can mean, the daytime one first", async ({
   await expect(options).toHaveText(["7:30 PM"]);
   await startTime.fill("930");
   await expect(options).toHaveText(["9:30 AM", "9:30 PM"]);
+  // A single minute digit from 6 can't be tens: "3:7" is 3:07
+  await startTime.fill("3:7");
+  await expect(options).toHaveText(["3:07 PM", "3:07 AM"]);
+  await startTime.fill("930");
   // Typing previews nothing: the field keeps the text
   await expect(startTime).toHaveValue("930");
 
@@ -179,6 +183,11 @@ test("the end time lists the times after the start with how long the event lasts
     "7 AM 45h",
   ]);
 
+  // With "am" or "pm" it's only a time, never a duration
+  await endTime.fill("3p");
+  await expect(options).toHaveText(["3 PM 5h"]);
+
+  await endTime.fill("45");
   await menu.getByRole("option", { name: "10:45 AM 45min" }).click();
   await expect(menu).toBeHidden();
   await expect(endTime).toBeFocused();
@@ -186,7 +195,7 @@ test("the end time lists the times after the start with how long the event lasts
   await expect(timeSection(page)).toContainText("45min");
 });
 
-test("hovering an option previews it, and Escape keeps it and leaves the field", async ({
+test("hovering an option previews it, and Escape puts the time back and leaves the field", async ({
   page,
 }) => {
   const { startTime, endTime } = detailFields(page);
@@ -197,14 +206,53 @@ test("hovering an option previews it, and Escape keeps it and leaves the field",
   await expect(startTime).toHaveValue("9 AM");
   await expect(activeOption(menu)).toHaveText("9 AM");
 
-  // As in Notion Calendar, Escape sets the previewed time
   await page.keyboard.press("Escape");
   await expect(menu).toBeHidden();
   await expect(startTime).not.toBeFocused();
-  await expect(startTime).toHaveValue("9 AM");
-  await expect(endTime).toHaveValue("10:30 AM");
+  await expect(startTime).toHaveValue("10 AM");
+  await expect(endTime).toHaveValue("11:30 AM");
   // The event stays selected
   await expect(detailTitle(page)).toHaveValue("Launch Review");
+});
+
+test("a hovered time is only a preview: leaving the menu or the field sets nothing", async ({
+  page,
+}) => {
+  const { startTime, endTime } = detailFields(page);
+  await startTime.click();
+  const menu = timeMenu(page, "Start time");
+
+  await menu.getByRole("option", { name: "9 AM", exact: true }).hover();
+  await expect(startTime).toHaveValue("9 AM");
+  // Off the menu, the field shows the time again
+  await detailTitle(page).hover();
+  await expect(startTime).toHaveValue("10 AM");
+  await expect(activeOption(menu)).toHaveText("10 AM");
+
+  await menu.getByRole("option", { name: "9 AM", exact: true }).hover();
+  await detailTitle(page).click();
+  await expect(menu).toBeHidden();
+  await expect(startTime).toHaveValue("10 AM");
+  await expect(endTime).toHaveValue("11:30 AM");
+});
+
+test("Escape puts back a time the arrow keys moved to; leaving the field sets it", async ({
+  page,
+}) => {
+  const { startTime, endTime } = detailFields(page);
+  await startTime.click();
+  await startTime.press("ArrowDown");
+  await expect(startTime).toHaveValue("10:15 AM");
+  await startTime.press("Escape");
+  await expect(startTime).toHaveValue("10 AM");
+  await expect(endTime).toHaveValue("11:30 AM");
+
+  await startTime.click();
+  await startTime.press("ArrowDown");
+  await startTime.press("ArrowDown");
+  await startTime.press("Tab");
+  await expect(startTime).toHaveValue("10:30 AM");
+  await expect(endTime).toHaveValue("12 PM");
 });
 
 test("text that isn't a time puts the time back when the field is left", async ({
@@ -289,4 +337,175 @@ test("all-day mutes the times and shows the end date under the end time", async 
   await expect(startTime).toHaveValue("10 AM");
   await expect(endTime).toHaveValue("11:30 AM");
   await expect(endDate).toBeHidden();
+});
+
+test("an end typed past midnight falls on the next day, which shows its end date", async ({
+  page,
+}) => {
+  const { endTime } = detailFields(page);
+  const endDate = page.getByTestId("event-end-date");
+  await endTime.click();
+  await endTime.fill("1a");
+  await expect(timeMenu(page, "End time").getByRole("option")).toHaveText([
+    "1 AM 15h",
+  ]);
+  await endTime.press("Enter");
+  await expect(endTime).toHaveValue("1 AM");
+  await expect(timeSection(page)).toContainText("15h");
+  await expect(endDate).toHaveValue("Sun Jun 7");
+
+  // The end menu now lists the end's day
+  await endTime.click();
+  const menu = timeMenu(page, "End time");
+  await expect(menu.getByRole("option").first()).toHaveText("12 AM 14h");
+  await expect(activeOption(menu)).toHaveText("1 AM 15h");
+});
+
+test("an event from 12 AM to the next 12 AM keeps its time row", async ({
+  page,
+}) => {
+  const { startTime, endTime } = detailFields(page);
+  await startTime.click();
+  await startTime.fill("12a");
+  await startTime.press("Enter");
+  await expect(endTime).toHaveValue("1:30 AM");
+
+  await endTime.click();
+  await endTime.fill("12a");
+  await expect(activeOption(timeMenu(page, "End time"))).toHaveText(
+    "12 AM 24h",
+  );
+  await endTime.press("Enter");
+  await detailTitle(page).click();
+  await expect(startTime).toHaveValue("12 AM");
+  await expect(endTime).toHaveValue("12 AM");
+  await expect(timeSection(page)).toContainText("24h");
+  await expect(page.getByTestId("event-end-date")).toBeHidden();
+});
+
+test("an end date before the start is turned away, and the picker's earlier days are off", async ({
+  page,
+}) => {
+  await page.getByRole("switch", { name: "All-day" }).click();
+  const endDate = page.getByTestId("event-end-date");
+  await expect(endDate).toHaveValue("Sat Jun 6");
+
+  await endDate.click();
+  const picker = datePicker(page);
+  await expect(picker.locator('[data-day="2026-06-05"] button')).toBeDisabled();
+  await expect(picker.locator('[data-day="2026-06-07"] button')).toBeEnabled();
+
+  await endDate.fill("Jun 5");
+  await endDate.press("Enter");
+  await expect(endDate).toHaveValue("Sat Jun 6");
+
+  await endDate.fill("Jun 8");
+  await endDate.press("Enter");
+  await expect(endDate).toHaveValue("Mon Jun 8");
+});
+
+test("the arrow keys move the date picker's day, Page Up and Page Down its month", async ({
+  page,
+}) => {
+  const { startDate, startTime } = detailFields(page);
+  await startDate.click();
+  const picker = datePicker(page);
+  const selectedDay = picker.getByRole("gridcell", { selected: true });
+
+  await startDate.press("ArrowDown");
+  await expect(startDate).toHaveValue("Sun Jun 7");
+  await expect(selectedDay).toHaveText("7");
+  await startDate.press("ArrowUp");
+  await startDate.press("ArrowUp");
+  await expect(startDate).toHaveValue("Fri Jun 5");
+  await startDate.press("PageDown");
+  await expect(startDate).toHaveValue("Sun Jul 5");
+  await expect(picker).toContainText("July 2026");
+
+  // Escape puts the date back; Enter sets the marked day
+  await startDate.press("Escape");
+  await expect(startDate).toHaveValue("Sat Jun 6");
+  await startDate.click();
+  await startDate.press("ArrowDown");
+  await startDate.press("Enter");
+  await expect(startDate).toHaveValue("Sun Jun 7");
+  await expect(startTime).toHaveValue("10 AM");
+});
+
+test("switching all-day off after the details reopen gives back the event's times", async ({
+  page,
+}) => {
+  const { startTime, endTime } = detailFields(page);
+  await page.getByRole("switch", { name: "All-day" }).click();
+  await expect(startTime).toHaveAttribute("readonly", "");
+
+  // Deselect, then open the details again
+  await page.keyboard.press("Escape");
+  await expect(detailTitle(page)).toBeHidden();
+  await calendarEvent(page, "Launch Review").click();
+  await expect(detailTitle(page)).toHaveValue("Launch Review");
+
+  await page.getByRole("switch", { name: "All-day" }).click();
+  await expect(startTime).toHaveValue("10 AM");
+  await expect(endTime).toHaveValue("11:30 AM");
+});
+
+test("the day daylight saving time starts has no 2 AM, and times keep their clock", async ({
+  page,
+}) => {
+  const { startDate, startTime, endTime } = detailFields(page);
+  await startDate.click();
+  await startDate.fill("Mar 8");
+  await startDate.press("Enter");
+  await expect(startDate).toHaveValue("Sun Mar 8");
+
+  await startTime.click();
+  const menu = timeMenu(page, "Start time");
+  const options = menu.getByRole("option");
+  await expect(options).toHaveCount(92);
+  await expect(options.nth(7)).toHaveText("1:45 AM");
+  await expect(options.nth(8)).toHaveText("3 AM");
+  await expect(options.last()).toHaveText("11:45 PM");
+
+  await startTime.fill("9");
+  await expect(options.first()).toHaveText("9 AM");
+  await startTime.press("Enter");
+  await expect(startTime).toHaveValue("9 AM");
+  await expect(endTime).toHaveValue("10:30 AM");
+
+  // From 1 AM, the end menu skips the missing hour and counts real time
+  await startTime.fill("1a");
+  await startTime.press("Enter");
+  await expect(endTime).toHaveValue("3:30 AM");
+  await endTime.click();
+  const endOptions = timeMenu(page, "End time").getByRole("option");
+  await expect(endOptions.first()).toHaveText("1:15 AM 15min");
+  await expect(endOptions.nth(2)).toHaveText("1:45 AM 45min");
+  await expect(endOptions.nth(3)).toHaveText("3 AM 1h");
+});
+
+test("the day daylight saving time ends lists each time once, up to 11:45 PM", async ({
+  page,
+}) => {
+  const { startDate, startTime, endTime } = detailFields(page);
+  await startDate.click();
+  await startDate.fill("Nov 1");
+  await startDate.press("Enter");
+  await expect(startDate).toHaveValue("Sun Nov 1");
+
+  await startTime.click();
+  const menu = timeMenu(page, "Start time");
+  await expect(menu.getByRole("option")).toHaveCount(96);
+  await expect(
+    menu.getByRole("option", { name: "1 AM", exact: true }),
+  ).toHaveCount(1);
+  await expect(
+    menu.getByRole("option", { name: "11 PM", exact: true }),
+  ).toHaveCount(1);
+  await expect(menu.getByRole("option").last()).toHaveText("11:45 PM");
+
+  await startTime.fill("9");
+  await startTime.press("Enter");
+  await expect(startTime).toHaveValue("9 AM");
+  await expect(endTime).toHaveValue("10:30 AM");
 });

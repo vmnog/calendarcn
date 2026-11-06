@@ -185,7 +185,7 @@
         "@floating-ui/react-dom",
         "date-fns",
         "lucide-react",
-        "react-day-picker"
+        "react-day-picker@^9"
       ],
       "registryDependencies": [
         "@calendarcn/calendar-core",
@@ -210,6 +210,18 @@
         },
         {
           "path": "src/components/event-detail-time.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-time-field.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-date-field.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-field-popover.tsx",
           "type": "registry:component"
         },
         {
@@ -275,6 +287,14 @@
         {
           "path": "src/hooks/use-hover-tooltip.ts",
           "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-field-popover.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/lib/time-input.ts",
+          "type": "registry:lib"
         }
       ]
     },

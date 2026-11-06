@@ -4,7 +4,7 @@ import * as React from "react";
  * Options for `useInlineEdit`
  */
 export interface UseInlineEditOptions {
-  /** The input's ref, used to blur it on Enter and Escape and to select its text */
+  /** The input's ref, used to blur it on Enter and Escape */
   inputRef: React.RefObject<HTMLInputElement | null>;
   /** Text the field shows while it isn't being edited, derived from the event */
   value: string;
@@ -20,8 +20,6 @@ export interface UseInlineEditOptions {
    * to undo a preview
    */
   onRestore?: (text: string) => void;
-  /** Selects the whole text on focus, as the time and date fields do */
-  selectOnFocus?: boolean;
 }
 
 /**
@@ -58,7 +56,6 @@ export function useInlineEdit({
   onCommit,
   onInput,
   onRestore,
-  selectOnFocus = false,
 }: UseInlineEditOptions): UseInlineEditResult {
   const [text, setText] = React.useState(value);
   /** Set by Escape so the blur that follows doesn't commit */
@@ -81,11 +78,7 @@ export function useInlineEdit({
 
   const handleFocus = React.useCallback(() => {
     valueOnFocusRef.current = value;
-    if (!selectOnFocus) return;
-    requestAnimationFrame(() => {
-      inputRef.current?.select();
-    });
-  }, [inputRef, value, selectOnFocus]);
+  }, [value]);
 
   const handleBlur = React.useCallback(() => {
     if (escapePressedRef.current) {
