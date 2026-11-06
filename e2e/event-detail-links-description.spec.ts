@@ -204,3 +204,37 @@ test("an empty description shows Notion's placeholder and grows to three lines w
   await page.keyboard.press("Escape");
   await expect(description).toHaveText("Description");
 });
+
+test.describe("on a phone", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    hasTouch: true,
+    isMobile: true,
+  });
+
+  test("the link menu opens inside the details sheet and its option can be tapped", async ({
+    page,
+  }) => {
+    await calendarEvent(page, "Architecture Review").tap();
+    const sheet = page.getByRole("dialog", { name: "Context panel" });
+    const links = sheet.locator('[data-section="links"]');
+
+    await links
+      .getByRole("button", { name: "Add links and attachments" })
+      .tap();
+    await page.keyboard.type("https://example.com/brief");
+    // Nothing fits left of a full-width sheet: the menu opens below the input
+    const option = sheet
+      .getByRole("listbox", { name: "Add links and attachments" })
+      .getByRole("option", { name: "https://example.com/brief" });
+    await option.tap();
+
+    await expect(sheet).toBeVisible();
+    const link = links.getByRole("link", { name: "https://example.com/brief" });
+    await expect(link).toBeVisible();
+    // Nothing hovers on a phone, so the remove button always shows
+    await expect(
+      links.getByRole("button", { name: "Remove https://example.com/brief" }),
+    ).toHaveCSS("opacity", "1");
+  });
+});

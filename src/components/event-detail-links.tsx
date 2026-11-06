@@ -188,14 +188,15 @@ function FileTypeIcon({ type }: { type: string | undefined }) {
 }
 
 /**
- * Where a floating layer of `element` mounts: inside the sheet or dialog
- * holding the panel (the page around a modal can't be clicked), else the
- * body
+ * Where a floating layer of `element` mounts: inside the dialog, sheet or
+ * drawer holding the panel (a modal turns off pointer events on the rest of
+ * the page), else the body. The details popover doesn't count: its own
+ * bounds would clip a menu beside it, and the body works there.
  */
 function floatingRoot(element: Element): HTMLElement {
   return (
     element.closest<HTMLElement>(
-      '[data-slot="sheet-content"], [data-slot="dialog-content"]',
+      '[role="dialog"]:not([data-calendar-popover]), [role="alertdialog"]',
     ) ?? element.ownerDocument.body
   );
 }
