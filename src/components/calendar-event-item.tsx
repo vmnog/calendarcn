@@ -227,8 +227,6 @@ export function CalendarEventItem({
   showEventPopover,
   onEventPopoverExpand,
   onEventPopoverClose,
-  onPrevWeek,
-  onNextWeek,
   className,
 }: CalendarEventItemProps) {
   const { event, segmentPosition = "full" } = positionedEvent;
@@ -716,8 +714,6 @@ export function CalendarEventItem({
           onEventChange={onEventChange}
           onClose={() => onEventPopoverClose?.(event.id)}
           onExpand={onEventPopoverExpand}
-          onPrevWeek={onPrevWeek}
-          onNextWeek={onNextWeek}
           side={isDayView ? "left" : "right"}
           collisionPaddingTop={isDayView ? headerBottom : undefined}
         />
@@ -792,8 +788,6 @@ export function AllDayEventItem({
   showEventPopover,
   onEventPopoverExpand,
   onEventPopoverClose,
-  onPrevWeek,
-  onNextWeek,
   titleOffsetPercent = 0,
   dragVariant,
   isResizing = false,
@@ -1151,8 +1145,6 @@ export function AllDayEventItem({
           onEventChange={onEventChange}
           onClose={() => onEventPopoverClose?.(event.id)}
           onExpand={onEventPopoverExpand}
-          onPrevWeek={onPrevWeek}
-          onNextWeek={onNextWeek}
           side={isDayView ? "left" : "right"}
           align="start"
           collisionPaddingTop={isDayView ? headerBottom : undefined}

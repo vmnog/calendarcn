@@ -121,6 +121,28 @@ test("the time zone and repeat rows edit the event", async ({ page }) => {
   await expect(dialog).toHaveCount(0);
   await expect(recurrence).toContainText("Every week on Mon, Thu");
   await expect(details).toBeVisible();
+  // Focus goes back to the Repeat button
+  await expect(
+    recurrence.getByRole("button", { name: /^Repeat:/ }),
+  ).toBeFocused();
+
+  // The provider steps through the series: the next occurrence is added as
+  // a copy and the calendar moves to its week
+  const previous = recurrence.getByRole("button", {
+    name: "Go to previous event in this series",
+  });
+  await expect(previous).toBeDisabled();
+  await recurrence
+    .getByRole("button", { name: "Go to next event in this series" })
+    .click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Mon Jun 8",
+  );
+  await expect(previous).toBeEnabled();
+  await previous.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 4",
+  );
 });
 
 test("the details open in month and agenda views", async ({ page }) => {

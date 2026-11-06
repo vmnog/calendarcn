@@ -172,8 +172,6 @@ export function TimeGrid({
     addEventFromRange,
     updateEvent,
     goToDate,
-    goToPrev,
-    goToNext,
     numberOfDays: providerNumberOfDays,
     weekStartsOn,
     loading,
@@ -540,8 +538,6 @@ export function TimeGrid({
               showEventPopover={showEventPopover}
               onEventPopoverExpand={onEventPopoverExpand}
               onEventPopoverClose={closeEventPopover}
-              onPrevWeek={goToPrev}
-              onNextWeek={goToNext}
               visibleStartIndex={dynamicBuffer}
               visibleCount={VISIBLE_DAYS}
               dayColumnWidth={dayColumnWidth}
@@ -585,8 +581,6 @@ export function TimeGrid({
                   showEventPopover={showEventPopover}
                   onEventPopoverExpand={onEventPopoverExpand}
                   onEventPopoverClose={closeEventPopover}
-                  onPrevWeek={goToPrev}
-                  onNextWeek={goToNext}
                   highlightedDate={highlightedDate}
                   visibleStartIndex={dynamicBuffer}
                   visibleCount={VISIBLE_DAYS}

@@ -1,4 +1,8 @@
 import { getTimeZoneCity } from "@/lib/timezone-label";
+import type {
+  DetailedCalendarEvent,
+  TimeZoneOption,
+} from "@/components/calendar-types";
 
 /** Locale of zone names and offsets, as Notion Calendar shows them */
 const TIME_ZONE_LOCALE = "en-US";
@@ -38,24 +42,17 @@ const FALLBACK_TIME_ZONES = [
   "Pacific/Auckland",
 ];
 
-/**
- * One zone of the time zone picker
- */
-export interface TimeZoneOption {
-  /** IANA id, e.g. "America/Sao_Paulo" */
-  id: string;
-  /** Offset from UTC on the reference date, in minutes (-180 for GMT−3) */
-  offsetMinutes: number;
-  /** "GMT−03:00" */
-  offsetLabel: string;
-  /** "Brasilia Standard Time", or the IANA id when the zone has no name */
-  name: string;
-  /** "Sao Paulo", or the IANA id when the zone has no city */
-  city: string;
-}
+/** Milliseconds in a day, for times of day */
+const DAY_MS = 86_400_000;
 
 /** One `Intl.DateTimeFormat` per zone and name style; building them is slow */
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
+
+/** The runtime's zones, listed once: `Intl.supportedValuesOf` builds a new array each call */
+let supportedTimeZones: string[] | null = null;
+
+/** Zone of each legacy label `findTimeZoneByLabel` has looked up */
+const labelTimeZoneCache = new Map<string, string | undefined>();
 
 function getFormatter(
   timeZone: string,
@@ -102,8 +99,12 @@ export function getViewerTimeZone(): string {
  * when it can't enumerate them
  */
 export function getSupportedTimeZones(): string[] {
-  if (typeof Intl.supportedValuesOf !== "function") return FALLBACK_TIME_ZONES;
-  return Intl.supportedValuesOf("timeZone");
+  if (supportedTimeZones) return supportedTimeZones;
+  supportedTimeZones =
+    typeof Intl.supportedValuesOf === "function"
+      ? Intl.supportedValuesOf("timeZone")
+      : FALLBACK_TIME_ZONES;
+  return supportedTimeZones;
 }
 
 /**
@@ -211,11 +212,26 @@ export function findTimeZoneByLabel(
   label: string | undefined,
 ): string | undefined {
   if (!label) return undefined;
+  if (labelTimeZoneCache.has(label)) return labelTimeZoneCache.get(label);
+
   const city = normalizeSearchText(label.slice(label.indexOf(" ") + 1).trim());
-  if (!city) return undefined;
-  return getSupportedTimeZones().find(
-    (zone) => normalizeSearchText(getTimeZoneCity(zone)) === city,
-  );
+  const timeZone = city
+    ? getSupportedTimeZones().find(
+        (zone) => normalizeSearchText(getTimeZoneCity(zone)) === city,
+      )
+    : undefined;
+  labelTimeZoneCache.set(label, timeZone);
+  return timeZone;
+}
+
+/**
+ * The IANA zone an event is set in: its `timeZone`, else the zone its
+ * legacy `timezone` label names. `undefined` means the viewer's zone.
+ */
+export function getEventTimeZone(
+  event: Pick<DetailedCalendarEvent, "timeZone" | "timezone">,
+): string | undefined {
+  return event.timeZone ?? findTimeZoneByLabel(event.timezone);
 }
 
 /** Lower case without accents, so "sao" finds "São" */
@@ -285,6 +301,19 @@ function getWallClock(date: Date, timeZone: string): number {
 }
 
 /**
+ * The instant the clock in `timeZone` reads `wallClock` (milliseconds of a
+ * UTC date that reads the same). `near` is an instant close to it.
+ */
+function fromWallClock(wallClock: number, timeZone: string, near: Date): Date {
+  // The offset depends on the instant, which depends on the offset: guess
+  // with the offset near it, then correct once (DST)
+  const guess = wallClock - getTimeZoneOffsetMinutes(near, timeZone) * 60_000;
+  const corrected =
+    wallClock - getTimeZoneOffsetMinutes(new Date(guess), timeZone) * 60_000;
+  return new Date(corrected);
+}
+
+/**
  * Moves `date` from one zone to another keeping its wall-clock time: 8 AM
  * in São Paulo becomes 8 AM in New York, as Notion Calendar does when an
  * event's zone changes
@@ -295,12 +324,58 @@ export function changeTimeZoneKeepingWallClock(
   toTimeZone: string,
 ): Date {
   if (fromTimeZone === toTimeZone) return date;
+  return fromWallClock(getWallClock(date, fromTimeZone), toTimeZone, date);
+}
 
-  const wallClock = getWallClock(date, fromTimeZone);
-  // The target offset depends on the instant, which depends on the offset:
-  // guess with the offset at the wall-clock time, then correct once (DST)
-  const guess = wallClock - getTimeZoneOffsetMinutes(date, toTimeZone) * 60_000;
-  const corrected =
-    wallClock - getTimeZoneOffsetMinutes(new Date(guess), toTimeZone) * 60_000;
-  return new Date(corrected);
+/**
+ * The calendar day `date` falls on in `timeZone` (the viewer's zone when
+ * unset), as a local midnight: what a repeat rule counts its days in
+ */
+export function getZonedDay(date: Date, timeZone?: string): Date {
+  if (!timeZone) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+  const wallClock = new Date(getWallClock(date, timeZone));
+  return new Date(
+    wallClock.getUTCFullYear(),
+    wallClock.getUTCMonth(),
+    wallClock.getUTCDate(),
+  );
+}
+
+/**
+ * The time of day `date` shows on a clock in `timeZone` (the viewer's zone
+ * when unset), in milliseconds since midnight
+ */
+export function getZonedTimeOfDay(date: Date, timeZone?: string): number {
+  if (!timeZone) {
+    const minutes = date.getHours() * 60 + date.getMinutes();
+    return (minutes * 60 + date.getSeconds()) * 1000 + date.getMilliseconds();
+  }
+  return ((getWallClock(date, timeZone) % DAY_MS) + DAY_MS) % DAY_MS;
+}
+
+/**
+ * The instant a clock in `timeZone` (the viewer's zone when unset) reads
+ * `timeOfDay` milliseconds after midnight on `day`'s local calendar day
+ */
+export function fromZonedDayTime(
+  day: Date,
+  timeOfDay: number,
+  timeZone?: string,
+): Date {
+  if (!timeZone) {
+    return new Date(
+      day.getFullYear(),
+      day.getMonth(),
+      day.getDate(),
+      0,
+      0,
+      0,
+      timeOfDay,
+    );
+  }
+  const wallClock =
+    Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()) + timeOfDay;
+  return fromWallClock(wallClock, timeZone, new Date(wallClock));
 }

@@ -57,8 +57,6 @@ export function WeekViewGrid({
   showEventPopover,
   onEventPopoverExpand,
   onEventPopoverClose,
-  onPrevWeek,
-  onNextWeek,
   highlightedDate,
   visibleStartIndex = 0,
   visibleCount,
@@ -241,8 +239,6 @@ export function WeekViewGrid({
               showEventPopover={showEventPopover}
               onEventPopoverExpand={onEventPopoverExpand}
               onEventPopoverClose={onEventPopoverClose}
-              onPrevWeek={onPrevWeek}
-              onNextWeek={onNextWeek}
               onColumnPointerDownCapture={handleColumnPointerDownCapture}
               onColumnPointerDown={handleColumnPointerDown}
               onColumnClick={handleColumnClick}
@@ -625,8 +621,6 @@ function DayEventsColumn({
   showEventPopover,
   onEventPopoverExpand,
   onEventPopoverClose,
-  onPrevWeek,
-  onNextWeek,
   onColumnPointerDownCapture,
   onColumnPointerDown,
   onColumnClick,
@@ -731,8 +725,6 @@ function DayEventsColumn({
             showEventPopover={showEventPopover}
             onEventPopoverExpand={onEventPopoverExpand}
             onEventPopoverClose={onEventPopoverClose}
-            onPrevWeek={onPrevWeek}
-            onNextWeek={onNextWeek}
           />
         );
       })}

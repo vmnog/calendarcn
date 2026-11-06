@@ -15,6 +15,7 @@ import { Globe, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Command,
+  CommandEmpty,
   CommandGroup,
   CommandItem,
   CommandList,
@@ -32,7 +33,7 @@ import {
 import {
   POPULAR_TIME_ZONES,
   changeTimeZoneKeepingWallClock,
-  findTimeZoneByLabel,
+  getEventTimeZone,
   getTimeZoneOption,
   getTimeZoneOptions,
   getTimeZoneRowLabel,
@@ -40,10 +41,10 @@ import {
   searchTimeZones,
   splitSearchMatch,
 } from "@/lib/time-zones";
-import type { TimeZoneOption } from "@/lib/time-zones";
 import type {
   DetailedCalendarEvent,
   EventDetailSectionProps,
+  TimeZoneOption,
 } from "./week-view-types";
 
 /** How many picked zones the picker remembers at its top */
@@ -135,6 +136,16 @@ function getItemTimeZone(value: string): string {
 }
 
 /**
+ * Index of the item an arrow key moves the highlight to: one step from
+ * `index`, kept inside the list; the first or last item when nothing is
+ * highlighted
+ */
+function getSteppedIndex(index: number, step: 1 | -1, count: number): number {
+  if (index === -1) return step === 1 ? 0 : count - 1;
+  return Math.min(Math.max(index + step, 0), count - 1);
+}
+
+/**
  * "Brasilia Standard Time – Sao Paulo", with the part matching the search in
  * bold white and the rest dimmed while searching
  */
@@ -156,7 +167,8 @@ function ZoneText({ text, query }: { text: string; query: string | null }) {
  * search field with the zone list beside the details: recent zones, popular
  * ones, then every zone by offset. Arrow keys and the pointer move through
  * the list and preview the city in the field, typing filters it by name or
- * city, Enter or a click picks a zone, Escape leaves it unchanged. Picking a
+ * city, Enter or a click picks a zone, Escape restores the zone from before
+ * the list opened (the highlight only previews). Picking a
  * zone keeps the event's wall-clock times, so 8 AM in São Paulo becomes 8 AM
  * in New York. All-day events have no zone.
  */
@@ -176,6 +188,8 @@ export function EventDetailTimezone<
   const [activeValue, setActiveValue] = React.useState("");
   const [inputText, setInputText] = React.useState("");
   const [rowElement, setRowElement] = React.useState<HTMLElement | null>(null);
+  /** Id of the highlighted option, for the field's `aria-activedescendant` */
+  const [activeOptionId, setActiveOptionId] = React.useState<string>();
   const [listElement, setListElement] = React.useState<HTMLElement | null>(
     null,
   );
@@ -210,12 +224,18 @@ export function EventDetailTimezone<
     ],
   });
 
-  const timeZone =
-    event.timeZone ?? findTimeZoneByLabel(event.timezone) ?? viewerTimeZone;
+  const eventTimeZone = React.useMemo(
+    () =>
+      getEventTimeZone({ timeZone: event.timeZone, timezone: event.timezone }),
+    [event.timeZone, event.timezone],
+  );
+  const timeZone = eventTimeZone ?? viewerTimeZone;
 
+  // Every zone, listed once per edit: typing searches this list
+  const startTime = event.start.getTime();
   const options = React.useMemo(
-    () => (listOpen ? getTimeZoneOptions(event.start) : []),
-    [listOpen, event.start],
+    () => (editing ? getTimeZoneOptions(new Date(startTime)) : []),
+    [editing, startTime],
   );
 
   const sections = React.useMemo<TimeZoneSection[]>(() => {
@@ -262,6 +282,16 @@ export function EventDetailTimezone<
     ).find((element) => element.dataset.value === activeValue);
     item?.scrollIntoView({ block: "nearest" });
   }, [activeValue, sections, isPositioned]);
+
+  // cmdk ids its options itself: read the highlighted one's from the list
+  React.useEffect(() => {
+    const item = listOpen
+      ? Array.from(
+          listRef.current?.querySelectorAll<HTMLElement>("[cmdk-item]") ?? [],
+        ).find((element) => element.dataset.value === activeValue)
+      : undefined;
+    setActiveOptionId(item?.id || undefined);
+  }, [activeValue, sections, listOpen, listElement]);
 
   // Select the city once the field has rendered it
   React.useEffect(() => {
@@ -314,14 +344,8 @@ export function EventDetailTimezone<
   const moveHighlight = (step: 1 | -1) => {
     if (itemValues.length === 0) return;
     const index = itemValues.indexOf(activeValue);
-    const next =
-      index === -1
-        ? step === 1
-          ? 0
-          : itemValues.length - 1
-        : Math.min(Math.max(index + step, 0), itemValues.length - 1);
     scrollToActiveRef.current = true;
-    highlight(itemValues[next]);
+    highlight(itemValues[getSteppedIndex(index, step, itemValues.length)]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -357,7 +381,7 @@ export function EventDetailTimezone<
     // An emptied field lists the sections again
     setQuery(text.trim() ? text : null);
     setListOpen(true);
-    const results = searchTimeZones(getTimeZoneOptions(event.start), text);
+    const results = searchTimeZones(options, text);
     setActiveValue(results[0] ? getItemValue("search", results[0].id) : "");
     scrollToActiveRef.current = true;
   };
@@ -376,7 +400,6 @@ export function EventDetailTimezone<
   }
 
   const label = getTimeZoneRowLabel(event.start, timeZone);
-  const showList = listOpen && itemValues.length > 0;
   // A modal sheet (the panel on phones) dismisses on presses outside its own
   // DOM, so the list goes inside it there; anywhere else it goes to the body
   const portalContainer =
@@ -408,8 +431,9 @@ export function EventDetailTimezone<
               type="text"
               role="combobox"
               aria-label="Time zone"
-              aria-expanded={showList}
-              aria-controls={showList ? listId : undefined}
+              aria-expanded={listOpen}
+              aria-controls={listOpen ? listId : undefined}
+              aria-activedescendant={activeOptionId}
               aria-autocomplete="list"
               value={inputText}
               onChange={handleChange}
@@ -443,7 +467,7 @@ export function EventDetailTimezone<
         )}
       </div>
 
-      {showList &&
+      {listOpen &&
         portalContainer &&
         createPortal(
           <div
@@ -469,6 +493,15 @@ export function EventDetailTimezone<
                 label="Time zones"
                 className="max-h-none min-h-0 flex-1 overflow-y-auto"
               >
+                {/* Keeps the list, and so Escape's restore, while nothing matches */}
+                <CommandEmpty
+                  className={cn(
+                    "px-2.5 py-[7px] text-sm",
+                    LIST_MUTED_TEXT_CLASS,
+                  )}
+                >
+                  No results
+                </CommandEmpty>
                 {sections.map((section, index) => (
                   <React.Fragment key={section.key}>
                     {index > 0 && (

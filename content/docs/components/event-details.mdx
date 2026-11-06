@@ -39,24 +39,33 @@ function SidePanel() {
 </CalendarProvider>;
 ```
 
-The repeat row's arrows step through a series. `findSeriesOccurrence` (from `@/lib/recurrence`) finds the previous or next occurrence in your events: the event when you have one for it, else only its start, so you can create it with `createSeriesOccurrence`:
+The repeat row's arrows step through a series. In the views' popover they work on their own: the provider finds the selected event's neighbors (`previousInSeries` and `nextInSeries` from `useCalendar()`, `null` at the series' ends) and `showSeriesOccurrence` selects one and moves to it. An occurrence your events have no event for yet is added as a copy of the selected event, through `onEventsChange`. Pass the same to a panel you render yourself:
 
 ```tsx
-const next = findSeriesOccurrence(events, selectedEvent, "next")?.event;
+const { previousInSeries, nextInSeries, showSeriesOccurrence } =
+  useCalendar<DetailedCalendarEvent>();
 
 <EventDetailPanel
   event={selectedEvent}
   onEventChange={updateEvent}
-  onNextWeek={next ? () => selectEvent(next.id) : undefined}
+  onPrevWeek={
+    previousInSeries ? () => showSeriesOccurrence(previousInSeries) : undefined
+  }
+  onNextWeek={
+    nextInSeries ? () => showSeriesOccurrence(nextInSeries) : undefined
+  }
 />;
 ```
+
+Outside a provider, `findSeriesOccurrence(events, event, "next")` (from `@/lib/recurrence`) finds the occurrence: the event when you have one for it, else its start and an id, for `createSeriesOccurrence(event, occurrence)` to copy the event to. The copy's id names the day it stands for, so it stays that day's occurrence after it is moved or renamed. A series is the events with the same title, calendar and rule; a `recurrenceRule` counts its days in the event's `timeZone`, so a 9 AM New York series stays at 9 AM there across daylight saving changes.
 
 ## Features
 
 - Edit the title in place. With `onEventChange` wired to the calendar, the event updates as you type.
 - Edit the start and end times and dates. <Kbd>Enter</Kbd> saves, <Kbd>Esc</Kbd> restores the old value.
+- In every menu and list of the details, <Kbd>Esc</Kbd> closes it and restores the value from before it opened. Arrow keys and the pointer only preview: the time zone list shows the highlighted city in the field until <Kbd>Enter</Kbd> or a click picks it.
 - Pick the event's time zone from a searchable list of every zone, with recent and popular ones first. The times keep their wall-clock value in the new zone.
-- Set a repeat rule from Notion's presets or the custom dialog (every N days, weeks, months or years, on chosen days, until a date or N times).
+- Set a repeat rule from Notion's presets or the custom dialog (every N days, weeks, months or years, on chosen days, on the 1st to 4th or last weekday of the month, until a date or N times). `.ics` import and export keep it as an RRULE; an RRULE the details can't show reads "Custom repeat".
 - Fields the event doesn't set (participants, conferencing, location, links, description, reminders) show Notion's muted placeholders.
 - Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
 
@@ -107,13 +116,13 @@ Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. I
       name: "onPrevWeek",
       type: "() => void",
       description:
-        "Shows the previous event of a repeating series (the repeat row's ‹). Leave it out at the start of the series to disable the arrow; `findSeriesOccurrence` finds the occurrence.",
+        "Shows the previous event of a repeating series (the repeat row's ‹). Leave it out at the start of the series to disable the arrow. The views' popover passes the provider's `previousInSeries`.",
     },
     {
       name: "onNextWeek",
       type: "() => void",
       description:
-        "Shows the next event of a repeating series (the repeat row's ›). Leave it out at the end of the series to disable the arrow.",
+        "Shows the next event of a repeating series (the repeat row's ›). Leave it out at the end of the series to disable the arrow. The views' popover passes the provider's `nextInSeries`.",
     },
   ]}
 />

@@ -47,15 +47,18 @@ import {
   getDefaultRecurrenceEnd,
   getEventRecurrenceRule,
   getRecurrencePresets,
+  isRRule,
   isSameRecurrenceRule,
   normalizeRecurrenceRule,
 } from "@/lib/recurrence";
-import type { RecurrenceLabel } from "@/lib/recurrence";
+import { getEventTimeZone, getZonedDay } from "@/lib/time-zones";
 import type {
   DetailedCalendarEvent,
-  EventDetailSectionProps,
+  EventDetailRecurrenceProps,
+  NormalizedRecurrenceRule,
   RecurrenceEnd,
   RecurrenceFrequency,
+  RecurrenceLabel,
   RecurrenceRule,
   RecurrenceWeekday,
 } from "./week-view-types";
@@ -102,11 +105,18 @@ const MENU_DETAIL_CLASS = "text-[#7F7F7F]";
 const DIALOG_FIELD_CLASS =
   "rounded-md border border-[#E8E8E4] bg-transparent text-foreground outline-none focus-within:border-[#F5F5F5] focus-within:bg-[#F5F5F5] has-[:disabled]:text-[#C7C5C1] dark:border-[#303030] dark:focus-within:border-[#303030] dark:focus-within:bg-[#303030] dark:has-[:disabled]:text-[#595959]";
 
-/** Blue of the checked radio and the Done button */
-const ACCENT_BG_CLASS = "bg-[#3A85D3]";
+/** Blue of the checked radio and the Done button, the same in both themes */
+const ACCENT_BG_CLASS = "bg-[#3A85D3] dark:bg-[#3A85D3]";
 
 /** Blue of a selected day in the custom dialog, softer than the button's */
-const SELECTED_DAY_CLASS = "bg-[#82B7F0] text-white dark:bg-[#245A92]";
+const SELECTED_DAY_CLASS =
+  "bg-[#82B7F0] text-white dark:bg-[#245A92] dark:text-white";
+
+/** What the row shows for an RRULE the details can't read */
+const CUSTOM_RECURRENCE_LABEL: RecurrenceLabel = {
+  main: "Custom repeat",
+  detail: "",
+};
 
 /**
  * Props for HoverTooltip
@@ -226,6 +236,34 @@ function RecurrenceText({
       {label.detail && <span className={detailClassName}> {label.detail}</span>}
     </>
   );
+}
+
+/**
+ * What the row shows for the event's repeat rule: the rule read out, a
+ * display text as it is, "Custom repeat" for an RRULE the details can't
+ * read, or `null` when it doesn't repeat
+ */
+function getRecurrenceLabel(
+  event: DetailedCalendarEvent,
+  rule: RecurrenceRule | null,
+  start: Date,
+  locale: Locale,
+): RecurrenceLabel | null {
+  if (rule) return describeRecurrenceRule(rule, start, locale);
+  if (!event.recurrence) return null;
+  if (isRRule(event.recurrence)) return CUSTOM_RECURRENCE_LABEL;
+  return { main: event.recurrence, detail: "" };
+}
+
+/** The end the custom dialog's "Ends" choice stands for */
+function getDialogEnd(
+  type: RecurrenceEnd["type"],
+  date: Date,
+  count: number,
+): RecurrenceEnd {
+  if (type === "on") return { type: "on", date };
+  if (type === "after") return { type: "after", count };
+  return { type: "never" };
 }
 
 /** Formats the custom dialog's end date: "Sun Dec 6", "Su Nov 7 '27" another year */
@@ -349,7 +387,7 @@ function RadioDot({ checked }: { checked: boolean }) {
 interface CustomRecurrenceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Start of the occurrence the rule is edited from */
+  /** Day of the occurrence the rule is edited from, in the event's zone */
   start: Date;
   /** The rule to start from, or null to start from "every week" */
   rule: RecurrenceRule | null;
@@ -377,6 +415,9 @@ function CustomRecurrenceDialog({
   const [interval, setRepeatInterval] = React.useState(initial.interval);
   const [weekdays, setWeekdays] = React.useState(initial.weekdays);
   const [monthlyBy, setMonthlyBy] = React.useState(initial.monthlyBy);
+  /** Week of the month a "weekday-of-month" rule keeps: the rule's own, else the start's */
+  const weekOfMonth: NormalizedRecurrenceRule["weekOfMonth"] =
+    initial.weekOfMonth;
   const [endType, setEndType] = React.useState<RecurrenceEnd["type"]>(
     initial.end.type,
   );
@@ -433,16 +474,17 @@ function CustomRecurrenceDialog({
   };
 
   const save = () => {
-    const end: RecurrenceEnd =
-      endType === "on"
-        ? { type: "on", date: endDate }
-        : endType === "after"
-          ? { type: "after", count: endCount }
-          : { type: "never" };
+    const end = getDialogEnd(endType, endDate, endCount);
     const next: RecurrenceRule = { frequency };
     if (interval > 1) next.interval = interval;
     if (frequency === "weekly") next.weekdays = weekdays;
+    if (frequency === "weekly" && rule?.weekStartsOn !== undefined) {
+      next.weekStartsOn = rule.weekStartsOn;
+    }
     if (frequency === "monthly") next.monthlyBy = monthlyBy;
+    if (frequency === "monthly" && monthlyBy === "weekday-of-month") {
+      next.weekOfMonth = weekOfMonth;
+    }
     if (end.type !== "never") next.end = end;
     onSave(next);
   };
@@ -456,7 +498,7 @@ function CustomRecurrenceDialog({
     locale,
   ).detail.replace(/^on /, "");
   const weekdayOfMonth = describeRecurrenceRule(
-    { frequency: "monthly", monthlyBy: "weekday-of-month" },
+    { frequency: "monthly", monthlyBy: "weekday-of-month", weekOfMonth },
     start,
     locale,
   ).detail.replace(/^on /, "");
@@ -688,24 +730,6 @@ function CustomRecurrenceDialog({
 }
 
 /**
- * Props for EventDetailRecurrence
- */
-interface EventDetailRecurrenceProps<
-  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
-> extends EventDetailSectionProps<TEvent> {
-  /**
-   * Shows the previous event of the series. Leave it out at the start of
-   * the series: the button is disabled then.
-   */
-  onPrevious?: () => void;
-  /**
-   * Shows the next event of the series. Leave it out at the end of the
-   * series: the button is disabled then.
-   */
-  onNext?: () => void;
-}
-
-/**
  * The event's repeat rule, "Every week on Thu", or a muted "Repeat". Clicking
  * it opens Notion Calendar's menu: "Does not repeat", the presets for the
  * event's date (every day, every weekday or weekend day, every week, every 2
@@ -722,22 +746,21 @@ export function EventDetailRecurrence<
   onNext,
 }: EventDetailRecurrenceProps<TEvent>) {
   const { locale } = useCalendarConfig();
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [customOpen, setCustomOpen] = React.useState(false);
+  /** Remounts the custom dialog on each open, so it starts from the current rule */
+  const [customKey, setCustomKey] = React.useState(0);
 
+  // A rule counts its days in the event's zone
+  const start = getZonedDay(event.start, getEventTimeZone(event));
   const rule = getEventRecurrenceRule(event);
   const repeats = Boolean(rule ?? event.recurrence);
-  const label: RecurrenceLabel | null = rule
-    ? describeRecurrenceRule(rule, event.start, locale)
-    : event.recurrence
-      ? { main: event.recurrence, detail: "" }
-      : null;
+  const label = getRecurrenceLabel(event, rule, start, locale);
 
-  const presets = getRecurrencePresets(event.start);
+  const presets = getRecurrencePresets(start);
   const checkedPreset = rule
-    ? presets.findIndex((preset) =>
-        isSameRecurrenceRule(preset, rule, event.start),
-      )
+    ? presets.findIndex((preset) => isSameRecurrenceRule(preset, rule, start))
     : -1;
 
   const applyRule = (next: RecurrenceRule | null) => {
@@ -746,6 +769,14 @@ export function EventDetailRecurrence<
       recurrenceRule: next ?? undefined,
       recurrence: undefined,
     });
+  };
+
+  /** Closes the custom dialog and puts focus back on the Repeat button */
+  const closeCustom = () => {
+    setCustomOpen(false);
+    // After the dialog's own focus handling, which has nothing to return to:
+    // it opened from a menu item that is gone
+    requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
   const fullText = label
@@ -764,6 +795,7 @@ export function EventDetailRecurrence<
           <HoverTooltip label={fullText} when={isTruncated}>
             <DropdownMenuTrigger asChild>
               <button
+                ref={triggerRef}
                 type="button"
                 aria-label={`Repeat: ${repeats ? fullText : "does not repeat"}`}
                 disabled={!onEventChange}
@@ -838,7 +870,7 @@ export function EventDetailRecurrence<
                 )}
                 <span>
                   <RecurrenceText
-                    label={describeRecurrenceRule(preset, event.start, locale)}
+                    label={describeRecurrenceRule(preset, start, locale)}
                     detailClassName={cn("ml-1", MENU_DETAIL_CLASS)}
                   />
                 </span>
@@ -861,7 +893,10 @@ export function EventDetailRecurrence<
             <DropdownMenuSeparator className="bg-[#303030]" />
             <DropdownMenuItem
               className={MENU_ITEM_CLASS}
-              onClick={() => setCustomOpen(true)}
+              onClick={() => {
+                setCustomKey((key) => key + 1);
+                setCustomOpen(true);
+              }}
             >
               Custom…
             </DropdownMenuItem>
@@ -886,18 +921,21 @@ export function EventDetailRecurrence<
         )}
       </div>
 
-      {customOpen && (
-        <CustomRecurrenceDialog
-          open={customOpen}
-          onOpenChange={setCustomOpen}
-          start={event.start}
-          rule={rule}
-          onSave={(next) => {
-            applyRule(next);
-            setCustomOpen(false);
-          }}
-        />
-      )}
+      {/* Stays mounted while it closes: its Escape handler must still run to
+          keep the calendar's global Escape from deselecting the event */}
+      <CustomRecurrenceDialog
+        key={customKey}
+        open={customOpen}
+        onOpenChange={(open) => {
+          if (!open) closeCustom();
+        }}
+        start={start}
+        rule={rule}
+        onSave={(next) => {
+          applyRule(next);
+          closeCustom();
+        }}
+      />
     </EventDetailSection>
   );
 }
@@ -922,7 +960,7 @@ function SeriesButton({ label, onClick, children }: SeriesButtonProps) {
       disabled={!onClick}
       onClick={onClick}
       className={cn(
-        "flex size-8 items-center justify-center rounded-sm outline-none hover:bg-[#F5F5F5] hover:text-[#32302C] focus-visible:ring-1 focus-visible:ring-[#3A85D3] disabled:pointer-events-none disabled:text-[#DDDDDD] dark:hover:bg-[#242424] dark:hover:text-[#D4D4D4] dark:disabled:text-[#373737]",
+        "flex size-8 items-center justify-center rounded-sm outline-none hover:bg-[#F5F5F5] hover:text-[#32302C] focus-visible:ring-1 focus-visible:ring-[#3A85D3] dark:focus-visible:ring-[#3A85D3] disabled:pointer-events-none disabled:text-[#DDDDDD] dark:hover:bg-[#242424] dark:hover:text-[#D4D4D4] dark:disabled:text-[#373737]",
         EVENT_DETAIL_SECONDARY_CLASS,
       )}
     >

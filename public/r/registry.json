@@ -66,6 +66,14 @@
         {
           "path": "src/lib/timezone-label.ts",
           "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/recurrence.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/time-zones.ts",
+          "type": "registry:lib"
         }
       ],
       "cssVars": {
@@ -270,14 +278,6 @@
         {
           "path": "src/hooks/use-hover-tooltip.ts",
           "type": "registry:hook"
-        },
-        {
-          "path": "src/lib/recurrence.ts",
-          "type": "registry:lib"
-        },
-        {
-          "path": "src/lib/time-zones.ts",
-          "type": "registry:lib"
         }
       ]
     },

@@ -116,7 +116,7 @@ interface Meeting extends CalendarEvent {
       name: "onEventsChange",
       type: "(events: TEvent[]) => void",
       description:
-        "Called with the full next list whenever events change: drag, resize, create or an edit in the details.",
+        "Called with the full next list whenever events change: drag, resize, create, an edit in the details, or an occurrence the series arrows open.",
     },
     {
       name: "view",
@@ -347,6 +347,24 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "selectedEvent",
       type: "TEvent | null",
       description: "The selected event.",
+    },
+    {
+      name: "previousInSeries",
+      type: "SeriesOccurrence<TEvent> | null",
+      description:
+        "The selected event's previous occurrence in its repeating series (`findSeriesOccurrence`): `{ start, event? }`, with `event` when the events have one for it. `null` when nothing is selected, the event doesn't repeat, or it is the first.",
+    },
+    {
+      name: "nextInSeries",
+      type: "SeriesOccurrence<TEvent> | null",
+      description:
+        "The selected event's next occurrence in its series, or `null` at the series' end.",
+    },
+    {
+      name: "showSeriesOccurrence",
+      type: "(occurrence: SeriesOccurrence<TEvent>) => void",
+      description:
+        "Selects an occurrence and moves to its period when it is off screen. One the events don't have yet is added first, as a copy of the selected event (through `onEventsChange`). The details' series arrows call it.",
     },
     {
       name: "highlightedDate",
