@@ -131,11 +131,12 @@ Every event is a button you can reach with <Kbd>Tab</Kbd>. The views only handle
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Next or previous event on screen | <Kbd>Tab</Kbd> / <KbdGroup><Kbd>⇧</Kbd><Kbd>Tab</Kbd></KbdGroup>                                                          |
 | Open the event's details         | <Kbd>Enter</Kbd> or <Kbd>Space</Kbd>                                                                                      |
-| Close the details                | <Kbd>Esc</Kbd>. Focus goes back to the event.                                                                             |
+| Close the details                | <Kbd>Esc</Kbd> outside a field or menu. Focus goes back to the event.                                                     |
 | Move a day earlier or later      | <KbdGroup><Kbd>Alt</Kbd><Kbd>←</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>→</Kbd></KbdGroup>                         |
 | Move earlier or later            | <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>                         |
 | Make it end earlier or later     | <KbdGroup><Kbd>Alt</Kbd><Kbd>⇧</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>⇧</Kbd><Kbd>↓</Kbd></KbdGroup> |
 
+- In a field or menu of the details, <Kbd>Esc</Kbd> only closes it and restores the value from before. Press it again to close the details.
 - In the day and week views and the agenda, <Kbd>Alt</Kbd> + <Kbd>↑</Kbd> / <Kbd>↓</Kbd> move a timed event by one `snapMinutes` step and keep it inside the visible hours. In month view they move it a week.
 - Moving an event past the visible days moves the view with it, and focus follows the event.
 - `CalendarProvider` renders a polite live region (`role="status"`) that announces each move, resize and create, e.g. "Moved Team standup to Tuesday, October 27, 9:15 AM".
