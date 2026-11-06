@@ -29,6 +29,7 @@ import {
   EVENT_DETAIL_SECONDARY_CLASS,
   EventDetailRow,
   EventDetailSection,
+  getEventDetailPortalContainer,
 } from "./event-detail-parts";
 import {
   POPULAR_TIME_ZONES,
@@ -400,12 +401,11 @@ export function EventDetailTimezone<
   }
 
   const label = getTimeZoneRowLabel(event.start, timeZone);
-  // A modal sheet (the panel on phones) dismisses on presses outside its own
-  // DOM, so the list goes inside it there; anywhere else it goes to the body
-  const portalContainer =
-    rowElement?.closest<HTMLElement>(
-      '[role="dialog"]:not([data-calendar-popover])',
-    ) ?? (typeof document === "undefined" ? null : document.body);
+  // Inside a modal sheet (the panel on phones), which dismisses on presses
+  // outside its own DOM; the body anywhere else
+  const portalContainer = listOpen
+    ? getEventDetailPortalContainer(rowElement)
+    : null;
 
   return (
     <EventDetailSection name="timezone">

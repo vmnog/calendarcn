@@ -1,10 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { createPortal } from "react-dom";
 import { format, isSameYear, isValid, parse, startOfDay } from "date-fns";
 import type { Locale } from "date-fns";
-import { autoUpdate, offset, shift, useFloating } from "@floating-ui/react-dom";
 import {
   Check,
   ChevronDown,
@@ -16,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useHoverTooltip } from "@/hooks/use-hover-tooltip";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +39,9 @@ import {
   EVENT_DETAIL_ROW_HEIGHT_CLASS,
   EVENT_DETAIL_SECONDARY_CLASS,
   EventDetailSection,
+  EventDetailTooltip,
+  closeMenuOnEscape,
+  stopEscapePropagation,
 } from "./event-detail-parts";
 import {
   RECURRENCE_UNITS,
@@ -76,9 +78,6 @@ const DIALOG_WEEKDAYS: RecurrenceWeekday[] = [0, 1, 2, 3, 4, 5, 6];
 
 /** Largest "Every" and "After" number the custom dialog takes */
 const MAX_RECURRENCE_NUMBER = 999;
-
-/** Wait before a tooltip shows on hover, in ms */
-const TOOLTIP_DELAY = 500;
 
 /** Formats the custom dialog's end date reads and writes, most specific first */
 const END_DATE_FORMATS = [
@@ -134,84 +133,41 @@ interface HoverTooltipProps {
 }
 
 /**
- * Notion Calendar's tooltip: a dark label above the element after a short
- * hover, or right away on keyboard focus. Drawn in a portal, so the panel's
- * overflow doesn't clip it.
+ * The details' tooltip above an element, after the pointer rests on it or
+ * once it gets keyboard focus
  */
 function HoverTooltip({ label, when, children }: HoverTooltipProps) {
-  const [reference, setReference] = React.useState<HTMLElement | null>(null);
-  const [tooltip, setTooltip] = React.useState<HTMLElement | null>(null);
-  const [open, setOpen] = React.useState(false);
-  const timerRef = React.useRef<number | null>(null);
+  const tooltip = useHoverTooltip();
+  const [rect, setRect] = React.useState<DOMRect | null>(null);
 
-  const { floatingStyles } = useFloating({
-    open,
-    placement: "top",
-    strategy: "fixed",
-    elements: { reference, floating: tooltip },
-    whileElementsMounted: autoUpdate,
-    middleware: [offset(6), shift({ padding: 8 })],
-  });
-
-  React.useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    };
-  }, []);
-
-  const hide = () => {
-    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    timerRef.current = null;
-    setOpen(false);
-  };
-
-  const show = (element: HTMLElement, delay: number) => {
+  /** Places the tooltip over the wrapped element and schedules it */
+  const show = (wrapper: HTMLElement) => {
+    // The wrapper is `display: contents`: measure the element inside
+    const element = wrapper.firstElementChild;
+    if (!(element instanceof HTMLElement)) return;
     if (when && !when(element)) return;
-    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    timerRef.current = window.setTimeout(() => setOpen(true), delay);
+    setRect(element.getBoundingClientRect());
+    tooltip.scheduleOpen();
   };
-
-  /** The wrapped element: the wrapper itself is `display: contents` */
-  const elementOf = (wrapper: HTMLElement) =>
-    wrapper.firstElementChild instanceof HTMLElement
-      ? wrapper.firstElementChild
-      : null;
 
   return (
     <>
       <span
         className="contents"
-        onPointerEnter={(e) => {
-          const element = elementOf(e.currentTarget);
-          if (!element) return;
-          setReference(element);
-          show(element, TOOLTIP_DELAY);
-        }}
-        onPointerLeave={hide}
-        onPointerDown={hide}
+        onPointerEnter={(e) => show(e.currentTarget)}
+        onPointerLeave={tooltip.scheduleClose}
+        onPointerDown={tooltip.scheduleClose}
         onFocus={(e) => {
-          const element = elementOf(e.currentTarget);
-          if (!element?.matches(":focus-visible")) return;
-          setReference(element);
-          show(element, 0);
+          if (!e.target.matches(":focus-visible")) return;
+          show(e.currentTarget);
         }}
-        onBlur={hide}
+        onBlur={tooltip.scheduleClose}
       >
         {children}
       </span>
-      {open &&
-        reference &&
-        createPortal(
-          <div
-            ref={setTooltip}
-            role="tooltip"
-            style={floatingStyles}
-            className="pointer-events-none z-[100] max-w-[260px] rounded-md border border-[#212121] bg-[#212121] px-2 py-1 text-[13px] font-medium text-white shadow-md dark:border-[#303030] dark:bg-[#252525]"
-          >
-            {label}
-          </div>,
-          document.body,
-        )}
+      <EventDetailTooltip rect={tooltip.isOpen ? rect : null}>
+        {label}
+      </EventDetailTooltip>
     </>
   );
 }
@@ -513,10 +469,7 @@ function CustomRecurrenceDialog({
       <DialogContent
         showCloseButton={false}
         className="w-[434px] max-w-[calc(100vw-32px)] gap-5 rounded-xl border-[#E8E8E4] bg-white p-[27px] text-sm font-medium dark:border-[#303030] dark:bg-[#252525]"
-        // The calendar's global Escape would deselect the event
-        onKeyDown={(e) => {
-          if (e.key === "Escape") e.stopPropagation();
-        }}
+        onKeyDown={stopEscapePropagation}
       >
         <DialogTitle className="text-base font-medium">Repeat</DialogTitle>
         <DialogDescription className="sr-only">
@@ -553,9 +506,7 @@ function CustomRecurrenceDialog({
                   "min-w-[140px] rounded-lg",
                   EVENT_DETAIL_MENU_CLASS,
                 )}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") e.stopPropagation();
-                }}
+                onKeyDown={stopEscapePropagation}
               >
                 {FREQUENCIES.map((value) => (
                   <DropdownMenuItem
@@ -842,10 +793,7 @@ export function EventDetailRecurrence<
               "w-max min-w-[231px] rounded-lg",
               EVENT_DETAIL_MENU_CLASS,
             )}
-            onKeyDown={(e) => {
-              // The calendar's global Escape would deselect the event
-              if (e.key === "Escape") e.stopPropagation();
-            }}
+            onKeyDown={closeMenuOnEscape(() => setMenuOpen(false))}
           >
             {repeats && (
               <>
