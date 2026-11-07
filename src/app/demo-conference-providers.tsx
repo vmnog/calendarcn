@@ -1,33 +1,10 @@
-import type { ConferenceProviderOption } from "@/components/week-view-types";
+import type { ReactNode } from "react";
 
-/**
- * How long the demo's services take to "create" a call, so the panel's
- * pending state shows, as it would while a real service's API answers
- */
-const CREATE_DELAY_MS = 400;
-
-/** Letters of a placeholder meeting code */
-const LETTERS = "abcdefghijklmnopqrstuvwxyz";
-
-/** A run of random lowercase letters */
-function randomLetters(length: number): string {
-  return Array.from(
-    { length },
-    () => LETTERS[Math.floor(Math.random() * LETTERS.length)],
-  ).join("");
-}
-
-/** A run of random digits */
-function randomDigits(length: number): string {
-  return Array.from({ length }, () => Math.floor(Math.random() * 10)).join("");
-}
-
-/** Resolves with the value after `CREATE_DELAY_MS` */
-function later<T>(value: T): Promise<T> {
-  return new Promise((resolve) => {
-    window.setTimeout(() => resolve(value), CREATE_DELAY_MS);
-  });
-}
+import type {
+  ConferenceProvider,
+  ConferenceProviderOption,
+} from "@/components/week-view-types";
+import { DEMO_CONFERENCE_PROVIDERS as PLACEHOLDER_CONFERENCE_PROVIDERS } from "@/lib/conference-providers";
 
 /** Google Meet's four-color camera */
 function GoogleMeetLogo() {
@@ -76,50 +53,21 @@ function TeamsLogo() {
   );
 }
 
+/** Each service's logo, by the `provider` of its option */
+const LOGOS: Partial<Record<ConferenceProvider, ReactNode>> = {
+  "google-meet": <GoogleMeetLogo />,
+  zoom: <ZoomLogo />,
+  "microsoft-teams": <TeamsLogo />,
+};
+
 /**
- * The demo's conferencing services. Their calls are made up on the spot,
- * in each service's code format but on example.com, so no link opens a
- * real meeting. An app passes its own, creating calls through the
- * service's API.
+ * The demo's conferencing services: the registry's placeholder services
+ * (`@calendarcn/conference-providers`), with the services' logos. The logos
+ * are their owners' trademarks, so they stay in the demo and out of the
+ * registry (ADR 005).
  */
-export const DEMO_CONFERENCE_PROVIDERS: ConferenceProviderOption[] = [
-  {
-    provider: "google-meet",
-    label: "Google Meet",
-    icon: <GoogleMeetLogo />,
-    createConference: () => {
-      const code = `${randomLetters(3)}-${randomLetters(4)}-${randomLetters(3)}`;
-      return later({
-        provider: "google-meet",
-        url: `https://example.com/meet/${code}`,
-        meetingId: code,
-      });
-    },
-  },
-  {
-    provider: "zoom",
-    label: "Zoom",
-    icon: <ZoomLogo />,
-    createConference: () => {
-      const id = randomDigits(10);
-      return later({
-        provider: "zoom",
-        url: `https://example.com/zoom/j/${id}`,
-        meetingId: `${id.slice(0, 3)} ${id.slice(3, 6)} ${id.slice(6)}`,
-      });
-    },
-  },
-  {
-    provider: "microsoft-teams",
-    label: "Microsoft Teams",
-    icon: <TeamsLogo />,
-    createConference: () => {
-      const id = randomDigits(12);
-      return later({
-        provider: "microsoft-teams",
-        url: `https://example.com/teams/meet/${id}`,
-        meetingId: id.replace(/(\d{3})(?=\d)/g, "$1 "),
-      });
-    },
-  },
-];
+export const DEMO_CONFERENCE_PROVIDERS: ConferenceProviderOption[] =
+  PLACEHOLDER_CONFERENCE_PROVIDERS.map((option) => ({
+    ...option,
+    icon: LOGOS[option.provider],
+  }));

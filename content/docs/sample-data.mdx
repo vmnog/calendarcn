@@ -1,0 +1,125 @@
+---
+title: Sample Data
+description: The live demo's events, calendars, contacts, rooms and places, to try the calendar or reproduce the demo.
+---
+
+<ComponentPreview name="sample-data-demo" />
+
+`@calendarcn/sample-data` is the data behind the [live demo](/): about 380 events dated around today, eight calendars in two accounts with their colors, the contacts and rooms the details panel invites, and the places its location field suggests. Use it to try the calendar before your own events are wired up, or to reproduce the demo. It also has the smaller week of events the examples in these docs use.
+
+Everything in it is made up. Email addresses and links are on `example.com`.
+
+## Installation
+
+<InstallTabs item="sample-data" />
+
+It adds two files to your lib folder:
+
+| File                   | Exports                                                                                                                        | What it is                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `lib/mock-events.ts`   | `generateMockEvents`, `DEMO_CALENDARS`, `DEMO_PRIMARY_CALENDAR_ID`, `DEMO_CONTACTS`, `DEMO_ROOMS`, `DEMO_LOCATION_SUGGESTIONS` | The live demo's data.                                             |
+| `lib/sample-events.ts` | `createSampleEvents`                                                                                                           | About fifteen events in one week, the data of the docs' examples. |
+
+## Usage
+
+Pass the events and the lists to `Calendar`, or to a `CalendarProvider` around your views:
+
+```tsx
+import { Calendar } from "@/components/calendar";
+import {
+  DEMO_CALENDARS,
+  DEMO_CONTACTS,
+  DEMO_LOCATION_SUGGESTIONS,
+  DEMO_ROOMS,
+  generateMockEvents,
+} from "@/lib/mock-events";
+
+export function DemoCalendar() {
+  // The provider reads its initial events once, so create them once
+  const [initialEvents] = React.useState(() => generateMockEvents());
+
+  return (
+    <Calendar
+      defaultEvents={initialEvents}
+      calendars={DEMO_CALENDARS}
+      contacts={DEMO_CONTACTS}
+      rooms={DEMO_ROOMS}
+      locationSuggestions={DEMO_LOCATION_SUGGESTIONS}
+    />
+  );
+}
+```
+
+The events are dated from the viewer's today, so create them in the browser: in a state initializer, as above, or in an effect. With Next.js Cache Components, `new Date()` can't run while a page prerenders.
+
+## The events
+
+`generateMockEvents(today)` places every event relative to the week that contains `today` (weeks start on Sunday), so the current week always looks the same. `today` defaults to now; pass a fixed date to get the same events every time, for example in tests:
+
+```ts
+const events = generateMockEvents(new Date(2026, 5, 4));
+```
+
+The events come from three sources:
+
+- **One-off events**, most of them in the 20 weeks before today and the next two: meetings, offsites, a conference, a weekend trip, all-day and multi-day events, and events that overlap. Two sprint events sit more than a year back, so search shows them with a year label.
+- **Weekly routines** from 20 weeks ago to 20 weeks ahead, so no week is empty: a team standup, a 1:1, gym sessions, a Friday wrap-up and a happy hour.
+- **Public holidays** in Brazil on their real dates, for the previous, current and next year, on the subscribed "Holidays in Brazil" calendar.
+
+They fill in the fields the [details panel](/docs/components/event-details) shows: descriptions, locations, reminders, repeat rules, busy or free and visibility. One event, the Launch Review on this week's Saturday, has every field set, from participants and a booked room to a video call, links and an attachment.
+
+## Calendars
+
+`DEMO_CALENDARS` are what the details panel's calendar picker and the right-click menu offer, grouped by account. An event takes its calendar's color until it's given its own.
+
+| Calendar                         | Color  | Account                |
+| -------------------------------- | ------ | ---------------------- |
+| `you@example.com` (primary)      | red    | `you@example.com`      |
+| Personal                         | purple | `you@example.com`      |
+| Family                           | orange | `you@example.com`      |
+| Side Projects                    | yellow | `you@example.com`      |
+| Fitness                          | green  | `you@example.com`      |
+| Holidays in Brazil               | green  | `you@example.com`      |
+| `you@work.example.com` (primary) | gray   | `you@work.example.com` |
+| Work                             | blue   | `you@work.example.com` |
+
+The two primary calendars give new events default reminders: 10 minutes before on the personal one, 30 minutes on the work one. `DEMO_PRIMARY_CALENDAR_ID` is the personal primary calendar's id. The demo puts events created by clicking an empty slot there:
+
+```tsx
+<Calendar
+  createEvent={(range) => ({
+    id: crypto.randomUUID(),
+    title: "New event",
+    start: range.start,
+    end: range.end,
+    color: "red",
+    calendarId: DEMO_PRIMARY_CALENDAR_ID,
+    calendarEmail: DEMO_PRIMARY_CALENDAR_ID,
+  })}
+/>
+```
+
+## Contacts, rooms and places
+
+- `DEMO_CONTACTS`: nine people the participants field suggests. The first five are marked `recent`, so they're listed before you type.
+- `DEMO_ROOMS`: three meeting rooms to book, with their floor and capacity.
+- `DEMO_LOCATION_SUGGESTIONS`: seven parks and places the location field suggests as you type.
+
+## Reproduce the live demo
+
+The preview above passes the demo's data and its conference providers from [`@calendarcn/conference-providers`](/docs/components/event-details#conference-providers) to `Calendar`. Two things differ from the demo:
+
+- **Logos.** The demo gives Google Meet, Zoom and Microsoft Teams their logos as icons. The item ships no logos, so the preview shows cameras; see [Logos](/docs/components/event-details#logos) to add your own.
+- **Week numbers.** The demo passes `defaultViewSettings={{ showWeekends: true, showDeclinedEvents: true, showWeekNumbers: true }}`.
+
+## The docs' examples
+
+`createSampleEvents(referenceDate, weekStartsOn)` returns about fifteen events in the week that contains `referenceDate`: timed, overlapping, all-day and multi-day events in every color, with timed events on every day. The same week always gets the same events, with fixed ids, titles and times. Every example in these docs uses it:
+
+```tsx
+import { createSampleEvents } from "@/lib/sample-events";
+
+const [initialEvents] = React.useState(() => createSampleEvents(new Date()));
+```
+
+Pass `1` as `weekStartsOn` when your calendar's weeks start on Monday, so the events stay on the days the calendar shows.

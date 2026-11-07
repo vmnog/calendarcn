@@ -9,82 +9,17 @@ import {
 } from "@/components/calendar-provider";
 import { EventDetailPanel } from "@/components/event-detail-panel";
 import type {
-  CalendarInfo,
-  ConferenceProviderOption,
   DetailedCalendarEvent,
-  EventContact,
   EventReminder,
-  EventRoom,
-  LocationSuggestion,
 } from "@/components/calendar-types";
+import { DEMO_CONFERENCE_PROVIDERS } from "@/lib/conference-providers";
+import {
+  DEMO_CALENDARS,
+  DEMO_CONTACTS,
+  DEMO_LOCATION_SUGGESTIONS,
+  DEMO_ROOMS,
+} from "@/lib/mock-events";
 import { formatRecurrenceRule, getEventRecurrenceRule } from "@/lib/recurrence";
-
-/** Calendars the event can move to, grouped by account in the picker */
-const CALENDARS: CalendarInfo[] = [
-  { id: "work", name: "Work", color: "blue", email: "you@example.com" },
-  {
-    id: "personal",
-    name: "Personal",
-    color: "purple",
-    email: "you@example.com",
-  },
-  { id: "team", name: "Team", color: "green", email: "team@example.com" },
-];
-
-/** People the participants field suggests; recent ones show before typing */
-const CONTACTS: EventContact[] = [
-  { name: "Alex Rivera", email: "alex@example.com", recent: true },
-  { name: "Priya Shah", email: "priya@example.com", recent: true },
-  { name: "Taylor Kim", email: "taylor@example.com" },
-  { name: "Jamie Chen", email: "jamie@example.com" },
-];
-
-/** Rooms the participants field offers */
-const ROOMS: EventRoom[] = [
-  {
-    id: "room-4b@example.com",
-    name: "Room 4B",
-    location: "5th floor",
-    capacity: 8,
-  },
-  {
-    id: "atlas@example.com",
-    name: "Atlas",
-    location: "3rd floor",
-    capacity: 12,
-  },
-];
-
-/** Video call services; call your service's API in `createConference` (it can be async) */
-const CONFERENCE_PROVIDERS: ConferenceProviderOption[] = [
-  {
-    provider: "google-meet",
-    label: "Google Meet",
-    createConference: () => ({
-      provider: "google-meet",
-      label: "Google Meet",
-      url: "https://meet.example.com/abc-defg-hij",
-      meetingId: "abc-defg-hij",
-    }),
-  },
-  {
-    provider: "zoom",
-    label: "Zoom",
-    createConference: () => ({
-      provider: "zoom",
-      label: "Zoom",
-      url: "https://zoom.example.com/j/1234567890",
-      meetingId: "123 456 7890",
-    }),
-  },
-];
-
-/** Places the location field suggests as you type */
-const LOCATION_SUGGESTIONS: LocationSuggestion[] = [
-  { name: "Central Park", address: "New York, NY, USA" },
-  { name: "Golden Gate Park", address: "San Francisco, CA, USA" },
-  { name: "Hyde Park", address: "London, UK" },
-];
 
 /**
  * A fixed event, built from local date parts so the server and the browser
@@ -95,8 +30,8 @@ const INITIAL_EVENT: DetailedCalendarEvent = {
   title: "Design review",
   start: new Date(2026, 10, 4, 14, 0),
   end: new Date(2026, 10, 4, 15, 30),
-  calendarId: "work",
-  calendarEmail: "you@example.com",
+  calendarId: "Work",
+  calendarEmail: "you@work.example.com",
   location: "Room 4B",
   description: "Walk through the new onboarding flow.",
   // Every week on Wednesday
@@ -188,14 +123,15 @@ export function EventDetailsDemo() {
 
   return (
     // The provider supplies what the panel offers to pick from: calendars,
-    // contacts, rooms, video call services and places. Without one, those
-    // sections have nothing to offer, and the rest still work.
+    // contacts, rooms, video call services and places, here the live demo's
+    // (@calendarcn/sample-data and @calendarcn/conference-providers). Without
+    // one, those sections have nothing to offer, and the rest still work.
     <CalendarProvider
-      calendars={CALENDARS}
-      contacts={CONTACTS}
-      rooms={ROOMS}
-      conferenceProviders={CONFERENCE_PROVIDERS}
-      locationSuggestions={LOCATION_SUGGESTIONS}
+      calendars={DEMO_CALENDARS}
+      contacts={DEMO_CONTACTS}
+      rooms={DEMO_ROOMS}
+      conferenceProviders={DEMO_CONFERENCE_PROVIDERS}
+      locationSuggestions={DEMO_LOCATION_SUGGESTIONS}
     >
       {/* Side by side when the container is wide enough, stacked otherwise */}
       <div className="@container h-full overflow-y-auto bg-muted/40">

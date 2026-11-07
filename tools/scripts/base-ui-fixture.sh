@@ -69,8 +69,9 @@ config.registries = { ...config.registries, "@calendarcn": process.argv[1] };
 fs.writeFileSync("components.json", JSON.stringify(config, null, 2) + "\n");
 ' "$REGISTRY_URL"
 
-echo "Installing @calendarcn/calendar..."
-npx -y "$SHADCN" add @calendarcn/calendar -y
+# The opt-in data items install too, so tsc and next build check them
+echo "Installing @calendarcn/calendar, conference-providers and sample-data..."
+npx -y "$SHADCN" add @calendarcn/calendar @calendarcn/conference-providers @calendarcn/sample-data -y
 
 echo "Type-checking..."
 npx tsc --noEmit
