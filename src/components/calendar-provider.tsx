@@ -1,7 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { addDays, addMonths, startOfDay } from "date-fns";
+import {
+  addDays,
+  addMonths,
+  isSameDay,
+  isSameMonth,
+  startOfDay,
+  startOfMonth,
+} from "date-fns";
 import { enUS } from "date-fns/locale";
 
 import { useControllableState } from "@/hooks/use-controllable-state";
@@ -17,6 +24,7 @@ import {
   getVisibleRange,
   getWeekViewStepDays,
 } from "@/lib/event-utils";
+import { createSeriesOccurrence, findSeriesOccurrence } from "@/lib/recurrence";
 import type {
   CalendarConfig,
   CalendarContextValue,
@@ -31,6 +39,7 @@ import type {
   HourCycle,
   LocationSuggestion,
   NewEventRange,
+  SeriesOccurrence,
   ViewSettings,
   ViewType,
   VisibleRange,
@@ -165,6 +174,19 @@ interface CalendarViewSyncValue {
   closeEventPopover: (eventId: string) => void;
 }
 
+/**
+ * The selected event's series neighbors and the action that shows one, for
+ * the details' series arrows. Kept apart from `useCalendar()` so the
+ * popover, which also renders outside a provider, can read them.
+ */
+interface CalendarSeriesValue {
+  /** The event the neighbors are for: the selected one */
+  eventId: string | null;
+  previousInSeries: SeriesOccurrence | null;
+  nextInSeries: SeriesOccurrence | null;
+  showSeriesOccurrence: (occurrence: SeriesOccurrence) => void;
+}
+
 /** Props for the internal EventContentSlot */
 interface EventContentSlotProps extends EventContentProps {
   /**
@@ -202,6 +224,17 @@ const CalendarRenderSlotsContext =
 const CalendarConfigContext = React.createContext<CalendarConfig>(
   DEFAULT_CALENDAR_CONFIG,
 );
+
+/** Outside a provider: no series to step through */
+const NO_SERIES: CalendarSeriesValue = {
+  eventId: null,
+  previousInSeries: null,
+  nextInSeries: null,
+  showSeriesOccurrence: () => {},
+};
+
+const CalendarSeriesContext =
+  React.createContext<CalendarSeriesValue>(NO_SERIES);
 
 /** Default `createEvent`: a "New event" covering the clicked slot */
 function createDefaultEvent(range: NewEventRange): CalendarEvent {
@@ -563,6 +596,66 @@ function CalendarStateProvider({
     [setCurrentDate],
   );
 
+  const previousInSeries = React.useMemo(
+    () =>
+      selectedEvent
+        ? findSeriesOccurrence(events, selectedEvent, "previous")
+        : null,
+    [events, selectedEvent],
+  );
+  const nextInSeries = React.useMemo(
+    () =>
+      selectedEvent
+        ? findSeriesOccurrence(events, selectedEvent, "next")
+        : null,
+    [events, selectedEvent],
+  );
+
+  const showSeriesOccurrence = React.useCallback(
+    (occurrence: SeriesOccurrence) => {
+      let target = occurrence.event;
+      if (!target) {
+        if (!selectedEvent) return;
+        const copy = createSeriesOccurrence(selectedEvent, occurrence);
+        // An occurrence opened before (and maybe moved or renamed since)
+        // keeps its edits rather than being replaced by a fresh copy
+        const opened = eventsRef.current.find((e) => e.id === copy.id);
+        if (!opened) {
+          setEvents((prev) => [...prev, copy]);
+          onEventCreate?.(copy);
+        }
+        target = opened ?? copy;
+      }
+      selectEvent(target.id);
+
+      // Stay put while the occurrence is on screen
+      const start = target.start;
+      const isOnScreen =
+        view === "month"
+          ? isSameMonth(start, displayMonth ?? currentDate)
+          : visibleDays.some((day) => isSameDay(day, start));
+      if (isOnScreen) return;
+      // Month view starts on the week of the 1st, so the month is the one shown
+      const periodDate = view === "month" ? startOfMonth(start) : start;
+      setCurrentDate(
+        getPeriodStart(periodDate, view, weekStartsOn, numberOfDays),
+      );
+    },
+    [
+      selectedEvent,
+      setEvents,
+      onEventCreate,
+      selectEvent,
+      view,
+      displayMonth,
+      currentDate,
+      visibleDays,
+      weekStartsOn,
+      numberOfDays,
+      setCurrentDate,
+    ],
+  );
+
   const switchView = React.useCallback(
     (newView: ViewType) => {
       if (newView === view) return;
@@ -768,6 +861,9 @@ function CalendarStateProvider({
       loading,
       selectedEventId,
       selectedEvent,
+      previousInSeries,
+      nextInSeries,
+      showSeriesOccurrence,
       highlightedDate,
       monthName,
       year,
@@ -800,6 +896,9 @@ function CalendarStateProvider({
       loading,
       selectedEventId,
       selectedEvent,
+      previousInSeries,
+      nextInSeries,
+      showSeriesOccurrence,
       highlightedDate,
       monthName,
       year,
@@ -835,6 +934,16 @@ function CalendarStateProvider({
     [reportView, closeEventPopover],
   );
 
+  const series = React.useMemo<CalendarSeriesValue>(
+    () => ({
+      eventId: selectedEvent?.id ?? null,
+      previousInSeries,
+      nextInSeries,
+      showSeriesOccurrence,
+    }),
+    [selectedEvent, previousInSeries, nextInSeries, showSeriesOccurrence],
+  );
+
   const renderSlots = React.useMemo<CalendarRenderSlots>(
     () => ({ renderEventContent, renderEventDetails }),
     [renderEventContent, renderEventDetails],
@@ -846,6 +955,7 @@ function CalendarStateProvider({
       ...resolveDayHours(dayStartHour, dayEndHour),
       hourCycle,
       locale,
+      weekStartsOn,
       calendars,
       contacts,
       rooms,
@@ -858,6 +968,7 @@ function CalendarStateProvider({
       dayEndHour,
       hourCycle,
       locale,
+      weekStartsOn,
       calendars,
       contacts,
       rooms,
@@ -871,18 +982,20 @@ function CalendarStateProvider({
       <CalendarViewSyncContext.Provider value={viewSync}>
         <CalendarRenderSlotsContext.Provider value={renderSlots}>
           <CalendarConfigContext.Provider value={config}>
-            <EventTitleFocusProvider
-              pendingEventId={pendingTitleFocusId}
-              clearPending={clearTitleFocus}
-            >
-              {children}
-              {/* Announces moves, resizes and creates to screen readers */}
-              <div role="status" aria-live="polite" className="sr-only">
-                {announcement && (
-                  <span key={announcement.id}>{announcement.text}</span>
-                )}
-              </div>
-            </EventTitleFocusProvider>
+            <CalendarSeriesContext.Provider value={series}>
+              <EventTitleFocusProvider
+                pendingEventId={pendingTitleFocusId}
+                clearPending={clearTitleFocus}
+              >
+                {children}
+                {/* Announces moves, resizes and creates to screen readers */}
+                <div role="status" aria-live="polite" className="sr-only">
+                  {announcement && (
+                    <span key={announcement.id}>{announcement.text}</span>
+                  )}
+                </div>
+              </EventTitleFocusProvider>
+            </CalendarSeriesContext.Provider>
           </CalendarConfigContext.Provider>
         </CalendarRenderSlotsContext.Provider>
       </CalendarViewSyncContext.Provider>
@@ -928,6 +1041,14 @@ export function useCalendarConfig(): CalendarConfig {
  */
 export function useCalendarRenderSlots(): CalendarRenderSlots {
   return React.useContext(CalendarRenderSlotsContext);
+}
+
+/**
+ * Internal: the selected event's series neighbors and `showSeriesOccurrence`,
+ * for the details popover's series arrows. No series outside a provider.
+ */
+export function useCalendarSeries(): CalendarSeriesValue {
+  return React.useContext(CalendarSeriesContext);
 }
 
 /**

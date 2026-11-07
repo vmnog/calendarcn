@@ -35,8 +35,6 @@ export function WeekViewAllDayRow({
   showEventPopover,
   onEventPopoverExpand,
   onEventPopoverClose,
-  onPrevWeek,
-  onNextWeek,
   visibleStartIndex,
   visibleCount,
   dayColumnWidth,
@@ -149,8 +147,6 @@ export function WeekViewAllDayRow({
                     showEventPopover={showEventPopover}
                     onEventPopoverExpand={onEventPopoverExpand}
                     onEventPopoverClose={onEventPopoverClose}
-                    onPrevWeek={onPrevWeek}
-                    onNextWeek={onNextWeek}
                     visibleStartIndex={visibleStartIndex}
                   />
                 );
@@ -269,8 +265,6 @@ function AllDayEventRow({
   showEventPopover,
   onEventPopoverExpand,
   onEventPopoverClose,
-  onPrevWeek,
-  onNextWeek,
   visibleStartIndex,
 }: AllDayEventRowProps) {
   const { view } = useCalendarPopoverBoundary();
@@ -353,8 +347,6 @@ function AllDayEventRow({
         showEventPopover={showEventPopover}
         onEventPopoverExpand={onEventPopoverExpand}
         onEventPopoverClose={onEventPopoverClose}
-        onPrevWeek={onPrevWeek}
-        onNextWeek={onNextWeek}
         titleOffsetPercent={titleOffsetPercent}
         dragVariant={isBeingMoved ? "ghost" : undefined}
         isResizing={isBeingResized && !isBeingMoved}

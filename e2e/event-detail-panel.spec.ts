@@ -62,12 +62,12 @@ test("the detail panel shows every field of an event that sets them all", async 
   await expect(detailSection(page, "time")).toContainText("1h 30min");
 
   await expect(page.getByRole("switch", { name: "All-day" })).not.toBeChecked();
-  await expect(detailSection(page, "timezone")).toHaveText("GMT-3Sao Paulo");
+  await expect(detailSection(page, "timezone")).toHaveText("GMT−3Sao Paulo");
   await expect(detailSection(page, "recurrence")).toContainText(
-    "Every 2 weeks on Sat, 6 times",
+    "Every 2 weeks on Sat for 6 times",
   );
   await expect(
-    page.getByRole("button", { name: "Next in series" }),
+    page.getByRole("button", { name: "Go to next event in this series" }),
   ).toBeVisible();
 
   const participants = detailSection(page, "participants");

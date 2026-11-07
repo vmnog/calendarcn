@@ -55,7 +55,11 @@ test.describe("parseIcs", () => {
       "2026-06-01T13:00:00.000Z",
       "2026-06-01T13:30:00.000Z",
     ]);
-    expect(sync.recurrence).toBe("FREQ=WEEKLY;BYDAY=MO,WE,FR");
+    expect(sync.recurrenceRule).toEqual({
+      frequency: "weekly",
+      weekdays: [1, 3, 5],
+    });
+    expect(sync.recurrence).toBeUndefined();
     expect(sync.description).toBe(
       "Agenda: blockers, wins; next steps.\nJoin: https://meet.google.com/abc-defg-hij",
     );
@@ -123,7 +127,7 @@ test.describe("parseIcs", () => {
     expect(birthday.isAllDay).toBe(true);
     expect(birthday.start).toEqual(new Date(2026, 5, 5));
     expect(birthday.end).toEqual(new Date(2026, 5, 5));
-    expect(birthday.recurrence).toBe("FREQ=YEARLY");
+    expect(birthday.recurrenceRule).toEqual({ frequency: "yearly" });
     expect(birthday.reminders).toEqual([{ amount: 15, unit: "hours" }]);
 
     // December: EST, UTC-5
@@ -288,7 +292,11 @@ test.describe("toIcs", () => {
         start: new Date("2026-06-01T13:00:00Z"),
         end: new Date("2026-06-01T13:15:00Z"),
         color: "blue",
-        recurrence: "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR",
+        recurrenceRule: {
+          frequency: "weekly",
+          weekdays: [1, 2, 3, 4, 5],
+          end: { type: "on", date: new Date(2026, 6, 31) },
+        },
         location: "Room 1, 2nd floor",
         description: "Notes; links, and\nnew lines \\ backslashes",
         status: "busy",
@@ -336,6 +344,104 @@ test.describe("toIcs", () => {
     );
     expect(ics).not.toContain("RRULE");
     expect(parseIcs(ics)[0].recurrence).toBeUndefined();
+  });
+
+  test("writes repeat rules as RRULEs and reads them back", () => {
+    const events: DetailedCalendarEvent[] = [
+      {
+        id: "biweekly",
+        title: "Planning",
+        start: new Date("2026-06-01T13:00:00Z"),
+        end: new Date("2026-06-01T14:00:00Z"),
+        recurrenceRule: {
+          frequency: "weekly",
+          interval: 2,
+          weekdays: [1, 4],
+          weekStartsOn: 0,
+          end: { type: "after", count: 6 },
+        },
+      },
+      {
+        // Saturday, June 27 2026: the last Saturday of June
+        id: "last-saturday",
+        title: "Market",
+        start: new Date("2026-06-27T14:00:00Z"),
+        end: new Date("2026-06-27T15:00:00Z"),
+        recurrenceRule: {
+          frequency: "monthly",
+          monthlyBy: "weekday-of-month",
+          weekOfMonth: -1,
+        },
+      },
+      {
+        id: "anniversary",
+        title: "Anniversary",
+        start: new Date(2026, 5, 6),
+        end: new Date(2026, 5, 6),
+        isAllDay: true,
+        recurrenceRule: {
+          frequency: "yearly",
+          end: { type: "on", date: new Date(2030, 5, 6) },
+        },
+      },
+    ];
+    const ics = toIcs(events, { timestamp });
+
+    expect(ics).toContain(
+      "RRULE:FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TH;WKST=SU;COUNT=6\r\n",
+    );
+    expect(ics).toContain("RRULE:FREQ=MONTHLY;BYDAY=-1SA\r\n");
+    // An all-day series ends on a DATE
+    expect(ics).toContain("RRULE:FREQ=YEARLY;UNTIL=20300606\r\n");
+    expect(parseIcs(ics)).toEqual(events);
+  });
+
+  test("ends a timed series at the end of its last day in its zone", () => {
+    const ics = toIcs(
+      [
+        {
+          id: "new-york",
+          title: "Standup",
+          start: new Date("2026-06-01T13:00:00Z"),
+          end: new Date("2026-06-01T13:15:00Z"),
+          timeZone: "America/New_York",
+          recurrenceRule: {
+            frequency: "daily",
+            end: { type: "on", date: new Date(2026, 5, 5) },
+          },
+        },
+      ],
+      { timestamp },
+    );
+    // 11:59:59 PM on June 5 in New York (EDT, UTC-4)
+    expect(ics).toContain("RRULE:FREQ=DAILY;UNTIL=20260606T035959Z\r\n");
+  });
+
+  test("keeps an RRULE a repeat rule can't hold as text", () => {
+    for (const rrule of [
+      "FREQ=MONTHLY;BYMONTHDAY=1,15",
+      "FREQ=WEEKLY;BYDAY=MO;BYHOUR=9,17",
+      // Monday, June 1 2026 isn't a Tuesday
+      "FREQ=MONTHLY;BYDAY=2TU",
+      "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU",
+    ]) {
+      const [event] = parseIcs(
+        toIcs(
+          [
+            {
+              id: "custom",
+              title: "Custom",
+              start: new Date("2026-06-01T13:00:00Z"),
+              end: new Date("2026-06-01T14:00:00Z"),
+              recurrence: rrule,
+            },
+          ],
+          { timestamp },
+        ),
+      );
+      expect(event.recurrenceRule, rrule).toBeUndefined();
+      expect(event.recurrence, rrule).toBe(rrule);
+    }
   });
 
   test("round-trips the sample events", () => {

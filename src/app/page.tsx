@@ -298,6 +298,9 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
     goToDate,
     switchView,
     setNumberOfDays,
+    previousInSeries,
+    nextInSeries,
+    showSeriesOccurrence,
     updateEvent,
     toggleWeekends,
     toggleDeclinedEvents,
@@ -600,8 +603,14 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
         events={events}
         selectedEvent={selectedEvent}
         onEventChange={updateEvent}
-        onPrevWeek={goToPrev}
-        onNextWeek={goToNext}
+        onPrevWeek={
+          previousInSeries
+            ? () => showSeriesOccurrence(previousInSeries)
+            : undefined
+        }
+        onNextWeek={
+          nextInSeries ? () => showSeriesOccurrence(nextInSeries) : undefined
+        }
       />
     </>
   );

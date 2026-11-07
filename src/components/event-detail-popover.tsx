@@ -22,7 +22,7 @@ import {
   isInsideCalendarPopover,
   useCalendarPopoverBoundary,
 } from "./calendar-popover-context";
-import { useCalendarRenderSlots } from "./calendar-provider";
+import { useCalendarRenderSlots, useCalendarSeries } from "./calendar-provider";
 import { useEventTitleFocus } from "./event-title-focus-context";
 import type { CalendarEvent, EventPopoverAnchor } from "./week-view-types";
 
@@ -106,8 +106,6 @@ interface EventDetailPopoverProps {
   onClose: () => void;
   /** Callback for the expand button (e.g. dock to a side panel). Hidden when absent. */
   onExpand?: () => void;
-  onPrevWeek?: () => void;
-  onNextWeek?: () => void;
   /** Which side to prefer for the popover. Defaults to "right". */
   side?: "right" | "bottom" | "left" | "top";
   /** Alignment along the side axis. Defaults to "center". */
@@ -134,8 +132,6 @@ export function EventDetailPopover({
   onEventChange,
   onClose,
   onExpand,
-  onPrevWeek,
-  onNextWeek,
   side = "right",
   align = "center",
   collisionPaddingTop,
@@ -143,6 +139,7 @@ export function EventDetailPopover({
   const { boundary, headerHeight, view } = useCalendarPopoverBoundary();
   const { pendingEventId, clearPending } = useEventTitleFocus();
   const { renderEventDetails } = useCalendarRenderSlots();
+  const series = useCalendarSeries();
   const panelRef = React.useRef<HTMLDivElement>(null);
   /** Just created by click-to-create: its title should be focused */
   const isNew = pendingEventId === event.id;
@@ -235,6 +232,12 @@ export function EventDetailPopover({
     clearPending();
   }, [renderEventDetails, isNew, clearPending]);
 
+  // The provider works out the selected event's series neighbors; the
+  // arrows are disabled at the series' ends
+  const isSeriesEvent = series.eventId === event.id;
+  const previousInSeries = isSeriesEvent ? series.previousInSeries : null;
+  const nextInSeries = isSeriesEvent ? series.nextInSeries : null;
+
   const popoverHeaderActions = (
     <>
       {onExpand && (
@@ -310,8 +313,16 @@ export function EventDetailPopover({
         <EventDetailPanel
           event={event}
           onEventChange={onEventChange}
-          onPrevWeek={onPrevWeek}
-          onNextWeek={onNextWeek}
+          onPrevWeek={
+            previousInSeries
+              ? () => series.showSeriesOccurrence(previousInSeries)
+              : undefined
+          }
+          onNextWeek={
+            nextInSeries
+              ? () => series.showSeriesOccurrence(nextInSeries)
+              : undefined
+          }
           headerActions={popoverHeaderActions}
           autoFocusTitle={isNew}
           onTitleAutoFocused={clearPending}

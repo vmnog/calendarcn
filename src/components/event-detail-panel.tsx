@@ -63,9 +63,15 @@ interface EventDetailPanelProps<
 > {
   event: TEvent;
   onEventChange?: (event: TEvent) => void;
-  /** Shows the previous event of a repeating series */
+  /**
+   * Shows the previous event of a repeating series (the repeat row's left
+   * arrow). Leave it out at the series' start: the arrow is disabled then.
+   */
   onPrevWeek?: () => void;
-  /** Shows the next event of a repeating series */
+  /**
+   * Shows the next event of a repeating series (the right arrow). Leave it
+   * out at the series' end: the arrow is disabled then.
+   */
   onNextWeek?: () => void;
   /** Extra action buttons rendered in the header row (after the "..." menu). */
   headerActions?: React.ReactNode;
