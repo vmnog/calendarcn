@@ -40,11 +40,3 @@ The registry ships no conferencing providers and no brand logos:
 ### Neutral
 
 - Existing calls keep working without providers: an event's `conference` still shows, with a camera icon and the service's name.
-
-## Update: placeholder providers as an opt-in item (2026-11-07)
-
-So that apps can reproduce the live demo, the demo's placeholder services ship as the registry item `conference-providers` (`src/lib/conference-providers.ts`, `DEMO_CONFERENCE_PROVIDERS`). The decision above still holds:
-
-- Nothing is on by default. An app gets the services only by installing the item and passing it to `conferenceProviders`.
-- The item has no logos. `src/app/demo-conference-providers.tsx` keeps them, out of the registry, and adds them to the item's options for the demo.
-- Its calls are made up on example.com. Its JSDoc and docs say that `createConference` has to create the call through the service's API.

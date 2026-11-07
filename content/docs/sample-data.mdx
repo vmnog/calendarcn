@@ -107,10 +107,10 @@ The two primary calendars give new events default reminders: 10 minutes before o
 
 ## Reproduce the live demo
 
-The preview above is the demo's data in `Calendar`. The demo also passes:
+The preview above passes the demo's data and its conference providers from [`@calendarcn/conference-providers`](/docs/components/event-details#conference-providers) to `Calendar`. Two things differ from the demo:
 
-- `conferenceProviders`: Google Meet, Zoom and Microsoft Teams from [`@calendarcn/conference-providers`](/docs/components/event-details#conference-providers), as in the preview.
-- `defaultViewSettings={{ showWeekends: true, showDeclinedEvents: true, showWeekNumbers: true }}`, which shows week numbers.
+- **Logos.** The demo gives Google Meet, Zoom and Microsoft Teams their logos as icons. The item ships no logos, so the preview shows cameras; see [Logos](/docs/components/event-details#logos) to add your own.
+- **Week numbers.** The demo passes `defaultViewSettings={{ showWeekends: true, showDeclinedEvents: true, showWeekNumbers: true }}`.
 
 ## The docs' examples
 

@@ -107,7 +107,30 @@ const conferenceProviders: ConferenceProviderOption[] = [
 
 A rejected promise adds no call. Labels must be unique, so you can offer one service twice, like two Zoom accounts.
 
-Google Meet, Zoom and Microsoft Teams logos are their owners' trademarks, so the item ships none and the row shows a camera for each service. The live demo adds the logos itself. To show them, pass your own as `icon` (16px), taken from each service's brand resources and used under its terms.
+### Logos
+
+Google Meet, Zoom and Microsoft Teams logos are their owners' trademarks, so the item ships none and the row shows a camera for each service. To look like the live demo, give each option your own logo as its `icon`, taken from the service's brand resources and used under its terms. The icon shows at 16px in the menu and on the event. The demo does it this way:
+
+```tsx
+import type { ConferenceProvider } from "@/components/calendar-types";
+import { DEMO_CONFERENCE_PROVIDERS } from "@/lib/conference-providers";
+
+// Your own logo components or images
+import { GoogleMeetLogo, TeamsLogo, ZoomLogo } from "@/components/logos";
+
+const LOGOS: Partial<Record<ConferenceProvider, React.ReactNode>> = {
+  "google-meet": <GoogleMeetLogo />,
+  zoom: <ZoomLogo />,
+  "microsoft-teams": <TeamsLogo />,
+};
+
+const conferenceProviders = DEMO_CONFERENCE_PROVIDERS.map((option) => ({
+  ...option,
+  icon: LOGOS[option.provider],
+}));
+```
+
+An image file works too: `icon: <img src="/logos/zoom.svg" alt="" className="size-4" />`. An event's call shows the icon of the option that created it (the one with its `label`), or of the first option of its `provider`, so the demo's events that already have a Meet call show your Meet logo too.
 
 ## Features
 
