@@ -69,8 +69,8 @@ config.registries = { ...config.registries, "@calendarcn": process.argv[1] };
 fs.writeFileSync("components.json", JSON.stringify(config, null, 2) + "\n");
 ' "$REGISTRY_URL"
 
-echo "Installing @calendarcn/calendar..."
-npx -y "$SHADCN" add @calendarcn/calendar -y
+echo "Installing @calendarcn/calendar and the sidebars..."
+npx -y "$SHADCN" add @calendarcn/calendar @calendarcn/calendar-sidebar @calendarcn/details-sidebar -y
 
 echo "Type-checking..."
 npx tsc --noEmit
