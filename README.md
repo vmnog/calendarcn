@@ -13,7 +13,7 @@ A calendar for React inspired by [Notion Calendar](https://www.notion.so/product
 - **Views**: day, week, any number of days from 2 to 9, and month.
 - **Direct manipulation**: drag events to move them, drag their edges to resize, click an empty slot to create one. Works with touch too.
 - **Real calendar data**: overlapping events side by side, all-day and multi-day events, a current-time indicator.
-- **Event details**: a side panel or popover with inline editing, plus a right-click menu.
+- **Event details**: a side panel or popover that matches Notion Calendar's details panel, with inline editing for the time and date, time zone, repeat, participants and rooms, conferencing, location, links and attachments, description, calendar, availability and reminders. Plus a right-click menu.
 - **Keyboard first**: shortcuts for every view, a command menu, and keyboard move and resize for focused events.
 - **Accessible**: labeled events, focus rings, and screen reader announcements when an event moves.
 - **Configurable**: date-fns locale, 12 or 24 hour clock, week start, snap interval and visible hours.
