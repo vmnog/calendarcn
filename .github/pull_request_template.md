@@ -36,4 +36,5 @@ Closes #
 
 - [ ] `pnpm lint && pnpm typecheck && pnpm format:check` passes
 - [ ] `pnpm test:e2e` passes (for changes to calendar behavior)
+- [ ] Changelog entry under `## Unreleased` in `content/docs/changelog.mdx` (for changes to registry items)
 - [ ] Tested locally in the browser

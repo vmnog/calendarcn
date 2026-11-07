@@ -2,7 +2,7 @@
 
 ## When to Use
 
-Invoke when preparing a new release or deploying to production.
+Invoke when preparing a new release, cutting a versioned release (changelog, tag and GitHub release), or deploying to production.
 
 ## Pre-Release Checklist
 
@@ -48,11 +48,67 @@ Test the following in `pnpm dev`:
 - [ ] Focus indicators visible
 - [ ] Color contrast meets WCAG AA
 
-### 5. Version & Changelog
+## Cut a Versioned Release
 
-- Update version in `package.json` if applicable
-- Document changes since last release
-- Tag the release in git
+Releases follow [ADR-006](../../../docs/decisions/006-versioned-releases.md): one semver version for the whole registry, an annotated tag `vX.Y.Z` on `main`, and a GitHub release whose notes are that version's section of the Changelog (`content/docs/changelog.mdx`). The registry keeps serving `main`; a release names a point on it.
+
+Tags and GitHub releases are public and hard to take back. Confirm the version with the user before step 4, and don't tag or publish without their ok.
+
+### 1. Pick the version
+
+```bash
+git fetch origin --tags
+git describe --tags --abbrev=0 origin/main   # the last release; errors before the first one
+```
+
+While on 0.x, any **Breaking** line under `## Unreleased` bumps the minor version (0.1.3 → 0.2.0). Otherwise bump the patch (0.1.3 → 0.1.4). The first release is v0.1.0.
+
+### 2. Write the changelog entry
+
+Each pull request that changed a registry item should already have its line under `## Unreleased` (format in CONTRIBUTING.md, "The registry"). `public/r` changes exactly when a shipped file does, so this lists the ones to check:
+
+```bash
+git log --oneline <last tag>..origin/main -- public/r   # first release: 34db404~1..origin/main
+```
+
+Add any missing line, and check each one sits under the day its pull request merged (`gh pr view <number> --json mergedAt`).
+
+Then open a release pull request, `chore: release vX.Y.Z`:
+
+- Rename `## Unreleased` to `## vX.Y.Z`, and replace the line under it with `Released <Month D, YYYY>.`
+- Set `version` in `package.json` to `X.Y.Z`.
+- Preview the notes with `tools/scripts/release-notes.sh vX.Y.Z`.
+
+The next pull request that changes an item adds a new `## Unreleased` above it, with the line "Live in the registry, but not in a tagged release yet."
+
+### 3. Merge the release pull request
+
+Merge it once CI passes and the user has okayed it.
+
+### 4. Tag the merge commit
+
+```bash
+git fetch origin
+git log -1 --oneline origin/main   # must be the release pull request's commit
+git tag -a vX.Y.Z origin/main -m "vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+### 5. Create the GitHub release
+
+```bash
+tools/scripts/release-notes.sh vX.Y.Z > "$TMPDIR/release-notes.md"
+gh release create vX.Y.Z --verify-tag --title "vX.Y.Z" --notes-file "$TMPDIR/release-notes.md"
+```
+
+`--verify-tag` stops if the tag didn't reach GitHub.
+
+### 6. Verify
+
+```bash
+gh release view vX.Y.Z
+curl -sfI https://raw.githubusercontent.com/vmnog/calendarcn/vX.Y.Z/public/r/calendar.json   # the registry pinned at the tag
+```
 
 ## Deployment
 
