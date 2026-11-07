@@ -5,7 +5,9 @@
 Pure utility functions and data:
 
 - `event-utils.ts` — event positioning algorithms (column assignment, pixel calculations)
-- `mock-events.ts` — sample event data for development
+- `mock-events.ts` — the live demo's data: events, calendars, contacts, rooms and place suggestions
+- `sample-events.ts` — the docs examples' week of events (`createSampleEvents`)
+- `conference-providers.ts` — the demo's placeholder Google Meet, Zoom and Teams, without logos (ADR 005)
 - `utils.ts` — general utilities (`cn()` class merger)
 
 ## Gotchas
@@ -41,7 +43,7 @@ cn("base-class", isActive && "active-class")
 
 ### mock-events.ts
 
-Sample data for development. Events here should cover all edge cases: single-day, multi-day, all-day, overlapping, different colors. Update when adding new event properties to `CalendarEvent`.
+The live demo's data. It ships with `sample-events.ts` as the registry item `sample-data`, so it's a registry file: import only from registry files and `date-fns`, use example.com for new addresses and links, and update `content/docs/sample-data.mdx` (its counts, calendar table and the events it names) when the data changes. Events here should cover all edge cases: single-day, multi-day, all-day, overlapping, different colors. Update when adding new event properties to `CalendarEvent`.
 
 Dates are relative to today, and `generateMockEvents(today)` stays pure (pass a fixed `today` to test it). The data comes from three sources:
 
