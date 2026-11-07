@@ -4,6 +4,8 @@ import type {
   AllDayResizeState,
   CalendarEvent,
   CalendarProviderProps,
+  DetailedCalendarEvent,
+  EventDetailSectionProps,
   EventDragState,
   EventDragVariant,
   EventResizeState,
@@ -31,6 +33,11 @@ export type {
   RecurrenceWeekday,
   RecurrenceEnd,
   RecurrenceRule,
+  RecurrenceLabel,
+  NormalizedRecurrenceRule,
+  FormatRRuleOptions,
+  SeriesOccurrence,
+  TimeZoneOption,
   ParticipantResponse,
   EventParticipant,
   EventRoom,
@@ -192,10 +199,6 @@ export interface EventItemPopoverProps {
    * only while that event is still the selected one.
    */
   onEventPopoverClose?: (eventId: string) => void;
-  /** Navigate to the previous period (recurrence arrows in the details) */
-  onPrevWeek?: () => void;
-  /** Navigate to the next period (recurrence arrows in the details) */
-  onNextWeek?: () => void;
 }
 
 /**
@@ -470,4 +473,22 @@ export interface EventDetailDateFieldProps {
   /** Shows the date without a picker, for details without `onEventChange` */
   readOnly?: boolean;
   className?: string;
+}
+
+/**
+ * Props for the EventDetailRecurrence component
+ */
+export interface EventDetailRecurrenceProps<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> extends EventDetailSectionProps<TEvent> {
+  /**
+   * Shows the previous event of the series. Leave it out at the start of
+   * the series: the button is disabled then.
+   */
+  onPrevious?: () => void;
+  /**
+   * Shows the next event of the series. Leave it out at the end of the
+   * series: the button is disabled then.
+   */
+  onNext?: () => void;
 }

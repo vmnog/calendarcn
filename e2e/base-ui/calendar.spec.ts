@@ -171,6 +171,101 @@ test("the all-day switch is blue when checked", async ({ page }) => {
   await expect(allDay).toHaveCSS("background-color", SWITCH_CHECKED_BACKGROUND);
 });
 
+test("the time zone and repeat rows edit the event", async ({ page }) => {
+  await calendarEvent(page, "Design Review").click();
+  const details = eventDetails(page);
+  await settle(details);
+  await details.getByText("Time zone", { exact: true }).click();
+
+  // The zone list renders beside the details and keeps them open. Toronto
+  // shares New York's offset, so the event stays where it is.
+  const timezone = details.locator('[data-section="timezone"]');
+  await timezone.getByRole("button").click();
+  const input = details.getByRole("combobox", { name: "Time zone" });
+  await input.fill("toronto");
+  await page
+    .getByRole("listbox", { name: "Time zones" })
+    .getByRole("option", { name: /Toronto$/ })
+    .click();
+  // Escape would close the details here (no layer is open): Tab leaves the field
+  await expect(input).toHaveValue("Toronto");
+  await input.press("Tab");
+  await expect(timezone).toHaveText("GMT−4Toronto");
+
+  // Base UI's menu and dialog: a preset, then the custom rule
+  const recurrence = details.locator('[data-section="recurrence"]');
+  await recurrence.getByRole("button", { name: /^Repeat:/ }).click();
+  await page.getByRole("menuitem", { name: "Every week on Thu" }).click();
+  await expect(recurrence).toContainText("Every week on Thu");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+
+  await recurrence.getByRole("button", { name: /^Repeat:/ }).click();
+  await page.getByRole("menuitem", { name: "Custom…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Repeat" });
+  await dialog.getByRole("button", { name: "Monday" }).click();
+  await dialog.getByRole("button", { name: "Done" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(recurrence).toContainText("Every week on Mon, Thu");
+  await expect(details).toBeVisible();
+  // Focus goes back to the Repeat button
+  await expect(
+    recurrence.getByRole("button", { name: /^Repeat:/ }),
+  ).toBeFocused();
+
+  // The provider steps through the series: the next occurrence is added as
+  // a copy and the calendar moves to its week
+  const previous = recurrence.getByRole("button", {
+    name: "Go to previous event in this series",
+  });
+  await expect(previous).toBeDisabled();
+  await recurrence
+    .getByRole("button", { name: "Go to next event in this series" })
+    .click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Mon Jun 8",
+  );
+  await expect(previous).toBeEnabled();
+  await previous.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 4",
+  );
+});
+
+test("an occurrence the series arrows add is reported to onEventCreate", async ({
+  page,
+}) => {
+  // /series: a weekly "Standup" on Thursday, June 4, the ids onEventCreate
+  // reports listed above the calendar
+  await page.goto("/series");
+  const created = page.getByLabel("Created events");
+  await calendarEvent(page, "Standup").click();
+  const details = eventDetails(page);
+  const recurrence = details.locator('[data-section="recurrence"]');
+  const next = recurrence.getByRole("button", {
+    name: "Go to next event in this series",
+  });
+  const previous = recurrence.getByRole("button", {
+    name: "Go to previous event in this series",
+  });
+
+  await next.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 11",
+  );
+  await expect(created).toHaveText("standup-2026-06-11");
+
+  // Opening it again reports nothing new
+  await previous.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 4",
+  );
+  await next.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 11",
+  );
+  await expect(created).toHaveText("standup-2026-06-11");
+});
+
 test("the details open in month and agenda views", async ({ page }) => {
   const details = eventDetails(page);
 

@@ -81,6 +81,8 @@ src/
 │   └── use-field-popover.ts      # Focus, blur and Escape for the details' time and date fields
 └── lib/
     ├── event-utils.ts            # Event positioning and filtering
+    ├── recurrence.ts             # Repeat rules: RRULE, labels, series occurrences
+    ├── time-zones.ts             # Time zone list, offsets and zone changes
     ├── timezone-label.ts         # Time zone labels ("GMT-3 Sao Paulo")
     ├── mock-events.ts            # Demo event data
     ├── sample-events.ts          # Docs example event data

@@ -33,6 +33,8 @@ src/
 │   └── use-field-popover.ts # Focus, blur and Escape for the details' time and date fields
 └── lib/
     ├── event-utils.ts    # Event positioning & column assignment algorithms
+    ├── recurrence.ts     # Repeat rules: RRULE parse/format, labels, series occurrences
+    ├── time-zones.ts     # IANA zone list, offsets, zone days, wall-clock zone changes
     ├── timezone-label.ts # Short time zone labels ("GMT-3 Sao Paulo")
     ├── mock-events.ts    # Sample data
     ├── time-input.ts     # Time menu options, typed times and durations, date parsing
