@@ -5,6 +5,8 @@ import type { ComponentType, ReactElement } from "react";
 
 import { AgendaViewDemo } from "@/examples/agenda-view-demo";
 import { CalendarDemo } from "@/examples/calendar-demo";
+import { CalendarHeaderDemo } from "@/examples/calendar-header-demo";
+import { CommandMenuDemo } from "@/examples/command-menu-demo";
 import { ConfigDemo } from "@/examples/config-demo";
 import { ControlledEventsDemo } from "@/examples/controlled-events-demo";
 import { CustomEventContentDemo } from "@/examples/custom-event-content-demo";
@@ -28,6 +30,8 @@ export const EXAMPLES_DIR = "src/examples";
 const EXAMPLES = {
   "agenda-view-demo": AgendaViewDemo,
   "calendar-demo": CalendarDemo,
+  "calendar-header-demo": CalendarHeaderDemo,
+  "command-menu-demo": CommandMenuDemo,
   "config-demo": ConfigDemo,
   "controlled-events-demo": ControlledEventsDemo,
   "custom-event-content-demo": CustomEventContentDemo,

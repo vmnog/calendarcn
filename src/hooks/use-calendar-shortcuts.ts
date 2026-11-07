@@ -6,10 +6,23 @@ import type { CalendarContextValue } from "@/components/calendar-types";
 interface UseCalendarShortcutsOptions {
   /** Whether the shortcuts are active. Defaults to true */
   enabled?: boolean;
+  /** Cmd+K / Ctrl+K, even from inside a text field: opens or closes a command menu */
+  onToggleCommandMenu?: () => void;
+  /** Cmd+/ (the Meta key, also on Windows and Linux): opens or closes the sidebar */
+  onToggleSidebar?: () => void;
+  /** /: opens or closes the context panel */
+  onToggleContextPanel?: () => void;
+  /** Shift+M: switches to the next theme */
+  onCycleTheme?: () => void;
+  /** Cmd+, / Ctrl+,, even from inside a text field: opens the settings */
+  onOpenSettings?: () => void;
 }
 
+/** App actions some keys trigger. A key is claimed only when its action is given */
+type AppShortcutActions = Omit<UseCalendarShortcutsOptions, "enabled">;
+
 /** Calendar actions the shortcuts trigger */
-type ShortcutActions = Pick<
+type CalendarShortcutActions = Pick<
   CalendarContextValue,
   | "goToToday"
   | "goToPrev"
@@ -21,6 +34,9 @@ type ShortcutActions = Pick<
   | "toggleDeclinedEvents"
 >;
 
+/** Everything the window listener reads */
+type ShortcutActions = CalendarShortcutActions & AppShortcutActions;
+
 /** Keys 2-9: show that many days */
 const NUMBER_OF_DAYS_KEY = /^[2-9]$/;
 
@@ -31,10 +47,47 @@ export function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 /**
+ * Handles the app's keys, before the calendar's. Returns whether one ran. One
+ * that runs stops the event, so no later `keydown` listener also acts on it
+ * (e.g. Shift+M, next to the calendar's M).
+ */
+function handleAppShortcut(
+  e: KeyboardEvent,
+  actions: AppShortcutActions,
+): boolean {
+  const run = (action: (() => void) | undefined) => {
+    if (!action) return false;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    action();
+    return true;
+  };
+  const isCommand = e.metaKey || e.ctrlKey;
+
+  if (isCommand && e.key === "k") return run(actions.onToggleCommandMenu);
+  if (e.metaKey && e.key === "/") return run(actions.onToggleSidebar);
+  if (isCommand && e.key === ",") return run(actions.onOpenSettings);
+
+  // Single keys only from here: they'd be typed into a text field
+  if (isTypingTarget(e.target)) return false;
+
+  if (e.key === "/" && !isCommand && !e.altKey) {
+    return run(actions.onToggleContextPanel);
+  }
+  if (e.key === "M" && e.shiftKey && !isCommand) {
+    return run(actions.onCycleTheme);
+  }
+  return false;
+}
+
+/**
  * Handles one key press. Returns early on the first match, in the same
  * order the demo has always checked them.
  */
-function handleShortcut(e: KeyboardEvent, actions: ShortcutActions): void {
+function handleShortcut(
+  e: KeyboardEvent,
+  actions: CalendarShortcutActions,
+): void {
   // Escape deselects, even from inside a text field
   if (e.key === "Escape") {
     actions.clearSelection();
@@ -124,14 +177,24 @@ function handleShortcut(e: KeyboardEvent, actions: ShortcutActions): void {
  *
  * Presses with Cmd or Ctrl are left alone, apart from those two.
  *
- * Key presses in inputs and textareas are ignored (except Escape). The
- * listener is added once on mount, so its position among other `window`
- * keydown listeners stays fixed: an app shortcut that shares a key (e.g.
- * Cmd+K) should be handled by a listener added before this hook's, and call
+ * The live demo's app keys come on with their actions: Cmd+K
+ * (`onToggleCommandMenu`), Cmd+/ (`onToggleSidebar`), / (`onToggleContextPanel`),
+ * Shift+M (`onCycleTheme`) and Cmd+, (`onOpenSettings`). They're checked
+ * first, and one that runs stops the event from reaching later listeners.
+ *
+ * Key presses in inputs and textareas are ignored (except Escape, Cmd+K and
+ * Cmd+,). The listener is added once on mount, so its position among other
+ * `window` keydown listeners stays fixed: any other app shortcut that shares
+ * a key should be handled by a listener added before this hook's, and call
  * `event.stopImmediatePropagation()`.
  */
 export function useCalendarShortcuts({
   enabled = true,
+  onToggleCommandMenu,
+  onToggleSidebar,
+  onToggleContextPanel,
+  onCycleTheme,
+  onOpenSettings,
 }: UseCalendarShortcutsOptions = {}) {
   const {
     goToToday,
@@ -154,6 +217,11 @@ export function useCalendarShortcuts({
     clearSelection,
     toggleWeekends,
     toggleDeclinedEvents,
+    onToggleCommandMenu,
+    onToggleSidebar,
+    onToggleContextPanel,
+    onCycleTheme,
+    onOpenSettings,
   });
 
   React.useEffect(() => {
@@ -166,6 +234,11 @@ export function useCalendarShortcuts({
       clearSelection,
       toggleWeekends,
       toggleDeclinedEvents,
+      onToggleCommandMenu,
+      onToggleSidebar,
+      onToggleContextPanel,
+      onCycleTheme,
+      onOpenSettings,
     };
   }, [
     goToToday,
@@ -176,11 +249,17 @@ export function useCalendarShortcuts({
     clearSelection,
     toggleWeekends,
     toggleDeclinedEvents,
+    onToggleCommandMenu,
+    onToggleSidebar,
+    onToggleContextPanel,
+    onCycleTheme,
+    onOpenSettings,
   ]);
 
   React.useEffect(() => {
     if (!enabled) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (handleAppShortcut(e, actionsRef.current)) return;
       handleShortcut(e, actionsRef.current);
     };
     window.addEventListener("keydown", handleKeyDown);

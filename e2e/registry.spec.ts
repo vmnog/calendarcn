@@ -14,6 +14,8 @@ const ITEM_NAMES = [
   "agenda-view",
   "calendar",
   "ics",
+  "calendar-header",
+  "command-menu",
 ];
 
 /** The parts of a built registry item the tests read */

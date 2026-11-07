@@ -2,17 +2,22 @@
 
 import * as React from "react";
 
+import { useCalendar } from "@/components/calendar-provider";
 import {
-  CommandDialog,
+  Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
-
-import type { ViewType } from "@/components/week-view-types";
 
 /** Reusable "Soon" badge for unimplemented command items */
 const SOON_BADGE = (
@@ -21,33 +26,75 @@ const SOON_BADGE = (
   </span>
 );
 
-interface CommandMenuProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onGoToToday: () => void;
-  onGoToPrev: () => void;
-  onGoToNext: () => void;
-  onSwitchView: (view: ViewType) => void;
-  onToggleLeftSidebar: () => void;
-  onToggleRightSidebar: () => void;
-  onCycleTheme: () => void;
-  onImportIcs: () => void;
-  onExportIcs: () => void;
+/**
+ * The menu's look, on the dialog: translucent and blurred in dark mode, and
+ * a gap between groups. `data-command-menu` on the same element lets the CSS
+ * that ships with the menu dim the page less in dark mode.
+ */
+const DIALOG_CLASS =
+  "overflow-hidden p-0 dark:bg-popover/60 dark:backdrop-blur-xl dark:border-border/50 dark:[&_[data-slot=command]]:bg-transparent [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-2";
+
+/** Taller input and items, and padded group headings, as shadcn/ui's CommandDialog has them */
+const COMMAND_CLASS =
+  "**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5";
+
+/** One command of the menu */
+interface MenuCommand {
+  label: string;
+  /** Shortcut keys shown on the right, e.g. ["⌘", "/"] */
+  keys?: string[];
+  /** Runs the command once the menu has closed. Missing when the app doesn't offer it */
+  run?: () => void;
+  /** Not built yet: listed disabled with a "Soon" badge, only with `showComingSoon` */
+  soon?: boolean;
 }
 
+/** A titled group of commands */
+interface MenuGroup {
+  heading: string;
+  commands: MenuCommand[];
+}
+
+interface CommandMenuProps {
+  /** Whether the menu is open */
+  open: boolean;
+  /** Called when the menu opens or closes, including after a command runs */
+  onOpenChange: (open: boolean) => void;
+  /** Adds "Toggle sidebar" (⌘ /) */
+  onToggleSidebar?: () => void;
+  /** Adds "Toggle context panel" (/) */
+  onToggleContextPanel?: () => void;
+  /** Adds "Set theme..." (Shift M) */
+  onCycleTheme?: () => void;
+  /** Adds "Import .ics file..." */
+  onImportIcs?: () => void;
+  /** Adds "Export .ics file" */
+  onExportIcs?: () => void;
+  /**
+   * Also lists the Notion Calendar commands CalendarCN doesn't have yet,
+   * disabled with a "Soon" badge, as the live demo does
+   */
+  showComingSoon?: boolean;
+}
+
+/**
+ * The live demo's ⌘K menu. Going to today, previous and next, and the views
+ * come from `useCalendar()`, so it goes inside `CalendarProvider`. Commands
+ * that belong to your app (panels, theme, .ics files) show only when you pass
+ * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
+ */
 export function CommandMenu({
   open,
   onOpenChange,
-  onGoToToday,
-  onGoToPrev,
-  onGoToNext,
-  onSwitchView,
-  onToggleLeftSidebar,
-  onToggleRightSidebar,
+  onToggleSidebar,
+  onToggleContextPanel,
   onCycleTheme,
   onImportIcs,
   onExportIcs,
+  showComingSoon = false,
 }: CommandMenuProps) {
+  const { goToToday, goToPrev, goToNext, switchView } = useCalendar();
+
   const runCommand = React.useCallback(
     (command: () => void) => {
       onOpenChange(false);
@@ -56,238 +103,171 @@ export function CommandMenu({
     [onOpenChange],
   );
 
+  const groups: MenuGroup[] = [
+    {
+      heading: "Calendar",
+      commands: [
+        { label: "Create event...", soon: true },
+        { label: "Meet with...", soon: true },
+        { label: "Show teammate calendar...", soon: true },
+        { label: "Create recurring scheduling link...", soon: true },
+        { label: "Create one-off scheduling link...", soon: true },
+        { label: "Import .ics file...", run: onImportIcs },
+        { label: "Export .ics file", run: onExportIcs },
+      ],
+    },
+    {
+      heading: "Navigation",
+      commands: [
+        { label: "Go to date...", soon: true },
+        { label: "Go to today", keys: ["T"], run: goToToday },
+        { label: "Go to next week", keys: ["J"], run: goToNext },
+        { label: "Go to previous week", keys: ["K"], run: goToPrev },
+        { label: "Search events", soon: true },
+      ],
+    },
+    {
+      heading: "Time zones",
+      commands: [
+        { label: "Travel to time zone...", soon: true },
+        { label: "Show additional time zones...", soon: true },
+      ],
+    },
+    {
+      heading: "App",
+      commands: [
+        { label: "Toggle sidebar", keys: ["⌘", "/"], run: onToggleSidebar },
+        { label: "Set theme...", keys: ["shift", "M"], run: onCycleTheme },
+      ],
+    },
+    {
+      heading: "View",
+      commands: [
+        { label: "Start week on...", soon: true },
+        {
+          label: "Display day view",
+          keys: ["D"],
+          run: () => switchView("day"),
+        },
+        {
+          label: "Display week view",
+          keys: ["W"],
+          run: () => switchView("week"),
+        },
+        {
+          label: "Display month view",
+          keys: ["M"],
+          run: () => switchView("month"),
+        },
+        {
+          label: "Display agenda view",
+          keys: ["A"],
+          run: () => switchView("agenda"),
+        },
+        { label: "Set number of displayed days...", soon: true },
+        { label: "Select all visible", soon: true },
+        { label: "Default hour size", soon: true },
+        { label: "Zoom hours in", soon: true },
+        { label: "Zoom hours out", soon: true },
+        { label: "Hide weekends", soon: true },
+        { label: "Hide declined events", soon: true },
+        { label: "Hide week numbers", soon: true },
+      ],
+    },
+    {
+      heading: "Settings & help",
+      commands: [
+        { label: "Get CalendarCN mobile app", soon: true },
+        { label: "Show keyboard shortcuts", soon: true },
+        { label: "Go to settings", soon: true },
+        { label: "Support & feedback", soon: true },
+      ],
+    },
+    {
+      heading: "Accounts",
+      commands: [
+        { label: "Add Google Calendar account", soon: true },
+        { label: "Manage calendar accounts", soon: true },
+        { label: "Log out", soon: true },
+      ],
+    },
+    {
+      heading: "CalendarCN",
+      commands: [
+        { label: "Check for update", soon: true },
+        { label: "About CalendarCN", soon: true },
+      ],
+    },
+    {
+      heading: "Panels",
+      commands: [
+        {
+          label: "Toggle context panel",
+          keys: ["/"],
+          run: onToggleContextPanel,
+        },
+      ],
+    },
+  ];
+
   return (
-    <CommandDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Command Menu"
-      description="Search for a command to run..."
-      showCloseButton={false}
-      className="dark:bg-popover/60 dark:backdrop-blur-xl dark:border-border/50 dark:[&_[data-slot=command]]:bg-transparent [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-2"
-      overlayClassName="dark:bg-black/30"
-    >
-      <CommandInput placeholder="Type a command..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        data-command-menu=""
+        className={DIALOG_CLASS}
+      >
+        <DialogTitle className="sr-only">Command Menu</DialogTitle>
+        <DialogDescription className="sr-only">
+          Search for a command to run...
+        </DialogDescription>
+        <Command className={COMMAND_CLASS}>
+          <CommandInput placeholder="Type a command..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            {groups.map((group) => {
+              const commands = group.commands.filter((command) =>
+                command.soon ? showComingSoon : command.run !== undefined,
+              );
+              if (commands.length === 0) return null;
 
-        {/* ── Calendar ── */}
-        <CommandGroup heading="Calendar">
-          <CommandItem disabled>
-            Create event...
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Meet with...
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Show teammate calendar...
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Create recurring scheduling link...
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Create one-off scheduling link...
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(onImportIcs)}>
-            Import .ics file...
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(onExportIcs)}>
-            Export .ics file
-          </CommandItem>
-        </CommandGroup>
+              return (
+                <CommandGroup key={group.heading} heading={group.heading}>
+                  {commands.map(({ label, keys, run, soon }) => (
+                    <CommandItem
+                      key={label}
+                      disabled={soon}
+                      onSelect={run ? () => runCommand(run) : undefined}
+                    >
+                      {label}
+                      {soon && SOON_BADGE}
+                      {keys && (
+                        <KbdGroup className="ml-auto">
+                          {keys.map((key) => (
+                            <Kbd key={key}>{key}</Kbd>
+                          ))}
+                        </KbdGroup>
+                      )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              );
+            })}
+          </CommandList>
 
-        {/* ── Navigation ── */}
-        <CommandGroup heading="Navigation">
-          <CommandItem disabled>
-            Go to date...
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(onGoToToday)}>
-            Go to today
-            <Kbd className="ml-auto">T</Kbd>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(onGoToNext)}>
-            Go to next week
-            <Kbd className="ml-auto">J</Kbd>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(onGoToPrev)}>
-            Go to previous week
-            <Kbd className="ml-auto">K</Kbd>
-          </CommandItem>
-          <CommandItem disabled>
-            Search events
-            {SOON_BADGE}
-          </CommandItem>
-        </CommandGroup>
-
-        {/* ── Time zones ── */}
-        <CommandGroup heading="Time zones">
-          <CommandItem disabled>
-            Travel to time zone...
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Show additional time zones...
-            {SOON_BADGE}
-          </CommandItem>
-        </CommandGroup>
-
-        {/* ── App ── */}
-        <CommandGroup heading="App">
-          <CommandItem onSelect={() => runCommand(onToggleLeftSidebar)}>
-            Toggle sidebar
-            <KbdGroup className="ml-auto">
-              <Kbd>⌘</Kbd>
-              <Kbd>/</Kbd>
-            </KbdGroup>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(onCycleTheme)}>
-            Set theme...
-            <KbdGroup className="ml-auto">
-              <Kbd>shift</Kbd>
-              <Kbd>M</Kbd>
-            </KbdGroup>
-          </CommandItem>
-        </CommandGroup>
-
-        {/* ── View ── */}
-        <CommandGroup heading="View">
-          <CommandItem disabled>
-            Start week on...
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => onSwitchView("day"))}>
-            Display day view
-            <KbdGroup className="ml-auto">
-              <Kbd>D</Kbd>
-            </KbdGroup>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => onSwitchView("week"))}>
-            Display week view
-            <KbdGroup className="ml-auto">
-              <Kbd>W</Kbd>
-            </KbdGroup>
-          </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => onSwitchView("month"))}>
-            Display month view
-            <KbdGroup className="ml-auto">
-              <Kbd>M</Kbd>
-            </KbdGroup>
-          </CommandItem>
-          <CommandItem
-            onSelect={() => runCommand(() => onSwitchView("agenda"))}
-          >
-            Display agenda view
-            <KbdGroup className="ml-auto">
-              <Kbd>A</Kbd>
-            </KbdGroup>
-          </CommandItem>
-          <CommandItem disabled>
-            Set number of displayed days...
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Select all visible
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Default hour size
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Zoom hours in
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Zoom hours out
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Hide weekends
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Hide declined events
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Hide week numbers
-            {SOON_BADGE}
-          </CommandItem>
-        </CommandGroup>
-
-        {/* ── Settings & help ── */}
-        <CommandGroup heading="Settings & help">
-          <CommandItem disabled>
-            Get CalendarCN mobile app
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Show keyboard shortcuts
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Go to settings
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Support & feedback
-            {SOON_BADGE}
-          </CommandItem>
-        </CommandGroup>
-
-        {/* ── Accounts ── */}
-        <CommandGroup heading="Accounts">
-          <CommandItem disabled>
-            Add Google Calendar account
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Manage calendar accounts
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            Log out
-            {SOON_BADGE}
-          </CommandItem>
-        </CommandGroup>
-
-        {/* ── CalendarCN ── */}
-        <CommandGroup heading="CalendarCN">
-          <CommandItem disabled>
-            Check for update
-            {SOON_BADGE}
-          </CommandItem>
-          <CommandItem disabled>
-            About CalendarCN
-            {SOON_BADGE}
-          </CommandItem>
-        </CommandGroup>
-
-        {/* ── Panels ── */}
-        <CommandGroup heading="Panels">
-          <CommandItem onSelect={() => runCommand(onToggleRightSidebar)}>
-            Toggle context panel
-            <Kbd className="ml-auto">/</Kbd>
-          </CommandItem>
-        </CommandGroup>
-      </CommandList>
-
-      <div className="border-t px-3 py-2 flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <span className="text-muted-foreground/70">↑↓</span> Navigate
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="text-muted-foreground/70">↵</span> Select
-        </span>
-        <span className="flex items-center gap-1">
-          <Kbd>esc</Kbd> Close
-        </span>
-      </div>
-    </CommandDialog>
+          <div className="border-t px-3 py-2 flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="text-muted-foreground/70">↑↓</span> Navigate
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-muted-foreground/70">↵</span> Select
+            </span>
+            <span className="flex items-center gap-1">
+              <Kbd>esc</Kbd> Close
+            </span>
+          </div>
+        </Command>
+      </DialogContent>
+    </Dialog>
   );
 }

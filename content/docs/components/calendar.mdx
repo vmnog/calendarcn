@@ -40,7 +40,7 @@ The view switcher offers day, week, month and agenda, 2 to 9 days at a time, and
 
 ## Build your own
 
-`Calendar` is a short file. For a different header, compose the parts yourself: the provider owns the state, your header reads it with `useCalendar()`, and the body renders whichever view the provider is on.
+`Calendar` is a short file. Its toolbar is built from the [Calendar Header](/docs/components/calendar-header)'s parts, and that item's `CalendarHeader` is the live demo's fuller header, with panel toggles. For a header of your own, compose the parts yourself: the provider owns the state, your header reads it with `useCalendar()`, and the body renders whichever view the provider is on.
 
 ```tsx
 import { AgendaView } from "@/components/agenda-view";
@@ -121,7 +121,7 @@ A header like this needs these fields of [`useCalendar()`](/docs/components/cale
   ]}
 />
 
-The [live demo](/) is the same idea with more around it: two sidebars, a mini calendar and a command menu.
+The [live demo](/) is the same idea with more around it: two sidebars, a mini calendar, the [Calendar Header](/docs/components/calendar-header) and the [Command Menu](/docs/components/command-menu).
 
 ## Keyboard & accessibility
 
