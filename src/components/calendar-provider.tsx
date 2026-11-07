@@ -931,9 +931,18 @@ function CalendarStateProvider({
       ...resolveDayHours(dayStartHour, dayEndHour),
       hourCycle,
       locale,
+      weekStartsOn,
       calendars,
     }),
-    [snapMinutes, dayStartHour, dayEndHour, hourCycle, locale, calendars],
+    [
+      snapMinutes,
+      dayStartHour,
+      dayEndHour,
+      hourCycle,
+      locale,
+      weekStartsOn,
+      calendars,
+    ],
   );
 
   return (

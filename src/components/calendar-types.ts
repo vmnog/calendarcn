@@ -594,6 +594,11 @@ export interface CalendarConfig {
   hourCycle: HourCycle;
   /** date-fns locale for day names, month names and dates */
   locale: Locale;
+  /**
+   * Day the week starts on, for date pickers. Unset outside a
+   * CalendarProvider, where the locale's first day applies.
+   */
+  weekStartsOn?: WeekStartsOn;
   /** Calendars offered by the event context menu */
   calendars: CalendarInfo[];
 }

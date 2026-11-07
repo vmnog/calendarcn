@@ -77,7 +77,8 @@ src/
 ├── examples/                     # Live docs examples, shown with their source
 ├── hooks/                        # Drag, resize, keyboard, scroll and gesture hooks
 │   ├── use-inline-edit.ts        # Inline text field of the details panel
-│   └── use-hover-tooltip.ts      # Tooltip that shows after a hover
+│   ├── use-hover-tooltip.ts      # Tooltip that shows after a hover
+│   └── use-field-popover.ts      # Focus, blur and Escape for the details' time and date fields
 └── lib/
     ├── event-utils.ts            # Event positioning and filtering
     ├── recurrence.ts             # Repeat rules: RRULE, labels, series occurrences
@@ -85,6 +86,7 @@ src/
     ├── timezone-label.ts         # Time zone labels ("GMT-3 Sao Paulo")
     ├── mock-events.ts            # Demo event data
     ├── sample-events.ts          # Docs example event data
+    ├── time-input.ts             # Time menu options, typed times and durations, date parsing
     └── utils.ts                  # General utilities (cn)
 ```
 

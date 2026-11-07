@@ -492,6 +492,12 @@ Returns the resolved settings of the nearest provider. Outside a provider it ret
     { name: "hourCycle", type: "12 | 24", description: "Clock style." },
     { name: "locale", type: "Locale", description: "date-fns locale." },
     {
+      name: "weekStartsOn",
+      type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
+      description:
+        "First day of the week, for date pickers. Unset outside a provider, where the locale's applies.",
+    },
+    {
       name: "calendars",
       type: "CalendarInfo[]",
       description: "Calendars the context menu offers.",
