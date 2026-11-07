@@ -78,6 +78,9 @@ Outside a provider, `findSeriesOccurrence(events, event, "next")` (from `@/lib/r
 - Pick the event's time zone from a searchable list of every zone, with recent and popular ones first. The times keep their wall-clock value in the new zone, so the event moves on the grid, which (like the panel's times) stays in the viewer's zone: 2 PM in New York becomes 2 PM in Tokyo, which is 1 AM New York time.
 - Set a repeat rule from Notion's presets or the custom dialog (every N days, weeks, months or years, on chosen days, on the 1st to 4th or last weekday of the month, until a date or N times). `.ics` import and export keep it as an RRULE; an RRULE the details can't show reads "Custom repeat".
 - Fields the event doesn't set (participants, conferencing, location, links, description, reminders) show Notion's muted placeholders.
+- Add a link from "Add links and attachments": paste or type an address and press <Kbd>Enter</Kbd>. A bare domain like `example.com` gets `https://`, and text that isn't a link is dropped. Hover a link, or <Kbd>Tab</Kbd> onto it, to see its address with a copy button.
+- Attach a file from the same menu. The panel keeps its name, size and type with a `blob:` URL; nothing is uploaded.
+- Edit the description in place: the event takes the text when you leave it, and <Kbd>Esc</Kbd> restores it. Web addresses in it become links, and are also listed after the event's links.
 - Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
 
 ## Custom details
@@ -290,12 +293,14 @@ Passed to `renderEventDetails` on `CalendarProvider`.
     {
       name: "links",
       type: "{ url: string; title?: string }[]",
-      description: "Links attached to the event.",
+      description:
+        "Links attached to the event, shown by `title` when set. Only `http:` and `https:` addresses open; others, like `javascript:` or `data:`, show as text.",
     },
     {
       name: "attachments",
       type: "{ name: string; url: string; size?: number; type?: string }[]",
-      description: "Files attached to the event (size in bytes, MIME type).",
+      description:
+        "Files attached to the event (size in bytes, MIME type). A `url` opens only when it's `http:`, `https:` or `blob:`; `javascript:` and `data:` show as text. A file attached in the panel gets a `blob:` URL that stops working when the page reloads. The panel revokes it when the file is removed; otherwise upload the file or revoke the URL yourself (`URL.revokeObjectURL`), e.g. when the event is deleted.",
     },
     {
       name: "reminders",
