@@ -502,6 +502,37 @@
       ]
     },
     {
+      "name": "conference-providers",
+      "type": "registry:lib",
+      "title": "Conference Providers",
+      "description": "Google Meet, Zoom and Microsoft Teams for the event details' Conferencing row, as the live demo offers them: placeholders that make up calls on example.com, to replace with calls to each service's API. No logos.",
+      "registryDependencies": ["@calendarcn/calendar-core"],
+      "files": [
+        {
+          "path": "src/lib/conference-providers.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "sample-data",
+      "type": "registry:lib",
+      "title": "Sample Data",
+      "description": "The live demo's events, calendars, contacts, rooms and place suggestions, dated around today, and the docs examples' smaller week of events.",
+      "dependencies": ["date-fns"],
+      "registryDependencies": ["@calendarcn/calendar-core"],
+      "files": [
+        {
+          "path": "src/lib/mock-events.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/sample-events.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
       "name": "sidebar-overlay",
       "type": "registry:component",
       "title": "Sidebar Overlay",

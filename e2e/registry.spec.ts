@@ -14,6 +14,8 @@ const ITEM_NAMES = [
   "agenda-view",
   "calendar",
   "ics",
+  "conference-providers",
+  "sample-data",
   // The demo's sidebars
   "sidebar-overlay",
   "theme-toggle",
