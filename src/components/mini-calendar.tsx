@@ -163,7 +163,6 @@ export function MiniCalendar({
           defaultClassNames.nav,
         ),
         month_caption: cn("hidden", defaultClassNames.month_caption),
-        table: "w-full border-collapse",
         weekdays: cn("flex", defaultClassNames.weekdays),
         weekday: cn(
           "text-muted-foreground rounded-sm flex-1 font-normal text-xxs select-none",
@@ -246,8 +245,9 @@ export function MiniCalendar({
                     <TooltipTrigger asChild>
                       <button
                         type="button"
-                        onClick={goBackToToday}
                         className={NAV_BUTTON_CLASS}
+                        aria-label="Go back to today"
+                        onClick={goBackToToday}
                       >
                         <Undo2Icon className="size-4" />
                       </button>

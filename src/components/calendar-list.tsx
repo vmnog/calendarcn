@@ -124,8 +124,9 @@ export function CalendarList({
                                 !isVisible && "opacity-40",
                               )}
                             >
+                              {/* Icon sizes are !important: some shadcn/ui styles size every svg in a menu button */}
                               {calendar.isSubscribed && (
-                                <Rss className="size-2 text-white" />
+                                <Rss className="!size-2 text-white" />
                               )}
                             </div>
                             <span
@@ -154,9 +155,9 @@ export function CalendarList({
                               }}
                             >
                               {isVisible ? (
-                                <Eye className="size-3.5 text-calendar-sidebar-muted-foreground" />
+                                <Eye className="!size-3.5 text-calendar-sidebar-muted-foreground" />
                               ) : (
-                                <EyeOff className="size-3.5 text-calendar-sidebar-muted-foreground" />
+                                <EyeOff className="!size-3.5 text-calendar-sidebar-muted-foreground" />
                               )}
                             </span>
                           </SidebarMenuButton>

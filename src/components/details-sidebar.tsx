@@ -313,7 +313,7 @@ export function DetailsSidebar({
           </Tooltip>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="gap-2">
         {selectedEvent ? (
           <EventDetailPanel
             event={selectedEvent}

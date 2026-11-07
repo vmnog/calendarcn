@@ -95,7 +95,8 @@ export function CalendarSidebar({
 
   const content = (
     <>
-      <SidebarContent>
+      {/* Spacing set here, not left to the shadcn/ui style (nova has none) */}
+      <SidebarContent className="gap-2">
         <SidebarGroup className="px-0">
           <SidebarGroupContent>
             <MiniCalendar
@@ -115,7 +116,7 @@ export function CalendarSidebar({
         {/* Scheduling Section */}
         <SidebarGroup className="py-0">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1">
               <SidebarMenuItem>
                 <SidebarMenuButton className="text-sidebar-foreground rounded-sm">
                   <Link2 className="size-4 text-calendar-sidebar-muted-foreground" />
@@ -145,7 +146,7 @@ export function CalendarSidebar({
         <SidebarSeparator className="mx-0" />
         <SidebarGroup className="py-0">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1">
               <SidebarMenuItem>
                 <SidebarMenuButton className="text-sidebar-foreground text-sm rounded-sm">
                   <Plus className="size-4" />
