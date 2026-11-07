@@ -256,10 +256,67 @@ export type ConferenceProvider =
 export interface EventConference {
   /** Service that hosts the call */
   provider: ConferenceProvider;
+  /**
+   * Label of the `conferenceProviders` option that created it, which tells
+   * apart two options of the same `provider` (e.g. two Zoom accounts)
+   */
+  label?: string;
   /** Link that joins the call */
   url: string;
   /** Meeting code or ID shown beside the link (e.g. "abc-defg-hij") */
   meetingId?: string;
+}
+
+/**
+ * A person the participants field suggests while typing (an address book
+ * entry, a coworker)
+ */
+export interface EventContact {
+  /** Email address, the participant's identity once added */
+  email: string;
+  /** Display name. Defaults to the email */
+  name?: string;
+  /**
+   * Whether they were invited recently. Recent contacts are listed before
+   * typing, with a history icon
+   */
+  recent?: boolean;
+}
+
+/**
+ * A video conferencing service the details panel offers. Picking it calls
+ * `createConference`, whose result is set as the event's `conference`.
+ */
+export interface ConferenceProviderOption {
+  /** Service the call is hosted on */
+  provider: ConferenceProvider;
+  /**
+   * Name shown in the menu and on the event (e.g. "Video call"), unique
+   * among the options
+   */
+  label: string;
+  /** 16px icon shown in the menu and on the event. Defaults to a camera */
+  icon?: React.ReactNode;
+  /** Muted text at the end of the menu item, e.g. "Connect" */
+  hint?: string;
+  /**
+   * Creates the call for the event, e.g. by asking the service for a
+   * meeting link. The panel shows the option as pending until a returned
+   * promise settles; a rejected one adds no call.
+   */
+  createConference: (
+    event: DetailedCalendarEvent,
+  ) => EventConference | Promise<EventConference>;
+}
+
+/**
+ * A place the location field suggests while typing
+ */
+export interface LocationSuggestion {
+  /** Name of the place (e.g. "Central Park") */
+  name: string;
+  /** Address shown under the name and kept after it (e.g. "New York, NY, USA") */
+  address?: string;
 }
 
 /**
@@ -607,6 +664,14 @@ export interface CalendarConfig {
   weekStartsOn?: WeekStartsOn;
   /** Calendars offered by the event context menu */
   calendars: CalendarInfo[];
+  /** People the details' participants field suggests */
+  contacts: EventContact[];
+  /** Meeting rooms the details' participants field offers */
+  rooms: EventRoom[];
+  /** Conferencing services the details offer; none hides the row */
+  conferenceProviders: ConferenceProviderOption[];
+  /** Places the details' location field suggests */
+  locationSuggestions: LocationSuggestion[];
 }
 
 /**
@@ -816,6 +881,28 @@ interface CalendarProviderBaseProps<
    * The submenu is hidden when empty. Defaults to none
    */
   calendars?: CalendarInfo[];
+  /**
+   * People the details' participants field suggests: recent ones before
+   * typing, the matches while typing. Defaults to none (a typed email can
+   * still be invited)
+   */
+  contacts?: EventContact[];
+  /**
+   * Meeting rooms the details' participants field lists under "Rooms and
+   * resources". Defaults to none, which hides that list
+   */
+  rooms?: EventRoom[];
+  /**
+   * Conferencing services the details' "Conferencing" menu offers, each
+   * creating its calls with its own `createConference`. Defaults to none,
+   * which hides the row (an event's existing call still shows)
+   */
+  conferenceProviders?: ConferenceProviderOption[];
+  /**
+   * Places the details' location field suggests while typing. Defaults to
+   * none (the typed text is kept as the location)
+   */
+  locationSuggestions?: LocationSuggestion[];
   /**
    * Called after an event is added: one created by clicking an empty slot,
    * or an occurrence copy the series arrows add (`showSeriesOccurrence`)

@@ -1,5 +1,11 @@
+"use client"
+
 import { Calendar } from "@/components/calendar"
-import type { DetailedCalendarEvent } from "@/components/calendar-types"
+import type {
+  ConferenceProviderOption,
+  DetailedCalendarEvent,
+  EventConference,
+} from "@/components/calendar-types"
 
 /**
  * Fixed events in the week of Sunday, May 31 2026. The e2e spec freezes the
@@ -40,10 +46,45 @@ const EVENTS: DetailedCalendarEvent[] = [
   },
 ]
 
+/**
+ * Two made-up services of the same kind, one answering at once and one
+ * after a wait, with calls on example.com
+ */
+const CONFERENCE_PROVIDERS: ConferenceProviderOption[] = [
+  {
+    provider: "other",
+    label: "Video call",
+    createConference: () => ({
+      provider: "other",
+      url: "https://example.com/call/abc-defg-hij",
+      meetingId: "abc-defg-hij",
+    }),
+  },
+  {
+    provider: "other",
+    label: "Backup call",
+    createConference: () =>
+      new Promise<EventConference>((resolve) => {
+        setTimeout(
+          () =>
+            resolve({
+              provider: "other",
+              url: "https://example.com/backup/klm-nopq-rst",
+              meetingId: "klm-nopq-rst",
+            }),
+          300
+        )
+      }),
+  },
+]
+
 export default function Page() {
   return (
     <main className="h-svh">
-      <Calendar defaultEvents={EVENTS} />
+      <Calendar
+        defaultEvents={EVENTS}
+        conferenceProviders={CONFERENCE_PROVIDERS}
+      />
     </main>
   )
 }

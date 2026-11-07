@@ -80,4 +80,5 @@ pnpm exec playwright test --project=base-ui        # rerun the spec against the 
 - The app is served with `next start` on port 3200 (`E2E_BASE_UI_PORT`). Its page renders `<Calendar defaultEvents={...} />` with test events on Thursday, June 4 2026, the frozen test date.
 - The "Link Check" event on Friday, June 5 comes with `javascript:` and `data:` links and a `data:` file, so `links-description.spec.ts` can check they show as text, without an `href`.
 - `/24-hour` renders the same calendar with `hourCycle={24}` and `weekStartsOn={1}`, for the time menu and the date picker.
+- The page also passes `conferenceProviders`: two made-up services of one kind, the second answering after a wait, with calls on example.com. `/read-only` renders `EventDetailPanel` without `onEventChange`, inside a `CalendarProvider` with contacts, rooms and a service, to check that nothing edits.
 - The install needs network access (npm and `ui.shadcn.com`). If npm fails with `EACCES` on `~/.npm`, point it at another cache: `npm_config_cache=$TMPDIR/npm-cache pnpm test:e2e:base-ui`.

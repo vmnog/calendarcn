@@ -255,6 +255,21 @@ export function EventDetailPanel<
       event.timezone,
     );
 
+  const conferencingSection = (
+    <EventDetailConferencing
+      key="conferencing"
+      event={event}
+      onEventChange={onEventChange}
+    />
+  );
+  const aiNotesSection = (
+    <EventDetailAiNotes
+      key="ai-notes"
+      event={event}
+      onEventChange={onEventChange}
+    />
+  );
+
   return (
     <div
       className={cn(
@@ -438,8 +453,11 @@ export function EventDetailPanel<
       {/* Who and where */}
       <EventDetailGroup name="who">
         <EventDetailParticipants event={event} onEventChange={onEventChange} />
-        <EventDetailConferencing event={event} onEventChange={onEventChange} />
-        <EventDetailAiNotes event={event} onEventChange={onEventChange} />
+        {/* With a call, Notion moves the meeting-note button above it; the
+            keys keep both mounted (and focused) when they swap */}
+        {event.conference
+          ? [aiNotesSection, conferencingSection]
+          : [conferencingSection, aiNotesSection]}
         <EventDetailLocation event={event} onEventChange={onEventChange} />
       </EventDetailGroup>
 

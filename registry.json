@@ -197,6 +197,7 @@
       ],
       "registryDependencies": [
         "@calendarcn/calendar-core",
+        "avatar",
         "button",
         "calendar",
         "command",
@@ -256,6 +257,10 @@
         },
         {
           "path": "src/components/event-detail-location.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-suggestions.tsx",
           "type": "registry:component"
         },
         {

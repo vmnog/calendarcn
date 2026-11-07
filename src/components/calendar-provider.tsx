@@ -32,8 +32,12 @@ import type {
   CalendarInfo,
   CalendarProviderProps,
   CalendarRenderSlots,
+  ConferenceProviderOption,
+  EventContact,
   EventContentProps,
+  EventRoom,
   HourCycle,
+  LocationSuggestion,
   NewEventRange,
   SeriesOccurrence,
   ViewSettings,
@@ -74,6 +78,18 @@ const DEFAULT_HOUR_CYCLE: HourCycle = 12;
 /** Calendars offered by the context menu when `calendars` is not set (stable identity) */
 const NO_CALENDARS: CalendarInfo[] = [];
 
+/** Contacts suggested when `contacts` is not set (stable identity) */
+const NO_CONTACTS: EventContact[] = [];
+
+/** Rooms offered when `rooms` is not set (stable identity) */
+const NO_ROOMS: EventRoom[] = [];
+
+/** Conferencing offered when `conferenceProviders` is not set (stable identity) */
+const NO_CONFERENCE_PROVIDERS: ConferenceProviderOption[] = [];
+
+/** Places suggested when `locationSuggestions` is not set (stable identity) */
+const NO_LOCATION_SUGGESTIONS: LocationSuggestion[] = [];
+
 /** Config used outside a provider, and for every provider prop left unset */
 const DEFAULT_CALENDAR_CONFIG: CalendarConfig = {
   snapMinutes: DEFAULT_SNAP_MINUTES,
@@ -82,6 +98,10 @@ const DEFAULT_CALENDAR_CONFIG: CalendarConfig = {
   hourCycle: DEFAULT_HOUR_CYCLE,
   locale: enUS,
   calendars: NO_CALENDARS,
+  contacts: NO_CONTACTS,
+  rooms: NO_ROOMS,
+  conferenceProviders: NO_CONFERENCE_PROVIDERS,
+  locationSuggestions: NO_LOCATION_SUGGESTIONS,
 };
 
 /** View settings used for every field `defaultViewSettings` leaves unset */
@@ -385,6 +405,10 @@ function CalendarStateProvider({
   hourCycle = DEFAULT_HOUR_CYCLE,
   locale = enUS,
   calendars = NO_CALENDARS,
+  contacts = NO_CONTACTS,
+  rooms = NO_ROOMS,
+  conferenceProviders = NO_CONFERENCE_PROVIDERS,
+  locationSuggestions = NO_LOCATION_SUGGESTIONS,
   createEvent,
   onEventCreate,
   onEventUpdate,
@@ -933,6 +957,10 @@ function CalendarStateProvider({
       locale,
       weekStartsOn,
       calendars,
+      contacts,
+      rooms,
+      conferenceProviders,
+      locationSuggestions,
     }),
     [
       snapMinutes,
@@ -942,6 +970,10 @@ function CalendarStateProvider({
       locale,
       weekStartsOn,
       calendars,
+      contacts,
+      rooms,
+      conferenceProviders,
+      locationSuggestions,
     ],
   );
 

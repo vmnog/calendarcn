@@ -16,7 +16,12 @@ import {
 } from "@/hooks/use-calendar-shortcuts";
 import { useIsClient } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { generateMockEvents } from "@/lib/mock-events";
+import {
+  DEMO_CONTACTS,
+  DEMO_LOCATION_SUGGESTIONS,
+  DEMO_ROOMS,
+  generateMockEvents,
+} from "@/lib/mock-events";
 import {
   AGENDA_DAYS,
   getPeriodStart,
@@ -53,6 +58,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
+import { DEMO_CONFERENCE_PROVIDERS } from "./demo-conference-providers";
 
 /** Title given to an event created by clicking an empty time slot */
 const NEW_EVENT_TITLE = "New event";
@@ -249,6 +255,10 @@ function PageContent({ isWideLayout }: PageContentProps) {
       onEventsChange={setEvents}
       defaultViewSettings={DEMO_VIEW_SETTINGS}
       calendars={DEMO_CALENDARS}
+      contacts={DEMO_CONTACTS}
+      rooms={DEMO_ROOMS}
+      conferenceProviders={DEMO_CONFERENCE_PROVIDERS}
+      locationSuggestions={DEMO_LOCATION_SUGGESTIONS}
       createEvent={createDemoEvent}
       onEventSelect={handleEventSelect}
     >
