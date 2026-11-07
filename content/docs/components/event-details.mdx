@@ -48,7 +48,12 @@ Leave out `onEventChange` to show an event read-only, for example one from a cal
 ## Features
 
 - Edit the title in place. With `onEventChange` wired to the calendar, the event updates as you type.
-- Edit the start and end times and dates. <Kbd>Enter</Kbd> saves, <Kbd>Esc</Kbd> restores the old value.
+- Pick the start and end times from a menu in 15-minute steps. End times show how long the event lasts (`1h 30min`).
+- Type a time and the menu lists what it can mean, daytime first: `7` gives 7 PM, then 7 AM. In the end field a number is also a duration: `45` gives 45 minutes later.
+- Hovering a time previews it. <Kbd>Enter</Kbd>, a click, or leaving the field after typing or arrow keys saves it. <Kbd>Esc</Kbd> restores the old value.
+- Pick dates from a date picker, or type one (`Nov 12`). From the input, <Kbd>↑</Kbd> and <Kbd>↓</Kbd> move a day, and <Kbd>Page Up</Kbd> and <Kbd>Page Down</Kbd> a month.
+- Switch an event to all-day and back: it gets its own times back, or 9–10 AM when it had none.
+- Time options follow the wall clock, so they stay right on the days daylight saving time starts and ends.
 - Fields the event doesn't set (participants, conferencing, location, links, description, reminders) show Notion's muted placeholders.
 - Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
 
@@ -92,6 +97,8 @@ export function CompactDetails({
 | Import from                              | Exports                                                                                                                             | What it is                                                                                                                                                                |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@/components/event-detail-time`         | `EventDetailTime`, `EventDetailAllDay`                                                                                              | Start and end times and dates; the all-day switch.                                                                                                                        |
+| `@/components/event-detail-time-field`   | `EventDetailTimeField`                                                                                                              | A time field with the floating time menu: typed times, durations, hover previews, and <Kbd>Esc</Kbd> restores. `EventDetailTime` renders two.                             |
+| `@/components/event-detail-date-field`   | `EventDetailDateField`                                                                                                              | A date field with the date picker; `minDate` turns off earlier days.                                                                                                      |
 | `@/components/event-detail-timezone`     | `EventDetailTimezone`                                                                                                               | The time zone.                                                                                                                                                            |
 | `@/components/event-detail-recurrence`   | `EventDetailRecurrence`                                                                                                             | The repeat rule. `onPrevious` and `onNext` add the arrows that step through the series.                                                                                   |
 | `@/components/event-detail-participants` | `EventDetailParticipants`                                                                                                           | Guests and rooms.                                                                                                                                                         |
@@ -108,6 +115,8 @@ export function CompactDetails({
 | `@/components/event-detail-parts`        | `closeMenuOnEscape`, `stopEscapePropagation`, `getPanelMenuSideOffset`, `getEventDetailPortalContainer`                             | Menu helpers: <Kbd>Esc</Kbd> closes a menu without deselecting the event, menus line up with the panel's edge, and lists portal into the dialog around the panel, if any. |
 | `@/hooks/use-inline-edit`                | `useInlineEdit`                                                                                                                     | A text field that edits in place: <Kbd>Enter</Kbd> or blur commits, <Kbd>Esc</Kbd> restores the value from before, and `onCommit` can reject a value by returning `null`. |
 | `@/hooks/use-hover-tooltip`              | `useHoverTooltip`                                                                                                                   | Open state for a tooltip that shows after the pointer rests on its trigger and stays while the pointer moves onto it.                                                     |
+| `@/hooks/use-field-popover`              | `useFieldPopover`                                                                                                                   | Focus, blur and <Kbd>Esc</Kbd> for a field whose menu or picker keeps focus in its input.                                                                                 |
+| `@/lib/time-input`                       | `getStartTimeOptions`, `getEndTimeOptions`, `matchStartTimes`, `matchEndTimes`, `formatDuration`, `parseDateInput`                  | The time menu's options on the wall clock, the times and durations typed text can mean, and typed dates.                                                                  |
 
 ## API Reference
 
