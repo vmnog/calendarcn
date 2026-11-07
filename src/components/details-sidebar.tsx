@@ -11,10 +11,19 @@ import {
   startOfDay,
 } from "date-fns";
 
+import { cn } from "@/lib/utils";
+import { eventColorStyles } from "@/components/calendar-event-item";
+import { useCalendar, useCalendarConfig } from "@/components/calendar-provider";
+import type { DetailedCalendarEvent } from "@/components/calendar-types";
+import { EventDetailPanel } from "@/components/event-detail-panel";
+import { useEventTitleFocus } from "@/components/event-title-focus-context";
+import {
+  CALENDAR_SIDEBAR_COLORS_CLASS,
+  SidebarOverlay,
+} from "@/components/sidebar-overlay";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import {
-  Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
@@ -27,33 +36,41 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { SidebarOverlay } from "@/components/sidebar-overlay";
-import { eventColorStyles } from "./calendar-event-item";
-import { useCalendarConfig } from "./calendar-provider";
-import { EventDetailPanel } from "./event-detail-panel";
-import { useEventTitleFocus } from "./event-title-focus-context";
-import { formatDuration } from "@/lib/time-input";
 import { resolveEventColor } from "@/lib/event-utils";
-import type { DetailedCalendarEvent } from "./week-view-types";
+import { formatDuration } from "@/lib/time-input";
 
 /**
  * Width of the context panel, inline or as an overlay: Notion Calendar's
- * 308px inside, plus the 1px border. The page sets it as `--sidebar-width`
- * on its `SidebarProvider`.
+ * 308px inside, plus the 1px border. Set it as `--sidebar-width` on the
+ * `SidebarProvider` around the panel.
  */
 export const CONTEXT_PANEL_WIDTH = "309px";
 
 /** Muted text color the context panel uses for labels and placeholders */
 const PANEL_MUTED_FOREGROUND = "#C7C5C1";
 
-interface SidebarLeftProps extends React.ComponentProps<typeof Sidebar> {
+/** A shortcut the context panel lists while no event is selected */
+export interface DetailsSidebarShortcut {
+  label: string;
+  /** Keys pressed together, each shown as a key cap */
+  keys: string[];
+}
+
+/** Notion Calendar's "Useful shortcuts", the panel's default list */
+export const USEFUL_SHORTCUTS: DetailsSidebarShortcut[] = [
+  { label: "Command menu", keys: ["⌘", "K"] },
+  { label: "Menu bar calendar", keys: ["control", "⌘", "K"] },
+  { label: "Toggle sidebar", keys: ["`"] },
+  { label: "Show teammate calendar", keys: ["P"] },
+  { label: "Go to date", keys: ["."] },
+  { label: "All keyboard shortcuts", keys: ["?"] },
+];
+
+interface DetailsSidebarProps extends React.ComponentProps<"div"> {
   /** Render as a modal sheet instead of an inline column (phones and tablets) */
   overlay?: boolean;
-  events?: DetailedCalendarEvent[];
-  selectedEvent?: DetailedCalendarEvent | null;
-  onEventChange?: (event: DetailedCalendarEvent) => void;
-  onPrevWeek?: () => void;
-  onNextWeek?: () => void;
+  /** Shortcuts listed while no event is selected or searched */
+  shortcuts?: DetailsSidebarShortcut[];
 }
 
 interface DateGroup {
@@ -122,17 +139,36 @@ function groupEventsByDate(events: DetailedCalendarEvent[]): DateGroup[] {
   return groups.sort((a, b) => a.key.localeCompare(b.key));
 }
 
-export function SidebarLeft({
+/**
+ * Notion Calendar's context panel, on the right: the selected event's
+ * details, event search, and useful shortcuts when nothing is selected.
+ * Reads the events and the selection from the nearest `CalendarProvider`;
+ * its open state is shadcn/ui's `SidebarProvider` (`useSidebar()`), with
+ * `--sidebar-width` set to `CONTEXT_PANEL_WIDTH`.
+ */
+export function DetailsSidebar({
   overlay = false,
-  events = [],
-  selectedEvent,
-  onEventChange,
-  onPrevWeek,
-  onNextWeek,
+  shortcuts = USEFUL_SHORTCUTS,
+  className,
   ...props
-}: SidebarLeftProps) {
-  const { toggleSidebar, open, setOpen, openMobile, setOpenMobile, isMobile } =
-    useSidebar();
+}: DetailsSidebarProps) {
+  const {
+    events,
+    selectedEvent,
+    updateEvent,
+    previousInSeries,
+    nextInSeries,
+    showSeriesOccurrence,
+  } = useCalendar<DetailedCalendarEvent>();
+  const {
+    toggleSidebar,
+    state,
+    open,
+    setOpen,
+    openMobile,
+    setOpenMobile,
+    isMobile,
+  } = useSidebar();
   // shadcn keeps a separate open state for phones; follow whichever is active
   const panelOpen = isMobile ? openMobile : open;
   const setPanelOpen = isMobile ? setOpenMobile : setOpen;
@@ -205,6 +241,13 @@ export function SidebarLeft({
 
   const hasUpcomingResults = todayGroup !== null || futureGroups.length > 0;
 
+  const onPrevWeek = previousInSeries
+    ? () => showSeriesOccurrence(previousInSeries)
+    : undefined;
+  const onNextWeek = nextInSeries
+    ? () => showSeriesOccurrence(nextInSeries)
+    : undefined;
+
   const panel = (
     <>
       <SidebarHeader className="h-14 justify-center px-4">
@@ -274,7 +317,7 @@ export function SidebarLeft({
         {selectedEvent ? (
           <EventDetailPanel
             event={selectedEvent}
-            onEventChange={onEventChange}
+            onEventChange={updateEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             autoFocusTitle={panelOpen && pendingEventId === selectedEvent.id}
@@ -283,7 +326,7 @@ export function SidebarLeft({
         ) : resolvedSearchEvent ? (
           <EventDetailPanel
             event={resolvedSearchEvent}
-            onEventChange={onEventChange}
+            onEventChange={updateEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
           />
@@ -340,27 +383,13 @@ export function SidebarLeft({
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <div className="flex flex-col">
-                <ShortcutRow label="Command menu">
-                  <Kbd>⌘</Kbd>
-                  <Kbd>K</Kbd>
-                </ShortcutRow>
-                <ShortcutRow label="Menu bar calendar">
-                  <Kbd>control</Kbd>
-                  <Kbd>⌘</Kbd>
-                  <Kbd>K</Kbd>
-                </ShortcutRow>
-                <ShortcutRow label="Toggle sidebar">
-                  <Kbd>`</Kbd>
-                </ShortcutRow>
-                <ShortcutRow label="Show teammate calendar">
-                  <Kbd>P</Kbd>
-                </ShortcutRow>
-                <ShortcutRow label="Go to date">
-                  <Kbd>.</Kbd>
-                </ShortcutRow>
-                <ShortcutRow label="All keyboard shortcuts">
-                  <Kbd>?</Kbd>
-                </ShortcutRow>
+                {shortcuts.map((shortcut) => (
+                  <ShortcutRow key={shortcut.label} label={shortcut.label}>
+                    {shortcut.keys.map((key) => (
+                      <Kbd key={key}>{key}</Kbd>
+                    ))}
+                  </ShortcutRow>
+                ))}
               </div>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -377,7 +406,7 @@ export function SidebarLeft({
         side="right"
         title="Context panel"
         description="Event details, event search and useful shortcuts."
-        className="!bg-context-panel"
+        className="!bg-calendar-context-panel"
         style={
           {
             "--sidebar-width": CONTEXT_PANEL_WIDTH,
@@ -390,17 +419,45 @@ export function SidebarLeft({
     );
   }
 
+  // shadcn's Sidebar markup for side="right", collapsible="offcanvas", without
+  // its slide transition: the panel opens and closes at once
   return (
-    <Sidebar
-      side="right"
-      className="border-l !bg-context-panel [&_[data-slot=sidebar-inner]]:!bg-context-panel"
-      style={
-        { "--muted-foreground": PANEL_MUTED_FOREGROUND } as React.CSSProperties
-      }
-      {...props}
+    <div
+      className="group peer text-sidebar-foreground hidden md:block"
+      data-state={state}
+      data-collapsible={state === "collapsed" ? "offcanvas" : ""}
+      data-variant="sidebar"
+      data-side="right"
+      data-slot="sidebar"
     >
-      {panel}
-    </Sidebar>
+      {/* Takes the panel's width in the page's flex row */}
+      <div
+        data-slot="sidebar-gap"
+        className="relative w-(--sidebar-width) rotate-180 bg-transparent group-data-[collapsible=offcanvas]:w-0"
+      />
+      <div
+        data-slot="sidebar-container"
+        className={cn(
+          CALENDAR_SIDEBAR_COLORS_CLASS,
+          "bg-calendar-context-panel text-sidebar-foreground fixed inset-y-0 right-0 z-10 hidden h-svh w-(--sidebar-width) border-l md:flex group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
+          className,
+        )}
+        style={
+          {
+            "--muted-foreground": PANEL_MUTED_FOREGROUND,
+          } as React.CSSProperties
+        }
+        {...props}
+      >
+        <div
+          data-sidebar="sidebar"
+          data-slot="sidebar-inner"
+          className="bg-calendar-context-panel flex h-full w-full flex-col"
+        >
+          {panel}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -416,7 +473,10 @@ function DateGroupSection({
   return (
     <div className="px-4 pt-5">
       <p
-        className={`-ml-1 text-xs font-semibold pb-3 ${group.isToday ? "text-[#E8533E]" : "text-foreground"}`}
+        className={cn(
+          "-ml-1 text-xs font-semibold pb-3",
+          group.isToday ? "text-[#E8533E]" : "text-foreground",
+        )}
       >
         {group.label}
       </p>
@@ -508,15 +568,25 @@ function SearchResultItem({
 
   return (
     <div
-      className={`-mx-1 flex cursor-default items-start gap-2.5 rounded-sm px-1 py-2 ${colors.hover}`}
+      className={cn(
+        "-mx-1 flex cursor-default items-start gap-2.5 rounded-sm px-1 py-2",
+        colors.hover,
+      )}
       onClick={() => onClick?.(event)}
     >
       <div
-        className={`-mt-1 -mb-1 w-1 shrink-0 self-stretch rounded-full ${eventColorStyles[resolveEventColor(event, calendars)].border} ${isPast ? "opacity-40" : ""}`}
+        className={cn(
+          "-mt-1 -mb-1 w-1 shrink-0 self-stretch rounded-full",
+          eventColorStyles[resolveEventColor(event, calendars)].border,
+          isPast && "opacity-40",
+        )}
       />
       <div className="flex min-w-0 flex-col gap-0.5">
         <p
-          className={`truncate text-sm font-medium leading-snug ${colors.title}`}
+          className={cn(
+            "truncate text-sm font-medium leading-snug",
+            colors.title,
+          )}
         >
           {event.title}
         </p>

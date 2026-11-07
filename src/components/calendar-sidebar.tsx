@@ -1,21 +1,16 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import {
-  BookOpen,
-  Eye,
-  Github,
-  Link2,
-  PanelLeftIcon,
-  Plus,
-  UserRound,
-} from "lucide-react";
+import { Eye, Link2, PanelLeftIcon, Plus, UserRound } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Calendars } from "@/components/calendars";
-import { DatePicker } from "@/components/date-picker";
-import { SidebarOverlay } from "@/components/sidebar-overlay";
+import { useCalendar } from "@/components/calendar-provider";
+import { CalendarList } from "@/components/calendar-list";
+import { MiniCalendar } from "@/components/mini-calendar";
+import {
+  CALENDAR_SIDEBAR_COLORS_CLASS,
+  SidebarOverlay,
+} from "@/components/sidebar-overlay";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -34,100 +29,98 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getPeriodStart } from "@/lib/event-utils";
 
 /** Width of the calendar sidebar, inline and as an overlay */
-const SIDEBAR_WIDTH = "15rem";
+export const CALENDAR_SIDEBAR_WIDTH = "15rem";
 
-export type CalendarColor =
-  | "red"
-  | "orange"
-  | "yellow"
-  | "green"
-  | "blue"
-  | "purple"
-  | "gray";
+/** No days to highlight: month view and the agenda */
+const NO_VISIBLE_DAYS: Date[] = [];
 
-export interface CalendarItem {
-  name: string;
-  color: CalendarColor;
-  visible: boolean;
-  isSubscribed?: boolean;
-}
-
-export interface CalendarAccount {
-  email: string;
-  calendars: CalendarItem[];
-}
-
-// Sample data grouped by email accounts
-const data: { accounts: CalendarAccount[] } = {
-  accounts: [
-    {
-      email: "you@example.com",
-      calendars: [
-        { name: "you@example.com", color: "red", visible: true },
-        { name: "Personal", color: "purple", visible: true },
-        { name: "Family", color: "orange", visible: true },
-        { name: "Side Projects", color: "yellow", visible: true },
-        { name: "Fitness", color: "green", visible: true },
-        {
-          name: "Holidays in Brazil",
-          color: "green",
-          visible: true,
-          isSubscribed: true,
-        },
-      ],
-    },
-    {
-      email: "you@work.example.com",
-      calendars: [
-        { name: "you@work.example.com", color: "gray", visible: true },
-        { name: "Work", color: "blue", visible: true },
-      ],
-    },
-  ],
-};
-
-interface SidebarRightProps {
+interface CalendarSidebarProps {
+  /** Whether the sidebar shows. Defaults to true */
   open?: boolean;
-  /** Called when the overlay asks to close (outside tap, Escape, toggle) */
+  /** Called when the overlay asks to close (outside tap, Escape, close button, a day picked) */
   onOpenChange?: (open: boolean) => void;
   /** Render as a modal sheet instead of an inline column (phones) */
   overlay?: boolean;
-  onDateSelect?: (date: Date) => void;
-  currentDate?: Date;
-  visibleDays?: Date[];
+  /** Buttons shown in the footer before the theme toggle, e.g. links */
+  footerActions?: React.ReactNode;
+  /** Ids of the hidden calendars (controlled), see `CalendarList` */
+  hiddenCalendarIds?: string[];
+  /** Ids of the calendars hidden at first (uncontrolled) */
+  defaultHiddenCalendarIds?: string[];
+  /** Called with the new hidden ids when a calendar is shown or hidden */
+  onHiddenCalendarIdsChange?: (hiddenCalendarIds: string[]) => void;
+  /** Classes for the inline sidebar's fixed column */
+  className?: string;
 }
 
-export function SidebarRight({
+/**
+ * Notion Calendar's left sidebar: the mini calendar, scheduling, the
+ * calendar list and a theme toggle. Inline it's a fixed column that pushes
+ * the page over; with `overlay` it's a sheet from the left. Reads the
+ * calendar's date and view from the nearest `CalendarProvider`, and needs
+ * shadcn/ui's `SidebarProvider` around it.
+ */
+export function CalendarSidebar({
   open = true,
   onOpenChange,
   overlay = false,
-  onDateSelect,
-  currentDate,
-  visibleDays,
-}: SidebarRightProps) {
+  footerActions,
+  hiddenCalendarIds,
+  defaultHiddenCalendarIds,
+  onHiddenCalendarIdsChange,
+  className,
+}: CalendarSidebarProps) {
+  const {
+    view,
+    currentDate,
+    displayMonth,
+    visibleDays,
+    weekStartsOn,
+    numberOfDays,
+    goToDate,
+  } = useCalendar();
+
   const sidebarStyle = {
-    "--sidebar-width": SIDEBAR_WIDTH,
+    "--sidebar-width": CALENDAR_SIDEBAR_WIDTH,
   } as React.CSSProperties;
+
+  /** Mini calendar day pick: go to its period, and get the overlay out of the way */
+  const handleDateSelect = (date: Date) => {
+    goToDate(getPeriodStart(date, view, weekStartsOn, numberOfDays));
+    if (overlay) onOpenChange?.(false);
+  };
 
   const content = (
     <>
       <SidebarContent>
-        <DatePicker
-          onDateSelect={onDateSelect}
-          currentDate={currentDate}
-          visibleDays={visibleDays}
-        />
+        <SidebarGroup className="px-0">
+          <SidebarGroupContent>
+            <MiniCalendar
+              onDateSelect={handleDateSelect}
+              currentDate={
+                view === "month" && displayMonth ? displayMonth : currentDate
+              }
+              visibleDays={
+                view === "month" || view === "agenda"
+                  ? NO_VISIBLE_DAYS
+                  : visibleDays
+              }
+              weekStartsOn={weekStartsOn}
+            />
+          </SidebarGroupContent>
+        </SidebarGroup>
         {/* Scheduling Section */}
         <SidebarGroup className="py-0">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton className="text-sidebar-foreground">
-                  <Link2 className="size-4 text-sidebar-muted-foreground" />
+                <SidebarMenuButton className="text-sidebar-foreground rounded-sm">
+                  <Link2 className="size-4 text-calendar-sidebar-muted-foreground" />
                   <span className="flex-1 text-sm">Scheduling</span>
-                  <Eye className="size-4 text-sidebar-muted-foreground" />
+                  <Eye className="size-4 text-calendar-sidebar-muted-foreground" />
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -136,21 +129,25 @@ export function SidebarRight({
         {/* Meet with input */}
         <SidebarGroup className="py-2 px-2">
           <div className="flex items-center gap-2 rounded-sm bg-[#EFEFEE] dark:bg-sidebar px-2 py-1.5">
-            <UserRound className="size-4 shrink-0 text-sidebar-muted-foreground" />
+            <UserRound className="size-4 shrink-0 text-calendar-sidebar-muted-foreground" />
             <input
               type="text"
               placeholder="Meet with..."
-              className="flex-1 bg-transparent text-sm text-sidebar-foreground placeholder:text-sidebar-muted-foreground outline-none"
+              className="flex-1 bg-transparent text-sm text-sidebar-foreground placeholder:text-calendar-sidebar-muted-foreground outline-none"
             />
           </div>
         </SidebarGroup>
-        <Calendars accounts={data.accounts} />
+        <CalendarList
+          hiddenCalendarIds={hiddenCalendarIds}
+          defaultHiddenCalendarIds={defaultHiddenCalendarIds}
+          onHiddenCalendarIdsChange={onHiddenCalendarIdsChange}
+        />
         <SidebarSeparator className="mx-0" />
         <SidebarGroup className="py-0">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton className="text-sidebar-foreground text-sm">
+                <SidebarMenuButton className="text-sidebar-foreground text-sm rounded-sm">
                   <Plus className="size-4" />
                   <span>Add calendar account</span>
                 </SidebarMenuButton>
@@ -161,42 +158,7 @@ export function SidebarRight({
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
         <div className="flex items-center justify-start gap-1 px-2 py-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7 text-sidebar-foreground"
-                asChild
-              >
-                <Link href="/docs">
-                  <BookOpen className="size-4" />
-                  <span className="sr-only">Documentation</span>
-                </Link>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">Go to docs</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7 text-sidebar-foreground"
-                asChild
-              >
-                <a
-                  href="https://github.com/vmnog/calendarcn"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Github className="size-4" />
-                  <span className="sr-only">GitHub repository</span>
-                </a>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">Go to repo</TooltipContent>
-          </Tooltip>
+          {footerActions}
           <Tooltip>
             <TooltipTrigger asChild>
               <ThemeToggle className="text-sidebar-foreground" />
@@ -240,7 +202,10 @@ export function SidebarRight({
   return (
     <div
       data-state={open ? "expanded" : "collapsed"}
-      className="text-sidebar-foreground group peer hidden md:block"
+      className={cn(
+        CALENDAR_SIDEBAR_COLORS_CLASS,
+        "text-sidebar-foreground group peer hidden md:block",
+      )}
       style={sidebarStyle}
     >
       {/* Gap element that handles the space transition */}
@@ -255,6 +220,7 @@ export function SidebarRight({
         className={cn(
           "bg-sidebar fixed inset-y-0 left-0 z-10 hidden h-svh w-(--sidebar-width) flex-col border-r md:flex",
           open ? "left-0" : "left-[calc(var(--sidebar-width)*-1)]",
+          className,
         )}
       >
         {content}
