@@ -500,6 +500,149 @@
           "type": "registry:lib"
         }
       ]
+    },
+    {
+      "name": "sidebar-overlay",
+      "type": "registry:component",
+      "title": "Sidebar Overlay",
+      "description": "A sidebar as a modal sheet for narrow screens, and the sidebars' Notion Calendar colors.",
+      "registryDependencies": ["sheet"],
+      "files": [
+        {
+          "path": "src/components/sidebar-overlay.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "cssVars": {
+        "light": {
+          "calendar-sidebar": "#f8f8f7",
+          "calendar-sidebar-foreground": "#939391",
+          "calendar-sidebar-muted-foreground": "#cfcfce",
+          "calendar-sidebar-primary": "#32302c",
+          "calendar-sidebar-primary-foreground": "#ffffff",
+          "calendar-sidebar-accent": "#efefef",
+          "calendar-sidebar-accent-foreground": "#32302c",
+          "calendar-sidebar-border": "#e5e5e5",
+          "calendar-sidebar-ring": "#797875",
+          "calendar-context-panel": "#ffffff"
+        },
+        "dark": {
+          "calendar-sidebar": "#202020",
+          "calendar-sidebar-foreground": "#868686",
+          "calendar-sidebar-muted-foreground": "#555555",
+          "calendar-sidebar-primary": "#d9d9d9",
+          "calendar-sidebar-primary-foreground": "#191919",
+          "calendar-sidebar-accent": "#2a2a2a",
+          "calendar-sidebar-accent-foreground": "#d9d9d9",
+          "calendar-sidebar-border": "#333333",
+          "calendar-sidebar-ring": "#7f7f7f",
+          "calendar-context-panel": "#191919"
+        }
+      }
+    },
+    {
+      "name": "theme-toggle",
+      "type": "registry:component",
+      "title": "Theme Toggle",
+      "description": "A button that cycles the theme through system, light and dark, with the next-themes provider it needs.",
+      "dependencies": ["lucide-react", "next-themes"],
+      "registryDependencies": ["button"],
+      "files": [
+        {
+          "path": "src/components/theme-toggle.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/theme-provider.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "mini-calendar",
+      "type": "registry:component",
+      "title": "Mini Calendar",
+      "description": "Notion Calendar's month picker: week numbers, today, the visible days highlighted and a way back to today.",
+      "dependencies": ["date-fns", "lucide-react", "react-day-picker@^9"],
+      "registryDependencies": ["@calendarcn/calendar-core", "tooltip"],
+      "files": [
+        {
+          "path": "src/components/mini-calendar.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "calendar-list",
+      "type": "registry:component",
+      "title": "Calendar List",
+      "description": "The calendars grouped by account, each with its color and a button to show or hide it.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "collapsible",
+        "sidebar"
+      ],
+      "files": [
+        {
+          "path": "src/components/calendar-list.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "cssVars": {
+        "light": {
+          "calendar-sidebar-muted-foreground": "#cfcfce"
+        },
+        "dark": {
+          "calendar-sidebar-muted-foreground": "#555555"
+        }
+      }
+    },
+    {
+      "name": "calendar-sidebar",
+      "type": "registry:component",
+      "title": "Calendar Sidebar",
+      "description": "The left sidebar: mini calendar, scheduling, calendar list and theme toggle, inline or as an overlay.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "@calendarcn/mini-calendar",
+        "@calendarcn/calendar-list",
+        "@calendarcn/sidebar-overlay",
+        "@calendarcn/theme-toggle",
+        "button",
+        "kbd",
+        "sidebar",
+        "tooltip"
+      ],
+      "files": [
+        {
+          "path": "src/components/calendar-sidebar.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "details-sidebar",
+      "type": "registry:component",
+      "title": "Details Sidebar",
+      "description": "The right context panel: the selected event's details, event search and useful shortcuts.",
+      "dependencies": ["date-fns", "lucide-react"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "@calendarcn/event-details",
+        "@calendarcn/sidebar-overlay",
+        "button",
+        "kbd",
+        "sidebar",
+        "tooltip"
+      ],
+      "files": [
+        {
+          "path": "src/components/details-sidebar.tsx",
+          "type": "registry:component"
+        }
+      ]
     }
   ]
 }

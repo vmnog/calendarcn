@@ -8,6 +8,12 @@
     "week-view",
     "month-view",
     "agenda-view",
-    "event-details"
+    "event-details",
+    "calendar-sidebar",
+    "mini-calendar",
+    "calendar-list",
+    "theme-toggle",
+    "details-sidebar",
+    "sidebar-overlay"
   ]
 }

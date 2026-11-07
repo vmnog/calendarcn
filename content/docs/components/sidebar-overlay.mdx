@@ -1,0 +1,99 @@
+---
+title: Sidebar Overlay
+description: A sidebar shown as a sheet on narrow screens.
+---
+
+<ComponentPreview name="sidebar-overlay-demo" height={240} />
+
+Sidebar Overlay shows a sidebar's content as a modal sheet from the left or the right. The [Calendar Sidebar](/docs/components/calendar-sidebar) and the [Details Sidebar](/docs/components/details-sidebar) use it on phones. It's the same sheet as shadcn/ui's `Sidebar` on mobile, but you own its open state and the breakpoint, so a sidebar can turn into an overlay at any width.
+
+## Installation
+
+<InstallTabs item="sidebar-overlay" />
+
+It also adds the sidebars' color tokens to your CSS: see [Colors](/docs/components/calendar-sidebar#colors).
+
+## Usage
+
+```tsx
+import { SidebarOverlay } from "@/components/sidebar-overlay";
+
+export function MobileNav() {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Menu</Button>
+      <SidebarOverlay
+        open={open}
+        onOpenChange={setOpen}
+        side="left"
+        title="Navigation"
+        description="Pages of the app."
+        style={{ "--sidebar-width": "15rem" } as React.CSSProperties}
+      >
+        <nav>{/* ... */}</nav>
+      </SidebarOverlay>
+    </>
+  );
+}
+```
+
+The sheet is as wide as `--sidebar-width`, up to 85% of the screen. Its title and description are for screen readers only.
+
+## Features
+
+- Closes on an outside tap and <Kbd>Esc</Kbd>, with focus kept inside while it's open.
+- Opening focuses the sheet itself, not its first field, so a search field doesn't pop up a phone's keyboard.
+- Works with shadcn/ui on Radix and on Base UI.
+
+## API Reference
+
+### SidebarOverlay
+
+<PropsTable
+  rows={[
+    {
+      name: "open",
+      type: "boolean",
+      required: true,
+      description: "Whether the sheet is open.",
+    },
+    {
+      name: "onOpenChange",
+      type: "(open: boolean) => void",
+      required: true,
+      description: "Called when the sheet asks to open or close.",
+    },
+    {
+      name: "side",
+      type: '"left" | "right"',
+      required: true,
+      description: "Edge the sheet slides in from.",
+    },
+    {
+      name: "title",
+      type: "string",
+      required: true,
+      description: "Accessible name of the sheet (visually hidden).",
+    },
+    {
+      name: "description",
+      type: "string",
+      required: true,
+      description: "Accessible description of the sheet (visually hidden).",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the sheet.",
+    },
+    {
+      name: "style",
+      type: "CSSProperties",
+      description: "Styles for the sheet, e.g. its `--sidebar-width`.",
+    },
+  ]}
+/>
+
+`CALENDAR_SIDEBAR_COLORS_CLASS` points shadcn/ui's `--sidebar-*` colors at the `--calendar-sidebar-*` tokens for an element and what's inside it. The sheet and both calendar sidebars use it.

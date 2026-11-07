@@ -1,0 +1,43 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "sidebar-overlay",
+  "title": "Sidebar Overlay",
+  "description": "A sidebar as a modal sheet for narrow screens, and the sidebars' Notion Calendar colors.",
+  "registryDependencies": [
+    "sheet"
+  ],
+  "files": [
+    {
+      "path": "src/components/sidebar-overlay.tsx",
+      "content": "\"use client\";\n\nimport * as React from \"react\";\n\nimport { cn } from \"@/lib/utils\";\nimport {\n  Sheet,\n  SheetContent,\n  SheetDescription,\n  SheetHeader,\n  SheetTitle,\n} from \"@/components/ui/sheet\";\n\n/**\n * Points shadcn/ui's `--sidebar-*` colors at the calendar's own\n * `--calendar-sidebar-*` tokens, for the element it's on and everything\n * inside. The calendar and details sidebars put it on their root, so they\n * keep Notion Calendar's colors without changing the rest of the app's\n * sidebar theme.\n */\nexport const CALENDAR_SIDEBAR_COLORS_CLASS = cn(\n  \"[--sidebar:var(--calendar-sidebar)]\",\n  \"[--sidebar-foreground:var(--calendar-sidebar-foreground)]\",\n  \"[--sidebar-primary:var(--calendar-sidebar-primary)]\",\n  \"[--sidebar-primary-foreground:var(--calendar-sidebar-primary-foreground)]\",\n  \"[--sidebar-accent:var(--calendar-sidebar-accent)]\",\n  \"[--sidebar-accent-foreground:var(--calendar-sidebar-accent-foreground)]\",\n  \"[--sidebar-border:var(--calendar-sidebar-border)]\",\n  \"[--sidebar-ring:var(--calendar-sidebar-ring)]\",\n);\n\ninterface SidebarOverlayProps {\n  open: boolean;\n  onOpenChange: (open: boolean) => void;\n  side: \"left\" | \"right\";\n  /** Accessible name of the dialog (visually hidden) */\n  title: string;\n  /** Accessible description of the dialog (visually hidden) */\n  description: string;\n  className?: string;\n  style?: React.CSSProperties;\n  children: React.ReactNode;\n}\n\n/**\n * Renders sidebar content as a modal sheet on narrow viewports.\n *\n * Mirrors the mobile branch of the shadcn `Sidebar` (same Sheet, same\n * classes), but lets the caller own the open state and the breakpoint.\n * Closes on outside tap and Escape.\n */\nexport function SidebarOverlay({\n  open,\n  onOpenChange,\n  side,\n  title,\n  description,\n  className,\n  style,\n  children,\n}: SidebarOverlayProps) {\n  return (\n    <Sheet open={open} onOpenChange={onOpenChange}>\n      <SheetContent\n        data-sidebar=\"sidebar\"\n        data-slot=\"sidebar\"\n        data-mobile=\"true\"\n        side={side}\n        className={cn(\n          CALENDAR_SIDEBAR_COLORS_CLASS,\n          \"bg-sidebar text-sidebar-foreground w-(--sidebar-width) max-w-[85vw] gap-0 p-0 [&>button]:hidden\",\n          className,\n        )}\n        style={style}\n      >\n        <SheetHeader className=\"sr-only\">\n          <SheetTitle>{title}</SheetTitle>\n          <SheetDescription>{description}</SheetDescription>\n        </SheetHeader>\n        <OverlayBody>{children}</OverlayBody>\n      </SheetContent>\n    </Sheet>\n  );\n}\n\n/**\n * The sheet's content, focused when the sheet opens instead of its first\n * field: autofocusing the search input would pop the phone keyboard and\n * swallow the \"/\" toggle. It focuses itself in a layout effect, before the\n * dialog's own open autofocus runs, which then keeps focus where it is\n * (Radix and Base UI both skip it while focus is already inside).\n */\nfunction OverlayBody({ children }: { children: React.ReactNode }) {\n  const bodyRef = React.useRef<HTMLDivElement>(null);\n\n  React.useLayoutEffect(() => {\n    bodyRef.current?.focus({ preventScroll: true });\n  }, []);\n\n  return (\n    <div\n      ref={bodyRef}\n      tabIndex={-1}\n      className=\"flex h-full w-full flex-col outline-none\"\n    >\n      {children}\n    </div>\n  );\n}\n",
+      "type": "registry:component"
+    }
+  ],
+  "cssVars": {
+    "light": {
+      "calendar-sidebar": "#f8f8f7",
+      "calendar-sidebar-foreground": "#939391",
+      "calendar-sidebar-muted-foreground": "#cfcfce",
+      "calendar-sidebar-primary": "#32302c",
+      "calendar-sidebar-primary-foreground": "#ffffff",
+      "calendar-sidebar-accent": "#efefef",
+      "calendar-sidebar-accent-foreground": "#32302c",
+      "calendar-sidebar-border": "#e5e5e5",
+      "calendar-sidebar-ring": "#797875",
+      "calendar-context-panel": "#ffffff"
+    },
+    "dark": {
+      "calendar-sidebar": "#202020",
+      "calendar-sidebar-foreground": "#868686",
+      "calendar-sidebar-muted-foreground": "#555555",
+      "calendar-sidebar-primary": "#d9d9d9",
+      "calendar-sidebar-primary-foreground": "#191919",
+      "calendar-sidebar-accent": "#2a2a2a",
+      "calendar-sidebar-accent-foreground": "#d9d9d9",
+      "calendar-sidebar-border": "#333333",
+      "calendar-sidebar-ring": "#7f7f7f",
+      "calendar-context-panel": "#191919"
+    }
+  },
+  "type": "registry:component"
+}
