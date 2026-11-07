@@ -463,26 +463,67 @@
       ]
     },
     {
-      "name": "calendar",
-      "type": "registry:block",
-      "title": "Calendar",
-      "description": "The full calendar: a toolbar with the view switcher, today and previous/next, over day, week, month and agenda views, with keyboard shortcuts.",
+      "name": "calendar-header",
+      "type": "registry:component",
+      "title": "Calendar Header",
+      "description": "The live demo's header: month and year with the period on screen, view switcher, today, previous/next and panel toggles.",
       "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
-        "@calendarcn/time-grid",
-        "@calendarcn/month-view",
-        "@calendarcn/agenda-view",
+        "@calendarcn/calendar-core",
         "button",
         "dropdown-menu",
-        "kbd"
+        "kbd",
+        "separator",
+        "tooltip"
       ],
       "files": [
         {
-          "path": "src/components/calendar.tsx",
+          "path": "src/components/calendar-header.tsx",
           "type": "registry:component"
         },
         {
           "path": "src/components/view-dropdown.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "command-menu",
+      "type": "registry:component",
+      "title": "Command Menu",
+      "description": "The live demo's ⌘K menu: today, previous/next and the views, plus your app's panel, theme and .ics commands.",
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "command",
+        "dialog",
+        "kbd"
+      ],
+      "files": [
+        {
+          "path": "src/components/command-menu.tsx",
+          "type": "registry:component"
+        }
+      ],
+      "css": {
+        ".dark [data-slot=\"dialog-overlay\"]:has(~ [data-command-menu])": {
+          "background-color": "rgb(0 0 0 / 0.3)"
+        }
+      }
+    },
+    {
+      "name": "calendar",
+      "type": "registry:block",
+      "title": "Calendar",
+      "description": "The full calendar: a toolbar with the view switcher, today and previous/next, over day, week, month and agenda views, with keyboard shortcuts.",
+      "registryDependencies": [
+        "@calendarcn/calendar-header",
+        "@calendarcn/time-grid",
+        "@calendarcn/month-view",
+        "@calendarcn/agenda-view"
+      ],
+      "files": [
+        {
+          "path": "src/components/calendar.tsx",
           "type": "registry:component"
         }
       ]

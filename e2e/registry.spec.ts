@@ -16,6 +16,8 @@ const ITEM_NAMES = [
   "ics",
   "conference-providers",
   "sample-data",
+  "calendar-header",
+  "command-menu",
 ];
 
 /** The parts of a built registry item the tests read */

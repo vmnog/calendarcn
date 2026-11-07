@@ -1,39 +1,22 @@
 "use client";
 
-import { addDays, format } from "date-fns";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-
 import { cn } from "@/lib/utils";
 import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";
-import { Button } from "@/components/ui/button";
-import { ViewDropdown } from "@/components/view-dropdown";
-import { AGENDA_DAYS } from "@/lib/event-utils";
+import {
+  CalendarNavigation,
+  CalendarPeriodLabel,
+  CalendarViewSwitcher,
+} from "@/components/calendar-header";
 
 import { AgendaView } from "./agenda-view";
-import {
-  CalendarProvider,
-  useCalendar,
-  useCalendarConfig,
-} from "./calendar-provider";
+import { CalendarProvider, useCalendar } from "./calendar-provider";
 import { MonthView } from "./month-view";
 import { TimeGrid } from "./time-grid";
-import type {
-  CalendarEvent,
-  CalendarProviderProps,
-  ViewType,
-} from "./calendar-types";
+import type { CalendarEvent, CalendarProviderProps } from "./calendar-types";
 import type { CalendarProps } from "./week-view-types";
 
 /** Hour the time grid opens on unless `scrollToHour` says otherwise */
 const DEFAULT_SCROLL_HOUR = 8;
-
-/** The period previous and next move by in each view, for their labels */
-const PERIOD_LABELS: Record<ViewType, string> = {
-  day: "day",
-  week: "week",
-  month: "month",
-  agenda: `${AGENDA_DAYS} days`,
-};
 
 /**
  * The full calendar: a toolbar with the title, view switcher, today and
@@ -85,27 +68,12 @@ function CalendarShortcuts({ enabled }: CalendarShortcutsProps) {
   return null;
 }
 
-/** Title, view switcher, today, and previous and next */
+/**
+ * Title, view switcher, today, and previous and next: a compact bar built
+ * from the Calendar Header's parts
+ */
 function CalendarToolbar() {
-  const {
-    view,
-    currentDate,
-    monthName,
-    year,
-    weekNumber,
-    numberOfDays,
-    viewSettings,
-    goToToday,
-    goToPrev,
-    goToNext,
-    switchView,
-    setNumberOfDays,
-    toggleWeekends,
-    toggleDeclinedEvents,
-    toggleWeekNumbers,
-  } = useCalendar();
-  const { locale } = useCalendarConfig();
-  const periodLabel = PERIOD_LABELS[view];
+  const { monthName, year } = useCalendar();
 
   return (
     <header className="@container/header flex h-12 shrink-0 items-center gap-1 border-b px-2 @md/header:gap-2 @md/header:px-3">
@@ -113,53 +81,12 @@ function CalendarToolbar() {
         <span className="font-semibold">
           {monthName} {year}
         </span>
-        <span className="ml-2 hidden text-xs text-muted-foreground @lg/header:inline">
-          {view === "day" && format(currentDate, "EEEE, MMM d", { locale })}
-          {view === "week" && `Week ${weekNumber}`}
-          {view === "agenda" &&
-            `${format(currentDate, "MMM d", { locale })} \u2013 ${format(addDays(currentDate, AGENDA_DAYS - 1), "MMM d", { locale })}`}
-        </span>
+        <CalendarPeriodLabel className="ml-2 hidden text-xs text-muted-foreground @lg/header:inline" />
       </h2>
       <div className="hidden @xs/header:block">
-        <ViewDropdown
-          view={view}
-          numberOfDays={numberOfDays}
-          viewSettings={viewSettings}
-          onSwitchView={switchView}
-          onSetNumberOfDays={setNumberOfDays}
-          onToggleWeekends={toggleWeekends}
-          onToggleDeclinedEvents={toggleDeclinedEvents}
-          onToggleWeekNumbers={toggleWeekNumbers}
-        />
+        <CalendarViewSwitcher />
       </div>
-      <Button
-        variant="secondary"
-        size="sm"
-        className="px-2 @md/header:px-3"
-        onClick={goToToday}
-      >
-        Today
-      </Button>
-      <div className="flex items-center">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 text-muted-foreground"
-          onClick={goToPrev}
-        >
-          <ChevronLeftIcon className="size-4" />
-          <span className="sr-only">Previous {periodLabel}</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 text-muted-foreground"
-          onClick={goToNext}
-        >
-          <ChevronRightIcon className="size-4" />
-          <span className="sr-only">Next {periodLabel}</span>
-        </Button>
-      </div>
+      <CalendarNavigation buttonClassName="size-8" />
     </header>
   );
 }
