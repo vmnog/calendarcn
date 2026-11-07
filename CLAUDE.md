@@ -29,11 +29,15 @@ src/
 │   └── theme-*            # Dark mode provider & toggle
 ├── hooks/                # Custom hooks (drag, resize, all-day-resize, scroll)
 │   ├── use-inline-edit.ts # Inline text field: Enter commits, Escape restores
-│   └── use-hover-tooltip.ts # Open state of a tooltip shown on hover
+│   ├── use-hover-tooltip.ts # Open state of a tooltip shown on hover
+│   └── use-field-popover.ts # Focus, blur and Escape for the details' time and date fields
 └── lib/
     ├── event-utils.ts    # Event positioning & column assignment algorithms
+    ├── recurrence.ts     # Repeat rules: RRULE parse/format, labels, series occurrences
+    ├── time-zones.ts     # IANA zone list, offsets, zone days, wall-clock zone changes
     ├── timezone-label.ts # Short time zone labels ("GMT-3 Sao Paulo")
     ├── mock-events.ts    # Sample data
+    ├── time-input.ts     # Time menu options, typed times and durations, date parsing
     └── utils.ts          # cn() helper
 ```
 

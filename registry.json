@@ -66,6 +66,14 @@
         {
           "path": "src/lib/timezone-label.ts",
           "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/recurrence.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/time-zones.ts",
+          "type": "registry:lib"
         }
       ],
       "cssVars": {
@@ -181,11 +189,20 @@
       "type": "registry:component",
       "title": "Event Details",
       "description": "Event chips, the detail panel, the details popover and the right-click menu.",
-      "dependencies": ["@floating-ui/react-dom", "date-fns", "lucide-react"],
+      "dependencies": [
+        "@floating-ui/react-dom",
+        "date-fns",
+        "lucide-react",
+        "react-day-picker@^9"
+      ],
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "button",
+        "calendar",
+        "command",
+        "dialog",
         "dropdown-menu",
+        "popover",
         "switch"
       ],
       "files": [
@@ -203,6 +220,18 @@
         },
         {
           "path": "src/components/event-detail-time.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-time-field.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-date-field.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/event-detail-field-popover.tsx",
           "type": "registry:component"
         },
         {
@@ -268,6 +297,14 @@
         {
           "path": "src/hooks/use-hover-tooltip.ts",
           "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-field-popover.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/lib/time-input.ts",
+          "type": "registry:lib"
         }
       ]
     },

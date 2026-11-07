@@ -122,8 +122,82 @@ export interface RecurrenceRule {
    * to keep "the last Thu" when the start is also the fourth one.
    */
   weekOfMonth?: 1 | 2 | 3 | 4 | -1;
+  /**
+   * Day the weeks of a weekly rule start on, which decides the weeks an
+   * "every 2 weeks" rule skips (RFC 5545 WKST). Defaults to 1 (Monday), as
+   * in RFC 5545.
+   */
+  weekStartsOn?: WeekStartsOn;
   /** When the series stops. Defaults to never */
   end?: RecurrenceEnd;
+}
+
+/**
+ * A rule as the details show it: "Every week" in full color and "on Thu"
+ * muted
+ */
+export interface RecurrenceLabel {
+  /** "Every week", "Every 2 days", "Every weekday" */
+  main: string;
+  /** "on Thu", "on the 1st Sat until Dec 6", "for 7 times"; may be empty */
+  detail: string;
+}
+
+/**
+ * A repeat rule with every default filled in, so two rules compare by value
+ */
+export interface NormalizedRecurrenceRule {
+  frequency: RecurrenceFrequency;
+  interval: number;
+  weekdays: RecurrenceWeekday[];
+  monthlyBy: NonNullable<RecurrenceRule["monthlyBy"]>;
+  weekOfMonth: NonNullable<RecurrenceRule["weekOfMonth"]>;
+  weekStartsOn: WeekStartsOn;
+  end: RecurrenceEnd;
+}
+
+/**
+ * Options of `formatRRule`, which writes a rule as an RFC 5545 RRULE
+ */
+export interface FormatRRuleOptions {
+  /** IANA zone the series is set in; the viewer's when unset */
+  timeZone?: string;
+  /** Whether the series is all-day, so UNTIL is written as a DATE */
+  isAllDay?: boolean;
+}
+
+/**
+ * The previous or next occurrence of a repeating event: its event when the
+ * events have one for it, else only its start
+ */
+export interface SeriesOccurrence<
+  TEvent extends CalendarEvent = CalendarEvent,
+> {
+  /**
+   * Id of the occurrence: its event's, or the id a copy of it gets
+   * (`createSeriesOccurrence`)
+   */
+  id: string;
+  /** When the occurrence starts */
+  start: Date;
+  /** The event of that occurrence, when the events have it */
+  event?: TEvent;
+}
+
+/**
+ * One zone of the details' time zone picker
+ */
+export interface TimeZoneOption {
+  /** IANA id, e.g. "America/Sao_Paulo" */
+  id: string;
+  /** Offset from UTC on the reference date, in minutes (-180 for GMT−3) */
+  offsetMinutes: number;
+  /** "GMT−03:00" */
+  offsetLabel: string;
+  /** "Brasilia Standard Time", or the IANA id when the zone has no name */
+  name: string;
+  /** "Sao Paulo", or the IANA id when the zone has no city */
+  city: string;
 }
 
 /**
@@ -265,12 +339,16 @@ export interface DetailedCalendarEvent extends CalendarEvent {
    * @deprecated Set `timeZone` to an IANA zone instead.
    */
   timezone?: string;
-  /** Repeat rule. Takes precedence over `recurrence` for display */
+  /**
+   * Repeat rule. Takes precedence over `recurrence`; `.ics` import fills it
+   * and export writes it as an RRULE
+   */
   recurrenceRule?: RecurrenceRule;
   /**
    * Repeat rule as display text (e.g. "Every week on Thu") or an RFC 5545
-   * RRULE ("FREQ=WEEKLY;BYDAY=TH", as `.ics` import fills it). Shown when
-   * `recurrenceRule` is not set.
+   * RRULE (`.ics` import keeps one here when `recurrenceRule` can't hold it,
+   * e.g. "FREQ=MONTHLY;BYMONTHDAY=1,15"). Used when `recurrenceRule` is not
+   * set; an RRULE the details can't read shows as "Custom repeat".
    */
   recurrence?: string;
   /** People invited, the organizer included */
@@ -522,6 +600,11 @@ export interface CalendarConfig {
   hourCycle: HourCycle;
   /** date-fns locale for day names, month names and dates */
   locale: Locale;
+  /**
+   * Day the week starts on, for date pickers. Unset outside a
+   * CalendarProvider, where the locale's first day applies.
+   */
+  weekStartsOn?: WeekStartsOn;
   /** Calendars offered by the event context menu */
   calendars: CalendarInfo[];
 }
@@ -667,7 +750,10 @@ interface CalendarProviderBaseProps<
   events?: TEvent[];
   /** Initial events when `events` is not controlled. Defaults to none */
   defaultEvents?: TEvent[];
-  /** Called with the full next list whenever events change (drag, resize, create, edit) */
+  /**
+   * Called with the full next list whenever events change (drag, resize,
+   * create, edit, or an occurrence the series arrows open)
+   */
   onEventsChange?: (events: TEvent[]) => void;
   /** Active view (controlled) */
   view?: ViewType;
@@ -730,7 +816,10 @@ interface CalendarProviderBaseProps<
    * The submenu is hidden when empty. Defaults to none
    */
   calendars?: CalendarInfo[];
-  /** Called after a click-created event is added */
+  /**
+   * Called after an event is added: one created by clicking an empty slot,
+   * or an occurrence copy the series arrows add (`showSeriesOccurrence`)
+   */
   onEventCreate?: (event: TEvent) => void;
   /** Called after an event is changed (drag, resize, or an edit in the details) */
   onEventUpdate?: (event: TEvent) => void;
@@ -802,6 +891,25 @@ export interface CalendarContextValue<
   selectedEventId: string | null;
   /** The selected event, or `null` when nothing (or a missing event) is selected */
   selectedEvent: TEvent | null;
+  /**
+   * The selected event's previous occurrence in its repeating series (see
+   * `findSeriesOccurrence`), or `null`: nothing selected, the event doesn't
+   * repeat, or it is the series' first
+   */
+  previousInSeries: SeriesOccurrence<TEvent> | null;
+  /**
+   * The selected event's next occurrence in its repeating series, or `null`:
+   * nothing selected, the event doesn't repeat, or the series ends with it
+   */
+  nextInSeries: SeriesOccurrence<TEvent> | null;
+  /**
+   * Selects an occurrence of the selected event's series (`previousInSeries`
+   * or `nextInSeries`) and shows it, moving to its period when it is off
+   * screen. An occurrence the events have no event for yet is added first,
+   * as a copy of the selected event (`createSeriesOccurrence`), through
+   * `onEventsChange` and `onEventCreate`.
+   */
+  showSeriesOccurrence: (occurrence: SeriesOccurrence<TEvent>) => void;
   /** Day briefly highlighted after `showDay`, or `null` */
   highlightedDate: Date | null;
   /** Month name for the header (e.g. "October") */

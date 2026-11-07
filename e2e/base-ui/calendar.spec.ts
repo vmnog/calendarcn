@@ -76,6 +76,92 @@ test("Escape closes the type menu first, then the details", async ({
   await expect(event).toBeFocused();
 });
 
+test("the time menu and the date picker set times and days inside the details", async ({
+  page,
+}) => {
+  await calendarEvent(page, "Design Review").click();
+  const details = eventDetails(page);
+  const startTime = details.getByTestId("event-start-time");
+  const endTime = details.getByTestId("event-end-time");
+
+  // The Popover takes focus as it opens and hands it back to the field
+  await startTime.click();
+  const startMenu = page.getByRole("listbox", { name: "Start time" });
+  await expect(startMenu).toBeVisible();
+  await expect(startTime).toBeFocused();
+  await startTime.press("ArrowDown");
+  await expect(startTime).toHaveValue("10:15 AM");
+  await startTime.press("Enter");
+  await expect(startMenu).toHaveCount(0);
+  await expect(endTime).toHaveValue("11:15 AM");
+
+  // A press in the menu sets the time and keeps the details open
+  await endTime.click();
+  await page
+    .getByRole("listbox", { name: "End time" })
+    .getByRole("option", { name: /^11:45 AM/ })
+    .click();
+  await expect(endTime).toHaveValue("11:45 AM");
+  await expect(details).toBeVisible();
+
+  const startDate = details.getByTestId("event-start-date");
+  await startDate.click();
+  const picker = page.locator("[data-event-detail-field-popover]");
+  await picker.locator('[data-day="2026-06-05"]').click();
+  await expect(picker).toHaveCount(0);
+  await expect(startDate).toHaveValue("Fri Jun 5");
+  await expect(details).toBeVisible();
+
+  // Escape closes the menu, not the details, and puts back a hovered time
+  await startTime.click();
+  await expect(startMenu).toBeVisible();
+  await startMenu.getByRole("option", { name: "9 AM", exact: true }).hover();
+  await expect(startTime).toHaveValue("9 AM");
+  await page.keyboard.press("Escape");
+  await expect(startMenu).toHaveCount(0);
+  await expect(details).toBeVisible();
+  await expect(startTime).toHaveValue("10:15 AM");
+  // Base UI hands focus back to the field as the menu closes; it stays left
+  await expect(startTime).not.toBeFocused();
+  await expect(startMenu).toHaveCount(0);
+});
+
+test("on a 24-hour clock the time menu and typed times read as written, and the date picker starts on Monday", async ({
+  page,
+}) => {
+  await page.goto("/24-hour");
+  await calendarEvent(page, "Design Review").click();
+  const details = eventDetails(page);
+  const startTime = details.getByTestId("event-start-time");
+  const endTime = details.getByTestId("event-end-time");
+  await expect(startTime).toHaveValue("10:00");
+
+  await startTime.click();
+  const options = page
+    .getByRole("listbox", { name: "Start time" })
+    .getByRole("option");
+  await expect(options.first()).toHaveText("00:00");
+  await expect(options.last()).toHaveText("23:45");
+
+  await startTime.fill("7");
+  await expect(options).toHaveText(["07:00", "19:00"]);
+  await startTime.fill("12");
+  await expect(options).toHaveText(["12:00", "00:00", "01:20", "13:20"]);
+  await startTime.fill("19");
+  await startTime.press("Enter");
+  await expect(startTime).toHaveValue("19:00");
+  await expect(endTime).toHaveValue("20:00");
+
+  // The date picker's weeks start on the provider's weekStartsOn, Monday
+  await details.getByTestId("event-start-date").click();
+  const picker = page.locator("[data-event-detail-field-popover]");
+  await expect(picker.locator("thead th").first()).toHaveText("Mo");
+  await expect(picker.locator("[data-day]").first()).toHaveAttribute(
+    "data-day",
+    "2026-06-01",
+  );
+});
+
 test("the all-day switch is blue when checked", async ({ page }) => {
   await calendarEvent(page, "Team Offsite").click();
 
@@ -83,6 +169,101 @@ test("the all-day switch is blue when checked", async ({ page }) => {
   const allDay = eventDetails(page).getByRole("switch");
   await expect(allDay).toHaveAttribute("data-checked", "");
   await expect(allDay).toHaveCSS("background-color", SWITCH_CHECKED_BACKGROUND);
+});
+
+test("the time zone and repeat rows edit the event", async ({ page }) => {
+  await calendarEvent(page, "Design Review").click();
+  const details = eventDetails(page);
+  await settle(details);
+  await details.getByText("Time zone", { exact: true }).click();
+
+  // The zone list renders beside the details and keeps them open. Toronto
+  // shares New York's offset, so the event stays where it is.
+  const timezone = details.locator('[data-section="timezone"]');
+  await timezone.getByRole("button").click();
+  const input = details.getByRole("combobox", { name: "Time zone" });
+  await input.fill("toronto");
+  await page
+    .getByRole("listbox", { name: "Time zones" })
+    .getByRole("option", { name: /Toronto$/ })
+    .click();
+  // Escape would close the details here (no layer is open): Tab leaves the field
+  await expect(input).toHaveValue("Toronto");
+  await input.press("Tab");
+  await expect(timezone).toHaveText("GMT−4Toronto");
+
+  // Base UI's menu and dialog: a preset, then the custom rule
+  const recurrence = details.locator('[data-section="recurrence"]');
+  await recurrence.getByRole("button", { name: /^Repeat:/ }).click();
+  await page.getByRole("menuitem", { name: "Every week on Thu" }).click();
+  await expect(recurrence).toContainText("Every week on Thu");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+
+  await recurrence.getByRole("button", { name: /^Repeat:/ }).click();
+  await page.getByRole("menuitem", { name: "Custom…" }).click();
+  const dialog = page.getByRole("dialog", { name: "Repeat" });
+  await dialog.getByRole("button", { name: "Monday" }).click();
+  await dialog.getByRole("button", { name: "Done" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(recurrence).toContainText("Every week on Mon, Thu");
+  await expect(details).toBeVisible();
+  // Focus goes back to the Repeat button
+  await expect(
+    recurrence.getByRole("button", { name: /^Repeat:/ }),
+  ).toBeFocused();
+
+  // The provider steps through the series: the next occurrence is added as
+  // a copy and the calendar moves to its week
+  const previous = recurrence.getByRole("button", {
+    name: "Go to previous event in this series",
+  });
+  await expect(previous).toBeDisabled();
+  await recurrence
+    .getByRole("button", { name: "Go to next event in this series" })
+    .click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Mon Jun 8",
+  );
+  await expect(previous).toBeEnabled();
+  await previous.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 4",
+  );
+});
+
+test("an occurrence the series arrows add is reported to onEventCreate", async ({
+  page,
+}) => {
+  // /series: a weekly "Standup" on Thursday, June 4, the ids onEventCreate
+  // reports listed above the calendar
+  await page.goto("/series");
+  const created = page.getByLabel("Created events");
+  await calendarEvent(page, "Standup").click();
+  const details = eventDetails(page);
+  const recurrence = details.locator('[data-section="recurrence"]');
+  const next = recurrence.getByRole("button", {
+    name: "Go to next event in this series",
+  });
+  const previous = recurrence.getByRole("button", {
+    name: "Go to previous event in this series",
+  });
+
+  await next.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 11",
+  );
+  await expect(created).toHaveText("standup-2026-06-11");
+
+  // Opening it again reports nothing new
+  await previous.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 4",
+  );
+  await next.click();
+  await expect(details.getByTestId("event-start-date")).toHaveValue(
+    "Thu Jun 11",
+  );
+  await expect(created).toHaveText("standup-2026-06-11");
 });
 
 test("the details open in month and agenda views", async ({ page }) => {

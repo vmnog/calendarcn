@@ -4,6 +4,8 @@ import type {
   AllDayResizeState,
   CalendarEvent,
   CalendarProviderProps,
+  DetailedCalendarEvent,
+  EventDetailSectionProps,
   EventDragState,
   EventDragVariant,
   EventResizeState,
@@ -31,6 +33,11 @@ export type {
   RecurrenceWeekday,
   RecurrenceEnd,
   RecurrenceRule,
+  RecurrenceLabel,
+  NormalizedRecurrenceRule,
+  FormatRRuleOptions,
+  SeriesOccurrence,
+  TimeZoneOption,
   ParticipantResponse,
   EventParticipant,
   EventRoom,
@@ -192,10 +199,6 @@ export interface EventItemPopoverProps {
    * only while that event is still the selected one.
    */
   onEventPopoverClose?: (eventId: string) => void;
-  /** Navigate to the previous period (recurrence arrows in the details) */
-  onPrevWeek?: () => void;
-  /** Navigate to the next period (recurrence arrows in the details) */
-  onNextWeek?: () => void;
 }
 
 /**
@@ -385,4 +388,107 @@ export interface CalendarEventItemProps extends EventItemPopoverProps {
   onContextMenuOpenChange?: (open: boolean) => void;
   /** Optional className */
   className?: string;
+}
+
+/** One option of the details' time menu */
+export interface TimeOption {
+  /** The time it sets */
+  date: Date;
+  /** "4:15 PM", or "16:15" on a 24-hour clock */
+  label: string;
+  /** Muted text after the label: on an end time, how long the event lasts */
+  hint?: string;
+}
+
+/**
+ * Props for EventDetailFieldPopover
+ */
+export interface EventDetailFieldPopoverProps {
+  open: boolean;
+  /** The time section, whose left edge is the panel's: the popover opens beside it */
+  panelRef: React.RefObject<HTMLElement | null>;
+  /** Classes of the field's box */
+  boxClassName?: string;
+  /** Called on a press anywhere in the box */
+  onBoxClick?: () => void;
+  /** Called as a press in the box starts */
+  onBoxPointerDown?: () => void;
+  /** What the box holds: icon, input, duration */
+  field: React.ReactNode;
+  /** The field's input: focus stays in it while the popover is open */
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  /** Called before focus comes back to the input from the popover */
+  onReturnFocus: () => void;
+  /** Classes of the popover */
+  className?: string;
+  children: React.ReactNode;
+}
+
+/**
+ * Props for EventDetailTimeField
+ */
+export interface EventDetailTimeFieldProps {
+  /** The time the field shows */
+  value: Date;
+  /** Builds every option of the menu, in order; called only while it's open */
+  getOptions: () => TimeOption[];
+  /** Options for typed text, best first */
+  getMatches: (text: string) => TimeOption[];
+  /** Sets a new time; returns false when the event can't take it */
+  onCommit: (date: Date) => boolean;
+  formatValue: (date: Date) => string;
+  /** Accessible name, e.g. "Start time" */
+  label: string;
+  testId: string;
+  /** The time section, whose left edge is the panel's */
+  panelRef: React.RefObject<HTMLElement | null>;
+  /** Icon or arrow before the time */
+  leading: React.ReactNode;
+  /** Text after the time: the duration */
+  trailing?: React.ReactNode;
+  /** Muted and inert, the times of an all-day event */
+  disabled?: boolean;
+  /** Shows the time without a menu, for details without `onEventChange` */
+  readOnly?: boolean;
+  /** Fits the input to its text, so `trailing` follows it */
+  fitText?: boolean;
+  className?: string;
+}
+
+/**
+ * Props for EventDetailDateField
+ */
+export interface EventDetailDateFieldProps {
+  /** The day the field shows */
+  value: Date;
+  /** Sets a new day (time of day left to the caller); returns false when the event can't take it */
+  onCommit: (day: Date) => boolean;
+  /** First day the picker offers; earlier days are disabled */
+  minDate?: Date;
+  /** Accessible name, e.g. "Start date" */
+  label: string;
+  testId: string;
+  /** The time section, whose left edge is the panel's */
+  panelRef: React.RefObject<HTMLElement | null>;
+  /** Shows the date without a picker, for details without `onEventChange` */
+  readOnly?: boolean;
+  className?: string;
+}
+
+/**
+ * Props for the EventDetailRecurrence component
+ */
+export interface EventDetailRecurrenceProps<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> extends EventDetailSectionProps<TEvent> {
+  /**
+   * Shows the previous event of the series. Leave it out at the start of
+   * the series: the button is disabled then.
+   */
+  onPrevious?: () => void;
+  /**
+   * Shows the next event of the series. Leave it out at the end of the
+   * series: the button is disabled then.
+   */
+  onNext?: () => void;
 }
