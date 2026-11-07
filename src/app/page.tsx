@@ -33,7 +33,7 @@ import { parseIcs, toIcs } from "@/lib/ics";
 import { AgendaView } from "@/components/agenda-view";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { CommandMenu } from "@/components/command-menu";
-import { SidebarLeft } from "@/components/sidebar-left";
+import { CONTEXT_PANEL_WIDTH, SidebarLeft } from "@/components/sidebar-left";
 import type {
   DetailedCalendarEvent,
   EventColor,
@@ -594,6 +594,7 @@ export default function Page() {
   return (
     <SidebarProvider
       className="h-screen"
+      style={{ "--sidebar-width": CONTEXT_PANEL_WIDTH } as React.CSSProperties}
       open={contextPanelOpen}
       onOpenChange={setContextPanelOpen}
     >
