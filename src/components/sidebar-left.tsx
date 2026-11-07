@@ -36,8 +36,12 @@ import { formatDuration } from "@/lib/time-input";
 import { resolveEventColor } from "@/lib/event-utils";
 import type { DetailedCalendarEvent } from "./week-view-types";
 
-/** Width of the context panel when it renders as an overlay (shadcn sidebar default) */
-const OVERLAY_WIDTH = "18rem";
+/**
+ * Width of the context panel, inline or as an overlay: Notion Calendar's
+ * 308px inside, plus the 1px border. The page sets it as `--sidebar-width`
+ * on its `SidebarProvider`.
+ */
+export const CONTEXT_PANEL_WIDTH = "309px";
 
 /** Muted text color the context panel uses for labels and placeholders */
 const PANEL_MUTED_FOREGROUND = "#C7C5C1";
@@ -376,7 +380,7 @@ export function SidebarLeft({
         className="!bg-context-panel"
         style={
           {
-            "--sidebar-width": OVERLAY_WIDTH,
+            "--sidebar-width": CONTEXT_PANEL_WIDTH,
             "--muted-foreground": PANEL_MUTED_FOREGROUND,
           } as React.CSSProperties
         }

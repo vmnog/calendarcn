@@ -205,9 +205,10 @@ export function EventDetailTime<
             className="mr-[10px] ml-[5px] flex-1 gap-[12.5px] pl-[11.5px]"
             leading={<TimeArrow className={iconClass} />}
             trailing={
+              // Truncates before the end time does, in a row too narrow for both
               <span
                 className={cn(
-                  "ml-1 shrink-0 whitespace-nowrap",
+                  "ml-1 min-w-0 shrink-[1000] truncate",
                   allDay
                     ? ALL_DAY_DURATION_CLASS
                     : EVENT_DETAIL_SECONDARY_CLASS,
