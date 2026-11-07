@@ -1,0 +1,49 @@
+---
+title: Changelog
+description: What changed in each registry item, newest first, with breaking changes called out.
+---
+
+Every pull request merged to `main` goes live in the registry right away, so this page lists changes by the day they merged. Find the day you last ran `add`, read up from there, then [update](/docs/installation#updating). Each entry names the items whose files changed. Changes to the docs, the demo and the tests are left out.
+
+Entries marked **Breaking** can stop your code from compiling or change what it does after you update. Each one says what to change.
+
+## Unreleased
+
+Live in the registry, but not in a tagged release yet.
+
+### November 7, 2026
+
+- **Fixed** `event-details`: in a narrow details panel, the time row shortens the duration instead of cutting off the end time. [#56](https://github.com/vmnog/calendarcn/pull/56)
+- **Added** `event-details`, `calendar-core`, `month-view`, `agenda-view`, `ics`: a calendar picker, busy/free, visibility and reminders in the details panel. Calendars take `defaultReminders`, and `resolveEventColor`, `moveEventToCalendar` and `addReminder` are new helpers. `.ics` export now writes "1 week before" reminders correctly. [#51](https://github.com/vmnog/calendarcn/pull/51)
+  - **Breaking:** an event without a `color` takes its calendar's color, and falls back to blue only when the calendar has none. Set `color` on an event to keep it blue.
+  - **Breaking:** an event moved to another calendar gets that calendar's `email`, or none, instead of keeping the old one.
+- **Added** `event-details`, `calendar-core`: participants and rooms, conferencing, AI meeting notes and location in the details panel. `CalendarProvider` takes `contacts`, `rooms`, `conferenceProviders` and `locationSuggestions` to fill their menus. The Conferencing row shows once you pass `conferenceProviders`. Installs the shadcn/ui `avatar`. [#53](https://github.com/vmnog/calendarcn/pull/53)
+- **Added** `event-details`: links you can copy and remove, "Paste link…" and "Attach file", and a description edited in place. Only `http:` and `https:` links become clickable. [#52](https://github.com/vmnog/calendarcn/pull/52)
+- **Added** `event-details`, `calendar-core`, `time-grid`, `ics`: editable time zone and repeat rows. Changing the zone keeps the wall-clock time, repeat offers presets and a custom rule, and arrows step through a series (`previousInSeries` and `nextInSeries` in `useCalendar()`). `@/lib/recurrence` and `@/lib/time-zones` are new in `calendar-core`. Installs the shadcn/ui `command` and `dialog`. [#50](https://github.com/vmnog/calendarcn/pull/50)
+  - **Breaking:** `parseIcs()` reads `RRULE` into `recurrenceRule`. The raw `recurrence` string is now kept only for rules it can't parse.
+  - **Breaking:** `EventItemPopoverProps` drops `onPrevWeek` and `onNextWeek`, since the series arrows no longer navigate by period.
+- **Added** `event-details`, `calendar-core`: Notion Calendar's time menu in 15-minute steps, which also reads typed times (`7`, `930`) and durations, plus a date picker and an all-day switch. Installs the shadcn/ui `calendar` and `popover`, and `react-day-picker`. [#54](https://github.com/vmnog/calendarcn/pull/54)
+
+### November 6, 2026
+
+- **Added** `event-details`, `calendar-core`: the details panel rebuilt on Notion Calendar's layout, one file per section. `DetailedCalendarEvent` gains optional `kind`, `timeZone`, `recurrenceRule`, `participants`, `rooms`, `conference`, `aiMeetingNotes`, `links` and `attachments`. Without `onEventChange` the panel is read-only, and <Kbd>Esc</Kbd> restores a field without deselecting the event. [#49](https://github.com/vmnog/calendarcn/pull/49)
+  - **Breaking:** the event type picked in the panel's header is now saved on the event as `kind`, through `onEventChange`. Save `kind` with your events to keep it.
+  - **Breaking:** if your event type already has a `kind`, `participants` or `links` field of another type, it no longer fits `DetailedCalendarEvent`. Rename your field.
+  - **Deprecated:** `timezone`, a display label. Set `timeZone` to an IANA zone instead.
+
+### November 5, 2026
+
+- **Added** `calendar-core`, `event-details`, `time-grid`, `month-view`, `agenda-view`: support for shadcn/ui projects set up with Base UI, as well as Radix. The details popover positions itself with `@floating-ui/react-dom`, and on Radix, picking an event type no longer closes it. <Contributor handle="doneumark" pr={43} />
+- **Fixed** `calendar-core`: `calendar-provider.tsx` type-checks and lints in projects without `@types/node`, like a stock Vite app. <Contributor handle="doneumark" pr={46} />
+- **Fixed** `time-grid`, `month-view`: scrolling an event into view no longer shifts the week columns away from their headers, or the month rows. [#44](https://github.com/vmnog/calendarcn/pull/44)
+
+### November 2, 2026
+
+- **Added** `ics`, a new item: `parseIcs()` and `toIcs()` read and write .ics files from Google Calendar, Apple Calendar and Outlook. [#36](https://github.com/vmnog/calendarcn/pull/36)
+- **Added** `agenda-view`, a new item, with `calendar-core` and `calendar`: the next 30 days' events grouped by day, as the `"agenda"` view with the <Kbd>A</Kbd> shortcut. [#35](https://github.com/vmnog/calendarcn/pull/35)
+  - **Breaking:** `ViewType` gains `"agenda"`. A `switch` that handles every view needs a case for it.
+- **Added** `calendar-core`, `time-grid`, `month-view`: `onVisibleRangeChange` reports the dates on screen as people navigate, and `loading` shows a progress bar while events arrive. [#34](https://github.com/vmnog/calendarcn/pull/34)
+
+### November 1, 2026
+
+- **Added**: the registry's first items, `calendar`, `calendar-core`, `time-grid`, `day-view`, `week-view`, `month-view` and `event-details`, served from `calendarcn.xyz/r` for shadcn/ui projects set up with Radix. [#37](https://github.com/vmnog/calendarcn/pull/37), on the library groundwork from [#31](https://github.com/vmnog/calendarcn/pull/31).
