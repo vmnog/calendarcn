@@ -84,8 +84,9 @@ src/
     ├── recurrence.ts             # Repeat rules: RRULE, labels, series occurrences
     ├── time-zones.ts             # Time zone list, offsets and zone changes
     ├── timezone-label.ts         # Time zone labels ("GMT-3 Sao Paulo")
-    ├── mock-events.ts            # Demo event data
-    ├── sample-events.ts          # Docs example event data
+    ├── mock-events.ts            # Demo event data (registry item sample-data)
+    ├── sample-events.ts          # Docs example event data (registry item sample-data)
+    ├── conference-providers.ts   # Demo's placeholder video call services, no logos
     ├── time-input.ts             # Time menu options, typed times and durations, date parsing
     └── utils.ts                  # General utilities (cn)
 ```
