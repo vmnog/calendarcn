@@ -1,5 +1,7 @@
 import { addDays, addSeconds, subDays } from "date-fns";
 
+import { formatRRule, isRRule, parseRecurrence } from "@/lib/recurrence";
+import { getEventTimeZone } from "@/lib/time-zones";
 import type {
   DetailedCalendarEvent,
   EventColor,
@@ -141,8 +143,10 @@ export interface ToIcsOptions {
  *   shown in the viewer's time zone.
  * - `UID` to `id` (an edited occurrence, which repeats its series' UID, gets
  *   `UID_RECURRENCE-ID`), `SUMMARY`, `DESCRIPTION` and `LOCATION`.
- * - `RRULE` to `recurrence`, kept as the raw rule (e.g. `FREQ=WEEKLY;BYDAY=TH`).
- *   Occurrences are not expanded: the event shows once, at `DTSTART`.
+ * - `RRULE` to `recurrenceRule` (e.g. `FREQ=WEEKLY;BYDAY=TH` to a weekly rule on
+ *   Thursdays). A rule it can't hold exactly (`BYMONTHDAY=1,15`, `BYHOUR`, ...)
+ *   is kept as the raw text in `recurrence` instead. Occurrences are not
+ *   expanded: the event shows once, at `DTSTART`.
  * - `TRANSP` to `status` (`TRANSPARENT` is free), `CLASS` to `visibility`,
  *   `COLOR` to `color` when it names one of the calendar's colors, and
  *   VALARMs that fire before the start to `reminders`.
@@ -170,9 +174,11 @@ export function parseIcs(text: string): DetailedCalendarEvent[] {
  * Calendar and Outlook import.
  *
  * Timed events are written in UTC and all-day events as DATE values with an
- * exclusive `DTEND`. `recurrence` is written as an `RRULE` only when it holds
- * a rule (`FREQ=...`), so display strings such as "Every weekday" are left
- * out. Lines are folded at 75 octets and joined with CRLF.
+ * exclusive `DTEND`. `recurrenceRule` is written as an `RRULE` (its "on" end
+ * as an `UNTIL` at the end of that day in the event's time zone); without
+ * one, `recurrence` is written only when it holds a rule (`FREQ=...`), so
+ * display strings such as "Every weekday" are left out. Lines are folded at
+ * 75 octets and joined with CRLF.
  */
 export function toIcs(
   events: readonly DetailedCalendarEvent[],
@@ -370,8 +376,10 @@ function toCalendarEvent(
   const location = getText(vevent, "LOCATION");
   if (location) event.location = location;
 
-  const recurrence = getProperty(vevent, "RRULE")?.value.trim();
-  if (recurrence) event.recurrence = recurrence;
+  const rrule = getProperty(vevent, "RRULE")?.value.trim();
+  const recurrenceRule = rrule ? parseRecurrence(rrule, start) : null;
+  if (recurrenceRule) event.recurrenceRule = recurrenceRule;
+  if (rrule && !recurrenceRule) event.recurrence = rrule;
 
   const transparency = getProperty(vevent, "TRANSP")?.value.trim();
   if (transparency) {
@@ -826,6 +834,22 @@ function getYearlyOnset(
 // Writing
 // ---------------------------------------------------------------------------
 
+/**
+ * The event's RRULE value: its `recurrenceRule`, else its `recurrence` when
+ * that is a rule rather than display text
+ */
+function getRRule(event: DetailedCalendarEvent): string | undefined {
+  if (event.recurrenceRule) {
+    return formatRRule(event.recurrenceRule, event.start, {
+      timeZone: getEventTimeZone(event),
+      isAllDay: event.isAllDay,
+    });
+  }
+  const rule = event.recurrence?.trim().replace(/^RRULE:/i, "");
+  if (rule && isRRule(rule)) return rule;
+  return undefined;
+}
+
 function eventToLines(
   event: DetailedCalendarEvent,
   timestamp: string,
@@ -858,8 +882,8 @@ function eventToLines(
     lines.push(`LOCATION:${escapeText(event.location)}`);
   }
 
-  const rule = event.recurrence?.trim().replace(/^RRULE:/i, "");
-  if (rule && /(^|;)FREQ=/i.test(rule)) lines.push(`RRULE:${rule}`);
+  const rrule = getRRule(event);
+  if (rrule) lines.push(`RRULE:${rrule}`);
 
   if (event.status) {
     lines.push(`TRANSP:${event.status === "free" ? "TRANSPARENT" : "OPAQUE"}`);

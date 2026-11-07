@@ -63,9 +63,15 @@ interface EventDetailPanelProps<
 > {
   event: TEvent;
   onEventChange?: (event: TEvent) => void;
-  /** Shows the previous event of a repeating series */
+  /**
+   * Shows the previous event of a repeating series (the repeat row's left
+   * arrow). Leave it out at the series' start: the arrow is disabled then.
+   */
   onPrevWeek?: () => void;
-  /** Shows the next event of a repeating series */
+  /**
+   * Shows the next event of a repeating series (the right arrow). Leave it
+   * out at the series' end: the arrow is disabled then.
+   */
   onNextWeek?: () => void;
   /** Extra action buttons rendered in the header row (after the "..." menu). */
   headerActions?: React.ReactNode;
@@ -248,6 +254,21 @@ export function EventDetailPanel<
       event.timeZone ??
       event.timezone,
     );
+
+  const conferencingSection = (
+    <EventDetailConferencing
+      key="conferencing"
+      event={event}
+      onEventChange={onEventChange}
+    />
+  );
+  const aiNotesSection = (
+    <EventDetailAiNotes
+      key="ai-notes"
+      event={event}
+      onEventChange={onEventChange}
+    />
+  );
 
   return (
     <div
@@ -432,8 +453,11 @@ export function EventDetailPanel<
       {/* Who and where */}
       <EventDetailGroup name="who">
         <EventDetailParticipants event={event} onEventChange={onEventChange} />
-        <EventDetailConferencing event={event} onEventChange={onEventChange} />
-        <EventDetailAiNotes event={event} onEventChange={onEventChange} />
+        {/* With a call, Notion moves the meeting-note button above it; the
+            keys keep both mounted (and focused) when they swap */}
+        {event.conference
+          ? [aiNotesSection, conferencingSection]
+          : [conferencingSection, aiNotesSection]}
         <EventDetailLocation event={event} onEventChange={onEventChange} />
       </EventDetailGroup>
 

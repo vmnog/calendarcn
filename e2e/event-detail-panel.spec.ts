@@ -8,15 +8,18 @@ import {
   openCalendar,
 } from "./helpers";
 
-/** Sections of the detail panel in Notion Calendar's order, by `data-section` */
+/**
+ * Sections of the detail panel in Notion Calendar's order, by `data-section`,
+ * for an event with a call: Notion moves the meeting-note button above it
+ */
 const SECTION_ORDER = [
   "time",
   "all-day",
   "timezone",
   "recurrence",
   "participants",
-  "conferencing",
   "ai-notes",
+  "conferencing",
   "location",
   "links",
   "description",
@@ -59,12 +62,12 @@ test("the detail panel shows every field of an event that sets them all", async 
   await expect(detailSection(page, "time")).toContainText("1h 30min");
 
   await expect(page.getByRole("switch", { name: "All-day" })).not.toBeChecked();
-  await expect(detailSection(page, "timezone")).toHaveText("GMT-3Sao Paulo");
+  await expect(detailSection(page, "timezone")).toHaveText("GMT−3Sao Paulo");
   await expect(detailSection(page, "recurrence")).toContainText(
-    "Every 2 weeks on Sat, 6 times",
+    "Every 2 weeks on Sat for 6 times",
   );
   await expect(
-    page.getByRole("button", { name: "Next in series" }),
+    page.getByRole("button", { name: "Go to next event in this series" }),
   ).toBeVisible();
 
   const participants = detailSection(page, "participants");
@@ -77,7 +80,9 @@ test("the detail panel shows every field of an event that sets them all", async 
   ]) {
     await expect(participants).toContainText(name);
   }
-  await expect(detailSection(page, "conferencing")).toHaveText("Google Meet");
+  await expect(detailSection(page, "conferencing")).toHaveText(
+    "Google Meetabc-defg-hij",
+  );
   await expect(detailSection(page, "ai-notes")).toHaveText("AI meeting notes");
   await expect(detailSection(page, "location")).toHaveText(
     "Room 4B, 5th floor",
@@ -110,11 +115,18 @@ test("the detail panel shows Notion's placeholders for an event without details"
   await expect(detailSection(page, "timezone")).toBeVisible();
   await expect(detailSection(page, "recurrence")).toHaveText("Repeat");
 
+  // Participants and location are fields: their placeholder is the label
   for (const [name, placeholder] of [
     ["participants", "Participants and Rooms"],
+    ["location", "Location"],
+  ]) {
+    await expect(
+      detailSection(page, name).getByRole("combobox"),
+    ).toHaveAttribute("placeholder", placeholder);
+  }
+  for (const [name, placeholder] of [
     ["conferencing", "Conferencing"],
     ["ai-notes", "Add AI meeting notes"],
-    ["location", "Location"],
     ["links", "Add links and attachments"],
     ["description", "Description"],
     ["calendar", "Calendar"],

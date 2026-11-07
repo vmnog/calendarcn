@@ -45,7 +45,7 @@ Each event keeps the file's `UID` as its `id`. The preview uses that to replace 
 | `SUMMARY`                        | `title`                                                                      |
 | `DTSTART`, `DTEND` or `DURATION` | `start`, `end` and `isAllDay`                                                |
 | `DESCRIPTION`, `LOCATION`        | `description`, `location`                                                    |
-| `RRULE`                          | `recurrence`, the rule as written, e.g. `FREQ=WEEKLY;BYDAY=MO`               |
+| `RRULE`                          | `recurrenceRule`, e.g. `FREQ=WEEKLY;BYDAY=MO` to a weekly rule on Mondays    |
 | `TRANSP`                         | `status`: `TRANSPARENT` is free, `OPAQUE` is busy                            |
 | `CLASS`                          | `visibility`: public, or private for `PRIVATE` and `CONFIDENTIAL`            |
 | `COLOR`                          | `color`, when it names one of the seven event colors                         |
@@ -60,7 +60,7 @@ Dates and times follow RFC 5545:
 
 <Callout title="Recurring events aren't expanded">
 
-A weekly meeting comes in as one event on its first date, with its rule in `recurrence`. Expanding rules into occurrences is planned under **Recurring events** on the [roadmap](/docs/roadmap). Until then, edited occurrences come in as their own events, cancelled ones are left out, and `EXDATE` is ignored. Attendees, attachments, to-dos (`VTODO`) and other components are skipped.
+A weekly meeting comes in as one event on its first date, with its rule in `recurrenceRule`, so the details show and edit it. A rule `recurrenceRule` can't hold exactly (`BYMONTHDAY=1,15`, `BYHOUR`, a fifth weekday of the month, ...) is kept as written in `recurrence` and reads "Custom repeat". Expanding rules into occurrences is planned under **Recurring events** on the [roadmap](/docs/roadmap). Until then, edited occurrences come in as their own events, cancelled ones are left out, and `EXDATE` is ignored. Attendees, attachments, to-dos (`VTODO`) and other components are skipped.
 
 </Callout>
 
@@ -84,7 +84,7 @@ function downloadIcs(events: DetailedCalendarEvent[]) {
 }
 ```
 
-Timed events are written in UTC and all-day events as dates, with the exclusive end iCalendar expects. `recurrence` is written as an `RRULE` only when it holds a rule (`FREQ=...`), so a display string such as "Every weekday" is left out. Each reminder becomes a `VALARM` with a trigger before the start: `-PT10M`, `-PT2H`, `-P1D`, and weeks as `-P1W`. An all-day reminder with a `time` is written in minutes from the event's midnight start: 1 day before at 9 AM is `-PT900M`, and on the day at 9 AM is `PT540M`. `parseIcs()` reads each one back the same. Long lines are folded at 75 octets and lines end with CRLF, so Google Calendar, Apple Calendar and Outlook all import the file.
+Timed events are written in UTC and all-day events as dates, with the exclusive end iCalendar expects. `recurrenceRule` is written as an `RRULE`, its end date as an `UNTIL` at the end of that day in the event's time zone. Without one, `recurrence` is written only when it holds a rule (`FREQ=...`), so a display string such as "Every weekday" is left out. Each reminder becomes a `VALARM` with a trigger before the start: `-PT10M`, `-PT2H`, `-P1D`, and weeks as `-P1W`. An all-day reminder with a `time` is written in minutes from the event's midnight start: 1 day before at 9 AM is `-PT900M`, and on the day at 9 AM is `PT540M`. `parseIcs()` reads each one back the same. Long lines are folded at 75 octets and lines end with CRLF, so Google Calendar, Apple Calendar and Outlook all import the file.
 
 ## Sync with Google Calendar
 

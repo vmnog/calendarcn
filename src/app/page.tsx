@@ -18,7 +18,10 @@ import { useIsClient } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   DEMO_CALENDARS,
+  DEMO_CONTACTS,
+  DEMO_LOCATION_SUGGESTIONS,
   DEMO_PRIMARY_CALENDAR_ID,
+  DEMO_ROOMS,
   generateMockEvents,
 } from "@/lib/mock-events";
 import {
@@ -56,6 +59,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
+import { DEMO_CONFERENCE_PROVIDERS } from "./demo-conference-providers";
 
 /** Title given to an event created by clicking an empty time slot */
 const NEW_EVENT_TITLE = "New event";
@@ -210,6 +214,10 @@ function PageContent({ isWideLayout }: PageContentProps) {
       onEventsChange={setEvents}
       defaultViewSettings={DEMO_VIEW_SETTINGS}
       calendars={DEMO_CALENDARS}
+      contacts={DEMO_CONTACTS}
+      rooms={DEMO_ROOMS}
+      conferenceProviders={DEMO_CONFERENCE_PROVIDERS}
+      locationSuggestions={DEMO_LOCATION_SUGGESTIONS}
       createEvent={createDemoEvent}
       onEventSelect={handleEventSelect}
     >
@@ -249,6 +257,9 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
     goToDate,
     switchView,
     setNumberOfDays,
+    previousInSeries,
+    nextInSeries,
+    showSeriesOccurrence,
     updateEvent,
     toggleWeekends,
     toggleDeclinedEvents,
@@ -551,8 +562,14 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
         events={events}
         selectedEvent={selectedEvent}
         onEventChange={updateEvent}
-        onPrevWeek={goToPrev}
-        onNextWeek={goToNext}
+        onPrevWeek={
+          previousInSeries
+            ? () => showSeriesOccurrence(previousInSeries)
+            : undefined
+        }
+        onNextWeek={
+          nextInSeries ? () => showSeriesOccurrence(nextInSeries) : undefined
+        }
       />
     </>
   );

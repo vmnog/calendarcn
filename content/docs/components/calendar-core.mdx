@@ -44,7 +44,7 @@ const [events, setEvents] = React.useState(initialEvents);
 </CalendarProvider>;
 ```
 
-Use `onEventCreate`, `onEventUpdate` and `onEventSelect` to react to one change at a time, for example to save it to a server. To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/loading-events).
+Use `onEventCreate`, `onEventUpdate` and `onEventSelect` to react to one change at a time, for example to save it to a server. `onEventCreate` also gets the occurrence copies the details' series arrows add, so a repeating event's next occurrence is saved like a clicked-in event. To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/loading-events).
 
 ### Server rendering
 
@@ -116,7 +116,7 @@ interface Meeting extends CalendarEvent {
       name: "onEventsChange",
       type: "(events: TEvent[]) => void",
       description:
-        "Called with the full next list whenever events change: drag, resize, create or an edit in the details.",
+        "Called with the full next list whenever events change: drag, resize, create, an edit in the details, or an occurrence the series arrows open.",
     },
     {
       name: "view",
@@ -225,6 +225,34 @@ interface Meeting extends CalendarEvent {
         "Calendars the details panel's calendar picker offers, grouped by account `email`, and the event context menu under \"Block on calendar\" (hidden when the list is empty). Picking one moves the event with `moveEventToCalendar()`. An event without its own `color` is drawn in its calendar's.",
     },
     {
+      name: "contacts",
+      type: "EventContact[]",
+      default: "[]",
+      description:
+        "People the details' participants field suggests: the `recent` ones on focus, the matches while typing. A typed email can be invited without one.",
+    },
+    {
+      name: "rooms",
+      type: "EventRoom[]",
+      default: "[]",
+      description:
+        'Meeting rooms the participants field lists under "View rooms and resources", and among the matches while typing. That list is hidden when this is empty.',
+    },
+    {
+      name: "conferenceProviders",
+      type: "ConferenceProviderOption[]",
+      default: "[]",
+      description:
+        "Video call services the details' Conferencing menu offers, each creating calls with its own `createConference`. The row is hidden when this is empty, unless the event already has a call.",
+    },
+    {
+      name: "locationSuggestions",
+      type: "LocationSuggestion[]",
+      default: "[]",
+      description:
+        "Places the details' location field lists under the typed text while typing.",
+    },
+    {
       name: "createEvent",
       type: "(range: NewEventRange) => TEvent | null",
       description:
@@ -233,7 +261,8 @@ interface Meeting extends CalendarEvent {
     {
       name: "onEventCreate",
       type: "(event: TEvent) => void",
-      description: "Called after a click-created event is added.",
+      description:
+        "Called after an event is added: one created by clicking an empty slot, or an occurrence copy the series arrows add (`showSeriesOccurrence`).",
     },
     {
       name: "onEventUpdate",
@@ -347,6 +376,24 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "selectedEvent",
       type: "TEvent | null",
       description: "The selected event.",
+    },
+    {
+      name: "previousInSeries",
+      type: "SeriesOccurrence<TEvent> | null",
+      description:
+        "The selected event's previous occurrence in its repeating series (`findSeriesOccurrence`): `{ id, start, event? }`, with `event` when the events have one for it, and otherwise the `id` a copy of it gets. `null` when nothing is selected, the event doesn't repeat, or it is the first.",
+    },
+    {
+      name: "nextInSeries",
+      type: "SeriesOccurrence<TEvent> | null",
+      description:
+        "The selected event's next occurrence in its series, or `null` at the series' end.",
+    },
+    {
+      name: "showSeriesOccurrence",
+      type: "(occurrence: SeriesOccurrence<TEvent>) => void",
+      description:
+        "Selects an occurrence and moves to its period when it is off screen. One the events don't have yet is added first, as a copy of the selected event, through `onEventsChange` and `onEventCreate`. The details' series arrows call it.",
     },
     {
       name: "highlightedDate",
@@ -473,10 +520,36 @@ Returns the resolved settings of the nearest provider. Outside a provider it ret
     { name: "hourCycle", type: "12 | 24", description: "Clock style." },
     { name: "locale", type: "Locale", description: "date-fns locale." },
     {
+      name: "weekStartsOn",
+      type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
+      description:
+        "First day of the week, for date pickers. Unset outside a provider, where the locale's applies.",
+    },
+    {
       name: "calendars",
       type: "CalendarInfo[]",
       description:
         "Calendars the calendar picker and the context menu offer. Pass them to `resolveEventColor(event, calendars)` to draw an event in the color the calendar does.",
+    },
+    {
+      name: "contacts",
+      type: "EventContact[]",
+      description: "People the participants field suggests.",
+    },
+    {
+      name: "rooms",
+      type: "EventRoom[]",
+      description: "Meeting rooms the participants field offers.",
+    },
+    {
+      name: "conferenceProviders",
+      type: "ConferenceProviderOption[]",
+      description: "Video call services the details offer.",
+    },
+    {
+      name: "locationSuggestions",
+      type: "LocationSuggestion[]",
+      description: "Places the location field suggests.",
     },
   ]}
 />
@@ -717,6 +790,115 @@ Exported from `@/lib/event-utils`. The views, the details panel and the context 
       type: "(a, b) => boolean",
       description:
         "Whether two reminders fire at the same moment, as 60 min and 1 hour do.",
+    },
+  ]}
+/>
+
+### EventContact
+
+An entry of the `contacts` prop.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "email",
+      type: "string",
+      required: true,
+      description: "Address, the participant's identity once invited.",
+    },
+    {
+      name: "name",
+      type: "string",
+      description: "Display name. Defaults to the email.",
+    },
+    {
+      name: "recent",
+      type: "boolean",
+      description:
+        "Listed on focus, before typing, with a history icon, as a recently invited contact.",
+    },
+  ]}
+/>
+
+### ConferenceProviderOption
+
+An entry of the `conferenceProviders` prop: one item of the Conferencing menu. CalendarCN ships none, so it carries no service's brand: pass your own logos through `icon`.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "provider",
+      type: '"google-meet" | "zoom" | "microsoft-teams" | "other"',
+      required: true,
+      description: "Service the call is hosted on, stored in the call.",
+    },
+    {
+      name: "label",
+      type: "string",
+      required: true,
+      description:
+        "Name shown in the menu and on the event, unique among the options. Stored in the call, which tells apart two options of the same `provider`.",
+    },
+    {
+      name: "icon",
+      type: "React.ReactNode",
+      description:
+        "16px icon in the menu and on the event. Defaults to a camera.",
+    },
+    {
+      name: "hint",
+      type: "string",
+      description: 'Muted text at the end of the menu item, e.g. "Connect".',
+    },
+    {
+      name: "createConference",
+      type: "(event: DetailedCalendarEvent) => EventConference | Promise<EventConference>",
+      required: true,
+      description:
+        "Creates the call for the event, e.g. through the service's API. The row shows the option as pending until a returned promise settles; a rejected one adds no call, and a call that arrives after the panel moved to another event is dropped.",
+    },
+  ]}
+/>
+
+```tsx
+const conferenceProviders: ConferenceProviderOption[] = [
+  {
+    provider: "zoom",
+    label: "Zoom",
+    icon: <ZoomIcon />,
+    // Your server asks Zoom for a meeting
+    createConference: async (event) => {
+      const meeting = await createZoomMeeting(event.title);
+      return { provider: "zoom", url: meeting.joinUrl, meetingId: meeting.id };
+    },
+  },
+];
+
+<CalendarProvider conferenceProviders={conferenceProviders}>
+  <WeekView />
+</CalendarProvider>;
+```
+
+### LocationSuggestion
+
+An entry of the `locationSuggestions` prop.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "name",
+      type: "string",
+      required: true,
+      description: 'Name of the place, e.g. "Central Park".',
+    },
+    {
+      name: "address",
+      type: "string",
+      description:
+        'Shown under the name, and saved after it: "Central Park, New York, NY, USA".',
     },
   ]}
 />

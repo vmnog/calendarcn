@@ -3,7 +3,6 @@
 import * as React from "react";
 import { ArrowLeft, CalendarSearch, PanelRightIcon, X } from "lucide-react";
 import {
-  differenceInMinutes,
   format,
   isBefore,
   isSameYear,
@@ -33,6 +32,7 @@ import { eventColorStyles } from "./calendar-event-item";
 import { useCalendarConfig } from "./calendar-provider";
 import { EventDetailPanel } from "./event-detail-panel";
 import { useEventTitleFocus } from "./event-title-focus-context";
+import { formatDuration } from "@/lib/time-input";
 import { resolveEventColor } from "@/lib/event-utils";
 import type { DetailedCalendarEvent } from "./week-view-types";
 
@@ -57,20 +57,6 @@ interface DateGroup {
   label: string;
   isToday: boolean;
   events: DetailedCalendarEvent[];
-}
-
-function formatDuration(start: Date, end: Date): string {
-  const totalMinutes = differenceInMinutes(end, start);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (hours === 0) {
-    return `${minutes}min`;
-  }
-  if (minutes === 0) {
-    return `${hours}h`;
-  }
-  return `${hours}h ${minutes}min`;
 }
 
 function formatTimeRange(event: DetailedCalendarEvent): string {

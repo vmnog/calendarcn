@@ -5,7 +5,7 @@ description: The panel and popover for viewing and editing an event.
 
 <ComponentPreview name="event-details-demo" />
 
-`EventDetailPanel` shows an event's details and edits them in place. The views open it in a popover beside the selected event, and you can render it yourself anywhere, such as a side panel. It only needs an event and a change handler. Inside a `CalendarProvider` it follows the provider's clock and locale; on its own it uses the defaults.
+`EventDetailPanel` shows an event's details and edits them in place. The views open it in a popover beside the selected event, and you can render it yourself anywhere, such as a side panel. It needs an event, and `onEventChange` to edit it: without a change handler the panel is read-only. Inside a `CalendarProvider` it uses the provider's clock and locale, and its `calendars`, `contacts`, `rooms`, `conferenceProviders` and `locationSuggestions`. On its own it uses the defaults: no calendars to pick, contacts, rooms, conferencing services or place suggestions.
 
 ## Installation
 
@@ -39,11 +39,53 @@ function SidePanel() {
 </CalendarProvider>;
 ```
 
+Leave out `onEventChange` to show an event read-only, for example one from a calendar people can only view. The title and the other fields don't accept typing and the menus that change the event are disabled, so no edit looks saved when it isn't.
+
+```tsx
+<EventDetailPanel event={event} />
+```
+
+The repeat row's arrows step through a series. In the views' popover they work on their own: the provider finds the selected event's neighbors (`previousInSeries` and `nextInSeries` from `useCalendar()`, `null` at the series' ends) and `showSeriesOccurrence` selects one and moves to it. An occurrence your events have no event for yet is added as a copy of the selected event, through `onEventsChange` and `onEventCreate`. Pass the same to a panel you render yourself:
+
+```tsx
+const { previousInSeries, nextInSeries, showSeriesOccurrence } =
+  useCalendar<DetailedCalendarEvent>();
+
+<EventDetailPanel
+  event={selectedEvent}
+  onEventChange={updateEvent}
+  onPrevWeek={
+    previousInSeries ? () => showSeriesOccurrence(previousInSeries) : undefined
+  }
+  onNextWeek={
+    nextInSeries ? () => showSeriesOccurrence(nextInSeries) : undefined
+  }
+/>;
+```
+
+Outside a provider, `findSeriesOccurrence(events, event, "next")` (from `@/lib/recurrence`) finds the occurrence: the event when you have one for it, else its start and an id, for `createSeriesOccurrence(event, occurrence)` to copy the event to. The copy's id names the day it stands for, so it stays that day's occurrence after it is moved or renamed. A series is the events with the same title, calendar and rule; a `recurrenceRule` counts its days in the event's `timeZone`, so a 9 AM New York series stays at 9 AM there across daylight saving changes.
+
 ## Features
 
 - Edit the title in place. With `onEventChange` wired to the calendar, the event updates as you type.
-- Edit the start and end times and dates. <Kbd>Enter</Kbd> saves, <Kbd>Esc</Kbd> restores the old value.
-- Fields the event doesn't set (participants, conferencing, location, links, description, reminders) show Notion's muted placeholders.
+- Pick the start and end times from a menu in 15-minute steps. End times show how long the event lasts (`1h 30min`).
+- Type a time and the menu lists what it can mean, daytime first: `7` gives 7 PM, then 7 AM. In the end field a number is also a duration: `45` gives 45 minutes later.
+- Hovering a time previews it. <Kbd>Enter</Kbd>, a click, or leaving the field after typing or arrow keys saves it. <Kbd>Esc</Kbd> restores the old value.
+- Pick dates from a date picker, or type one (`Nov 12`). From the input, <Kbd>↑</Kbd> and <Kbd>↓</Kbd> move a day, and <Kbd>Page Up</Kbd> and <Kbd>Page Down</Kbd> a month.
+- Switch an event to all-day and back: it gets its own times back, or 9–10 AM when it had none.
+- Time options follow the wall clock, so they stay right on the days daylight saving time starts and ends.
+- In every menu and list of the details, <Kbd>Esc</Kbd> closes it and restores the value from before it opened. Arrow keys and the pointer only preview: the time zone list shows the highlighted city in the field until <Kbd>Enter</Kbd> or a click picks it.
+- Pick the event's time zone from a searchable list of every zone, with recent and popular ones first. The times keep their wall-clock value in the new zone, so the event moves on the grid, which (like the panel's times) stays in the viewer's zone: 2 PM in New York becomes 2 PM in Tokyo, which is 1 AM New York time.
+- Set a repeat rule from Notion's presets or the custom dialog (every N days, weeks, months or years, on chosen days, on the 1st to 4th or last weekday of the month, until a date or N times). `.ics` import and export keep it as an RRULE; an RRULE the details can't show reads "Custom repeat".
+- Fields the event doesn't set (participants, AI meeting notes, location, links, description, reminders) show Notion's muted placeholders. So does conferencing when the provider passes `conferenceProviders`; without them the row is hidden, unless the event already has a call.
+- Invite participants. Focusing the field lists the provider's recent `contacts`; typing filters them and offers a typed email address. The calendar's account (`calendarEmail`) joins as the organizer with the first guest, and stays while anyone is invited. Each guest shows their response (accepted, declined or maybe) and "Organizer" or "Optional"; hover a guest to copy their email, email them, mark them optional or remove them. <Kbd>Esc</Kbd> closes the list and never invites anyone.
+- Book meeting rooms from the provider's `rooms`, under "View rooms and resources" or by typing a room's name.
+- Add a video call from one of the provider's `conferenceProviders`. While an async `createConference` runs, the row shows the service as pending; then it shows the service's icon, name (a link that joins the call) and meeting code, with buttons to copy the link and to switch service or remove the call.
+- Type a location: the typed text is listed first, then the matching `locationSuggestions`. A location that's a web address opens itself. Any other location links to a Google Maps search, so clicking it sends the location text to Google.
+- Turn AI meeting notes on or off. This only sets the event's `aiMeetingNotes` flag: the panel doesn't record or write notes.
+- Add a link from "Add links and attachments": paste or type an address and press <Kbd>Enter</Kbd>. A bare domain like `example.com` gets `https://`, and text that isn't a link is dropped. Hover a link, or <Kbd>Tab</Kbd> onto it, to see its address with a copy button.
+- Attach a file from the same menu. The panel keeps its name, size and type with a `blob:` URL; nothing is uploaded.
+- Edit the description in place: the event takes the text when you leave it, and <Kbd>Esc</Kbd> restores it. Web addresses in it become links, and are also listed after the event's links.
 - Move the event to another of the provider's `calendars` (grouped by account) or give it its own color, set it busy or free and pick who can see it, from menus that open beside the panel. Hovering a choice previews it; <Kbd>Esc</Kbd> closes the menu and keeps the old value.
 - Add reminders from presets, or type a number to get it in minutes, hours, days or weeks ("2h", "10 mins"), up to 4 weeks before. Reminders stay sorted, and one that fires with another ("60min" and "1hour") isn't added twice. Adding one closes the list, and typing opens it again. Hover a reminder to remove it.
 - Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
@@ -53,6 +95,62 @@ function SidePanel() {
 <ComponentPreview name="custom-event-details-demo" />
 
 Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. It gets the selected event, a `close` function and `isNew`, which is true right after the event was created by clicking an empty slot, so you can focus its title. Render a component from it when you need hooks: `useCalendar()` to save edits, `useCalendarConfig()` to format times like the calendar does.
+
+## Build your own panel
+
+`EventDetailPanel` is one component per section, and they install with it. Render the ones you need, in your own order, to build a smaller panel or a different layout. Each section takes `EventDetailSectionProps`: the `event`, and `onEventChange`, without which the section is read-only.
+
+```tsx
+import type { EventDetailSectionProps } from "@/components/calendar-types";
+import { EventDetailParticipants } from "@/components/event-detail-participants";
+import {
+  EventDetailDivider,
+  EventDetailGroup,
+} from "@/components/event-detail-parts";
+import { EventDetailTime } from "@/components/event-detail-time";
+
+export function CompactDetails({
+  event,
+  onEventChange,
+}: EventDetailSectionProps) {
+  return (
+    <div className="flex flex-col text-sm font-medium">
+      <EventDetailGroup name="when">
+        <EventDetailTime event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
+      <EventDetailDivider />
+      <EventDetailGroup name="who">
+        <EventDetailParticipants event={event} onEventChange={onEventChange} />
+      </EventDetailGroup>
+    </div>
+  );
+}
+```
+
+| Import from                              | Exports                                                                                                                             | What it is                                                                                                                                                                                         |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@/components/event-detail-time`         | `EventDetailTime`, `EventDetailAllDay`                                                                                              | Start and end times and dates; the all-day switch.                                                                                                                                                 |
+| `@/components/event-detail-time-field`   | `EventDetailTimeField`                                                                                                              | A time field with the floating time menu: typed times, durations, hover previews, and <Kbd>Esc</Kbd> restores. `EventDetailTime` renders two.                                                      |
+| `@/components/event-detail-date-field`   | `EventDetailDateField`                                                                                                              | A date field with the date picker; `minDate` turns off earlier days.                                                                                                                               |
+| `@/components/event-detail-timezone`     | `EventDetailTimezone`                                                                                                               | The time zone.                                                                                                                                                                                     |
+| `@/components/event-detail-recurrence`   | `EventDetailRecurrence`                                                                                                             | The repeat rule, with arrows that step through the series when it repeats: `onPrevious` and `onNext` show the neighbors (`previousInSeries` / `nextInSeries`); leave one out to disable its arrow. |
+| `@/components/event-detail-participants` | `EventDetailParticipants`                                                                                                           | Guests and rooms.                                                                                                                                                                                  |
+| `@/components/event-detail-conferencing` | `EventDetailConferencing`                                                                                                           | The video call.                                                                                                                                                                                    |
+| `@/components/event-detail-ai-notes`     | `EventDetailAiNotes`                                                                                                                | Whether AI meeting notes are on.                                                                                                                                                                   |
+| `@/components/event-detail-location`     | `EventDetailLocation`                                                                                                               | The location.                                                                                                                                                                                      |
+| `@/components/event-detail-links`        | `EventDetailLinks`                                                                                                                  | Links and attached files.                                                                                                                                                                          |
+| `@/components/event-detail-description`  | `EventDetailDescription`                                                                                                            | The description.                                                                                                                                                                                   |
+| `@/components/event-detail-calendar`     | `EventDetailCalendar`                                                                                                               | The calendar and its color.                                                                                                                                                                        |
+| `@/components/event-detail-availability` | `EventDetailAvailability`                                                                                                           | Busy or free, and visibility.                                                                                                                                                                      |
+| `@/components/event-detail-reminders`    | `EventDetailReminders`                                                                                                              | Reminders.                                                                                                                                                                                         |
+| `@/components/event-detail-parts`        | `EventDetailGroup`, `EventDetailDivider`, `EventDetailSection`, `EventDetailRow`, `EventDetailPlaceholderRow`, `EventDetailTooltip` | Layout: groups of sections between dividers, rows on the panel's icon column, Notion's muted placeholder row, and the hover tooltip.                                                               |
+| `@/components/event-detail-parts`        | `EVENT_DETAIL_*_CLASS`, `PANEL_*_CLASS`, `ROW_BOX_CLASS`                                                                            | The panel's colors and the styles of its inputs, rows and menus, in light and dark.                                                                                                                |
+| `@/components/event-detail-parts`        | `closeMenuOnEscape`, `stopEscapePropagation`, `getPanelMenuSideOffset`, `getEventDetailPortalContainer`                             | Menu helpers: <Kbd>Esc</Kbd> closes a menu without deselecting the event, menus line up with the panel's edge, and lists portal into the dialog around the panel, if any.                          |
+| `@/components/event-detail-suggestions`  | `EventDetailSuggestions`, `EventDetailSuggestion`, `HighlightedMatch`, `handleSuggestionKey`                                        | The floating list a combobox field shows while typing (the participants' contacts, the location's places), its options, the matched text kept bright, and its arrow keys and <Kbd>Enter</Kbd>.     |
+| `@/hooks/use-inline-edit`                | `useInlineEdit`                                                                                                                     | A text field that edits in place: <Kbd>Enter</Kbd> or blur commits, <Kbd>Esc</Kbd> restores the value from before, and `onCommit` can reject a value by returning `null`.                          |
+| `@/hooks/use-hover-tooltip`              | `useHoverTooltip`                                                                                                                   | Open state for a tooltip that shows after the pointer rests on its trigger and stays while the pointer moves onto it.                                                                              |
+| `@/hooks/use-field-popover`              | `useFieldPopover`                                                                                                                   | Focus, blur and <Kbd>Esc</Kbd> for a field whose menu or picker keeps focus in its input.                                                                                                          |
+| `@/lib/time-input`                       | `getStartTimeOptions`, `getEndTimeOptions`, `matchStartTimes`, `matchEndTimes`, `formatDuration`, `parseDateInput`                  | The time menu's options on the wall clock, the times and durations typed text can mean, and typed dates.                                                                                           |
 
 ## API Reference
 
@@ -72,7 +170,7 @@ Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. I
       name: "onEventChange",
       type: "(event: TEvent) => void",
       description:
-        "Called with the edited event: on every keystroke in the title, and when a time, date or option is committed. Without it, edits are not saved.",
+        "Called with the edited event: on every keystroke in the title, and when a time, date or option is committed. Without it the panel is read-only: nothing accepts typing and the menus that change the event are disabled.",
     },
     {
       name: "headerActions",
@@ -95,13 +193,13 @@ Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. I
       name: "onPrevWeek",
       type: "() => void",
       description:
-        "Called by the previous arrow on a recurring event's repeat row.",
+        "Shows the previous event of a repeating series (the repeat row's ‹). Leave it out at the start of the series to disable the arrow. The views' popover passes the provider's `previousInSeries`.",
     },
     {
       name: "onNextWeek",
       type: "() => void",
       description:
-        "Called by the next arrow on a recurring event's repeat row.",
+        "Shows the next event of a repeating series (the repeat row's ›). Leave it out at the end of the series to disable the arrow. The views' popover passes the provider's `nextInSeries`.",
     },
   ]}
 />
@@ -158,7 +256,7 @@ Passed to `renderEventDetails` on `CalendarProvider`.
       name: "timeZone",
       type: "string",
       description:
-        'IANA time zone, e.g. "America/Sao_Paulo", shown as "GMT-3 Sao Paulo". Defaults to the viewer\'s zone.',
+        'IANA time zone, e.g. "America/Sao_Paulo", shown as "GMT−3 Sao Paulo". Defaults to the viewer\'s zone. Picking another zone in the details keeps the event\'s wall-clock time.',
     },
     {
       name: "timezone",
@@ -170,13 +268,13 @@ Passed to `renderEventDetails` on `CalendarProvider`.
       name: "recurrenceRule",
       type: "RecurrenceRule",
       description:
-        'Repeat rule: `frequency`, `interval`, `weekdays`, `monthlyBy`, `weekOfMonth` (1 to 4, or -1 for the last) and `end`. Read as "Every 2 weeks on Mon, Thu".',
+        'Repeat rule, see [RecurrenceRule](#recurrencerule). Read as "Every 2 weeks on Mon, Thu". Takes precedence over `recurrence`; `.ics` import fills it and export writes it as an RRULE.',
     },
     {
       name: "recurrence",
       type: "string",
       description:
-        'Repeat rule as display text, e.g. "Every week on Thu", or an RRULE (from `.ics` import). Shown when `recurrenceRule` is not set.',
+        'Repeat rule as display text, e.g. "Every week on Thu", or an RRULE `.ics` import couldn\'t fit in `recurrenceRule` (it reads "Custom repeat"). Used when `recurrenceRule` is not set.',
     },
     {
       name: "participants",
@@ -194,7 +292,7 @@ Passed to `renderEventDetails` on `CalendarProvider`.
       name: "conference",
       type: "EventConference",
       description:
-        'Video call: `provider` ("google-meet", "zoom", "microsoft-teams" or "other"), `url`, `meetingId`.',
+        'Video call: `provider` ("google-meet", "zoom", "microsoft-teams" or "other"), `url`, `meetingId`, and `label`, the name of the `conferenceProviders` option that created it.',
     },
     {
       name: "aiMeetingNotes",
@@ -204,12 +302,14 @@ Passed to `renderEventDetails` on `CalendarProvider`.
     {
       name: "links",
       type: "{ url: string; title?: string }[]",
-      description: "Links attached to the event.",
+      description:
+        "Links attached to the event, shown by `title` when set. Only `http:` and `https:` addresses open; others, like `javascript:` or `data:`, show as text.",
     },
     {
       name: "attachments",
       type: "{ name: string; url: string; size?: number; type?: string }[]",
-      description: "Files attached to the event (size in bytes, MIME type).",
+      description:
+        "Files attached to the event (size in bytes, MIME type). A `url` opens only when it's `http:`, `https:` or `blob:`; `javascript:` and `data:` show as text. A file attached in the panel gets a `blob:` URL that stops working when the page reloads. The panel revokes it when the file is removed; otherwise upload the file or revoke the URL yourself (`URL.revokeObjectURL`), e.g. when the event is deleted.",
     },
     {
       name: "reminders",
@@ -222,6 +322,89 @@ Passed to `renderEventDetails` on `CalendarProvider`.
       name: "visibility",
       type: '"default" | "public" | "private"',
       description: "Visibility setting.",
+    },
+  ]}
+/>
+
+### RecurrenceRule
+
+The structured repeat rule in `recurrenceRule`: the part of an RFC 5545 RRULE the repeat row edits. Days are counted in the event's `timeZone`, from the series' first event, which always counts as the first occurrence.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "frequency",
+      type: '"daily" | "weekly" | "monthly" | "yearly"',
+      required: true,
+      description: "How often it repeats (RRULE `FREQ`).",
+    },
+    {
+      name: "interval",
+      type: "number",
+      default: "1",
+      description:
+        "Repeats every `interval` days, weeks, months or years (`INTERVAL`).",
+    },
+    {
+      name: "weekdays",
+      type: "(0 | 1 | 2 | 3 | 4 | 5 | 6)[]",
+      description:
+        'Days a weekly rule falls on, 0 for Sunday (`BYDAY=MO,TH`). Defaults to the start\'s weekday. Monday to Friday reads as "Every weekday", Saturday and Sunday as "Every weekend day".',
+    },
+    {
+      name: "monthlyBy",
+      type: '"day-of-month" | "weekday-of-month"',
+      default: '"day-of-month"',
+      description:
+        'What a monthly rule repeats on: the start\'s day of the month ("on the 6th"; months without it, like the 31st in April, are skipped) or its weekday in the month ("on the 1st Sat").',
+    },
+    {
+      name: "weekOfMonth",
+      type: "1 | 2 | 3 | 4 | -1",
+      description:
+        'Which of the month\'s weekdays a "weekday-of-month" rule falls on: the 1st to 4th, or -1 for the last ("on the last Sat", `BYDAY=-1SA`). Defaults to the start\'s position in its month, the last for a fifth one. Set -1 to keep "the last Sat" when the start is also the 4th.',
+    },
+    {
+      name: "weekStartsOn",
+      type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
+      default: "1",
+      description:
+        'Day the weeks of a weekly rule start on (`WKST`), which decides the weeks an "every 2 weeks" rule skips. Defaults to Monday, as in RFC 5545; independent of the calendar\'s `weekStartsOn`.',
+    },
+    {
+      name: "end",
+      type: "RecurrenceEnd",
+      default: '{ type: "never" }',
+      description:
+        "When the series stops, see [RecurrenceEnd](#recurrenceend).",
+    },
+  ]}
+/>
+
+### RecurrenceEnd
+
+When a repeating event stops, by its `type`:
+
+<PropsTable
+  nameHeader="type"
+  rows={[
+    {
+      name: '"never"',
+      type: '{ type: "never" }',
+      description: "Repeats forever.",
+    },
+    {
+      name: '"on"',
+      type: '{ type: "on"; date: Date }',
+      description:
+        'Stops after the day of `date`, inclusive, a day in the event\'s time zone. Reads as "until Dec 6". `.ics` export writes an `UNTIL` at the end of that day (a date for all-day events).',
+    },
+    {
+      name: '"after"',
+      type: '{ type: "after"; count: number }',
+      description:
+        'Stops after `count` occurrences, the first included. Reads as "for 7 times" (`COUNT`).',
     },
   ]}
 />
