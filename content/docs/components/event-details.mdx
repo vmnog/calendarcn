@@ -65,6 +65,50 @@ const { previousInSeries, nextInSeries, showSeriesOccurrence } =
 
 Outside a provider, `findSeriesOccurrence(events, event, "next")` (from `@/lib/recurrence`) finds the occurrence: the event when you have one for it, else its start and an id, for `createSeriesOccurrence(event, occurrence)` to copy the event to. The copy's id names the day it stands for, so it stays that day's occurrence after it is moved or renamed. A series is the events with the same title, calendar and rule; a `recurrenceRule` counts its days in the event's `timeZone`, so a 9 AM New York series stays at 9 AM there across daylight saving changes.
 
+## Conference providers
+
+The Conferencing row adds a video call from the services in the provider's `conferenceProviders`. Nothing is on by default: with no services the row is hidden, unless the event already has a call. To offer the live demo's Google Meet, Zoom and Microsoft Teams, install them and pass them in:
+
+<InstallTabs item="conference-providers" />
+
+```tsx
+import { DEMO_CONFERENCE_PROVIDERS } from "@/lib/conference-providers";
+
+<CalendarProvider conferenceProviders={DEMO_CONFERENCE_PROVIDERS}>
+  <WeekView />
+</CalendarProvider>;
+```
+
+`Calendar` takes the same prop.
+
+They're placeholders. Each `createConference` makes up a call in the service's code format (`abc-defg-hij` for Meet) on `example.com`, after 400ms so the row's pending state shows, and no link opens a real meeting. Before people rely on them, make `createConference` create the meeting through the service's API and return its link. The API needs your credentials, so call it from your server:
+
+```tsx
+import type { ConferenceProviderOption } from "@/components/calendar-types";
+
+const conferenceProviders: ConferenceProviderOption[] = [
+  {
+    provider: "zoom",
+    label: "Zoom",
+    icon: <ZoomLogo />,
+    createConference: async (event) => {
+      // Your route creates the meeting with Zoom's API
+      const response = await fetch("/api/zoom-meetings", {
+        method: "POST",
+        body: JSON.stringify({ title: event.title, start: event.start }),
+      });
+      if (!response.ok) throw new Error("Zoom didn't create the meeting");
+      const meeting = await response.json();
+      return { provider: "zoom", url: meeting.joinUrl, meetingId: meeting.id };
+    },
+  },
+];
+```
+
+A rejected promise adds no call. Labels must be unique, so you can offer one service twice, like two Zoom accounts.
+
+Google Meet, Zoom and Microsoft Teams logos are their owners' trademarks, so the item ships none and the row shows a camera for each service. The live demo adds the logos itself. To show them, pass your own as `icon` (16px), taken from each service's brand resources and used under its terms.
+
 ## Features
 
 - Edit the title in place. With `onEventChange` wired to the calendar, the event updates as you type.

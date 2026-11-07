@@ -1,0 +1,17 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "conference-providers",
+  "title": "Conference Providers",
+  "description": "Google Meet, Zoom and Microsoft Teams for the event details' Conferencing row, as the live demo offers them: placeholders that make up calls on example.com, to replace with calls to each service's API. No logos.",
+  "registryDependencies": [
+    "@calendarcn/calendar-core"
+  ],
+  "files": [
+    {
+      "path": "src/lib/conference-providers.ts",
+      "content": "import type { ConferenceProviderOption } from \"@/components/week-view-types\";\n\n/**\n * How long the placeholder services take to \"create\" a call, so the panel's\n * pending state shows, as it would while a real service's API answers\n */\nconst CREATE_DELAY_MS = 400;\n\n/** Letters of a placeholder meeting code */\nconst LETTERS = \"abcdefghijklmnopqrstuvwxyz\";\n\n/** A run of random lowercase letters */\nfunction randomLetters(length: number): string {\n  return Array.from(\n    { length },\n    () => LETTERS[Math.floor(Math.random() * LETTERS.length)],\n  ).join(\"\");\n}\n\n/** A run of random digits */\nfunction randomDigits(length: number): string {\n  return Array.from({ length }, () => Math.floor(Math.random() * 10)).join(\"\");\n}\n\n/** Resolves with the value after `CREATE_DELAY_MS` */\nfunction later<T>(value: T): Promise<T> {\n  return new Promise((resolve) => {\n    window.setTimeout(() => resolve(value), CREATE_DELAY_MS);\n  });\n}\n\n/**\n * Google Meet, Zoom and Microsoft Teams as the live demo offers them, to\n * pass to `conferenceProviders`. They're placeholders: each\n * `createConference` makes up a call in the service's code format on\n * example.com, after a short wait, so no link opens a real meeting. In an\n * app, `createConference` has to create the call through the service's API\n * (usually on your server, which holds the credentials) and return its link.\n *\n * They have no `icon`, so the panel shows a camera. The services' logos are\n * their owners' trademarks and don't ship with CalendarCN (ADR 005): add\n * them from each service's brand resources, under its terms.\n */\nexport const DEMO_CONFERENCE_PROVIDERS: ConferenceProviderOption[] = [\n  {\n    provider: \"google-meet\",\n    label: \"Google Meet\",\n    createConference: () => {\n      const code = `${randomLetters(3)}-${randomLetters(4)}-${randomLetters(3)}`;\n      return later({\n        provider: \"google-meet\",\n        url: `https://example.com/meet/${code}`,\n        meetingId: code,\n      });\n    },\n  },\n  {\n    provider: \"zoom\",\n    label: \"Zoom\",\n    createConference: () => {\n      const id = randomDigits(10);\n      return later({\n        provider: \"zoom\",\n        url: `https://example.com/zoom/j/${id}`,\n        meetingId: `${id.slice(0, 3)} ${id.slice(3, 6)} ${id.slice(6)}`,\n      });\n    },\n  },\n  {\n    provider: \"microsoft-teams\",\n    label: \"Microsoft Teams\",\n    createConference: () => {\n      const id = randomDigits(12);\n      return later({\n        provider: \"microsoft-teams\",\n        url: `https://example.com/teams/meet/${id}`,\n        meetingId: id.replace(/(\\d{3})(?=\\d)/g, \"$1 \"),\n      });\n    },\n  },\n];\n",
+      "type": "registry:lib"
+    }
+  ],
+  "type": "registry:lib"
+}
