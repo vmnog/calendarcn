@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "theme-toggle",
+  "title": "Theme Toggle",
+  "description": "A button that cycles the theme through system, light and dark, with the next-themes provider it needs.",
+  "dependencies": [
+    "lucide-react",
+    "next-themes"
+  ],
+  "registryDependencies": [
+    "button"
+  ],
+  "files": [
+    {
+      "path": "src/components/theme-toggle.tsx",
+      "content": "\"use client\";\n\nimport * as React from \"react\";\nimport { MonitorIcon, MoonIcon, SunIcon } from \"lucide-react\";\nimport { useTheme } from \"next-themes\";\n\nimport { cn } from \"@/lib/utils\";\nimport { Button } from \"@/components/ui/button\";\n\ninterface ThemeToggleProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {\n  className?: string;\n}\n\nexport const ThemeToggle = React.forwardRef<\n  HTMLButtonElement,\n  ThemeToggleProps\n>(({ className, ...props }, ref) => {\n  const { theme, setTheme } = useTheme();\n  const [mounted, setMounted] = React.useState(false);\n\n  React.useEffect(() => {\n    setMounted(true);\n  }, []);\n\n  const cycleTheme = () => {\n    if (theme === \"system\") {\n      setTheme(\"light\");\n      return;\n    }\n    if (theme === \"light\") {\n      setTheme(\"dark\");\n      return;\n    }\n    setTheme(\"system\");\n  };\n\n  const getIcon = () => {\n    if (theme === \"light\") {\n      return <SunIcon className=\"size-4\" />;\n    }\n    if (theme === \"dark\") {\n      return <MoonIcon className=\"size-4\" />;\n    }\n    return <MonitorIcon className=\"size-4\" />;\n  };\n\n  if (!mounted) {\n    return (\n      <Button\n        ref={ref}\n        variant=\"ghost\"\n        size=\"icon\"\n        {...props}\n        className={cn(\"size-7 text-muted-foreground\", className)}\n      >\n        <MonitorIcon className=\"size-4\" />\n        <span className=\"sr-only\">Toggle theme</span>\n      </Button>\n    );\n  }\n\n  return (\n    <Button\n      ref={ref}\n      variant=\"ghost\"\n      size=\"icon\"\n      {...props}\n      className={cn(\"size-7 text-muted-foreground\", className)}\n      onClick={cycleTheme}\n    >\n      {getIcon()}\n      <span className=\"sr-only\">Toggle theme</span>\n    </Button>\n  );\n});\n\nThemeToggle.displayName = \"ThemeToggle\";\n",
+      "type": "registry:component"
+    },
+    {
+      "path": "src/components/theme-provider.tsx",
+      "content": "\"use client\";\n\nimport * as React from \"react\";\nimport { ThemeProvider as NextThemesProvider } from \"next-themes\";\n\nexport function ThemeProvider({\n  children,\n  ...props\n}: React.ComponentProps<typeof NextThemesProvider>) {\n  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;\n}\n",
+      "type": "registry:component"
+    }
+  ],
+  "type": "registry:component"
+}

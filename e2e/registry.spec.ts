@@ -16,6 +16,13 @@ const ITEM_NAMES = [
   "ics",
   "conference-providers",
   "sample-data",
+  // The demo's sidebars
+  "sidebar-overlay",
+  "theme-toggle",
+  "mini-calendar",
+  "calendar-list",
+  "calendar-sidebar",
+  "details-sidebar",
 ];
 
 /** The parts of a built registry item the tests read */

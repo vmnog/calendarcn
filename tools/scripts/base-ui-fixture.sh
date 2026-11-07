@@ -70,8 +70,8 @@ fs.writeFileSync("components.json", JSON.stringify(config, null, 2) + "\n");
 ' "$REGISTRY_URL"
 
 # The opt-in data items install too, so tsc and next build check them
-echo "Installing @calendarcn/calendar, conference-providers and sample-data..."
-npx -y "$SHADCN" add @calendarcn/calendar @calendarcn/conference-providers @calendarcn/sample-data -y
+echo "Installing @calendarcn/calendar, conference-providers, sample-data and the sidebars..."
+npx -y "$SHADCN" add @calendarcn/calendar @calendarcn/conference-providers @calendarcn/sample-data @calendarcn/calendar-sidebar @calendarcn/details-sidebar -y
 
 echo "Type-checking..."
 npx tsc --noEmit

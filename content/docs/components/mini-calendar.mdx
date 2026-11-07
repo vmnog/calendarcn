@@ -1,0 +1,87 @@
+---
+title: Mini Calendar
+description: The month picker at the top of the calendar sidebar.
+---
+
+<ComponentPreview name="mini-calendar-demo" height={420} />
+
+Mini Calendar is the small month at the top of the [Calendar Sidebar](/docs/components/calendar-sidebar), modeled on Notion Calendar's: week numbers down the side, today in red, and the days the calendar shows highlighted as one band. Browse months with the up and down arrows; away from today's month, the month's name shows with a button back to today.
+
+It's built on [React DayPicker](https://daypicker.dev) directly, with its own styles, so it looks the same whatever your shadcn/ui `Calendar` and `Button` look like.
+
+## Installation
+
+<InstallTabs item="mini-calendar" />
+
+## Usage
+
+```tsx
+import { MiniCalendar } from "@/components/mini-calendar";
+
+export function DatePicker() {
+  const [date, setDate] = React.useState<Date>();
+
+  return <MiniCalendar currentDate={date} onDateSelect={setDate} />;
+}
+```
+
+To follow a calendar, pass the days it shows as `visibleDays`: they're highlighted, and the mini calendar shows the month of the last one, so a week that crosses into a new month shows the new month. Calendar Sidebar does this from `useCalendar()`:
+
+```tsx
+const { view, currentDate, visibleDays, weekStartsOn, goToDate } =
+  useCalendar();
+
+<MiniCalendar
+  currentDate={currentDate}
+  visibleDays={view === "month" || view === "agenda" ? [] : visibleDays}
+  weekStartsOn={weekStartsOn}
+  onDateSelect={goToDate}
+/>;
+```
+
+When `currentDate` or `visibleDays` change, the mini calendar goes back to their month, even after the arrows browsed away.
+
+## Features
+
+- Today is marked in your theme's primary color. The page renders with no today marked, then marks it in the browser, so server and client markup match.
+- "Go back to today" shows once you browse to another month. It shows today's month and calls `onDateSelect` with today.
+- Every day is a click target from edge to edge, with no gaps between days. Arrow keys move between days; the focused day gets a ring.
+- Six weeks always show, so the height never changes between months.
+
+## API Reference
+
+### MiniCalendar
+
+<PropsTable
+  rows={[
+    {
+      name: "currentDate",
+      type: "Date",
+      description:
+        "Day the calendar is on. Picks the month shown when there are no `visibleDays` (month view, agenda).",
+    },
+    {
+      name: "visibleDays",
+      type: "Date[]",
+      description:
+        "Days the calendar shows. They're highlighted, and the month of the last one is shown.",
+    },
+    {
+      name: "onDateSelect",
+      type: "(date: Date) => void",
+      description:
+        'Called with the day picked, or with today from "Go back to today".',
+    },
+    {
+      name: "weekStartsOn",
+      type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
+      default: "0",
+      description: "First day of the week, 0 (Sunday) to 6.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the calendar's root.",
+    },
+  ]}
+/>

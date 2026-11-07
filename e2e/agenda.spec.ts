@@ -91,7 +91,7 @@ test.describe("desktop", () => {
 
     await page.getByRole("button", { name: "Next 30 days" }).click();
     await expectHeader(page, NEXT_AGENDA_LABEL);
-    await page.getByRole("button", { name: "Today" }).click();
+    await page.getByRole("button", { name: "Today", exact: true }).click();
     await expectHeader(page, AGENDA_LABEL);
 
     // Back to the week view on the current week

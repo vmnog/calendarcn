@@ -67,6 +67,7 @@ export const DEMO_CALENDARS: CalendarInfo[] = [
     name: "Holidays in Brazil",
     color: "green",
     email: DEMO_PRIMARY_CALENDAR_ID,
+    isSubscribed: true,
   },
   {
     id: DEMO_WORK_ACCOUNT,
