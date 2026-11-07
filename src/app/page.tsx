@@ -17,8 +17,10 @@ import {
 import { useIsClient } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
+  DEMO_CALENDARS,
   DEMO_CONTACTS,
   DEMO_LOCATION_SUGGESTIONS,
+  DEMO_PRIMARY_CALENDAR_ID,
   DEMO_ROOMS,
   generateMockEvents,
 } from "@/lib/mock-events";
@@ -33,7 +35,6 @@ import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { CommandMenu } from "@/components/command-menu";
 import { SidebarLeft } from "@/components/sidebar-left";
 import type {
-  CalendarInfo,
   DetailedCalendarEvent,
   EventColor,
   NewEventRange,
@@ -63,9 +64,6 @@ import { DEMO_CONFERENCE_PROVIDERS } from "./demo-conference-providers";
 /** Title given to an event created by clicking an empty time slot */
 const NEW_EVENT_TITLE = "New event";
 
-/** Primary calendar (and its account email) that click-created events belong to */
-const PRIMARY_CALENDAR_ID = "me@vmnog.com";
-
 /** Hour the time grid opens on, so the first rows on screen hold the day's events */
 const INITIAL_SCROLL_HOUR = 8;
 
@@ -74,45 +72,6 @@ const ICS_FILE_TYPES = ".ics,text/calendar";
 
 /** Name of the file the command menu's .ics export downloads */
 const ICS_EXPORT_FILE_NAME = "calendarcn.ics";
-
-/**
- * Calendars of the demo account, offered by the event context menu. Ids are
- * the names, matching the `calendarId`s of the mock events.
- */
-const DEMO_CALENDARS: CalendarInfo[] = [
-  {
-    id: PRIMARY_CALENDAR_ID,
-    name: PRIMARY_CALENDAR_ID,
-    color: "red",
-    email: PRIMARY_CALENDAR_ID,
-  },
-  {
-    id: "Personal",
-    name: "Personal",
-    color: "purple",
-    email: PRIMARY_CALENDAR_ID,
-  },
-  { id: "Work", name: "Work", color: "blue", email: PRIMARY_CALENDAR_ID },
-  { id: "Family", name: "Family", color: "orange", email: PRIMARY_CALENDAR_ID },
-  {
-    id: "Side Projects",
-    name: "Side Projects",
-    color: "yellow",
-    email: PRIMARY_CALENDAR_ID,
-  },
-  {
-    id: "Fitness",
-    name: "Fitness",
-    color: "green",
-    email: PRIMARY_CALENDAR_ID,
-  },
-  {
-    id: "Holidays in Brazil",
-    name: "Holidays in Brazil",
-    color: "green",
-    email: PRIMARY_CALENDAR_ID,
-  },
-];
 
 /** What the previous/next buttons move by in each view, for their labels */
 const PERIOD_LABELS: Record<ViewType, string> = {
@@ -224,8 +183,8 @@ function PageContent({ isWideLayout }: PageContentProps) {
         start: range.start,
         end: range.end,
         color,
-        calendarId: PRIMARY_CALENDAR_ID,
-        calendarEmail: PRIMARY_CALENDAR_ID,
+        calendarId: DEMO_PRIMARY_CALENDAR_ID,
+        calendarEmail: DEMO_PRIMARY_CALENDAR_ID,
       };
     },
     [],

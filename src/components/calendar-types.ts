@@ -60,8 +60,9 @@ export interface HourSlot {
  * Represents an event reminder
  */
 export interface EventReminder {
+  /** How long before the event it fires; 0 fires at the start */
   amount: number;
-  unit: "minutes" | "hours" | "days";
+  unit: "minutes" | "hours" | "days" | "weeks";
   /**
    * Time of day the reminder fires, for all-day events ("1 day before at
    * 9 AM"). Timed events leave it out: their reminders count back from the
@@ -365,7 +366,10 @@ export interface CalendarEvent {
   end: Date;
   /** Whether this is an all-day event */
   isAllDay?: boolean;
-  /** Event color (for styling) */
+  /**
+   * The event's own color. Without one it takes its calendar's color (the
+   * `CalendarInfo` its `calendarId` names), else blue.
+   */
   color?: EventColor;
 }
 
@@ -379,7 +383,11 @@ export interface DetailedCalendarEvent extends CalendarEvent {
   kind?: EventKind;
   /** Calendar ID this event belongs to */
   calendarId?: string;
-  /** Calendar account email for display */
+  /**
+   * Account email of the event's calendar, shown when the calendar isn't
+   * listed. Moving the event to a listed calendar sets it to that calendar's
+   * `email`.
+   */
   calendarEmail?: string;
   /** Optional description */
   description?: string;
@@ -627,18 +635,39 @@ export interface VisibleRange {
 }
 
 /**
- * A calendar events can belong to (e.g. "Work"), listed by the event
- * context menu's "Block on calendar" submenu
+ * A calendar events can belong to (e.g. "Work"), listed by the details
+ * panel's calendar picker and the event context menu's "Block on calendar"
+ * submenu
  */
 export interface CalendarInfo {
   /** Stored in the event's `calendarId` when picked */
   id: string;
   /** Display name */
   name: string;
-  /** Swatch color shown beside the name */
+  /**
+   * The calendar's color. Its events take it until they are given their own
+   * `color`.
+   */
   color: EventColor;
   /** Account the calendar belongs to; calendars are grouped under it */
   email?: string;
+  /**
+   * Reminders an event gets on this calendar. Only moving an event applies
+   * them: one moved here that still has its previous calendar's defaults
+   * takes these instead, and reminders edited by hand are kept. Creating an
+   * event never adds them; give new events reminders in `createEvent`.
+   */
+  defaultReminders?: EventReminder[];
+}
+
+/**
+ * Calendars that share an account, listed under its email by the calendar
+ * pickers (`groupCalendarsByEmail()`)
+ */
+export interface CalendarGroup {
+  /** Account email shown above the group; absent for calendars without one */
+  email?: string;
+  calendars: CalendarInfo[];
 }
 
 /**
@@ -662,7 +691,7 @@ export interface CalendarConfig {
    * CalendarProvider, where the locale's first day applies.
    */
   weekStartsOn?: WeekStartsOn;
-  /** Calendars offered by the event context menu */
+  /** Calendars offered by the details panel's calendar picker and the event context menu */
   calendars: CalendarInfo[];
   /** People the details' participants field suggests */
   contacts: EventContact[];
@@ -877,8 +906,10 @@ interface CalendarProviderBaseProps<
    */
   locale?: Locale;
   /**
-   * Calendars the event context menu offers under "Block on calendar".
-   * The submenu is hidden when empty. Defaults to none
+   * Calendars the details panel's calendar picker offers, grouped by `email`,
+   * and the event context menu under "Block on calendar" (hidden when
+   * empty). Both move the event with `moveEventToCalendar()`. An event
+   * without its own `color` is drawn in its calendar's. Defaults to none
    */
   calendars?: CalendarInfo[];
   /**

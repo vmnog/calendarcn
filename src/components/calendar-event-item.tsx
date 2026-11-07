@@ -6,7 +6,12 @@ import { useIsPast } from "@/hooks/use-now";
 import { EventDetailPopover } from "./event-detail-popover";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
 import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
-import { formatTime, formatTimeRange, getEventLabel } from "@/lib/event-utils";
+import {
+  formatTime,
+  formatTimeRange,
+  getEventLabel,
+  resolveEventColor,
+} from "@/lib/event-utils";
 import type {
   CalendarEvent,
   CalendarEventItemProps,
@@ -230,13 +235,14 @@ export function CalendarEventItem({
   className,
 }: CalendarEventItemProps) {
   const { event, segmentPosition = "full" } = positionedEvent;
-  const color = event.color ?? "blue";
+  const { calendars, dayStartHour, dayEndHour, hourCycle, locale } =
+    useCalendarConfig();
+  const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
   const endIsPast = useIsPast(event.end);
   const eventIsPast = isPastProp ?? endIsPast;
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
-  const { dayStartHour, dayEndHour, hourCycle, locale } = useCalendarConfig();
   const isDayView = view === "day";
 
   /** Ref to the event button element, used to measure its viewport rect. */
@@ -792,10 +798,10 @@ export function AllDayEventItem({
   dragVariant,
   isResizing = false,
 }: AllDayEventItemProps) {
-  const color = event.color ?? "blue";
+  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
-  const { hourCycle, locale } = useCalendarConfig();
   const isDayView = view === "day";
   // `false` on the server and during hydration, so the markup matches
   const endIsPast = useIsPast(event.end);

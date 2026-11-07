@@ -49,13 +49,14 @@ Each event keeps the file's `UID` as its `id`. The preview uses that to replace 
 | `TRANSP`                         | `status`: `TRANSPARENT` is free, `OPAQUE` is busy                            |
 | `CLASS`                          | `visibility`: public, or private for `PRIVATE` and `CONFIDENTIAL`            |
 | `COLOR`                          | `color`, when it names one of the seven event colors                         |
-| `VALARM`                         | `reminders`, for alarms set a fixed time before the start (`TRIGGER:-PT15M`) |
+| `VALARM`                         | `reminders`, for alarms set a fixed time before the start. See **Reminders** |
 
 Dates and times follow RFC 5545:
 
 - **All-day events.** DATE values (`20260603`) become all-day events. iCalendar's end date is exclusive and the calendar's `end` is the last day, so an event from `20260603` to `20260604` becomes a one-day event on June 3.
 - **Times.** Times in UTC (`20260603T150000Z`), with a `TZID`, and floating times (no zone) all become `Date`s, shown in the viewer's time zone. A `TZID` can be an IANA name, as Google and Apple write it, or a zone the file defines in a `VTIMEZONE`, such as Outlook's `Pacific Standard Time`. Floating times are read in the viewer's zone.
 - **Text.** Folded lines are joined and escaped commas, semicolons and line breaks are restored.
+- **Reminders.** A `VALARM` set a fixed time before the start (`TRIGGER:-PT15M`) becomes a reminder in its largest whole unit, and `-P1W` in weeks. On an all-day event, an alarm that isn't a whole number of days is a day and a time of day: Apple's `-PT15H` is 1 day before at 9 AM. Alarms after the start, relative to the end or at a fixed date are skipped.
 
 <Callout title="Recurring events aren't expanded">
 
@@ -83,7 +84,7 @@ function downloadIcs(events: DetailedCalendarEvent[]) {
 }
 ```
 
-Timed events are written in UTC and all-day events as dates, with the exclusive end iCalendar expects. `recurrenceRule` is written as an `RRULE`, its end date as an `UNTIL` at the end of that day in the event's time zone. Without one, `recurrence` is written only when it holds a rule (`FREQ=...`), so a display string such as "Every weekday" is left out. Long lines are folded at 75 octets and lines end with CRLF, so Google Calendar, Apple Calendar and Outlook all import the file.
+Timed events are written in UTC and all-day events as dates, with the exclusive end iCalendar expects. `recurrenceRule` is written as an `RRULE`, its end date as an `UNTIL` at the end of that day in the event's time zone. Without one, `recurrence` is written only when it holds a rule (`FREQ=...`), so a display string such as "Every weekday" is left out. Each reminder becomes a `VALARM` with a trigger before the start: `-PT10M`, `-PT2H`, `-P1D`, and weeks as `-P1W`. An all-day reminder with a `time` is written in minutes from the event's midnight start: 1 day before at 9 AM is `-PT900M`, and on the day at 9 AM is `PT540M`. `parseIcs()` reads each one back the same. Long lines are folded at 75 octets and lines end with CRLF, so Google Calendar, Apple Calendar and Outlook all import the file.
 
 ## Sync with Google Calendar
 

@@ -61,6 +61,7 @@ export type {
   PointerGestureStart,
   VisibleRange,
   CalendarInfo,
+  CalendarGroup,
   CalendarConfig,
   EventContentPlacement,
   EventContentProps,

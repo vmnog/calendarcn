@@ -5,7 +5,7 @@ import { useIsPast } from "@/hooks/use-now";
 import { isPrimaryPress } from "@/hooks/use-pointer-gesture";
 import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
 import { EVENT_FOCUS_RING_CLASS } from "./calendar-event-item";
-import { getEventLabel } from "@/lib/event-utils";
+import { getEventLabel, resolveEventColor } from "@/lib/event-utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 import type { EventDetailsTriggerProps } from "./week-view-types";
 
@@ -109,11 +109,11 @@ export function MonthViewEventBar({
   onResizePointerDown,
   className,
 }: MonthViewEventBarProps) {
-  const color = event.color ?? "blue";
+  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const color = resolveEventColor(event, calendars);
   const styles = barColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
   const eventIsPast = useIsPast(event.end);
-  const { hourCycle, locale } = useCalendarConfig();
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();

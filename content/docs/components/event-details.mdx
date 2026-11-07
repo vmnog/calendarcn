@@ -86,6 +86,8 @@ Outside a provider, `findSeriesOccurrence(events, event, "next")` (from `@/lib/r
 - Add a link from "Add links and attachments": paste or type an address and press <Kbd>Enter</Kbd>. A bare domain like `example.com` gets `https://`, and text that isn't a link is dropped. Hover a link, or <Kbd>Tab</Kbd> onto it, to see its address with a copy button.
 - Attach a file from the same menu. The panel keeps its name, size and type with a `blob:` URL; nothing is uploaded.
 - Edit the description in place: the event takes the text when you leave it, and <Kbd>Esc</Kbd> restores it. Web addresses in it become links, and are also listed after the event's links.
+- Move the event to another of the provider's `calendars` (grouped by account) or give it its own color, set it busy or free and pick who can see it, from menus that open beside the panel. Hovering a choice previews it; <Kbd>Esc</Kbd> closes the menu and keeps the old value.
+- Add reminders from presets, or type a number to get it in minutes, hours, days or weeks ("2h", "10 mins"), up to 4 weeks before. Reminders stay sorted, and one that fires with another ("60min" and "1hour") isn't added twice. Adding one closes the list, and typing opens it again. Hover a reminder to remove it.
 - Right-click an event on the calendar to change its color or calendar, or to cut, copy or duplicate it.
 
 ## Custom details
@@ -240,12 +242,13 @@ Passed to `renderEventDetails` on `CalendarProvider`.
       name: "calendarId",
       type: "string",
       description:
-        "Calendar the event belongs to, an `id` from the provider's `calendars`.",
+        "Calendar the event belongs to, an `id` from the provider's `calendars`. Without its own `color`, the event is drawn in this calendar's.",
     },
     {
       name: "calendarEmail",
       type: "string",
-      description: "Account email shown beside the calendar.",
+      description:
+        "Account email shown when `calendarId` isn't one of the provider's `calendars`. Moving the event sets it to the new calendar's `email`.",
     },
     { name: "description", type: "string", description: "Free-text notes." },
     { name: "location", type: "string", description: "Where it happens." },
@@ -310,9 +313,9 @@ Passed to `renderEventDetails` on `CalendarProvider`.
     },
     {
       name: "reminders",
-      type: '{ amount: number; unit: "minutes" | "hours" | "days"; time?: { hours: number; minutes: number } }[]',
+      type: '{ amount: number; unit: "minutes" | "hours" | "days" | "weeks"; time?: { hours: number; minutes: number } }[]',
       description:
-        "Reminders before the event. `time` is the time of day for all-day events.",
+        'Reminders before the event. `time` is the time of day for all-day events ("1 day before at 9 AM").',
     },
     { name: "status", type: '"busy" | "free"', description: "Busy or free." },
     {

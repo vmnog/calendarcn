@@ -7,6 +7,7 @@ import type {
   EventColor,
   EventReminder,
 } from "@/components/calendar-types";
+import { getReminderMinutes } from "@/lib/event-utils";
 
 /**
  * Longest content line allowed by RFC 5545, in octets, excluding the line
@@ -37,6 +38,12 @@ const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 /** Seconds in a day and an hour, for duration and reminder math */
 const SECONDS_PER_DAY = 86_400;
 const SECONDS_PER_HOUR = 3_600;
+
+/** Minutes in a day, for an all-day reminder's time of day */
+const MINUTES_PER_DAY = 1_440;
+
+/** `-P2W`, a reminder trigger written in weeks */
+const WEEKS_TRIGGER_PATTERN = /^-P(\d+)W$/;
 
 /** `YYYYMMDD`, a DATE value */
 const DATE_PATTERN = /^(\d{4})(\d{2})(\d{2})$/;
@@ -384,7 +391,7 @@ function toCalendarEvent(
   if (visibility) event.visibility = visibility;
 
   const reminders = findComponents(vevent, "VALARM")
-    .map(parseReminder)
+    .map((valarm) => parseReminder(valarm, isAllDay))
     .filter((reminder) => reminder !== null);
   if (reminders.length > 0) event.reminders = reminders;
 
@@ -561,17 +568,30 @@ function parseVisibility(
 
 /**
  * A VALARM that fires a set time before the event starts (`TRIGGER:-PT15M`),
- * as a reminder in the largest whole unit. Alarms relative to the end, at an
- * absolute time or after the start are skipped.
+ * as a reminder in the largest whole unit, or in weeks when written so
+ * (`-P1W`). On an all-day event, a trigger that isn't a whole number of days
+ * fires at a time of day: `-PT900M` (Apple's `-PT15H`) is "1 day before at
+ * 9 AM", `PT540M` "on the day at 9 AM". Alarms relative to the end, at an
+ * absolute time or after the start (after the first day, for an all-day
+ * event) are skipped.
  */
-function parseReminder(valarm: IcsComponent): EventReminder | null {
+function parseReminder(
+  valarm: IcsComponent,
+  isAllDay: boolean,
+): EventReminder | null {
   const trigger = getProperty(valarm, "TRIGGER");
   if (!trigger || trigger.params.RELATED?.toUpperCase() === "END") return null;
-  const duration = parseDuration(trigger.value.trim());
+  const value = trigger.value.trim();
+  const duration = parseDuration(value);
   if (!duration) return null;
 
   const totalSeconds = duration.days * SECONDS_PER_DAY + duration.seconds;
+  if (isAllDay && totalSeconds % SECONDS_PER_DAY !== 0) {
+    return parseAllDayReminder(duration.sign * totalSeconds);
+  }
   if (duration.sign > 0 && totalSeconds > 0) return null;
+  const weeks = WEEKS_TRIGGER_PATTERN.exec(value);
+  if (weeks) return { amount: Number(weeks[1]), unit: "weeks" };
   if (totalSeconds % SECONDS_PER_DAY === 0 && totalSeconds > 0) {
     return { amount: totalSeconds / SECONDS_PER_DAY, unit: "days" };
   }
@@ -579,6 +599,23 @@ function parseReminder(valarm: IcsComponent): EventReminder | null {
     return { amount: totalSeconds / SECONDS_PER_HOUR, unit: "hours" };
   }
   return { amount: Math.round(totalSeconds / 60), unit: "minutes" };
+}
+
+/**
+ * An all-day event's reminder at a time of day, from its offset in seconds
+ * from the event's midnight start (negative before it): the days before the
+ * event, and the time on that day. Null once it fires after the first day.
+ */
+function parseAllDayReminder(offsetSeconds: number): EventReminder | null {
+  const offsetMinutes = Math.round(offsetSeconds / 60);
+  const daysBefore = Math.max(0, Math.ceil(-offsetMinutes / MINUTES_PER_DAY));
+  const minuteOfDay = offsetMinutes + daysBefore * MINUTES_PER_DAY;
+  if (minuteOfDay >= MINUTES_PER_DAY) return null;
+  return {
+    amount: daysBefore,
+    unit: "days",
+    time: { hours: Math.floor(minuteOfDay / 60), minutes: minuteOfDay % 60 },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -869,9 +906,18 @@ function eventToLines(
   return lines;
 }
 
-/** `-PT15M`, `-PT2H` or `-P1D` */
+/**
+ * `-PT15M`, `-PT2H`, `-P1D` or `-P1W`. An all-day reminder with a time of
+ * day counts in minutes from the event's midnight start: "1 day before at
+ * 9 AM" is `-PT900M`, "on the day at 9 AM" is `PT540M`.
+ */
 function formatReminderTrigger(reminder: EventReminder): string {
+  if (reminder.time) {
+    const minutes = Math.round(getReminderMinutes(reminder));
+    return `${minutes < 0 ? "" : "-"}PT${Math.abs(minutes)}M`;
+  }
   const amount = Math.max(0, Math.round(reminder.amount));
+  if (reminder.unit === "weeks") return `-P${amount}W`;
   if (reminder.unit === "days") return `-P${amount}D`;
   if (reminder.unit === "hours") return `-PT${amount}H`;
   return `-PT${amount}M`;

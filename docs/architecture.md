@@ -102,7 +102,7 @@ Renders the timed-event day columns inside TimeGrid's horizontally scrolling con
 
 Renders a single event segment. Handles:
 
-- Color styling via `eventColorStyles[color]` map
+- Color styling via the `eventColorStyles[color]` map, where `color` comes from `resolveEventColor(event, calendars)`: the event's own color, then its calendar's, then blue
 - Selection state (border highlight, elevated z-index)
 - Multi-day segment rendering (rounded corners per segment position)
 - Drag handle (pointerdown) and resize handles (top/bottom edges)

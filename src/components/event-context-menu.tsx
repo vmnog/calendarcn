@@ -12,7 +12,12 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { EVENT_COLORS } from "@/lib/event-utils";
+import {
+  EVENT_COLORS,
+  groupCalendarsByEmail,
+  moveEventToCalendar,
+  resolveEventColor,
+} from "@/lib/event-utils";
 import { useCalendarConfig } from "./calendar-provider";
 import type {
   CalendarInfo,
@@ -20,7 +25,11 @@ import type {
   EventColor,
 } from "./week-view-types";
 
-const colorSwatchClass: Record<EventColor, string> = {
+/**
+ * Swatch of an event or calendar color in a picker (this menu, the details
+ * panel's calendar picker): the color events are drawn with
+ */
+export const EVENT_COLOR_SWATCH_CLASS: Record<EventColor, string> = {
   red: "bg-event-red-border",
   orange: "bg-event-orange-border",
   yellow: "bg-event-yellow-border",
@@ -30,29 +39,8 @@ const colorSwatchClass: Record<EventColor, string> = {
   gray: "bg-event-gray-border",
 };
 
-/** Calendars that share an account, listed under its email */
-interface CalendarGroup {
-  /** Account email shown above the group; absent for calendars without one */
-  email?: string;
-  calendars: CalendarInfo[];
-}
-
-/** Groups calendars by account email, keeping the order they were given in */
-function groupCalendarsByEmail(calendars: CalendarInfo[]): CalendarGroup[] {
-  const groups: CalendarGroup[] = [];
-  for (const calendar of calendars) {
-    const group = groups.find((g) => g.email === calendar.email);
-    if (group) {
-      group.calendars.push(calendar);
-      continue;
-    }
-    groups.push({ email: calendar.email, calendars: [calendar] });
-  }
-  return groups;
-}
-
 interface EventContextMenuProps {
-  /** The right-clicked event; "Block on calendar" sets its `calendarId` */
+  /** The right-clicked event; "Block on calendar" moves it to that calendar */
   event: DetailedCalendarEvent;
   position: { x: number; y: number };
   onClose: () => void;
@@ -157,7 +145,7 @@ export function EventContextMenu({
   const [adjustedPos, setAdjustedPos] = React.useState(position);
   const [ready, setReady] = React.useState(false);
   const { calendars } = useCalendarConfig();
-  const currentColor = event.color ?? "blue";
+  const currentColor = resolveEventColor(event, calendars);
   const calendarGroups = React.useMemo(
     () => groupCalendarsByEmail(calendars),
     [calendars],
@@ -209,8 +197,10 @@ export function EventContextMenu({
     onClose();
   }
 
-  function handleCalendarSelect(calendarId: string) {
-    onEventChange?.({ ...event, calendarId });
+  function handleCalendarSelect(calendar: CalendarInfo) {
+    if (calendar.id !== event.calendarId) {
+      onEventChange?.(moveEventToCalendar(event, calendar, calendars));
+    }
     onClose();
   }
 
@@ -232,7 +222,7 @@ export function EventContextMenu({
             type="button"
             className={cn(
               "relative flex size-3 items-center justify-center rounded-xs",
-              colorSwatchClass[color],
+              EVENT_COLOR_SWATCH_CLASS[color],
             )}
             onClick={() => handleColorSelect(color)}
           >
@@ -263,12 +253,12 @@ export function EventContextMenu({
                 {group.calendars.map((cal) => (
                   <MenuItem
                     key={cal.id}
-                    onSelect={() => handleCalendarSelect(cal.id)}
+                    onSelect={() => handleCalendarSelect(cal)}
                   >
                     <div
                       className={cn(
                         "size-3 rounded-xs shrink-0",
-                        colorSwatchClass[cal.color],
+                        EVENT_COLOR_SWATCH_CLASS[cal.color],
                       )}
                     />
                     {cal.name}

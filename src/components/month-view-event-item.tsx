@@ -5,7 +5,11 @@ import { useIsPast } from "@/hooks/use-now";
 import { isPrimaryPress } from "@/hooks/use-pointer-gesture";
 import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
 import { EVENT_FOCUS_RING_CLASS } from "./calendar-event-item";
-import { formatTime, getEventLabel } from "@/lib/event-utils";
+import {
+  formatTime,
+  getEventLabel,
+  resolveEventColor,
+} from "@/lib/event-utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 import type { EventDetailsTriggerProps } from "./week-view-types";
 
@@ -81,13 +85,13 @@ export function MonthViewEventItem({
   onDragPointerDown,
   className,
 }: MonthViewEventItemProps) {
-  const color = event.color ?? "blue";
+  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const color = resolveEventColor(event, calendars);
   const borderColor = borderColorStyles[color];
   const timeColor = timeColorStyles[color];
   const titleColor = titleColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
   const eventIsPast = useIsPast(event.end);
-  const { hourCycle, locale } = useCalendarConfig();
   // "9 AM" / "2:30 PM", or "09:00" / "14:30" on a 24-hour clock
   const startTimeLabel = formatTime(event.start, hourCycle, locale);
 

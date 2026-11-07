@@ -266,6 +266,65 @@ test("an occurrence the series arrows add is reported to onEventCreate", async (
   await expect(created).toHaveText("standup-2026-06-11");
 });
 
+test("the calendar, availability and reminder menus edit the event", async ({
+  page,
+}) => {
+  await calendarEvent(page, "Design Review").click();
+  const details = eventDetails(page);
+  await settle(details);
+
+  // Busy/free: Escape closes the menu and leaves the details open
+  const availability = details.getByRole("button", { name: /^Availability:/ });
+  await availability.click();
+  const busyMenu = page.getByRole("menu", { name: "Availability" });
+  await expect(
+    busyMenu.getByRole("menuitemradio", { name: "Busy" }),
+  ).toBeChecked();
+  // Base UI moves focus into the menu once its open animation ends
+  await expect(busyMenu).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(busyMenu).toHaveCount(0);
+  await expect(details).toBeVisible();
+  await availability.click();
+  await busyMenu.getByRole("menuitemradio", { name: "Free" }).click();
+  await expect(availability).toHaveAccessibleName("Availability: Free");
+
+  // Visibility
+  const visibility = details.getByRole("button", { name: /^Visibility:/ });
+  await visibility.click();
+  await page
+    .getByRole("menu", { name: "Visibility" })
+    .getByRole("menuitemradio", { name: "Public" })
+    .click();
+  await expect(visibility).toHaveAccessibleName("Visibility: Public");
+
+  // The event's own color, from the calendar menu (no calendars configured)
+  await details.getByRole("button", { name: /^Calendar:/ }).click();
+  await page
+    .getByRole("group", { name: "Event color" })
+    .getByRole("menuitemradio", { name: "Purple" })
+    .click();
+  await details.getByRole("button", { name: /^Calendar:/ }).click();
+  await expect(
+    page
+      .getByRole("group", { name: "Event color" })
+      .getByRole("menuitemradio", { name: "Purple" }),
+  ).toBeChecked();
+  await expect(page.getByRole("menu", { name: "Calendar" })).toBeFocused();
+  await page.keyboard.press("Escape");
+
+  // A reminder from the presets
+  await details.getByRole("combobox", { name: "Add reminder" }).click();
+  await page
+    .getByRole("listbox", { name: "Reminders" })
+    .getByRole("option", { name: /^10\s?min before$/ })
+    .click();
+  await expect(details.getByTestId("event-reminder")).toHaveText(
+    /^10\s?min before$/,
+  );
+  await expect(details).toBeVisible();
+});
+
 test("the details open in month and agenda views", async ({ page }) => {
   const details = eventDetails(page);
 
