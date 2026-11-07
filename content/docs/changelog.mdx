@@ -13,6 +13,7 @@ Live in the registry, but not in a tagged release yet.
 
 ### November 7, 2026
 
+- **Added** `conference-providers` and `sample-data`, two new items: placeholder Google Meet, Zoom and Microsoft Teams to pass to `conferenceProviders`, and the live demo's events, calendars, contacts, rooms and places. See [Sample Data](/docs/sample-data). [#58](https://github.com/vmnog/calendarcn/pull/58)
 - **Fixed** `event-details`: in a narrow details panel, the time row shortens the duration instead of cutting off the end time. [#56](https://github.com/vmnog/calendarcn/pull/56)
 - **Added** `event-details`, `calendar-core`, `month-view`, `agenda-view`, `ics`: a calendar picker, busy/free, visibility and reminders in the details panel. Calendars take `defaultReminders`, and `resolveEventColor`, `moveEventToCalendar` and `addReminder` are new helpers. `.ics` export now writes "1 week before" reminders correctly. [#51](https://github.com/vmnog/calendarcn/pull/51)
   - **Breaking:** an event without a `color` takes its calendar's color, and falls back to blue only when the calendar has none. Set `color` on an event to keep it blue.
