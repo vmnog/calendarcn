@@ -8,3 +8,5 @@ pnpm-lock.yaml
 public/r
 # Stock shadcn/ui scaffold, kept as generated (see e2e/base-ui/)
 e2e/base-ui/fixture
+# Skills installed by `npx skills add`, kept as published (see skills-lock.json)
+.agents
