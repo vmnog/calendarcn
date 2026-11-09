@@ -8,6 +8,8 @@
     "week-view",
     "month-view",
     "agenda-view",
-    "event-details"
+    "event-details",
+    "calendar-header",
+    "command-menu"
   ]
 }

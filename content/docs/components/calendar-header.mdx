@@ -1,0 +1,190 @@
+---
+title: Calendar Header
+description: The live demo's header, with the month and week, the view switcher, today, previous and next, and the panel toggles.
+---
+
+<ComponentPreview name="calendar-header-demo" />
+
+`CalendarHeader` is the bar at the top of the [live demo](/): a sidebar toggle, the month and year with the period on screen ("Week 23"), then the view switcher, today, previous and next, and a context panel toggle. It reads the calendar from [`useCalendar()`](/docs/components/calendar-core#usecalendar), so it goes inside `CalendarProvider`. The panels belong to your app, so their state comes in as props, and each toggle shows only when you pass its callback.
+
+## Installation
+
+<InstallTabs item="calendar-header" />
+
+## Usage
+
+```tsx
+import { CalendarHeader } from "@/components/calendar-header";
+import { CalendarProvider } from "@/components/calendar-provider";
+import { WeekView } from "@/components/week-view";
+
+export function Schedule() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <div className="flex h-[600px] flex-col">
+        <CalendarHeader />
+        <div className="min-h-0 flex-1">
+          <WeekView />
+        </div>
+      </div>
+    </CalendarProvider>
+  );
+}
+```
+
+On its own it shows the title, the view switcher, today, previous and next. The view switcher sets the provider's view, so render the view the provider is on below it, as the preview does: [`TimeGrid`](/docs/components/time-grid) for day and week, [`MonthView`](/docs/components/month-view) and [`AgendaView`](/docs/components/agenda-view).
+
+### Panels
+
+Pass a panel's state and toggle to get its button, with a tooltip that shows the panel's shortcut:
+
+```tsx
+const [sidebarOpen, setSidebarOpen] = React.useState(true);
+const [contextPanelOpen, setContextPanelOpen] = React.useState(false);
+
+<CalendarHeader
+  sidebarOpen={sidebarOpen}
+  onToggleSidebar={() => setSidebarOpen((open) => !open)}
+  contextPanelOpen={contextPanelOpen}
+  onToggleContextPanel={() => setContextPanelOpen((open) => !open)}
+>
+  <Avatar className="size-7">
+    <AvatarImage src={user.image} alt={user.name} />
+    <AvatarFallback>{user.initials}</AvatarFallback>
+  </Avatar>
+</CalendarHeader>;
+```
+
+- The sidebar toggle sits before the title. Its tooltip reads "Open sidebar" or "Close sidebar", by `sidebarOpen`.
+- The context panel toggle sits at the end, and hides while the panel is open, as in Notion Calendar: close the panel from the panel itself.
+- Children show before the view switcher, on wide headers only. The demo puts the signed-in user's avatar there.
+
+### Keyboard shortcuts
+
+The tooltips advertise <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> for the sidebar and <Kbd>/</Kbd> for the context panel. Turn those keys on, with the calendar's own, by passing the same toggles to [`useCalendarShortcuts()`](/docs/keyboard-shortcuts#app-shortcuts) inside the provider:
+
+```tsx
+import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";
+
+useCalendarShortcuts({
+  onToggleSidebar: toggleSidebar,
+  onToggleContextPanel: toggleContextPanel,
+});
+```
+
+### Narrow screens
+
+The header is a container (`@container/header`), so it follows its own width rather than the screen's:
+
+| Header width | Shows                                                       |
+| ------------ | ----------------------------------------------------------- |
+| Under 20rem  | The short month ("Sep"), today, previous and next           |
+| 20rem        | The view switcher                                           |
+| 28rem        | The full month name, and a divider after the sidebar toggle |
+| 36rem        | The period on screen, the children, and a larger title      |
+
+## Build your own
+
+The header is made of parts you can use in a header of your own. Each reads `useCalendar()`. The [Calendar](/docs/components/calendar) block's toolbar is built from them too.
+
+```tsx
+import {
+  CalendarNavigation,
+  CalendarPeriodLabel,
+  CalendarViewSwitcher,
+} from "@/components/calendar-header";
+
+function Toolbar() {
+  const { monthName, year } = useCalendar();
+
+  return (
+    <header className="@container/header flex h-12 items-center gap-2 border-b px-3">
+      <h2 className="min-w-0 flex-1 truncate font-semibold">
+        {monthName} {year}
+        <CalendarPeriodLabel className="ml-2 text-xs font-normal text-muted-foreground" />
+      </h2>
+      <CalendarViewSwitcher />
+      <CalendarNavigation buttonClassName="size-8" />
+    </header>
+  );
+}
+```
+
+## API Reference
+
+### CalendarHeader
+
+<PropsTable
+  rows={[
+    {
+      name: "sidebarOpen",
+      type: "boolean",
+      default: "false",
+      description:
+        'Whether the sidebar is open. Its toggle\'s tooltip reads "Close sidebar" when it is, "Open sidebar" otherwise.',
+    },
+    {
+      name: "onToggleSidebar",
+      type: "() => void",
+      description:
+        "Opens or closes the sidebar. The sidebar toggle shows only when this is set.",
+    },
+    {
+      name: "contextPanelOpen",
+      type: "boolean",
+      default: "false",
+      description:
+        "Whether the context panel is open. Its toggle hides while it is.",
+    },
+    {
+      name: "onToggleContextPanel",
+      type: "() => void",
+      description:
+        "Opens or closes the context panel. The toggle shows only when this is set.",
+    },
+    {
+      name: "children",
+      type: "React.ReactNode",
+      description:
+        "Shown before the view switcher on headers 36rem and wider, e.g. the signed-in user's avatar.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the `<header>` element.",
+    },
+  ]}
+/>
+
+### CalendarNavigation
+
+Today, then previous and next. The arrows are labelled with the period they move by: a day, a week, a month or the agenda's 30 days.
+
+<PropsTable
+  rows={[
+    {
+      name: "buttonClassName",
+      type: "string",
+      description:
+        "Classes for the previous and next buttons, e.g. their size.",
+    },
+  ]}
+/>
+
+### CalendarPeriodLabel
+
+The period on screen: the day in day view ("Thursday, Jun 4"), the week number in week view ("Week 23") and the dates in the agenda ("Jun 4 – Jul 3"). It's empty in month view, where the title says it all. Day and month names follow the provider's `locale`.
+
+<PropsTable
+  rows={[
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the `<span>`.",
+    },
+  ]}
+/>
+
+### CalendarViewSwitcher
+
+The view dropdown, wired to the provider: day, week, month or agenda, 2 to 9 days, and the weekend, declined events and week number settings. It takes no props. `ViewDropdown` in `components/view-dropdown.tsx` is the same menu driven by props instead of `useCalendar()`.

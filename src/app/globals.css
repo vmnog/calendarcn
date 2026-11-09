@@ -285,3 +285,9 @@ html.dark,
     animation: none;
   }
 }
+
+/* CommandMenu: dims the page less behind it in dark mode. Your dialog's
+   overlay is the menu's preceding sibling, found by its data-command-menu */
+.dark [data-slot="dialog-overlay"]:has(~ [data-command-menu]) {
+  background-color: rgb(0 0 0 / 0.3);
+}
