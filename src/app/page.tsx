@@ -20,14 +20,17 @@ import { AgendaView } from "@/components/agenda-view";
 import { CalendarHeader } from "@/components/calendar-header";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { CommandMenu } from "@/components/command-menu";
-import { CONTEXT_PANEL_WIDTH, SidebarLeft } from "@/components/sidebar-left";
+import { CalendarSidebar } from "@/components/calendar-sidebar";
+import {
+  CONTEXT_PANEL_WIDTH,
+  DetailsSidebar,
+} from "@/components/details-sidebar";
 import type {
   DetailedCalendarEvent,
   EventColor,
   NewEventRange,
   ViewSettings,
 } from "@/components/week-view-types";
-import { SidebarRight } from "@/components/sidebar-right";
 import { MonthView } from "@/components/month-view";
 import { TimeGrid } from "@/components/time-grid";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,6 +40,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { DEMO_CONFERENCE_PROVIDERS } from "./demo-conference-providers";
+import { DemoSidebarLinks } from "./demo-sidebar-links";
 
 /** Title given to an event created by clicking an empty time slot */
 const NEW_EVENT_TITLE = "New event";
@@ -160,21 +164,8 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
     openMobile: contextPanelOpenMobile,
     isMobile,
   } = useSidebar();
-  const {
-    view,
-    currentDate,
-    weekStartsOn,
-    events,
-    numberOfDays,
-    visibleDays,
-    displayMonth,
-    selectedEvent,
-    goToDate,
-    previousInSeries,
-    nextInSeries,
-    showSeriesOccurrence,
-    updateEvent,
-  } = useCalendar<DetailedCalendarEvent>();
+  const { view, weekStartsOn, events, numberOfDays, goToDate } =
+    useCalendar<DetailedCalendarEvent>();
   // shadcn tracks the panel's phone state separately; read whichever is active
   const rightSidebarOpen = isMobile ? contextPanelOpenMobile : contextPanelOpen;
   /** Inline calendar sidebar state (tablet and desktop) */
@@ -208,15 +199,6 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
     }
     setLeftSidebarOpen((prev) => !prev);
   }, [isMobile]);
-
-  /** Mini calendar day pick: go to its period, and get the overlay out of the way on phones */
-  const handleCalendarDateSelect = React.useCallback(
-    (date: Date) => {
-      goToDate(getPeriodStart(date, view, weekStartsOn, numberOfDays));
-      setLeftOverlayOpen(false);
-    },
-    [goToDate, view, weekStartsOn, numberOfDays],
-  );
 
   /** Imports the picked .ics file and shows the period of its first event */
   const handleIcsFileChange = React.useCallback(
@@ -299,15 +281,11 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
         className="hidden"
         onChange={handleIcsFileChange}
       />
-      <SidebarRight
+      <CalendarSidebar
         open={leftSidebarVisible}
         onOpenChange={setLeftOverlayOpen}
         overlay={isMobile}
-        onDateSelect={handleCalendarDateSelect}
-        currentDate={
-          view === "month" && displayMonth ? displayMonth : currentDate
-        }
-        visibleDays={view === "month" || view === "agenda" ? [] : visibleDays}
+        footerActions={<DemoSidebarLinks />}
       />
       <SidebarInset className="flex flex-col overflow-hidden">
         <CalendarHeader
@@ -349,20 +327,7 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
           )}
         </div>
       </SidebarInset>
-      <SidebarLeft
-        overlay={!isWideLayout}
-        events={events}
-        selectedEvent={selectedEvent}
-        onEventChange={updateEvent}
-        onPrevWeek={
-          previousInSeries
-            ? () => showSeriesOccurrence(previousInSeries)
-            : undefined
-        }
-        onNextWeek={
-          nextInSeries ? () => showSeriesOccurrence(nextInSeries) : undefined
-        }
-      />
+      <DetailsSidebar overlay={!isWideLayout} />
     </>
   );
 }

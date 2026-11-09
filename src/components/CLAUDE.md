@@ -11,8 +11,9 @@ All React components for CalendarCN. Split into:
 - `month-view*.tsx` — `MonthView` and its parts
 - `agenda-view.tsx` — `AgendaView`, a list of the next `AGENDA_DAYS` days' events grouped by day
 - `calendar-event-*` / `event-*` — event interactions
-- `sidebar-*` — left and right sidebars
-- `nav-*` — navigation menus
+- `calendar-sidebar.tsx` — the left sidebar (`CalendarSidebar`): `mini-calendar.tsx`, `calendar-list.tsx`, `theme-toggle.tsx`
+- `details-sidebar.tsx` — the right context panel (`DetailsSidebar`): details, search, shortcuts
+- `sidebar-overlay.tsx` — both sidebars as a sheet on narrow screens, and `CALENDAR_SIDEBAR_COLORS_CLASS`, which maps `--sidebar-*` to the `--calendar-sidebar-*` tokens
 
 ## Gotchas
 

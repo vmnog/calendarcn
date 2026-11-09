@@ -10,6 +10,12 @@
     "agenda-view",
     "event-details",
     "calendar-header",
-    "command-menu"
+    "command-menu",
+    "calendar-sidebar",
+    "mini-calendar",
+    "calendar-list",
+    "theme-toggle",
+    "details-sidebar",
+    "sidebar-overlay"
   ]
 }

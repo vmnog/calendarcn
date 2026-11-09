@@ -1,0 +1,128 @@
+---
+title: Calendar List
+description: The calendars of the sidebar, grouped by account, each with a show and hide button.
+---
+
+<ComponentPreview name="calendar-list-demo" height={460} />
+
+Calendar List is the list of calendars in the [Calendar Sidebar](/docs/components/calendar-sidebar). Calendars are grouped under their account's email, each account collapsible, each calendar with its color. Hover a calendar to show its eye button and hide it; a subscribed calendar, like a holidays feed, gets a feed icon.
+
+## Installation
+
+<InstallTabs item="calendar-list" />
+
+## Usage
+
+The list lists the `calendars` of the surrounding [`CalendarProvider`](/docs/components/calendar-core), the same ones the event details' calendar picker offers. It's built from shadcn/ui's sidebar parts, so it needs a `SidebarProvider` around it.
+
+```tsx
+import { CalendarList } from "@/components/calendar-list";
+import type { CalendarInfo } from "@/components/calendar-types";
+
+const calendars: CalendarInfo[] = [
+  {
+    id: "personal",
+    name: "Personal",
+    color: "purple",
+    email: "you@example.com",
+  },
+  {
+    id: "holidays",
+    name: "Holidays",
+    color: "green",
+    email: "you@example.com",
+    isSubscribed: true,
+  },
+  { id: "work", name: "Work", color: "blue", email: "you@work.example.com" },
+];
+
+<CalendarProvider defaultEvents={events} calendars={calendars}>
+  <SidebarProvider>
+    <CalendarList />
+  </SidebarProvider>
+</CalendarProvider>;
+```
+
+Outside a provider, pass `calendars` yourself. Hiding a calendar only dims its row: read the hidden ids with `onHiddenCalendarIdsChange` to filter your events, or set them with `hiddenCalendarIds`.
+
+```tsx
+const [hidden, setHidden] = React.useState<string[]>([]);
+
+<CalendarList
+  calendars={calendars}
+  hiddenCalendarIds={hidden}
+  onHiddenCalendarIdsChange={setHidden}
+/>;
+```
+
+## API Reference
+
+### CalendarList
+
+<PropsTable
+  rows={[
+    {
+      name: "calendars",
+      type: "CalendarInfo[]",
+      description:
+        "Calendars to list, grouped under their account `email`. Defaults to the `calendars` of the nearest `CalendarProvider`.",
+    },
+    {
+      name: "hiddenCalendarIds",
+      type: "string[]",
+      description: "Ids of the hidden calendars (controlled).",
+    },
+    {
+      name: "defaultHiddenCalendarIds",
+      type: "string[]",
+      default: "[]",
+      description: "Ids of the calendars hidden at first (uncontrolled).",
+    },
+    {
+      name: "onHiddenCalendarIdsChange",
+      type: "(hiddenCalendarIds: string[]) => void",
+      description:
+        "Called with the new hidden ids when a calendar is shown or hidden.",
+    },
+  ]}
+/>
+
+### CalendarInfo
+
+The list reads these fields of each calendar (from `@/components/calendar-types`):
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "id",
+      type: "string",
+      required: true,
+      description: "What `hiddenCalendarIds` holds.",
+    },
+    {
+      name: "name",
+      type: "string",
+      required: true,
+      description: "Shown in the row.",
+    },
+    {
+      name: "color",
+      type: "EventColor",
+      required: true,
+      description: "The row's swatch.",
+    },
+    {
+      name: "email",
+      type: "string",
+      description:
+        'Account the calendar is listed under. Calendars without one are listed under "Calendars".',
+    },
+    {
+      name: "isSubscribed",
+      type: "boolean",
+      description:
+        "A calendar followed rather than owned, like a holidays feed. Its swatch gets a feed icon.",
+    },
+  ]}
+/>

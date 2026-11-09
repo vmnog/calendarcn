@@ -51,7 +51,7 @@ export const ThemeToggle = React.forwardRef<
         variant="ghost"
         size="icon"
         {...props}
-        className={cn("size-7 text-sidebar-muted-foreground", className)}
+        className={cn("size-7 text-muted-foreground", className)}
       >
         <MonitorIcon className="size-4" />
         <span className="sr-only">Toggle theme</span>
@@ -65,7 +65,7 @@ export const ThemeToggle = React.forwardRef<
       variant="ghost"
       size="icon"
       {...props}
-      className={cn("size-7 text-sidebar-muted-foreground", className)}
+      className={cn("size-7 text-muted-foreground", className)}
       onClick={cycleTheme}
     >
       {getIcon()}

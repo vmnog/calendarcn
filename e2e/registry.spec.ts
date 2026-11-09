@@ -18,6 +18,13 @@ const ITEM_NAMES = [
   "sample-data",
   "calendar-header",
   "command-menu",
+  // The demo's sidebars
+  "sidebar-overlay",
+  "theme-toggle",
+  "mini-calendar",
+  "calendar-list",
+  "calendar-sidebar",
+  "details-sidebar",
 ];
 
 /** The parts of a built registry item the tests read */

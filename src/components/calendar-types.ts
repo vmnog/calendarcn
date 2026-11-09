@@ -652,6 +652,11 @@ export interface CalendarInfo {
   /** Account the calendar belongs to; calendars are grouped under it */
   email?: string;
   /**
+   * A calendar followed rather than owned, like a holidays feed. The calendar
+   * list marks it with a feed icon.
+   */
+  isSubscribed?: boolean;
+  /**
    * Reminders an event gets on this calendar. Only moving an event applies
    * them: one moved here that still has its previous calendar's defaults
    * takes these instead, and reminders edited by hand are kept. Creating an

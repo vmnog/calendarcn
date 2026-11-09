@@ -24,8 +24,9 @@ src/
 │   ├── event-*            # Context menu, detail panel, detail popover
 │   ├── event-detail-<section>.tsx # One file per details panel section (time, timezone, recurrence, participants…)
 │   ├── event-detail-parts.tsx # Details panel building blocks: rows, groups, class constants, menu helpers
-│   ├── sidebar-*          # Left/right sidebars
-│   ├── nav-*              # Navigation components
+│   ├── calendar-sidebar.tsx # Left sidebar: mini-calendar, calendar-list, theme toggle
+│   ├── details-sidebar.tsx  # Right context panel: details, search, shortcuts
+│   ├── sidebar-overlay.tsx  # Sidebars as a sheet on narrow screens; sidebar color tokens
 │   └── theme-*            # Dark mode provider & toggle
 ├── hooks/                # Custom hooks (drag, resize, all-day-resize, scroll)
 │   ├── use-inline-edit.ts # Inline text field: Enter commits, Escape restores
