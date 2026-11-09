@@ -715,6 +715,34 @@
           "type": "registry:component"
         }
       ]
+    },
+    {
+      "name": "calendar-app",
+      "type": "registry:block",
+      "title": "Calendar App",
+      "description": "The live demo as one block: both sidebars, the header, day, week, month and agenda views, the ⌘K menu, theme, .ics import and export, and keyboard shortcuts.",
+      "dependencies": ["next-themes"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "@calendarcn/time-grid",
+        "@calendarcn/month-view",
+        "@calendarcn/agenda-view",
+        "@calendarcn/calendar-header",
+        "@calendarcn/command-menu",
+        "@calendarcn/calendar-sidebar",
+        "@calendarcn/details-sidebar",
+        "@calendarcn/theme-toggle",
+        "@calendarcn/ics",
+        "@calendarcn/sample-data",
+        "@calendarcn/conference-providers",
+        "sidebar"
+      ],
+      "files": [
+        {
+          "path": "src/components/calendar-app.tsx",
+          "type": "registry:component"
+        }
+      ]
     }
   ]
 }

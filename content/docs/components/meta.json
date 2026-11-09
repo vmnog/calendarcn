@@ -2,6 +2,7 @@
   "title": "Components",
   "pages": [
     "calendar",
+    "calendar-app",
     "calendar-core",
     "time-grid",
     "day-view",

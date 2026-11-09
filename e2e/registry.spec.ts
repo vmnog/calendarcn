@@ -25,6 +25,8 @@ const ITEM_NAMES = [
   "calendar-list",
   "calendar-sidebar",
   "details-sidebar",
+  // The live demo as one block
+  "calendar-app",
 ];
 
 /** The parts of a built registry item the tests read */

@@ -38,6 +38,12 @@ Then add the full calendar, or only the pieces you need (`week-view`, `month-vie
 npx shadcn add @calendarcn/calendar
 ```
 
+Or the whole [live demo](https://calendarcn.xyz), sidebars and command menu included, as one block ([Calendar App](https://calendarcn.xyz/docs/components/calendar-app)):
+
+```bash
+npx shadcn add @calendarcn/calendar-app
+```
+
 CalendarCN works with the Radix and the Base UI versions of the shadcn/ui components. The [installation guide](https://calendarcn.xyz/docs/installation) covers setup and every item.
 
 ## Usage
