@@ -29,7 +29,7 @@ Components install to `src/components/ui/`. Don't edit these directly — custom
 
 1. Calendar keys go in `handleShortcut()` in `src/hooks/use-calendar-shortcuts.ts`. Keys for the parts around the calendar (command menu, panels, theme) go in `handleAppShortcut()`, behind an optional action of the hook (`onToggleCommandMenu` and the like), so an app without that part never claims the key
 2. Single keys return early on `isTypingTarget(e.target)`, so typing in an input never triggers them
-3. Wire a new app action in `src/app/page.tsx`, and show its key in `command-menu.tsx` or `calendar-header.tsx` if it has a command or button there
+3. Wire a new app action in `src/components/calendar-app.tsx` (the live demo's block), and show its key in `command-menu.tsx` or `calendar-header.tsx` if it has a command or button there
 4. Document it in `content/docs/keyboard-shortcuts.mdx`
 
 ### Modifying Event Types

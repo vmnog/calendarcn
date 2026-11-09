@@ -14,6 +14,7 @@ src/
 ├── components/
 │   ├── ui/               # shadcn/ui primitives (don't edit directly)
 │   ├── calendar-provider.tsx # CalendarProvider + useCalendar — state, navigation, view sync
+│   ├── calendar-app.tsx  # CalendarApp block — the live demo as one component
 │   ├── time-grid.tsx     # TimeGrid — hourly grid behind DayView and WeekView
 │   ├── day-view.tsx      # DayView = TimeGrid view="day"
 │   ├── week-view.tsx     # WeekView = TimeGrid view="week"
@@ -47,7 +48,8 @@ Key files:
 - `src/components/week-view-types.ts` — **canonical type source** for all shared types
 - `src/components/calendar-provider.tsx` — owns events, view, date and selection; adopts the mounted view's type (rule in its JSDoc)
 - `src/components/time-grid.tsx` — day/week grid orchestration (days, hours, scroll buffer, drag/resize hooks)
-- `src/app/page.tsx` — demo: renders `<TimeGrid view={view} />` / `MonthView` plus sidebars, header, command menu
+- `src/components/calendar-app.tsx` — `CalendarApp` block: the whole live demo (sidebars, header, views, command menu, theme, .ics, shortcuts)
+- `src/app/page.tsx` — demo: renders `<CalendarApp />` with the sample data, conferencing logos, avatar and links
 - `src/lib/event-utils.ts` — positioning math (column assignment, pixel calculations)
 - `src/hooks/use-event-drag.ts` — drag interaction (snapping, cross-day, auto-scroll)
 - `src/hooks/use-event-resize.ts` — resize interaction (anchor model, edge flipping)

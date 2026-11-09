@@ -1,0 +1,270 @@
+---
+title: Calendar App
+description: The live demo as one block, with both sidebars, the header, every view, the command menu, theme switching and .ics files.
+---
+
+<LiveDemoPreview />
+
+`CalendarApp` is the [live demo](/), whole: the [Calendar Sidebar](/docs/components/calendar-sidebar) on the left, the [Calendar Header](/docs/components/calendar-header) over the day, week, month and agenda views, the [Details Sidebar](/docs/components/details-sidebar) on the right, the [Command Menu](/docs/components/command-menu), theme switching, .ics import and export, and the keyboard shortcuts. The live demo renders this block, so what you install is what you see there.
+
+It takes every [`CalendarProvider`](/docs/components/calendar-core#calendarprovider) prop, so your events, calendars, contacts, rooms and conferencing services go in as props. For a smaller calendar to put inside a page of yours, use the [Calendar](/docs/components/calendar) block instead.
+
+## Installation
+
+<InstallTabs item="calendar-app" />
+
+The install brings every part of the demo, plus [Sample Data](/docs/sample-data) and the placeholder [conference providers](/docs/components/event-details#conference-providers), so the page below reproduces the live demo. Delete `lib/mock-events.ts`, `lib/sample-events.ts` and `lib/conference-providers.ts` once you pass your own data.
+
+## Usage
+
+<Steps>
+<Step>
+
+### Add the theme provider
+
+The theme toggle, <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> and the command menu's theme command switch [next-themes](https://github.com/pacocoursey/next-themes)' theme. Wrap your app in the `ThemeProvider` the block installed, in the root layout:
+
+```tsx title="app/layout.tsx"
+import { ThemeProvider } from "@/components/theme-provider";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+</Step>
+<Step>
+
+### Render the app
+
+`CalendarApp` fills the viewport, so give it a page of its own:
+
+```tsx title="app/calendar/page.tsx"
+"use client";
+
+import * as React from "react";
+
+import { CalendarApp } from "@/components/calendar-app";
+import { DEMO_CONFERENCE_PROVIDERS } from "@/lib/conference-providers";
+import {
+  DEMO_CALENDARS,
+  DEMO_CONTACTS,
+  DEMO_LOCATION_SUGGESTIONS,
+  DEMO_ROOMS,
+  generateMockEvents,
+} from "@/lib/mock-events";
+
+export default function CalendarPage() {
+  // The app reads its initial events once, so create them once
+  const [initialEvents] = React.useState(() => generateMockEvents());
+
+  return (
+    <CalendarApp
+      defaultEvents={initialEvents}
+      defaultViewSettings={{ showWeekNumbers: true }}
+      calendars={DEMO_CALENDARS}
+      contacts={DEMO_CONTACTS}
+      rooms={DEMO_ROOMS}
+      conferenceProviders={DEMO_CONFERENCE_PROVIDERS}
+      locationSuggestions={DEMO_LOCATION_SUGGESTIONS}
+      showComingSoon
+    />
+  );
+}
+```
+
+That's the live demo. Its own page adds an avatar to the header (`headerActions`), docs and GitHub buttons to the sidebar's footer (`sidebarFooterActions`), logos to the conferencing services, and a random color for each event you create (`createEvent`): see [`src/app/page.tsx`](https://github.com/vmnog/calendarcn/blob/main/src/app/page.tsx).
+
+</Step>
+</Steps>
+
+The calendar renders in the browser only, since "today" and the time zone belong to the viewer. With Next.js Cache Components, create date-based events in an effect or load them from your API: see [Installation](/docs/installation).
+
+## Your own data
+
+The app takes the same props as `CalendarProvider`, for `DetailedCalendarEvent` events: the fields the details sidebar edits, from participants to reminders. Leave the events to the app with `defaultEvents`, or keep them in your state with `events` and `onEventsChange`:
+
+```tsx
+const [events, setEvents] = React.useState<DetailedCalendarEvent[]>([]);
+
+<CalendarApp
+  events={events}
+  onEventsChange={setEvents}
+  calendars={calendars}
+  contacts={contacts}
+  rooms={rooms}
+  conferenceProviders={conferenceProviders}
+  locationSuggestions={locationSuggestions}
+  onEventsImport={(imported) => saveEvents(imported)}
+/>;
+```
+
+- `calendars` fill the sidebar's calendar list and the details' calendar picker; an event without its own `color` takes its calendar's.
+- `contacts` and `rooms` are who and what the details' participants field invites. `conferenceProviders` fill its Conferencing menu, and `locationSuggestions` its location field.
+- `createEvent` builds the event a click on an empty slot creates, `onEventCreate`, `onEventUpdate` and `onEventSelect` report single changes, and `onVisibleRangeChange` with `loading` loads events by range: see [Loading Events](/docs/loading-events).
+
+### .ics files
+
+The command menu's "Import .ics file..." reads a file with [`parseIcs()`](/docs/import-export), adds its events and goes to the first one. An event whose id is already there is replaced, so importing the same file again updates it. Controlled or not, the new list comes back through `onEventsChange`, and `onEventsImport` gets only the imported events, to save them.
+
+"Export .ics file" writes every event with [`toIcs()`](/docs/import-export#export-events) and downloads it as `exportFileName`, with `exportCalendarName` as the calendar's name.
+
+### Your own buttons
+
+Put your account menu in the header with `headerActions`, and your own buttons in the sidebar's footer, before the theme toggle, with `sidebarFooterActions`:
+
+```tsx
+<CalendarApp
+  headerActions={
+    <Avatar className="size-7">
+      <AvatarImage src={user.image} alt={user.name} />
+      <AvatarFallback>{user.initials}</AvatarFallback>
+    </Avatar>
+  }
+  sidebarFooterActions={
+    <Button variant="ghost" size="icon" className="size-7" asChild>
+      <a href="/help">
+        <CircleHelpIcon />
+        <span className="sr-only">Help</span>
+      </a>
+    </Button>
+  }
+/>
+```
+
+`headerActions` shows on wide headers only, before the view switcher. Beyond these, the CLI copied the source into `components/calendar-app.tsx`: change the layout there.
+
+## Layout
+
+The app fills the viewport and follows its width:
+
+| Width            | Calendar sidebar | Details sidebar                                       |
+| ---------------- | ---------------- | ----------------------------------------------------- |
+| 1280px and wider | Inline, open     | Inline, open                                          |
+| 768px to 1279px  | Inline, open     | Over the calendar, closed                             |
+| Under 768px      | Sheet, closed    | Sheet, closed; selecting an event opens it on details |
+
+From 768px up, while the details sidebar is closed, a selected event shows its details in a popover, with a button that moves them into the sidebar. The sidebars' colors are their own tokens: see [Colors](/docs/components/calendar-sidebar#colors).
+
+## Keyboard shortcuts
+
+`CalendarApp` turns on the calendar's single-key [shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>A</Kbd>…) and the app's own:
+
+| Action                            | Shortcut                                      |
+| --------------------------------- | --------------------------------------------- |
+| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> |
+| Toggle the calendar sidebar       | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> |
+| Toggle the details sidebar        | <Kbd>/</Kbd>                                  |
+| Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
+| Settings, with `onOpenSettings`   | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
+
+They listen on the whole page. Pass `shortcuts={false}` to turn them all off.
+
+## Parts
+
+`CalendarApp` is a short file that puts these items together. To build a layout of your own, install the ones you need:
+
+- [Calendar Core](/docs/components/calendar-core): `CalendarProvider`, `useCalendar()` and `useCalendarShortcuts()`.
+- [Calendar Sidebar](/docs/components/calendar-sidebar): the left sidebar, with the [Mini Calendar](/docs/components/mini-calendar), the [Calendar List](/docs/components/calendar-list) and the [Theme Toggle](/docs/components/theme-toggle).
+- [Calendar Header](/docs/components/calendar-header): the toolbar, with the view switcher and the panel toggles.
+- [Time Grid](/docs/components/time-grid), [Month View](/docs/components/month-view) and [Agenda View](/docs/components/agenda-view): the views.
+- [Details Sidebar](/docs/components/details-sidebar): the right sidebar, with the [Event Details](/docs/components/event-details).
+- [Command Menu](/docs/components/command-menu): the <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu.
+- [Sidebar Overlay](/docs/components/sidebar-overlay): both sidebars as sheets on narrow screens, and their colors.
+- [Import and Export](/docs/import-export): `parseIcs()` and `toIcs()`.
+- [Sample Data](/docs/sample-data) and the [conference providers](/docs/components/event-details#conference-providers): the demo's data.
+
+## API Reference
+
+`CalendarApp` takes every [`CalendarProvider` prop](/docs/components/calendar-core#calendarprovider) (events, view, date, calendars, contacts, rooms, conferencing, configuration and render slots), for `DetailedCalendarEvent` events, plus these:
+
+<PropsTable
+  rows={[
+    {
+      name: "headerActions",
+      type: "React.ReactNode",
+      description:
+        "Shown in the header before the view switcher on wide screens, e.g. the signed-in user's avatar.",
+    },
+    {
+      name: "sidebarFooterActions",
+      type: "React.ReactNode",
+      description:
+        "Buttons in the calendar sidebar's footer, before the theme toggle.",
+    },
+    {
+      name: "onEventsImport",
+      type: "(events: DetailedCalendarEvent[]) => void",
+      description:
+        "Called with the events of an .ics file imported from the command menu, after they're added. An event whose id is already there is replaced.",
+    },
+    {
+      name: "exportFileName",
+      type: "string",
+      default: '"calendar.ics"',
+      description: "Name of the file the command menu's .ics export downloads.",
+    },
+    {
+      name: "exportCalendarName",
+      type: "string",
+      description:
+        "Calendar name written into the exported .ics. Google Calendar and Apple Calendar show it.",
+    },
+    {
+      name: "onOpenSettings",
+      type: "() => void",
+      description:
+        "Called on ⌘, (Ctrl+, elsewhere). Without it, the key is left to the browser.",
+    },
+    {
+      name: "showComingSoon",
+      type: "boolean",
+      default: "false",
+      description:
+        'Also lists the Notion Calendar commands CalendarCN doesn\'t have yet in the command menu, disabled with a "Soon" badge, as the live demo does.',
+    },
+    {
+      name: "scrollToHour",
+      type: "number",
+      default: "8",
+      description:
+        "Hour the time grid scrolls to when it mounts, e.g. `8.5` for 8:30 AM.",
+    },
+    {
+      name: "shortcuts",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the keyboard shortcuts are on: the calendar's single keys and the app's ⌘K, ⌘/, / and ⇧M. They listen on `window`.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description:
+        "Classes for the root, which fills the viewport (`h-screen`).",
+    },
+    {
+      name: "children",
+      type: "React.ReactNode",
+      description:
+        "Rendered inside the provider, after the app. Useful for your own dialogs that read `useCalendar()`.",
+    },
+  ]}
+/>

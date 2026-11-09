@@ -191,6 +191,55 @@ export type CalendarProps<TEvent extends CalendarEvent = CalendarEvent> =
   };
 
 /**
+ * Props for the Calendar App block, the live demo as one component:
+ * everything CalendarProvider takes for `DetailedCalendarEvent` (events,
+ * view, date, calendars, contacts, rooms, conferencing, configuration,
+ * render slots), plus the app's own slots and options. `children` render
+ * inside the provider, after the app.
+ */
+export type CalendarAppProps = CalendarProviderProps<DetailedCalendarEvent> & {
+  /**
+   * Hour the time grid scrolls to when it mounts (e.g. `8` for 8 AM).
+   * Defaults to 8.
+   */
+  scrollToHour?: number;
+  /**
+   * Shown in the header before the view switcher on wide screens, e.g. the
+   * signed-in user's avatar
+   */
+  headerActions?: React.ReactNode;
+  /** Buttons in the calendar sidebar's footer, before the theme toggle */
+  sidebarFooterActions?: React.ReactNode;
+  /**
+   * Called with the events read from an .ics file imported from the command
+   * menu, after they're added (an event whose id is already there is
+   * replaced). Use it to save them.
+   */
+  onEventsImport?: (events: DetailedCalendarEvent[]) => void;
+  /** Name of the file the command menu's .ics export downloads. Defaults to "calendar.ics" */
+  exportFileName?: string;
+  /** Calendar name written into the exported .ics (Google and Apple show it) */
+  exportCalendarName?: string;
+  /** Called on Cmd+, (Ctrl+, elsewhere). The key is left to the browser without it */
+  onOpenSettings?: () => void;
+  /**
+   * Also lists the Notion Calendar commands CalendarCN doesn't have yet in
+   * the command menu, disabled with a "Soon" badge. Defaults to false
+   */
+  showComingSoon?: boolean;
+  /**
+   * Whether the keyboard shortcuts (the calendar's single keys, plus Cmd+K,
+   * Cmd+/, / and Shift+M) are on. They listen on `window`. Defaults to true
+   */
+  shortcuts?: boolean;
+  /**
+   * Classes for the root, which fills the viewport (`h-screen`). The
+   * sidebars are fixed to the viewport, so the app is meant to be the page.
+   */
+  className?: string;
+};
+
+/**
  * Event popover props passed from a view down to its event items
  */
 export interface EventItemPopoverProps {
