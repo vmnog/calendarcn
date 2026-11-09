@@ -1,0 +1,136 @@
+---
+title: Command Menu
+description: The live demo's ⌘K menu, for going to today, previous and next, switching views, and your app's own commands.
+---
+
+<ComponentPreview name="command-menu-demo" />
+
+`CommandMenu` is the [live demo](/)'s <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu, built on shadcn/ui's [Command](https://ui.shadcn.com/docs/components/command) in a Dialog. Going to today, previous and next, and the day, week, month and agenda views come from [`useCalendar()`](/docs/components/calendar-core#usecalendar), so it goes inside `CalendarProvider`. Commands that belong to your app, such as its panels, its theme and .ics files, show only when you pass their callback.
+
+## Installation
+
+<InstallTabs item="command-menu" />
+
+## Usage
+
+```tsx
+import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";
+import { CalendarProvider } from "@/components/calendar-provider";
+import { CommandMenu } from "@/components/command-menu";
+import { WeekView } from "@/components/week-view";
+
+export function Schedule() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <CalendarWithMenu />
+    </CalendarProvider>
+  );
+}
+
+function CalendarWithMenu() {
+  const [open, setOpen] = React.useState(false);
+
+  // ⌘K / Ctrl+K opens and closes the menu, even from a text field
+  useCalendarShortcuts({ onToggleCommandMenu: () => setOpen((o) => !o) });
+
+  return (
+    <>
+      <WeekView />
+      <CommandMenu open={open} onOpenChange={setOpen} />
+    </>
+  );
+}
+```
+
+The menu is controlled: it opens and closes through `open` and `onOpenChange`, and closes before it runs a command. The preview opens it from a button, to leave <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> to this site's search.
+
+### Your app's commands
+
+Pass a callback to add its command. These are the demo's:
+
+```tsx
+<CommandMenu
+  open={open}
+  onOpenChange={setOpen}
+  onToggleSidebar={toggleSidebar}
+  onToggleContextPanel={toggleContextPanel}
+  onCycleTheme={cycleTheme}
+  onImportIcs={() => fileInputRef.current?.click()}
+  onExportIcs={exportIcs}
+  showComingSoon
+/>
+```
+
+- `onImportIcs` and `onExportIcs` add "Import .ics file..." and "Export .ics file". Read and write the files with [`@calendarcn/ics`](/docs/import-export): the demo opens a hidden `<input type="file">`, passes its text to `parseIcs()` and adds the events, and downloads `toIcs(events)` as a file.
+- `onCycleTheme` adds "Set theme...". The demo goes from system to light to dark with `useTheme()` from next-themes.
+- `onToggleSidebar` and `onToggleContextPanel` add the panel toggles, next to the [Calendar Header](/docs/components/calendar-header)'s buttons.
+- `showComingSoon` also lists the Notion Calendar commands CalendarCN doesn't have yet, disabled with a "Soon" badge, as the demo does.
+
+### Keyboard shortcuts
+
+The menu shows each command's shortcut. Pass the same callbacks to [`useCalendarShortcuts()`](/docs/keyboard-shortcuts#app-shortcuts) to turn the keys on:
+
+```tsx
+useCalendarShortcuts({
+  onToggleCommandMenu: () => setOpen((o) => !o),
+  onToggleSidebar: toggleSidebar,
+  onToggleContextPanel: toggleContextPanel,
+  onCycleTheme: cycleTheme,
+});
+```
+
+### Theming
+
+The dialog is translucent and blurred in dark mode. The CLI also adds a rule to your CSS file that dims the page less behind the menu in dark mode (`rgb(0 0 0 / 0.3)`), found through the `data-command-menu` attribute on the dialog. The rest of the look comes from your own `command` and `dialog` components.
+
+## API Reference
+
+### CommandMenu
+
+<PropsTable
+  rows={[
+    {
+      name: "open",
+      type: "boolean",
+      description: "Whether the menu is open.",
+    },
+    {
+      name: "onOpenChange",
+      type: "(open: boolean) => void",
+      description:
+        "Called when the menu opens or closes: on Escape, a click outside, or before a command runs.",
+    },
+    {
+      name: "onToggleSidebar",
+      type: "() => void",
+      description: 'Adds "Toggle sidebar" (⌘ /).',
+    },
+    {
+      name: "onToggleContextPanel",
+      type: "() => void",
+      description: 'Adds "Toggle context panel" (/).',
+    },
+    {
+      name: "onCycleTheme",
+      type: "() => void",
+      description: 'Adds "Set theme..." (Shift M).',
+    },
+    {
+      name: "onImportIcs",
+      type: "() => void",
+      description: 'Adds "Import .ics file...".',
+    },
+    {
+      name: "onExportIcs",
+      type: "() => void",
+      description: 'Adds "Export .ics file".',
+    },
+    {
+      name: "showComingSoon",
+      type: "boolean",
+      default: "false",
+      description:
+        'Also lists the commands CalendarCN doesn\'t have yet, disabled with a "Soon" badge.',
+    },
+  ]}
+/>

@@ -35,18 +35,28 @@ They come from `useCalendarShortcuts()`, part of [Calendar Core](/docs/component
 
 In a field or menu of the event details, <Kbd>Esc</Kbd> only closes it and restores the value from before. Press it again to deselect the event.
 
-## Demo only
+## App shortcuts
 
-The live demo adds a few of its own on top, for the parts around the calendar:
+The live demo adds keys for the parts around the calendar. They come from the same hook, each one on only when you pass its action, so a calendar without a command menu or panels never claims them:
 
-| Action                            | Shortcut                                      |
-| --------------------------------- | --------------------------------------------- |
-| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> |
-| Toggle left sidebar               | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> |
-| Toggle right sidebar              | <Kbd>/</Kbd>                                  |
-| Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
+| Action                            | Shortcut                                      | Option                 |
+| --------------------------------- | --------------------------------------------- | ---------------------- |
+| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> | `onToggleCommandMenu`  |
+| Toggle the sidebar                | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> | `onToggleSidebar`      |
+| Toggle the context panel          | <Kbd>/</Kbd>                                  | `onToggleContextPanel` |
+| Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> | `onCycleTheme`         |
+| Settings                          | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> | `onOpenSettings`       |
 
-On Windows and Linux, use <Kbd>Ctrl</Kbd> in place of <Kbd>⌘</Kbd>. The one exception is the left sidebar toggle, which needs the <Kbd>⌘</Kbd> (Meta) key.
+```tsx
+useCalendarShortcuts({
+  onToggleCommandMenu: () => setCommandMenuOpen((open) => !open),
+  onToggleSidebar: toggleSidebar,
+  onToggleContextPanel: toggleContextPanel,
+  onCycleTheme: cycleTheme,
+});
+```
+
+On Windows and Linux, use <Kbd>Ctrl</Kbd> in place of <Kbd>⌘</Kbd>. The one exception is the sidebar toggle, which needs the <Kbd>⌘</Kbd> (Meta) key. <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> and <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> work from inside a text field too. The [Command Menu](/docs/components/command-menu) and the [Calendar Header](/docs/components/calendar-header) show these keys next to their commands and buttons.
 
 ## Use them in your own calendar
 
@@ -74,4 +84,4 @@ Pass `shortcuts={false}` to the Calendar block, or `useCalendarShortcuts({ enabl
 
 ### Change them
 
-The hook is your code: the keys live in `handleShortcut()` in `hooks/use-calendar-shortcuts.ts`, so remap or remove them there. To give your app a key the calendar also uses, handle it in a `keydown` listener added before the hook's and call `event.stopImmediatePropagation()`. The demo does this for <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup>, which would otherwise also switch to month view.
+The hook is your code: the keys live in `handleShortcut()` and `handleAppShortcut()` in `hooks/use-calendar-shortcuts.ts`, so remap or remove them there. The app keys are checked before the calendar's, and one that runs stops the event from reaching later `keydown` listeners. To give your app another key the calendar also uses, handle it in a `keydown` listener added before the hook's and call `event.stopImmediatePropagation()`.

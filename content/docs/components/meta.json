@@ -9,6 +9,8 @@
     "month-view",
     "agenda-view",
     "event-details",
+    "calendar-header",
+    "command-menu",
     "calendar-sidebar",
     "mini-calendar",
     "calendar-list",

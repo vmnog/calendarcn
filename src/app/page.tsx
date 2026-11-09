@@ -1,19 +1,9 @@
 "use client";
 
 import * as React from "react";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  PanelLeftIcon,
-  PanelRightIcon,
-} from "lucide-react";
 
-import { addDays, format } from "date-fns";
 import { useTheme } from "next-themes";
-import {
-  isTypingTarget,
-  useCalendarShortcuts,
-} from "@/hooks/use-calendar-shortcuts";
+import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";
 import { useIsClient } from "@/hooks/use-is-client";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
@@ -24,13 +14,10 @@ import {
   DEMO_ROOMS,
   generateMockEvents,
 } from "@/lib/mock-events";
-import {
-  AGENDA_DAYS,
-  getPeriodStart,
-  pickRandomEventColor,
-} from "@/lib/event-utils";
+import { getPeriodStart, pickRandomEventColor } from "@/lib/event-utils";
 import { parseIcs, toIcs } from "@/lib/ics";
 import { AgendaView } from "@/components/agenda-view";
+import { CalendarHeader } from "@/components/calendar-header";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { CommandMenu } from "@/components/command-menu";
 import { CalendarSidebar } from "@/components/calendar-sidebar";
@@ -43,25 +30,15 @@ import type {
   EventColor,
   NewEventRange,
   ViewSettings,
-  ViewType,
 } from "@/components/week-view-types";
 import { MonthView } from "@/components/month-view";
 import { TimeGrid } from "@/components/time-grid";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { ViewDropdown } from "@/components/view-dropdown";
-import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Kbd } from "@/components/ui/kbd";
 import { DEMO_CONFERENCE_PROVIDERS } from "./demo-conference-providers";
 import { DemoSidebarLinks } from "./demo-sidebar-links";
 
@@ -76,14 +53,6 @@ const ICS_FILE_TYPES = ".ics,text/calendar";
 
 /** Name of the file the command menu's .ics export downloads */
 const ICS_EXPORT_FILE_NAME = "calendarcn.ics";
-
-/** What the previous/next buttons move by in each view, for their labels */
-const PERIOD_LABELS: Record<ViewType, string> = {
-  day: "day",
-  week: "week",
-  month: "month",
-  agenda: `${AGENDA_DAYS} days`,
-};
 
 /** Display preferences the demo starts with (week numbers shown) */
 const DEMO_VIEW_SETTINGS: ViewSettings = {
@@ -111,55 +80,8 @@ interface CalendarDemoProps {
   onImportEvents: (events: DetailedCalendarEvent[]) => void;
 }
 
-/** App-level actions behind the demo's own keyboard shortcuts */
-interface AppShortcutActions {
-  toggleCommandMenu: () => void;
-  toggleLeftSidebar: () => void;
-  toggleRightSidebar: () => void;
-  cycleTheme: () => void;
-}
-
-/**
- * Handles the demo's app shortcuts (command menu, sidebars, settings,
- * theme). A shortcut that fires stops the event, so the calendar shortcuts
- * listener (added after this one) never also acts on it, e.g. Shift+M vs M.
- */
-function handleAppShortcut(e: KeyboardEvent, actions: AppShortcutActions) {
-  const runShortcut = (action: () => void) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    action();
-  };
-
-  // Cmd+K for command menu
-  if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-    runShortcut(actions.toggleCommandMenu);
-    return;
-  }
-  // Command + / for left sidebar
-  if (e.metaKey && e.key === "/") {
-    runShortcut(actions.toggleLeftSidebar);
-    return;
-  }
-  // Cmd+, for general settings (placeholder)
-  if (e.key === "," && (e.metaKey || e.ctrlKey)) {
-    runShortcut(() => {});
-    return;
-  }
-
-  // Skip single-key shortcuts when focused on input/textarea
-  if (isTypingTarget(e.target)) return;
-
-  // / for right sidebar
-  if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-    runShortcut(actions.toggleRightSidebar);
-    return;
-  }
-  // Shift+M for cycle theme
-  if (e.key === "M" && e.shiftKey && !e.metaKey && !e.ctrlKey) {
-    runShortcut(actions.cycleTheme);
-  }
-}
+/** Cmd+, placeholder: settings aren't built yet, but the key is claimed already */
+function openSettings() {}
 
 /**
  * Demo setup: mock events, the demo's create-event policy, and opening the
@@ -242,26 +164,8 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
     openMobile: contextPanelOpenMobile,
     isMobile,
   } = useSidebar();
-  const {
-    view,
-    currentDate,
-    weekStartsOn,
-    events,
-    numberOfDays,
-    viewSettings,
-    monthName,
-    year,
-    weekNumber,
-    goToToday,
-    goToPrev,
-    goToNext,
-    goToDate,
-    switchView,
-    setNumberOfDays,
-    toggleWeekends,
-    toggleDeclinedEvents,
-    toggleWeekNumbers,
-  } = useCalendar<DetailedCalendarEvent>();
+  const { view, weekStartsOn, events, numberOfDays, goToDate } =
+    useCalendar<DetailedCalendarEvent>();
   // shadcn tracks the panel's phone state separately; read whichever is active
   const rightSidebarOpen = isMobile ? contextPanelOpenMobile : contextPanelOpen;
   /** Inline calendar sidebar state (tablet and desktop) */
@@ -346,51 +250,28 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
     setTheme("system");
   }, [theme, setTheme]);
 
-  /** Latest app shortcut actions, read by the window listener */
-  const appShortcutsRef = React.useRef<AppShortcutActions>({
-    toggleCommandMenu,
-    toggleLeftSidebar,
-    toggleRightSidebar: toggleSidebar,
-    cycleTheme,
-  });
-
-  React.useEffect(() => {
-    appShortcutsRef.current = {
-      toggleCommandMenu,
-      toggleLeftSidebar,
-      toggleRightSidebar: toggleSidebar,
-      cycleTheme,
-    };
-  }, [toggleCommandMenu, toggleLeftSidebar, toggleSidebar, cycleTheme]);
-
-  // App shortcuts. Added once, before useCalendarShortcuts below, so this
-  // listener always runs first and can claim keys the calendar also uses
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      handleAppShortcut(e, appShortcutsRef.current);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
   // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape, and
-  // Shift+Cmd+E / Shift+Cmd+D for weekends and declined events
-  useCalendarShortcuts();
+  // Shift+Cmd+E / Shift+Cmd+D for weekends and declined events. Then the
+  // demo's own, checked first: Cmd+K, Cmd+/, /, Shift+M and Cmd+,
+  useCalendarShortcuts({
+    onToggleCommandMenu: toggleCommandMenu,
+    onToggleSidebar: toggleLeftSidebar,
+    onToggleContextPanel: toggleSidebar,
+    onCycleTheme: cycleTheme,
+    onOpenSettings: openSettings,
+  });
 
   return (
     <>
       <CommandMenu
         open={commandMenuOpen}
         onOpenChange={setCommandMenuOpen}
-        onGoToToday={goToToday}
-        onGoToPrev={goToPrev}
-        onGoToNext={goToNext}
-        onSwitchView={switchView}
-        onToggleLeftSidebar={toggleLeftSidebar}
-        onToggleRightSidebar={toggleSidebar}
+        onToggleSidebar={toggleLeftSidebar}
+        onToggleContextPanel={toggleSidebar}
         onCycleTheme={cycleTheme}
         onImportIcs={() => icsInputRef.current?.click()}
         onExportIcs={exportIcs}
+        showComingSoon
       />
       <input
         ref={icsInputRef}
@@ -407,115 +288,20 @@ function CalendarDemo({ isWideLayout, onImportEvents }: CalendarDemoProps) {
         footerActions={<DemoSidebarLinks />}
       />
       <SidebarInset className="flex flex-col overflow-hidden">
-        <header className="@container/header bg-background sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-1 pl-2 @md/header:gap-2 @xl/header:px-4">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 text-muted-foreground"
-                  onClick={toggleLeftSidebar}
-                >
-                  <PanelLeftIcon />
-                  <span className="sr-only">Toggle Calendar Sidebar</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {leftSidebarVisible ? "Close" : "Open"} sidebar{" "}
-                <Kbd className="ml-1">⌘</Kbd> <Kbd>/</Kbd>
-              </TooltipContent>
-            </Tooltip>
-            <Separator
-              orientation="vertical"
-              className="mr-2 hidden data-[orientation=vertical]:h-4 @md/header:block"
+        <CalendarHeader
+          sidebarOpen={leftSidebarVisible}
+          onToggleSidebar={toggleLeftSidebar}
+          contextPanelOpen={rightSidebarOpen}
+          onToggleContextPanel={toggleSidebar}
+        >
+          <Avatar className="size-7">
+            <AvatarImage
+              src="https://github.com/vmnog.png"
+              alt="Victor Nogueira"
             />
-            <h1 className="min-w-0 truncate text-sm @xs/header:text-base @xl/header:text-xl">
-              {/* Narrow headers use the short month ("Sep"); en-US "MMMM" names abbreviate to their first three letters */}
-              <span className="font-extrabold @md/header:hidden">
-                {monthName.slice(0, 3)}
-              </span>
-              <span className="hidden font-extrabold @md/header:inline">
-                {monthName}
-              </span>{" "}
-              <span className="font-extrabold">{year}</span>{" "}
-              <span className="text-muted-foreground hidden text-xs @xl/header:inline">
-                {view === "day" && format(currentDate, "EEEE, MMM d")}
-                {view === "week" && `Week ${weekNumber}`}
-                {view === "month" && ""}
-                {view === "agenda" &&
-                  `${format(currentDate, "MMM d")} \u2013 ${format(addDays(currentDate, AGENDA_DAYS - 1), "MMM d")}`}
-              </span>
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-1 pr-2 @md/header:gap-2 @xl/header:px-4">
-            <Avatar className="hidden size-7 @xl/header:flex">
-              <AvatarImage
-                src="https://github.com/vmnog.png"
-                alt="Victor Nogueira"
-              />
-              <AvatarFallback>VN</AvatarFallback>
-            </Avatar>
-            <div className="hidden @xs/header:block">
-              <ViewDropdown
-                view={view}
-                numberOfDays={numberOfDays}
-                viewSettings={viewSettings}
-                onSwitchView={switchView}
-                onSetNumberOfDays={setNumberOfDays}
-                onToggleWeekends={toggleWeekends}
-                onToggleDeclinedEvents={toggleDeclinedEvents}
-                onToggleWeekNumbers={toggleWeekNumbers}
-              />
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="px-2 @md/header:px-3"
-              onClick={goToToday}
-            >
-              Today
-            </Button>
-            <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7 text-muted-foreground @2xs/header:size-8"
-                onClick={goToPrev}
-              >
-                <ChevronLeftIcon className="size-4" />
-                <span className="sr-only">Previous {PERIOD_LABELS[view]}</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7 text-muted-foreground @2xs/header:size-8"
-                onClick={goToNext}
-              >
-                <ChevronRightIcon className="size-4" />
-                <span className="sr-only">Next {PERIOD_LABELS[view]}</span>
-              </Button>
-            </div>
-            {!rightSidebarOpen && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground"
-                    onClick={toggleSidebar}
-                  >
-                    <PanelRightIcon />
-                    <span className="sr-only">Toggle Navigation Sidebar</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  Open context panel <Kbd className="ml-1">/</Kbd>
-                </TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-        </header>
+            <AvatarFallback>VN</AvatarFallback>
+          </Avatar>
+        </CalendarHeader>
         <div className="flex flex-1 flex-col overflow-hidden">
           {view === "month" && (
             <MonthView

@@ -27,10 +27,10 @@ Components install to `src/components/ui/`. Don't edit these directly — custom
 
 ### Adding a New Keyboard Shortcut
 
-1. Find the `useEffect` with keyboard listener in `src/components/week-view.tsx`
-2. Add a new `case` for your key
-3. Check `e.target.tagName` to skip when focused on inputs
-4. Document in README.md keyboard shortcuts section
+1. Calendar keys go in `handleShortcut()` in `src/hooks/use-calendar-shortcuts.ts`. Keys for the parts around the calendar (command menu, panels, theme) go in `handleAppShortcut()`, behind an optional action of the hook (`onToggleCommandMenu` and the like), so an app without that part never claims the key
+2. Single keys return early on `isTypingTarget(e.target)`, so typing in an input never triggers them
+3. Wire a new app action in `src/app/page.tsx`, and show its key in `command-menu.tsx` or `calendar-header.tsx` if it has a command or button there
+4. Document it in `content/docs/keyboard-shortcuts.mdx`
 
 ### Modifying Event Types
 
@@ -76,10 +76,10 @@ pnpm exec playwright test --project=base-ui        # rerun the spec against the 
 ```
 
 - `e2e/base-ui/fixture` is the stock `npx shadcn@4.23.0 init -t next -b base -p nova` scaffold, with exact versions and without its ThemeProvider (its `d` key clashes with the calendar's day view shortcut). Keep it as generated: it stands in for a user's project.
-- `tools/scripts/base-ui-fixture.sh` builds the registry from the current source, serves it on port 3201 (`BASE_UI_REGISTRY_PORT`), copies the fixture outside the repo (`$TMPDIR/calendarcn-base-ui`, or `BASE_UI_DIR`), points its `components.json` `@calendarcn` registry at the server, runs `shadcn add @calendarcn/calendar @calendarcn/conference-providers @calendarcn/sample-data @calendarcn/calendar-sidebar @calendarcn/details-sidebar`, then `tsc --noEmit` and `next build`. The tested components are always the ones in `src/`, so there's no need to run `pnpm registry:build` first.
+- `tools/scripts/base-ui-fixture.sh` builds the registry from the current source, serves it on port 3201 (`BASE_UI_REGISTRY_PORT`), copies the fixture outside the repo (`$TMPDIR/calendarcn-base-ui`, or `BASE_UI_DIR`), points its `components.json` `@calendarcn` registry at the server, runs `shadcn add @calendarcn/calendar @calendarcn/command-menu @calendarcn/conference-providers @calendarcn/sample-data @calendarcn/calendar-sidebar @calendarcn/details-sidebar`, then `tsc --noEmit` and `next build`. The tested components are always the ones in `src/`, so there's no need to run `pnpm registry:build` first.
 - The app is served with `next start` on port 3200 (`E2E_BASE_UI_PORT`). Its page renders `<Calendar defaultEvents={...} />` with test events on Thursday, June 4 2026, the frozen test date.
 - The "Link Check" event on Friday, June 5 comes with `javascript:` and `data:` links and a `data:` file, so `links-description.spec.ts` can check they show as text, without an `href`.
 - `/24-hour` renders the same calendar with `hourCycle={24}` and `weekStartsOn={1}`, for the time menu and the date picker.
 - `/sidebars` renders `CalendarSidebar` and `DetailsSidebar` around the week's `TimeGrid`, inside a `SidebarProvider` and the installed `ThemeProvider`. Below 768px wide both open as sheets.
-- The page also passes `conferenceProviders`: two made-up services of one kind, the second answering after a wait, with calls on example.com. `/read-only` renders `EventDetailPanel` without `onEventChange`, inside a `CalendarProvider` with contacts, rooms and a service, to check that nothing edits.
+- The page also passes `conferenceProviders`: two made-up services of one kind, the second answering after a wait, with calls on example.com. `/header` puts `CalendarHeader` and `CommandMenu` around the views with the app keys of `useCalendarShortcuts`, like the live demo, with plain asides for the panels. `/read-only` renders `EventDetailPanel` without `onEventChange`, inside a `CalendarProvider` with contacts, rooms and a service, to check that nothing edits.
 - The install needs network access (npm and `ui.shadcn.com`). If npm fails with `EACCES` on `~/.npm`, point it at another cache: `npm_config_cache=$TMPDIR/npm-cache pnpm test:e2e:base-ui`.
