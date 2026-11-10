@@ -5,10 +5,7 @@ import { Link2, PanelLeftIcon, Plus, UserRound } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useCalendar } from "@/components/calendar-provider";
-import {
-  CALENDAR_SIDEBAR_SOON_CLASS,
-  CalendarList,
-} from "@/components/calendar-list";
+import { CalendarList } from "@/components/calendar-list";
 import { MiniCalendar } from "@/components/mini-calendar";
 import {
   CALENDAR_SIDEBAR_COLORS_CLASS,
@@ -40,6 +37,10 @@ export const CALENDAR_SIDEBAR_WIDTH = "15rem";
 /** No days to highlight: month view and the agenda */
 const NO_VISIBLE_DAYS: Date[] = [];
 
+/** "Soon" badge of a sidebar control that isn't built yet, as in the command menu */
+const CALENDAR_SIDEBAR_SOON_CLASS =
+  "bg-sidebar-foreground/10 text-sidebar-foreground/60 ml-auto shrink-0 rounded px-1 py-0.5 text-[10px] leading-none font-medium";
+
 interface CalendarSidebarProps {
   /** Whether the sidebar shows. Defaults to true */
   open?: boolean;
@@ -55,12 +56,6 @@ interface CalendarSidebarProps {
   defaultHiddenCalendarIds?: string[];
   /** Called with the new hidden ids when a calendar is shown or hidden */
   onHiddenCalendarIdsChange?: (hiddenCalendarIds: string[]) => void;
-  /**
-   * Marks the calendar list's eye buttons "Soon", for an app that doesn't
-   * take hidden calendars' events off its views yet. See `CalendarList`.
-   * Defaults to false
-   */
-  calendarVisibilitySoon?: boolean;
   /** Classes for the inline sidebar's fixed column */
   className?: string;
 }
@@ -82,7 +77,6 @@ export function CalendarSidebar({
   hiddenCalendarIds,
   defaultHiddenCalendarIds,
   onHiddenCalendarIdsChange,
-  calendarVisibilitySoon = false,
   className,
 }: CalendarSidebarProps) {
   const {
@@ -162,7 +156,6 @@ export function CalendarSidebar({
           hiddenCalendarIds={hiddenCalendarIds}
           defaultHiddenCalendarIds={defaultHiddenCalendarIds}
           onHiddenCalendarIdsChange={onHiddenCalendarIdsChange}
-          visibilitySoon={calendarVisibilitySoon}
         />
         <SidebarSeparator className="mx-0" />
         <SidebarGroup className="py-0">

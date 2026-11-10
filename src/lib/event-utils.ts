@@ -1529,3 +1529,59 @@ export function moveEventToCalendar<TEvent extends DetailedCalendarEvent>(
   }
   return moved;
 }
+
+/** Whether an event is on one of the hidden calendars. An event without a calendar always shows */
+function isOnHiddenCalendar(
+  event: DetailedCalendarEvent,
+  hiddenCalendarIds: readonly string[],
+): boolean {
+  return (
+    event.calendarId !== undefined &&
+    hiddenCalendarIds.includes(event.calendarId)
+  );
+}
+
+/**
+ * The events left when some calendars are hidden: what to give
+ * `CalendarProvider` so a hidden calendar's events leave every view. Gives
+ * back the same array when nothing is hidden.
+ */
+export function filterShownEvents<TEvent extends DetailedCalendarEvent>(
+  events: TEvent[],
+  hiddenCalendarIds: readonly string[],
+): TEvent[] {
+  if (hiddenCalendarIds.length === 0) return events;
+  return events.filter(
+    (event) => !isOnHiddenCalendar(event, hiddenCalendarIds),
+  );
+}
+
+/**
+ * Every event again, after the provider changed the shown ones (its
+ * `onEventsChange` only knows about those). Hidden events stay where they
+ * are, a shown event takes its new value in place, one the provider dropped
+ * is dropped, and new events go last. Keeping the order keeps events that
+ * start together in the same columns after a calendar is hidden and shown
+ * again.
+ */
+export function mergeShownEvents<TEvent extends DetailedCalendarEvent>(
+  allEvents: TEvent[],
+  shownEvents: TEvent[],
+  hiddenCalendarIds: readonly string[],
+): TEvent[] {
+  if (hiddenCalendarIds.length === 0) return shownEvents;
+
+  const pending = new Map(shownEvents.map((event) => [event.id, event]));
+  const merged: TEvent[] = [];
+  for (const event of allEvents) {
+    if (isOnHiddenCalendar(event, hiddenCalendarIds)) {
+      merged.push(event);
+      continue;
+    }
+    const next = pending.get(event.id);
+    if (!next) continue;
+    merged.push(next);
+    pending.delete(event.id);
+  }
+  return [...merged, ...pending.values()];
+}
