@@ -22,7 +22,7 @@ export interface MonthDragState {
   eventId: string;
   /** The original event being dragged */
   event: CalendarEvent;
-  /** The date the event was originally on */
+  /** The date under the pointer when the drag began */
   originalDate: Date;
   /** The date the cursor is currently over */
   targetDate: Date;
@@ -237,23 +237,29 @@ export function useMonthEventDrag({
       { clientX, clientY, pointerId, pointerType }: PointerGestureStart,
       event: CalendarEvent,
     ) => {
+      // Anchor on the day that was grabbed, not the event's first day: a
+      // bar pressed on its third day moves by the cells the pointer crosses
+      const grid = gridRef.current;
+      const grabbedDate =
+        (grid && getDateAtPoint(grid, clientX, clientY)) ?? event.start;
+
       dragRef.current = {
         eventId: event.id,
         event,
         pointerId,
         pointerType,
-        originalDate: event.start,
+        originalDate: grabbedDate,
         startClientX: clientX,
         startClientY: clientY,
         isDragging: false,
-        targetDate: event.start,
+        targetDate: grabbedDate,
       };
 
       setDragState({
         eventId: event.id,
         event,
-        originalDate: event.start,
-        targetDate: event.start,
+        originalDate: grabbedDate,
+        targetDate: grabbedDate,
         isDragging: false,
         clientX,
         clientY,
@@ -272,7 +278,7 @@ export function useMonthEventDrag({
         );
       }
     },
-    [],
+    [gridRef],
   );
 
   const handleDragPointerDown = useCallback(
