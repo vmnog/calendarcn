@@ -336,11 +336,14 @@ function CalendarAppShell({
         className="hidden"
         onChange={handleIcsFileChange}
       />
+      {/* The app doesn't take a hidden calendar's events off the views yet,
+          so the list's eye buttons say "Soon" */}
       <CalendarSidebar
         open={leftSidebarVisible}
         onOpenChange={setLeftOverlayOpen}
         overlay={isMobile}
         footerActions={sidebarFooterActions}
+        calendarVisibilitySoon
       />
       <SidebarInset className="flex flex-col overflow-hidden">
         <CalendarHeader

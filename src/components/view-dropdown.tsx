@@ -42,18 +42,32 @@ const VIEW_OPTIONS: Array<{
 /** Number-of-days options for the submenu */
 const DAYS_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
+/** Views that hide the weekend when "Weekends" is off. The rest ignore it for now */
+const WEEKENDS_SETTING_VIEWS: ViewType[] = ["month", "agenda"];
+
+/** Views that draw week numbers when "Week numbers" is on. The rest ignore it for now */
+const WEEK_NUMBERS_SETTING_VIEWS: ViewType[] = ["month"];
+
 /**
  * Shortcut hints inside menu items drop the key-cap background. Classes
  * rather than a Kbd variant, so the file works with the stock shadcn/ui Kbd.
  */
 const PLAIN_KBD_CLASS = "h-auto min-w-0 rounded-none bg-transparent px-0";
 
-/** "Soon" badge of a setting that isn't built yet, as in the command menu */
+/** "Soon" badge of a setting the current view doesn't read yet, as in the command menu */
 const SOON_BADGE = (
   <span className="bg-muted text-muted-foreground ml-auto rounded px-1.5 py-0.5 text-[10px] leading-none font-medium">
     Soon
   </span>
 );
+
+/**
+ * A setting marked "Soon" stays disabled, but only its label and check dim:
+ * the badge keeps its full strength. Both spellings of the variant, because
+ * the Radix and Base UI styles of shadcn/ui write it differently.
+ */
+const SOON_ITEM_CLASS =
+  "data-[disabled]:opacity-100 data-disabled:opacity-100 [&_svg]:opacity-50";
 
 interface ViewDropdownProps {
   view: ViewType;
@@ -76,6 +90,9 @@ export function ViewDropdown({
   onToggleDeclinedEvents,
   onToggleWeekNumbers,
 }: ViewDropdownProps) {
+  const weekendsSoon = !WEEKENDS_SETTING_VIEWS.includes(view);
+  const weekNumbersSoon = !WEEK_NUMBERS_SETTING_VIEWS.includes(view);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -144,33 +161,47 @@ export function ViewDropdown({
             View settings
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="w-56">
+            {/* Day and week view don't hide the weekend yet */}
             <DropdownMenuCheckboxItem
+              disabled={weekendsSoon}
+              className={cn(weekendsSoon && SOON_ITEM_CLASS)}
               checked={viewSettings.showWeekends}
               onCheckedChange={() => onToggleWeekends()}
             >
-              Weekends
-              <KbdGroup className="ml-auto">
-                <Kbd className={PLAIN_KBD_CLASS}>shift</Kbd>
-                <Kbd className={PLAIN_KBD_CLASS}>&#8984;</Kbd>
-                <Kbd className={PLAIN_KBD_CLASS}>E</Kbd>
-              </KbdGroup>
+              <span className={cn(weekendsSoon && "opacity-50")}>Weekends</span>
+              {weekendsSoon ? (
+                SOON_BADGE
+              ) : (
+                <KbdGroup className="ml-auto">
+                  <Kbd className={PLAIN_KBD_CLASS}>shift</Kbd>
+                  <Kbd className={PLAIN_KBD_CLASS}>&#8984;</Kbd>
+                  <Kbd className={PLAIN_KBD_CLASS}>E</Kbd>
+                </KbdGroup>
+              )}
             </DropdownMenuCheckboxItem>
 
             {/* Nothing filters by this setting yet */}
             <DropdownMenuCheckboxItem
               disabled
+              className={SOON_ITEM_CLASS}
               checked={viewSettings.showDeclinedEvents}
               onCheckedChange={() => onToggleDeclinedEvents()}
             >
-              Declined events
+              <span className="opacity-50">Declined events</span>
               {SOON_BADGE}
             </DropdownMenuCheckboxItem>
 
+            {/* Only month view draws week numbers */}
             <DropdownMenuCheckboxItem
+              disabled={weekNumbersSoon}
+              className={cn(weekNumbersSoon && SOON_ITEM_CLASS)}
               checked={viewSettings.showWeekNumbers}
               onCheckedChange={() => onToggleWeekNumbers()}
             >
-              Week numbers
+              <span className={cn(weekNumbersSoon && "opacity-50")}>
+                Week numbers
+              </span>
+              {weekNumbersSoon && SOON_BADGE}
             </DropdownMenuCheckboxItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>

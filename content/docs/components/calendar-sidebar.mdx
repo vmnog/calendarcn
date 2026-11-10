@@ -7,7 +7,7 @@ description: The left sidebar of the demo, with the mini calendar, scheduling an
 
 Calendar Sidebar is the left column of the [live demo](/), modeled on Notion Calendar's: the [Mini Calendar](/docs/components/mini-calendar), a scheduling row and a "Meet with..." field, the [Calendar List](/docs/components/calendar-list), "Add calendar account", and a footer with the [Theme Toggle](/docs/components/theme-toggle). On wide screens it's a fixed column that pushes the page over; on phones it opens as a sheet from the left ([Sidebar Overlay](/docs/components/sidebar-overlay)).
 
-It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves and picking a day goes there. The scheduling row, the "Meet with..." field and "Add calendar account" are placeholders, like the demo's: they're yours to wire up.
+It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves and picking a day goes there. The scheduling row, the "Meet with..." field and "Add calendar account" aren't built yet: they're disabled and marked "Soon" (see the [roadmap](/docs/roadmap)). The file is yours, so wire them up there.
 
 ## Installation
 
@@ -96,6 +96,8 @@ const isShown = (event: CalendarEvent) =>
 </CalendarProvider>;
 ```
 
+An app that doesn't filter its events yet can say so: with `calendarVisibilitySoon` each calendar shows a "Soon" badge on hover in place of its eye button. [Calendar App](/docs/components/calendar-app) sets it.
+
 ### Colors
 
 The sidebars bring Notion Calendar's colors as their own tokens, added to your CSS file on install: `--calendar-sidebar`, `--calendar-sidebar-foreground`, `--calendar-sidebar-muted-foreground`, `--calendar-sidebar-primary` and the rest of shadcn/ui's sidebar set, each with a `calendar-` prefix. Inside the sidebar they replace your `--sidebar-*` tokens, so the rest of your app keeps its own sidebar theme. Change them in your CSS to restyle both sidebars.
@@ -154,6 +156,13 @@ The sidebars bring Notion Calendar's colors as their own tokens, added to your C
       type: "(hiddenCalendarIds: string[]) => void",
       description:
         "Called with the new hidden ids when a calendar is shown or hidden.",
+    },
+    {
+      name: "calendarVisibilitySoon",
+      type: "boolean",
+      default: "false",
+      description:
+        "Shows a \"Soon\" badge in place of each calendar's eye button, for an app that doesn't take hidden calendars' events off its views yet.",
     },
     {
       name: "className",
