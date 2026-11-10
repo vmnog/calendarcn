@@ -1,7 +1,7 @@
 import { addDays, addSeconds, subDays } from "date-fns";
 
 import { formatRRule, isRRule, parseRecurrence } from "@/lib/recurrence";
-import { getEventTimeZone } from "@/lib/time-zones";
+import { getEventTimeZone, getViewerTimeZone } from "@/lib/time-zones";
 import type {
   DetailedCalendarEvent,
   EventColor,
@@ -50,6 +50,9 @@ const DATE_PATTERN = /^(\d{4})(\d{2})(\d{2})$/;
 
 /** `YYYYMMDDTHHMMSS`, a DATE-TIME value, with a trailing `Z` when in UTC */
 const DATE_TIME_PATTERN = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/;
+
+/** An IANA zone name such as `America/Sao_Paulo`, safe to write as a TZID */
+const IANA_ZONE_PATTERN = /^[A-Za-z][A-Za-z0-9_+\-/]*$/;
 
 /** `[+|-]P[nW][nD][T[nH][nM][nS]]`, a DURATION value */
 const DURATION_PATTERN =
@@ -140,11 +143,13 @@ export interface ToIcsOptions {
  *   with the exclusive end turned into the calendar's inclusive last day.
  *   DATE-TIME values in UTC, with a `TZID` (IANA names, or the file's own
  *   VTIMEZONE as Outlook writes it) and floating times all become instants
- *   shown in the viewer's time zone.
+ *   shown in the viewer's time zone. A repeating event keeps an IANA `TZID`
+ *   as its `timeZone`.
  * - `UID` to `id` (an edited occurrence, which repeats its series' UID, gets
  *   `UID_RECURRENCE-ID`), `SUMMARY`, `DESCRIPTION` and `LOCATION`.
  * - `RRULE` to `recurrenceRule` (e.g. `FREQ=WEEKLY;BYDAY=TH` to a weekly rule on
- *   Thursdays). A rule it can't hold exactly (`BYMONTHDAY=1,15`, `BYHOUR`, ...)
+ *   Thursdays), read in the event's `timeZone` when it has one, else in the
+ *   viewer's. A rule it can't hold exactly (`BYMONTHDAY=1,15`, `BYHOUR`, ...)
  *   is kept as the raw text in `recurrence` instead. Occurrences are not
  *   expanded: the event shows once, at `DTSTART`.
  * - `TRANSP` to `status` (`TRANSPARENT` is free), `CLASS` to `visibility`,
@@ -174,7 +179,10 @@ export function parseIcs(text: string): DetailedCalendarEvent[] {
  * Calendar and Outlook import.
  *
  * Timed events are written in UTC and all-day events as DATE values with an
- * exclusive `DTEND`. `recurrenceRule` is written as an `RRULE` (its "on" end
+ * exclusive `DTEND`. A repeating timed event is written as wall-clock time
+ * with a `TZID` instead: its `timeZone`, else the viewer's zone, so its rule
+ * and its clock time hold across DST. No VTIMEZONE is written: the `TZID` is
+ * an IANA name. `recurrenceRule` is written as an `RRULE` (its "on" end
  * as an `UNTIL` at the end of that day in the event's time zone); without
  * one, `recurrence` is written only when it holds a rule (`FREQ=...`), so
  * display strings such as "Every weekday" are left out. Lines are folded at
@@ -377,7 +385,10 @@ function toCalendarEvent(
   if (location) event.location = location;
 
   const rrule = getProperty(vevent, "RRULE")?.value.trim();
-  const recurrenceRule = rrule ? parseRecurrence(rrule, start) : null;
+  // A repeating event keeps its zone: its rule is counted in that zone
+  const timeZone = rrule ? getDateTimeZone(startValue) : undefined;
+  if (timeZone) event.timeZone = timeZone;
+  const recurrenceRule = rrule ? parseRecurrence(rrule, start, timeZone) : null;
   if (recurrenceRule) event.recurrenceRule = recurrenceRule;
   if (rrule && !recurrenceRule) event.recurrence = rrule;
 
@@ -499,6 +510,15 @@ function resolveDate(
   if (suffixInstant) return suffixInstant;
 
   return toLocalTime(value.wall);
+}
+
+/**
+ * The IANA zone a DATE-TIME value is written in. Undefined for UTC and
+ * floating values, and for a TZID that isn't an IANA name.
+ */
+function getDateTimeZone(value: IcsDateValue): string | undefined {
+  if (value.kind !== "date-time" || value.utc || !value.tzid) return undefined;
+  return isIanaZone(value.tzid) ? value.tzid : undefined;
 }
 
 function toLocalMidnight(wall: WallTime): Date {
@@ -646,6 +666,13 @@ function getZoneFormatter(timeZone: string): Intl.DateTimeFormat | null {
   }
   zoneFormatters.set(timeZone, formatter);
   return formatter;
+}
+
+/** Whether `timeZone` is an IANA name this runtime knows */
+function isIanaZone(timeZone: string): boolean {
+  return (
+    IANA_ZONE_PATTERN.test(timeZone) && getZoneFormatter(timeZone) !== null
+  );
 }
 
 /** How far `timeZone` is ahead of UTC at `utcMs`, in milliseconds */
@@ -850,6 +877,18 @@ function getRRule(event: DetailedCalendarEvent): string | undefined {
   return undefined;
 }
 
+/**
+ * The zone a repeating event's DTSTART and DTEND are written in: its own,
+ * else the viewer's, so the RRULE's weekdays and the clock time hold across
+ * DST. Undefined when neither is an IANA name: the times are written in UTC.
+ */
+function getSeriesTimeZone(event: DetailedCalendarEvent): string | undefined {
+  const timeZone = getEventTimeZone(event);
+  if (timeZone && isIanaZone(timeZone)) return timeZone;
+  const viewerTimeZone = getViewerTimeZone();
+  return isIanaZone(viewerTimeZone) ? viewerTimeZone : undefined;
+}
+
 function eventToLines(
   event: DetailedCalendarEvent,
   timestamp: string,
@@ -859,6 +898,7 @@ function eventToLines(
     `UID:${escapeText(event.id)}`,
     `DTSTAMP:${timestamp}`,
   ];
+  const rrule = getRRule(event);
 
   if (event.isAllDay) {
     // The calendar's `end` is the last day; iCalendar's DTEND is the day after
@@ -868,9 +908,10 @@ function eventToLines(
       `DTEND;VALUE=DATE:${formatDate(addDays(lastDay, 1))}`,
     );
   } else {
+    const timeZone = rrule ? getSeriesTimeZone(event) : undefined;
     lines.push(
-      `DTSTART:${formatUtcDateTime(event.start)}`,
-      `DTEND:${formatUtcDateTime(event.end)}`,
+      formatDateTimeLine("DTSTART", event.start, timeZone),
+      formatDateTimeLine("DTEND", event.end, timeZone),
     );
   }
 
@@ -882,7 +923,6 @@ function eventToLines(
     lines.push(`LOCATION:${escapeText(event.location)}`);
   }
 
-  const rrule = getRRule(event);
   if (rrule) lines.push(`RRULE:${rrule}`);
 
   if (event.status) {
@@ -945,6 +985,22 @@ function formatUtcDateTime(date: Date): string {
     pad(date.getUTCSeconds()),
   ].join("");
   return `${day}T${time}Z`;
+}
+
+/**
+ * A DTSTART or DTEND line: wall-clock time with a TZID when `timeZone` is
+ * given, else the instant in UTC
+ */
+function formatDateTimeLine(
+  name: string,
+  date: Date,
+  timeZone: string | undefined,
+): string {
+  const formatter = timeZone ? getZoneFormatter(timeZone) : null;
+  if (!timeZone || !formatter) return `${name}:${formatUtcDateTime(date)}`;
+  const offsetMs = getZoneOffsetMs(formatter, date.getTime());
+  const wall = formatUtcDateTime(new Date(date.getTime() + offsetMs));
+  return `${name};TZID=${timeZone}:${wall.slice(0, -1)}`;
 }
 
 function pad(value: number): string {
