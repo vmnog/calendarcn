@@ -31,7 +31,6 @@ type CalendarShortcutActions = Pick<
   | "setNumberOfDays"
   | "clearSelection"
   | "toggleWeekends"
-  | "toggleDeclinedEvents"
 >;
 
 /** Everything the window listener reads */
@@ -100,17 +99,11 @@ function handleShortcut(
   const isCommand = e.metaKey || e.ctrlKey;
   const key = e.key.toLowerCase();
 
-  // Shift+Cmd+E / Shift+Cmd+D (Ctrl on Windows and Linux) toggle the view
-  // settings, even from inside a text field
+  // Shift+Cmd+E (Ctrl on Windows and Linux) toggles weekends, even from
+  // inside a text field
   if (isCommand && e.shiftKey && key === "e") {
     e.preventDefault();
     actions.toggleWeekends();
-    return;
-  }
-
-  if (isCommand && e.shiftKey && key === "d") {
-    e.preventDefault();
-    actions.toggleDeclinedEvents();
     return;
   }
 
@@ -176,10 +169,9 @@ function handleShortcut(
  * - D or 1: day view, W or 0: week view, M: month view, A: agenda
  * - 2-9: number of days
  * - Escape: clear the selection
- * - Shift+Cmd+E / Shift+Cmd+D (Ctrl on Windows and Linux): show or hide
- *   weekends / declined events
+ * - Shift+Cmd+E (Ctrl on Windows and Linux): show or hide weekends
  *
- * Presses with Cmd, Ctrl or Alt are left alone, apart from those two.
+ * Presses with Cmd, Ctrl or Alt are left alone, apart from that one.
  *
  * The live demo's app keys come on with their actions: Cmd+K
  * (`onToggleCommandMenu`), Cmd+/ (`onToggleSidebar`), / (`onToggleContextPanel`),
@@ -208,7 +200,6 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
-    toggleDeclinedEvents,
   } = useCalendar();
 
   /** Latest actions, read by the window listener */
@@ -220,7 +211,6 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
-    toggleDeclinedEvents,
     onToggleCommandMenu,
     onToggleSidebar,
     onToggleContextPanel,
@@ -237,7 +227,6 @@ export function useCalendarShortcuts({
       setNumberOfDays,
       clearSelection,
       toggleWeekends,
-      toggleDeclinedEvents,
       onToggleCommandMenu,
       onToggleSidebar,
       onToggleContextPanel,
@@ -252,7 +241,6 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
-    toggleDeclinedEvents,
     onToggleCommandMenu,
     onToggleSidebar,
     onToggleContextPanel,

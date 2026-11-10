@@ -48,6 +48,13 @@ const DAYS_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
  */
 const PLAIN_KBD_CLASS = "h-auto min-w-0 rounded-none bg-transparent px-0";
 
+/** "Soon" badge of a setting that isn't built yet, as in the command menu */
+const SOON_BADGE = (
+  <span className="bg-muted text-muted-foreground ml-auto rounded px-1.5 py-0.5 text-[10px] leading-none font-medium">
+    Soon
+  </span>
+);
+
 interface ViewDropdownProps {
   view: ViewType;
   numberOfDays: number;
@@ -149,16 +156,14 @@ export function ViewDropdown({
               </KbdGroup>
             </DropdownMenuCheckboxItem>
 
+            {/* Nothing filters by this setting yet */}
             <DropdownMenuCheckboxItem
+              disabled
               checked={viewSettings.showDeclinedEvents}
               onCheckedChange={() => onToggleDeclinedEvents()}
             >
-              Declined eve...
-              <KbdGroup className="ml-auto">
-                <Kbd className={PLAIN_KBD_CLASS}>shift</Kbd>
-                <Kbd className={PLAIN_KBD_CLASS}>&#8984;</Kbd>
-                <Kbd className={PLAIN_KBD_CLASS}>D</Kbd>
-              </KbdGroup>
+              Declined events
+              {SOON_BADGE}
             </DropdownMenuCheckboxItem>
 
             <DropdownMenuCheckboxItem
