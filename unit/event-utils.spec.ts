@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { differenceInMinutes, format } from "date-fns";
+import { enUS } from "date-fns/locale";
 
 import type {
   CalendarEvent,
@@ -9,9 +10,15 @@ import type {
 } from "../src/components/calendar-types";
 import {
   addReminder,
+  calculateAllDayEventRows,
+  calculateMonthCellLayout,
   calculatePositionedEvents,
+  describeEventTime,
+  generateWeekRow,
+  getEventsForDay,
   getKeyboardEventChange,
   getNewEventRange,
+  isMultiDayEvent,
   moveEventToCalendar,
   resolveEventColor,
 } from "../src/lib/event-utils";
@@ -245,5 +252,115 @@ test.describe("time of day on clock-change days", () => {
     if (!moved) return;
     expect(moved.start < event.start).toBe(true);
     expect(differenceInMinutes(moved.end, moved.start)).toBe(60);
+  });
+});
+
+test.describe("events that end at midnight", () => {
+  // Monday June 1 2026 and the two days after it
+  const monday = new Date(2026, 5, 1);
+  const tuesday = new Date(2026, 5, 2);
+  const wednesday = new Date(2026, 5, 3);
+
+  // The whole day, midnight to midnight, on a 15-minute grid
+  const fullDay = { snapMinutes: 15, dayStartHour: 0, dayEndHour: 24 };
+
+  const toWeekDay = (date: Date): WeekDay => ({
+    date,
+    dayName: "",
+    dayNumber: date.getDate(),
+    isToday: false,
+  });
+
+  const timed = (start: Date, end: Date): CalendarEvent => ({
+    id: "late-call",
+    title: "Late call",
+    start,
+    end,
+  });
+
+  // Monday 11 PM to the midnight that starts Tuesday
+  const lateCall = timed(new Date(2026, 5, 1, 23), tuesday);
+  // Monday 11 PM to Tuesday 12:30 AM: this one does reach into Tuesday
+  const overnight = timed(
+    new Date(2026, 5, 1, 23),
+    new Date(2026, 5, 2, 0, 30),
+  );
+
+  test("11 PM to 12 AM is a one-day event", () => {
+    expect(isMultiDayEvent(lateCall)).toBe(false);
+  });
+
+  test("events that reach past midnight are still multi-day", () => {
+    expect(isMultiDayEvent(overnight)).toBe(true);
+    // Monday 10 PM to the midnight that starts Wednesday
+    expect(isMultiDayEvent(timed(new Date(2026, 5, 1, 22), wednesday))).toBe(
+      true,
+    );
+  });
+
+  test("an all-day event is never a timed multi-day event", () => {
+    expect(isMultiDayEvent({ ...lateCall, isAllDay: true })).toBe(false);
+  });
+
+  test("the hour grid draws it on its own day, down to the bottom", () => {
+    expect(getEventsForDay([lateCall], toWeekDay(monday))).toEqual([lateCall]);
+    expect(getEventsForDay([lateCall], toWeekDay(tuesday))).toEqual([]);
+
+    const positioned = calculatePositionedEvents(
+      [lateCall],
+      toWeekDay(monday),
+      fullDay,
+    );
+    expect(positioned).toHaveLength(1);
+    expect(positioned[0].top).toBeCloseTo((23 / 24) * 100, 5);
+    expect(positioned[0].height).toBeCloseTo((1 / 24) * 100, 5);
+    expect(
+      calculatePositionedEvents([lateCall], toWeekDay(tuesday), fullDay),
+    ).toEqual([]);
+  });
+
+  test("the all-day row leaves it out", () => {
+    const days = [monday, tuesday, wednesday].map(toWeekDay);
+    expect(calculateAllDayEventRows([lateCall], days)).toEqual([]);
+    expect(calculateAllDayEventRows([overnight], days)).toHaveLength(1);
+  });
+
+  test("month view lists it on its own day, not as a bar", () => {
+    const layout = calculateMonthCellLayout(
+      [generateWeekRow(monday, 0, enUS)],
+      [lateCall],
+      4,
+    );
+    const mondayCell = layout.get(monday.toISOString());
+    const tuesdayCell = layout.get(tuesday.toISOString());
+    expect(mondayCell?.barSlots).toEqual([]);
+    expect(mondayCell?.eventSlots).toEqual([
+      { type: "event-item", event: lateCall },
+    ]);
+    expect(tuesdayCell?.barSlots).toEqual([]);
+    expect(tuesdayCell?.eventSlots).toEqual([]);
+  });
+
+  test("it reads as one day", () => {
+    expect(describeEventTime(lateCall, 12, enUS)).toBe(
+      "11:00 PM to 12:00 AM, Monday, June 1",
+    );
+    expect(describeEventTime(overnight, 12, enUS)).toBe(
+      "Monday, June 1, 11:00 PM to Tuesday, June 2, 12:30 AM",
+    );
+  });
+
+  test("ArrowUp moves it earlier at its length", () => {
+    const moved = getKeyboardEventChange(
+      lateCall,
+      "ArrowUp",
+      false,
+      "week",
+      fullDay,
+    );
+    expect(moved).not.toBeNull();
+    if (!moved) return;
+    expect(format(moved.start, "EEE HH:mm")).toBe("Mon 22:45");
+    expect(format(moved.end, "EEE HH:mm")).toBe("Mon 23:45");
   });
 });

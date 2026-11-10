@@ -1,5 +1,6 @@
 "use client";
 
+import { isSameDay } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   usePointerGesture,
@@ -415,7 +416,10 @@ export function useEventDrag({
 
       const startMinutes =
         event.start.getHours() * 60 + event.start.getMinutes();
-      const endMinutes = event.end.getHours() * 60 + event.end.getMinutes();
+      // An end at the next midnight is minute 1440 of the event's day, not 0
+      const endMinutes = isSameDay(event.start, event.end)
+        ? event.end.getHours() * 60 + event.end.getMinutes()
+        : 1440;
       const durationMinutes = endMinutes - startMinutes;
 
       dragRef.current = {

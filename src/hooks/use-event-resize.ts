@@ -1,6 +1,6 @@
 "use client";
 
-import { isSameDay, startOfDay } from "date-fns";
+import { isSameDay, startOfDay, subDays } from "date-fns";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   isPrimaryPress,
@@ -489,11 +489,18 @@ export function useEventResize({
 
       const originalStartMinutes =
         event.start.getHours() * 60 + event.start.getMinutes();
-      const originalEndMinutes =
+      let originalEndMinutes =
         event.end.getHours() * 60 + event.end.getMinutes();
 
       const originalStartDate = startOfDay(event.start);
-      const originalEndDate = startOfDay(event.end);
+      let originalEndDate = startOfDay(event.end);
+
+      // An end at the next midnight is minute 1440 of the day before, so the
+      // resize starts within one day
+      if (originalEndMinutes === 0 && !isSameDay(event.start, event.end)) {
+        originalEndMinutes = 1440;
+        originalEndDate = subDays(originalEndDate, 1);
+      }
 
       resizeRef.current = {
         eventId: event.id,
