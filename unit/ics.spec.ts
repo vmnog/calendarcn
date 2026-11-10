@@ -292,6 +292,7 @@ test.describe("toIcs", () => {
         title: "Standup",
         start: new Date("2026-06-01T13:00:00Z"),
         end: new Date("2026-06-01T13:15:00Z"),
+        timeZone: "America/New_York",
         color: "blue",
         recurrenceRule: {
           frequency: "weekly",
@@ -409,6 +410,7 @@ test.describe("toIcs", () => {
         title: "Planning",
         start: new Date("2026-06-01T13:00:00Z"),
         end: new Date("2026-06-01T14:00:00Z"),
+        timeZone: "America/New_York",
         recurrenceRule: {
           frequency: "weekly",
           interval: 2,
@@ -423,6 +425,7 @@ test.describe("toIcs", () => {
         title: "Market",
         start: new Date("2026-06-27T14:00:00Z"),
         end: new Date("2026-06-27T15:00:00Z"),
+        timeZone: "America/New_York",
         recurrenceRule: {
           frequency: "monthly",
           monthlyBy: "weekday-of-month",
@@ -489,6 +492,7 @@ test.describe("toIcs", () => {
               title: "Custom",
               start: new Date("2026-06-01T13:00:00Z"),
               end: new Date("2026-06-01T14:00:00Z"),
+              timeZone: "America/New_York",
               recurrence: rrule,
             },
           ],
@@ -521,5 +525,147 @@ test.describe("toIcs", () => {
       const events = parseIcs(readFixture(name));
       expect(parseIcs(toIcs(events, { timestamp })), name).toEqual(events);
     }
+  });
+
+  test("writes a repeating event's times in its zone", () => {
+    const event: DetailedCalendarEvent = {
+      id: "standup",
+      title: "Standup",
+      // 9:00 AM in New York (EDT, UTC-4)
+      start: new Date("2026-06-01T13:00:00Z"),
+      end: new Date("2026-06-01T13:15:00Z"),
+      timeZone: "America/New_York",
+      recurrenceRule: { frequency: "weekly", weekdays: [1] },
+    };
+    const ics = toIcs([event], { timestamp });
+
+    expect(ics).toContain("DTSTART;TZID=America/New_York:20260601T090000\r\n");
+    expect(ics).toContain("DTEND;TZID=America/New_York:20260601T091500\r\n");
+    expect(ics).toContain("RRULE:FREQ=WEEKLY;BYDAY=MO\r\n");
+    expect(parseIcs(ics)).toEqual([event]);
+  });
+
+  test("writes the start on the day its weekday rule names", () => {
+    const event: DetailedCalendarEvent = {
+      id: "market",
+      title: "Market",
+      // Saturday 2:00 PM in UTC is Sunday, June 28, 2:00 AM in Auckland (UTC+12)
+      start: new Date("2026-06-27T14:00:00Z"),
+      end: new Date("2026-06-27T15:00:00Z"),
+      timeZone: "Pacific/Auckland",
+      recurrenceRule: {
+        frequency: "monthly",
+        monthlyBy: "weekday-of-month",
+        weekOfMonth: -1,
+      },
+    };
+    const ics = toIcs([event], { timestamp });
+
+    expect(ics).toContain("DTSTART;TZID=Pacific/Auckland:20260628T020000\r\n");
+    expect(ics).toContain("RRULE:FREQ=MONTHLY;BYDAY=-1SU\r\n");
+    expect(parseIcs(ics)).toEqual([event]);
+  });
+
+  test("reads a repeating event's zone and its rule in that zone", () => {
+    const [event] = parseIcs(
+      [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "BEGIN:VEVENT",
+        "UID:market",
+        "SUMMARY:Market",
+        "DTSTART;TZID=Pacific/Auckland:20260628T020000",
+        "DTEND;TZID=Pacific/Auckland:20260628T030000",
+        "RRULE:FREQ=MONTHLY;BYDAY=-1SU",
+        "END:VEVENT",
+        "END:VCALENDAR",
+      ].join("\r\n"),
+    );
+
+    expect(event.timeZone).toBe("Pacific/Auckland");
+    expect(event.recurrenceRule).toEqual({
+      frequency: "monthly",
+      monthlyBy: "weekday-of-month",
+      weekOfMonth: -1,
+    });
+    expect(isoRange(event)).toEqual([
+      "2026-06-27T14:00:00.000Z",
+      "2026-06-27T15:00:00.000Z",
+    ]);
+  });
+
+  test("writes a repeating event with no zone in the viewer's zone", () => {
+    const viewerZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const event: DetailedCalendarEvent = {
+      id: "review",
+      title: "Review",
+      start: new Date(2026, 5, 1, 9),
+      end: new Date(2026, 5, 1, 10),
+      recurrenceRule: { frequency: "daily" },
+    };
+    const ics = toIcs([event], { timestamp });
+
+    expect(ics).toContain(`DTSTART;TZID=${viewerZone}:20260601T090000\r\n`);
+    expect(ics).toContain(`DTEND;TZID=${viewerZone}:20260601T100000\r\n`);
+    // The zone it was written in comes back with it
+    expect(parseIcs(ics)).toEqual([{ ...event, timeZone: viewerZone }]);
+  });
+
+  test("writes a zone that is not an IANA name as the viewer's zone", () => {
+    const viewerZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const ics = toIcs(
+      [
+        {
+          id: "offset",
+          title: "Offset",
+          start: new Date(2026, 5, 1, 9),
+          end: new Date(2026, 5, 1, 10),
+          // An offset has a colon, which would end the property's name early
+          timeZone: "+01:00",
+          recurrenceRule: { frequency: "daily" },
+        },
+      ],
+      { timestamp },
+    );
+
+    expect(ics).not.toContain("TZID=+01:00");
+    expect(ics).toContain(`DTSTART;TZID=${viewerZone}:20260601T090000\r\n`);
+  });
+
+  test("keeps a one-off event in UTC, with no zone", () => {
+    const ics = toIcs(
+      [
+        {
+          id: "lunch",
+          title: "Lunch",
+          start: new Date("2026-06-02T15:00:00Z"),
+          end: new Date("2026-06-02T16:00:00Z"),
+          timeZone: "America/Sao_Paulo",
+        },
+      ],
+      { timestamp },
+    );
+    expect(ics).toContain("DTSTART:20260602T150000Z\r\n");
+    expect(ics).toContain("DTEND:20260602T160000Z\r\n");
+
+    // Read with a TZID, a one-off event is the same instant and has no zone
+    const [dinner] = parseIcs(
+      [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "BEGIN:VEVENT",
+        "UID:dinner",
+        "SUMMARY:Dinner",
+        "DTSTART;TZID=America/Sao_Paulo:20260602T190000",
+        "DTEND;TZID=America/Sao_Paulo:20260602T200000",
+        "END:VEVENT",
+        "END:VCALENDAR",
+      ].join("\r\n"),
+    );
+    expect(dinner.timeZone).toBeUndefined();
+    expect(isoRange(dinner)).toEqual([
+      "2026-06-02T22:00:00.000Z",
+      "2026-06-02T23:00:00.000Z",
+    ]);
   });
 });
