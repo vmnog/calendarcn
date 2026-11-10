@@ -2,7 +2,7 @@
 
 ## Overview
 
-CalendarCN is a client-side React calendar component built with Next.js App Router. There is no backend — all state lives in React and resets on page reload. The app renders a weekly calendar view with interactive drag, resize, and selection behaviors.
+CalendarCN is a client-side React calendar component built with Next.js App Router. There is no backend for calendar data — all state lives in React and resets on page reload. The app renders day, week, month and agenda views with interactive drag, resize, and selection behaviors.
 
 ## System Diagram
 
@@ -73,7 +73,7 @@ events[] → getEventsForDay(day) → assignColumns() → calculatePositionedEve
 
 1. **Filter**: `getEventsForDay()` selects events overlapping a specific day
 2. **Column Assignment**: `assignColumns()` detects overlapping events and assigns column indices
-3. **Position Calculation**: Converts time ranges to pixel positions (top, height, left, width)
+3. **Position Calculation**: Converts time ranges to percentages: `top` and `height` of the visible hours, `left` and `width` of the day column
 4. **Segment Position**: Multi-day events get `segmentPosition` ("start", "middle", "end", "full")
 
 ## Key Components
@@ -109,12 +109,27 @@ Renders a single event segment. Handles:
 
 ### Custom Hooks
 
-| Hook                  | Purpose                      | Key Pattern                                             |
-| --------------------- | ---------------------------- | ------------------------------------------------------- |
-| `useEventDrag`        | Drag events across time/days | Ref-based intermediate state, snap-to-grid, auto-scroll |
-| `useEventResize`      | Resize event duration        | Anchor model, edge flipping, min duration enforcement   |
-| `useAllDayResize`     | Resize all-day event span    | Column-based calculation, row re-stacking               |
-| `useHorizontalScroll` | Smooth scroll in grid        | Scroll container ref, buffer management                 |
+| File                        | Purpose                                                                               |
+| --------------------------- | ------------------------------------------------------------------------------------- |
+| `use-pointer-gesture.ts`    | Starts every drag and resize: at once for mouse and pen, after a long press for touch |
+| `use-event-drag.ts`         | Drags a timed event across time and days (ref-based state, snap-to-grid, auto-scroll) |
+| `use-event-resize.ts`       | Resizes a timed event from its top or bottom edge (anchor model, edge flipping)       |
+| `use-all-day-resize.ts`     | Resizes an all-day event's span in the all-day row                                    |
+| `use-month-event-drag.ts`   | Drags an event to another day in the month grid                                       |
+| `use-month-event-resize.ts` | Resizes an event's span in the month grid                                             |
+| `use-event-keyboard.ts`     | Moves and resizes the focused event with the Alt+Arrow keys                           |
+| `use-calendar-shortcuts.ts` | The calendar's and the app's keyboard shortcuts, on one `window` listener             |
+| `use-horizontal-scroll.ts`  | Wheel scrolling across days in the time grid, with snap and slide animation           |
+| `use-vertical-scroll.ts`    | Wheel scrolling across rows in the month grid, with snap and slide animation          |
+| `use-now.ts`                | The current time, updated every minute; `null` during server rendering and hydration  |
+| `use-timezone-label.ts`     | The viewer's short time zone label ("EDT", "GMT-3")                                   |
+| `use-controllable-state.ts` | State a parent can control or the component owns (shadcn/Radix style)                 |
+| `use-inline-edit.ts`        | An inline text field: Enter commits, Escape restores                                  |
+| `use-field-popover.ts`      | Focus, blur and Escape for the details' time and date fields                          |
+| `use-popover-dismiss.ts`    | Closes a popover on Escape, a press outside it, or focus moving outside it            |
+| `use-hover-tooltip.ts`      | Open state of a tooltip shown on hover                                                |
+| `use-media-query.ts`        | Whether a CSS media query matches                                                     |
+| `use-mobile.ts`             | `useIsMobile`: whether the viewport is narrower than 768px                            |
 
 ### Server Rendering and the Clock
 
@@ -147,7 +162,7 @@ Colors are defined as CSS variables in `globals.css` with light/dark variants:
 }
 ```
 
-Components access colors via the `eventColorStyles` map, never hardcoded.
+Components access event colors via the `eventColorStyles` map (`calendar-event-item.tsx`), never hardcoded. The details panel's own interactive colors are the one exception: they are hardcoded hex values with a light and a `dark:` variant, listed in `CLAUDE.md` under "Interactive Element Patterns".
 
 ### Z-Index Scale
 
@@ -162,8 +177,8 @@ Components access colors via the `eventColorStyles` map, never hardcoded.
 
 ## Technology Decisions
 
-- **No backend**: Client-side only, mock data in `mock-events.ts`
-- **No global state library**: React state + prop drilling (project is small enough)
+- **No backend for calendar data**: events live in React state; the demo's data is in `mock-events.ts`. The one API route, `src/app/api/search/route.ts`, serves the docs search
+- **No global state library**: `CalendarProvider` (a React context) owns the state and components read it with `useCalendar()`
 - **shadcn/ui primitives**: Accessible, composable, styled with Tailwind
 - **date-fns over dayjs/moment**: Tree-shakeable, immutable, modern
 - **Tailwind CSS 4**: Utility-first, CSS variable integration, dark mode support

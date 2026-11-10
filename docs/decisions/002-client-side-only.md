@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. See "Amendments" at the end for what changed since.
 
 ## Context
 
@@ -30,3 +30,9 @@ Keep CalendarCN as a client-side only application. All event data lives in React
 ### Neutral
 
 - When persistence is needed in the future, `page.tsx` state handlers are already callback-based, making it straightforward to wire up an API
+
+## Amendments
+
+- The decision stands for calendar data: events live in React state and nothing is saved.
+- State no longer flows through `page.tsx`. `CalendarProvider` owns it, and an app that wants persistence wires it to the provider's `onEventsChange`, `onEventCreate` and `onEventUpdate`.
+- One API route exists, `src/app/api/search/route.ts`. It serves the docs site's search and holds no calendar data, so the site is no longer a purely static deploy.

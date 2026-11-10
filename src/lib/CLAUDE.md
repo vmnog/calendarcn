@@ -4,10 +4,16 @@
 
 Pure utility functions and data:
 
-- `event-utils.ts` — event positioning algorithms (column assignment, pixel calculations)
+- `event-utils.ts` — event positioning algorithms (column assignment, positions as percentages of the visible hours)
+- `recurrence.ts` — repeat rules: RRULE parse/format, labels, series occurrences
+- `time-zones.ts` — IANA zone list, offsets, zone days, wall-clock zone changes
+- `timezone-label.ts` — short time zone labels ("GMT-3 Sao Paulo")
+- `time-input.ts` — time menu options, typed times and durations, date parsing
+- `ics.ts` — iCalendar import and export (`parseIcs`, `toIcs`)
 - `mock-events.ts` — the live demo's data: events, calendars, contacts, rooms and place suggestions
 - `sample-events.ts` — the docs examples' week of events (`createSampleEvents`)
 - `conference-providers.ts` — the demo's placeholder Google Meet, Zoom and Teams, without logos (ADR 005)
+- `source.ts` — the docs site's page tree (Fumadocs loader for `/docs`); not part of the calendar
 - `utils.ts` — general utilities (`cn()` class merger)
 
 ## Gotchas
@@ -18,9 +24,9 @@ This file contains the core math for laying out events in the calendar grid. Cha
 
 **Key functions:**
 
-- `getEventsForDay(events, day)` — filters events that overlap a specific day. Handles all-day, multi-day, and single-day events. Be careful with boundary conditions (events that start at exactly midnight).
+- `getEventsForDay(events, day)` — the timed events drawn in one day's column: keeps the events that overlap the day and drops all-day and multi-day events (those go to the all-day row). Be careful with boundary conditions (events that start or end at exactly midnight).
 - `assignColumns(events)` — determines how overlapping events stack side-by-side. Uses a greedy algorithm: sort by start time, group overlapping events, assign column indices. Bug-prone area — always verify with overlapping test cases.
-- `calculatePositionedEvents(events, day, { dayStartHour, dayEndHour })` — combines filtering + column assignment + pixel math. Returns `PositionedEvent[]` with `top`, `height` (percentages of the visible hours; events past them are clipped, events fully outside are dropped), `left`, `width`, and `segmentPosition`.
+- `calculatePositionedEvents(events, day, { dayStartHour, dayEndHour })` — combines filtering + column assignment + position math. Returns `PositionedEvent[]` with `top`, `height` (percentages of the visible hours; events past them are clipped, events fully outside are dropped), `left`, `width`, and `segmentPosition`.
 - `calculateAllDayEventRows(events, days)` — stacks all-day events into rows. Returns occupied rows and max row count for height calculation.
 
 **When modifying:**

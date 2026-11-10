@@ -14,7 +14,7 @@ Requirements:
 4. Use `cn()` for conditional Tailwind classes
 5. Constants in ALL_CAPS with JSDoc comments
 6. Early returns for edge cases
-7. If types are shared, add them to `week-view-types.ts`
+7. If types are shared, add them to `calendar-types.ts`; the component's props go in `week-view-types.ts`
 
 The component should: {describe what it does}
 

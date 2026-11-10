@@ -18,7 +18,7 @@ pnpm build         # Must succeed
 1. Merge PR to `main` via GitHub
 2. Vercel triggers automatic deployment
 3. Monitor build in Vercel dashboard
-4. Verify at https://calendarcn.vercel.app
+4. Verify at https://calendarcn.xyz
 
 ## Rollback
 
