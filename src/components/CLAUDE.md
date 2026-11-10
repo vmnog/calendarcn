@@ -20,7 +20,7 @@ All React components for CalendarCN. Split into:
 
 ### Type Definitions
 
-**All shared types live in `week-view-types.ts`** — the canonical source. Never define types inline in component files unless they're truly local (used only in that file). When in doubt, put it in `week-view-types.ts`.
+**Shared types live in `calendar-types.ts`** — the canonical source. Component props live in `week-view-types.ts`, which also re-exports every shared type, so both import paths work. Never define types inline in component files unless they're truly local (used only in that file). When in doubt: a type the provider, a hook or `src/lib` needs goes in `calendar-types.ts`; a component's props go in `week-view-types.ts`.
 
 ### View Sync
 

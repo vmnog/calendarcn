@@ -21,7 +21,7 @@ Components install to `src/components/ui/`. Don't edit these directly — custom
 
 ### Adding a New Event Color
 
-1. Add the color name to `EventColor` union in `src/components/week-view-types.ts`
+1. Add the color name to `EventColor` union in `src/components/calendar-types.ts`
 2. Add CSS variables in `src/app/globals.css` (both `:root` and `.dark`)
 3. Add the color entry to `eventColorStyles` map in `src/components/calendar-event-item.tsx`
 
@@ -34,7 +34,7 @@ Components install to `src/components/ui/`. Don't edit these directly — custom
 
 ### Modifying Event Types
 
-1. Update the type in `src/components/week-view-types.ts` (the canonical source)
+1. Update the type in `src/components/calendar-types.ts` (the canonical source; component props are in `week-view-types.ts`)
 2. Run `pnpm typecheck` to find all affected files
 3. Update each file to handle the new type shape
 

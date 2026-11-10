@@ -2,9 +2,9 @@
 
 ## Purpose
 
-CalendarCN is an open-source React calendar component inspired by Notion Calendar. It provides a weekly view with drag/resize interactions, multi-day events, dark mode, and keyboard shortcuts. Built with Next.js 16, React 19, Tailwind CSS 4, and shadcn/ui.
+CalendarCN is an open-source React calendar component inspired by Notion Calendar. It provides day, week, month and agenda views with drag/resize interactions, multi-day events, dark mode, and keyboard shortcuts. Built with Next.js 16, React 19, Tailwind CSS 4, and shadcn/ui.
 
-Live: https://calendarcn.vercel.app
+Live: https://calendarcn.xyz
 
 ## Repo Map
 
@@ -45,12 +45,13 @@ src/
 
 Key files:
 
-- `src/components/week-view-types.ts` — **canonical type source** for all shared types
+- `src/components/calendar-types.ts` — **canonical type source** for shared types (events, views, settings, provider props)
+- `src/components/week-view-types.ts` — component props; re-exports every shared type, so existing imports from it keep working
 - `src/components/calendar-provider.tsx` — owns events, view, date and selection; adopts the mounted view's type (rule in its JSDoc)
 - `src/components/time-grid.tsx` — day/week grid orchestration (days, hours, scroll buffer, drag/resize hooks)
 - `src/components/calendar-app.tsx` — `CalendarApp` block: the whole live demo (sidebars, header, views, command menu, theme, .ics, shortcuts)
 - `src/app/page.tsx` — demo: renders `<CalendarApp />` with the sample data, conferencing logos, avatar and links
-- `src/lib/event-utils.ts` — positioning math (column assignment, pixel calculations)
+- `src/lib/event-utils.ts` — positioning math (column assignment, positions as percentages)
 - `src/hooks/use-event-drag.ts` — drag interaction (snapping, cross-day, auto-scroll)
 - `src/hooks/use-event-resize.ts` — resize interaction (anchor model, edge flipping)
 
@@ -60,7 +61,7 @@ Key files:
 
 - **No `any` types** — import or create correct types, always
 - **Prefer early returns** over if/else chains or nested ternaries
-- **All shared types go in `week-view-types.ts`** — single source of truth
+- **Shared types go in `calendar-types.ts`, component props in `week-view-types.ts`** — never inline in a component
 - **Never assign `ref.current` during render** — always use `useEffect`
 - **Constants in ALL_CAPS** with JSDoc comments explaining purpose
 - **Exhaustive hook dependencies** — use refs to break circular deps, never skip deps
@@ -118,7 +119,7 @@ Every interactive color needs BOTH a light value and a `dark:` value. The dark v
 
 #### Inline Editable Input Pattern
 
-For any text field that edits inline (title, time, date), use `useInlineEdit` from `src/hooks/use-inline-edit.ts`. Spread its `inputProps` on the `<input>` and pass the input's ref:
+For a text field that edits inline (the title is the one today), use `useInlineEdit` from `src/hooks/use-inline-edit.ts`. Spread its `inputProps` on the `<input>` and pass the input's ref:
 
 ```tsx
 const inputRef = useRef<HTMLInputElement>(null);
@@ -128,11 +129,12 @@ const { inputProps } = useInlineEdit({
   onCommit: (text) => (isValid(text) ? text : null), // null rejects and restores
   onInput: previewOnCalendar, // optional, every keystroke
   onRestore: undoPreview, // optional, after Escape or a rejected commit
-  selectOnFocus: true, // time and date fields
 });
 ```
 
 It does what the hand-written handlers did: Enter commits by blurring, blur commits, Escape restores the value from focus without committing and stops the key from reaching the global deselect. The title previews with `onInput` on every keystroke; time inputs only commit on blur (mid-edit text like "3:" is invalid). Set `readOnly={!onEventChange}` on the input: without a change handler a section is read-only.
+
+The time and date fields open a popover, so they use `useFieldPopover` from `src/hooks/use-field-popover.ts` instead. They select their text on focus with `selectInputSoon(inputRef)` from the same file; `useInlineEdit` has no option for that.
 
 #### Editable Input Styling
 
