@@ -54,6 +54,9 @@ let supportedTimeZones: string[] | null = null;
 /** Zone of each legacy label `findTimeZoneByLabel` has looked up */
 const labelTimeZoneCache = new Map<string, string | undefined>();
 
+/** Whether the runtime knows each zone name `isKnownTimeZone` has checked */
+const knownTimeZoneCache = new Map<string, boolean>();
+
 function getFormatter(
   timeZone: string,
   timeZoneName: Intl.DateTimeFormatOptions["timeZoneName"],
@@ -225,13 +228,34 @@ export function findTimeZoneByLabel(
 }
 
 /**
+ * Whether the runtime knows `timeZone` as a zone name. `Intl` throws a
+ * RangeError on one it doesn't know, like "Mars/Olympus" or Outlook's
+ * "Pacific Standard Time".
+ */
+export function isKnownTimeZone(timeZone: string): boolean {
+  const cached = knownTimeZoneCache.get(timeZone);
+  if (cached !== undefined) return cached;
+
+  let isKnown = true;
+  try {
+    getFormatter(timeZone, "longOffset");
+  } catch {
+    isKnown = false;
+  }
+  knownTimeZoneCache.set(timeZone, isKnown);
+  return isKnown;
+}
+
+/**
  * The IANA zone an event is set in: its `timeZone`, else the zone its
- * legacy `timezone` label names. `undefined` means the viewer's zone.
+ * legacy `timezone` label names. `undefined` means the viewer's zone, which
+ * is also what a `timeZone` the runtime doesn't know falls back to.
  */
 export function getEventTimeZone(
   event: Pick<DetailedCalendarEvent, "timeZone" | "timezone">,
 ): string | undefined {
-  return event.timeZone ?? findTimeZoneByLabel(event.timezone);
+  if (event.timeZone && isKnownTimeZone(event.timeZone)) return event.timeZone;
+  return findTimeZoneByLabel(event.timezone);
 }
 
 /** Lower case without accents, so "sao" finds "São" */
