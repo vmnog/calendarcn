@@ -54,17 +54,29 @@ export interface DetailsSidebarShortcut {
   label: string;
   /** Keys pressed together, each shown as a key cap */
   keys: string[];
+  /** Not built yet: a "Soon" badge is shown in place of its keys */
+  soon?: boolean;
 }
 
-/** Notion Calendar's "Useful shortcuts", the panel's default list */
+/**
+ * Notion Calendar's "Useful shortcuts", the panel's default list. The ones
+ * nothing handles yet are marked `soon`
+ */
 export const USEFUL_SHORTCUTS: DetailsSidebarShortcut[] = [
   { label: "Command menu", keys: ["⌘", "K"] },
-  { label: "Menu bar calendar", keys: ["control", "⌘", "K"] },
-  { label: "Toggle sidebar", keys: ["`"] },
-  { label: "Show teammate calendar", keys: ["P"] },
-  { label: "Go to date", keys: ["."] },
-  { label: "All keyboard shortcuts", keys: ["?"] },
+  { label: "Menu bar calendar", keys: ["control", "⌘", "K"], soon: true },
+  { label: "Toggle sidebar", keys: ["⌘", "/"] },
+  { label: "Show teammate calendar", keys: ["P"], soon: true },
+  { label: "Go to date", keys: ["."], soon: true },
+  { label: "All keyboard shortcuts", keys: ["?"], soon: true },
 ];
+
+/** "Soon" badge of a listed shortcut that isn't built yet, as in the command menu */
+const SOON_BADGE = (
+  <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px] leading-none font-medium">
+    Soon
+  </span>
+);
 
 interface DetailsSidebarProps extends React.ComponentProps<"div"> {
   /** Render as a modal sheet instead of an inline column (phones and tablets) */
@@ -384,7 +396,11 @@ export function DetailsSidebar({
             <SidebarGroupContent>
               <div className="flex flex-col">
                 {shortcuts.map((shortcut) => (
-                  <ShortcutRow key={shortcut.label} label={shortcut.label}>
+                  <ShortcutRow
+                    key={shortcut.label}
+                    label={shortcut.label}
+                    soon={shortcut.soon}
+                  >
                     {shortcut.keys.map((key) => (
                       <Kbd key={key}>{key}</Kbd>
                     ))}
@@ -601,15 +617,20 @@ function SearchResultItem({
 
 function ShortcutRow({
   label,
+  soon,
   children,
 }: {
   label: string;
+  /** Not built yet: a "Soon" badge replaces the keys */
+  soon?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="text-muted-foreground flex items-center justify-between py-1 text-xs">
       <span>{label}</span>
-      <div className="flex items-center gap-1">{children}</div>
+      <div className="flex items-center gap-1">
+        {soon ? SOON_BADGE : children}
+      </div>
     </div>
   );
 }

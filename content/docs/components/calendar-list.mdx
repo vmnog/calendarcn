@@ -84,6 +84,13 @@ const [hidden, setHidden] = React.useState<string[]>([]);
       description:
         "Called with the new hidden ids when a calendar is shown or hidden.",
     },
+    {
+      name: "visibilitySoon",
+      type: "boolean",
+      default: "false",
+      description:
+        'Shows a "Soon" badge on hover in place of the eye button, while nothing takes a hidden calendar\'s events off the views.',
+    },
   ]}
 />
 

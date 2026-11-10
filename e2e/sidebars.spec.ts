@@ -42,24 +42,14 @@ test.describe("wide screens", () => {
     await expect(miniCalendarInView(page)).toHaveCount(7);
   });
 
-  test("hiding a calendar dims it until it's shown again", async ({ page }) => {
-    // The eye toggle sits inside the row's button, so find it by its label
-    const family = page.getByRole("listitem").filter({ hasText: /^Family$/ });
-    await family.hover();
-    await family.locator('[aria-label="Hide Family"]').click();
-    await expect(family.locator('[aria-label="Show Family"]')).toBeAttached();
-    await expect(family.getByText("Family")).toHaveCSS("opacity", "0.5");
-
-    await family.locator('[aria-label="Show Family"]').click();
-    await expect(family.getByText("Family")).toHaveCSS("opacity", "1");
-  });
-
   test("an account's calendars fold away and back", async ({ page }) => {
     const workAccount = page.getByRole("button", {
       name: "you@work.example.com",
       exact: true,
     });
-    const work = page.getByRole("listitem").filter({ hasText: /^Work$/ });
+    const work = page
+      .getByRole("listitem")
+      .filter({ has: page.getByText("Work", { exact: true }) });
 
     await workAccount.click();
     await expect(work).toHaveCount(0);

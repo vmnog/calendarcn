@@ -40,6 +40,14 @@ const NO_HIDDEN_CALENDARS: string[] = [];
 /** Label of the group of calendars that have no account `email` */
 const NO_ACCOUNT_LABEL = "Calendars";
 
+/**
+ * "Soon" badge of a sidebar control that isn't built yet, as in the command
+ * menu. The calendar sidebar uses it too. Its fill is translucent so it shows
+ * on a hovered row, whose background is the accent color.
+ */
+export const CALENDAR_SIDEBAR_SOON_CLASS =
+  "bg-sidebar-foreground/10 text-sidebar-foreground/60 ml-auto shrink-0 rounded px-1 py-0.5 text-[10px] leading-none font-medium";
+
 interface CalendarListProps {
   /**
    * Calendars to list, grouped under their account `email`. Defaults to the
@@ -52,18 +60,26 @@ interface CalendarListProps {
   defaultHiddenCalendarIds?: string[];
   /** Called with the new hidden ids when a calendar is shown or hidden */
   onHiddenCalendarIdsChange?: (hiddenCalendarIds: string[]) => void;
+  /**
+   * Nothing takes a hidden calendar's events off the views yet: rows show a
+   * "Soon" badge on hover instead of the eye button. `CalendarApp` sets it.
+   * Defaults to false
+   */
+  visibilitySoon?: boolean;
 }
 
 /**
  * The sidebar's calendars, one collapsible group per account, with an eye
  * button to show or hide each. Hiding only dims the row: filter your events
- * with `onHiddenCalendarIdsChange` to take them off the calendar.
+ * with `onHiddenCalendarIdsChange` to take them off the calendar. With
+ * `visibilitySoon` the eye is replaced by a "Soon" badge.
  */
 export function CalendarList({
   calendars: calendarsProp,
   hiddenCalendarIds: hiddenCalendarIdsProp,
   defaultHiddenCalendarIds = NO_HIDDEN_CALENDARS,
   onHiddenCalendarIdsChange,
+  visibilitySoon = false,
 }: CalendarListProps) {
   const config = useCalendarConfig();
   const calendars = calendarsProp ?? config.calendars;
@@ -137,29 +153,40 @@ export function CalendarList({
                             >
                               {calendar.name}
                             </span>
-                            <span
-                              role="button"
-                              tabIndex={0}
-                              aria-label={`${isVisible ? "Hide" : "Show"} ${calendar.name}`}
-                              className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm opacity-0 hover:bg-sidebar-accent group-hover/calendar-item:opacity-100"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleVisibility(calendar.id);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
+                            {visibilitySoon ? (
+                              <span
+                                className={cn(
+                                  CALENDAR_SIDEBAR_SOON_CLASS,
+                                  "opacity-0 group-hover/calendar-item:opacity-100 group-focus-within/calendar-item:opacity-100",
+                                )}
+                              >
+                                Soon
+                              </span>
+                            ) : (
+                              <span
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`${isVisible ? "Hide" : "Show"} ${calendar.name}`}
+                                className="inline-flex size-6 shrink-0 items-center justify-center rounded-sm opacity-0 hover:bg-sidebar-accent group-hover/calendar-item:opacity-100"
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   toggleVisibility(calendar.id);
-                                }
-                              }}
-                            >
-                              {isVisible ? (
-                                <Eye className="!size-3.5 text-calendar-sidebar-muted-foreground" />
-                              ) : (
-                                <EyeOff className="!size-3.5 text-calendar-sidebar-muted-foreground" />
-                              )}
-                            </span>
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    toggleVisibility(calendar.id);
+                                  }
+                                }}
+                              >
+                                {isVisible ? (
+                                  <Eye className="!size-3.5 text-calendar-sidebar-muted-foreground" />
+                                ) : (
+                                  <EyeOff className="!size-3.5 text-calendar-sidebar-muted-foreground" />
+                                )}
+                              </span>
+                            )}
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       );
