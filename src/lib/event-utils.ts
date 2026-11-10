@@ -139,9 +139,7 @@ function atMinutesOfDay(day: Date, minutes: number): Date {
  * contains the click, so the new event always covers the clicked point.
  * Near the end of the visible hours the start is clamped to the last full
  * event length, and near midnight the end is capped at the end of the day,
- * because an event ending at the next day's 00:00 counts as multi-day (see
- * isMultiDayEvent) and would render in the all-day row instead of the
- * clicked column.
+ * so the new event's end stays on the day that was clicked.
  */
 export function getNewEventRange(
   day: Date,
@@ -169,12 +167,17 @@ export function getNewEventRange(
   return { start, end: endOfDay(start) };
 }
 
-/** Returns true when a timed event spans across midnight into a different day. */
+/**
+ * Returns true when a timed event reaches into a day after the one it starts
+ * on. An end at midnight is the end of the day before: 11 PM to 12 AM is one
+ * day.
+ */
 export function isMultiDayEvent(event: CalendarEvent): boolean {
   if (event.isAllDay) {
     return false;
   }
-  return !isSameDay(event.start, event.end);
+  const { first, last } = getEventDayRange(event);
+  return first.getTime() !== last.getTime();
 }
 
 /**
@@ -1273,7 +1276,7 @@ export function describeEventTime(
 
   const startTime = formatSpokenTime(event.start, hourCycle, locale);
   const endTime = formatSpokenTime(event.end, hourCycle, locale);
-  if (isSameDay(event.start, event.end)) {
+  if (!isMultiDayEvent(event)) {
     return `${startTime} to ${endTime}, ${startDate}`;
   }
   return `${startDate}, ${startTime} to ${endDate}, ${endTime}`;
@@ -1389,7 +1392,7 @@ export function getKeyboardEventChange(
       : Math.ceil(minutes / snapMinutes) * snapMinutes - snapMinutes;
   const clampMinutes = (minutes: number, min: number, max: number) =>
     Math.min(Math.max(minutes, min), max);
-  // Ending at the next midnight would make it a multi-day event (all-day row)
+  // An end past the last minute of the day is capped at the end of the day
   const toDate = (minutes: number) => {
     if (minutes >= MINUTES_PER_DAY) return endOfDay(dayStart);
     const date = atMinutesOfDay(dayStart, minutes);
