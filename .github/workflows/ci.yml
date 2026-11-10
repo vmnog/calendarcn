@@ -36,6 +36,8 @@ jobs:
 
       - run: pnpm typecheck
 
+      - run: pnpm test:unit
+
       - run: pnpm format:check
 
       # public/r holds the shadcn registry built from registry.json. Rebuild

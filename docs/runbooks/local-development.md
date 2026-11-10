@@ -49,6 +49,19 @@ pnpm format:check  # Check without writing
 
 Always run all three before committing: `pnpm lint && pnpm typecheck && pnpm format:check`
 
+## Unit Tests
+
+Logic that needs no page (repeat rules, the .ics parser and writer, visible range math, event helpers) is tested in `unit/`, with the same Playwright runner and `expect` as the e2e suite. No build, no server, no browser: a run takes about a second.
+
+```bash
+pnpm test:unit                          # every file in unit/
+pnpm test:unit unit/recurrence.spec.ts  # one file
+```
+
+- A test goes in `unit/` when it never uses `page`. A test that opens the demo goes in `e2e/`.
+- The script pins `TZ=America/New_York`, the zone the e2e browser uses, so results are the same on every machine. To try another zone: `TZ=Pacific/Auckland pnpm exec playwright test --project=unit`.
+- The `.ics` fixtures are shared with the e2e suite and stay in `e2e/fixtures/`.
+
 ## End-to-End Tests
 
 A Playwright suite in `e2e/` drives the demo at `/` the way a user does: view switching, navigation, drag and resize, click-to-create, the event popover and detail panel, and the phone details sheet. Run it before merging changes to calendar behavior.

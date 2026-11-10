@@ -42,6 +42,7 @@ pnpm typecheck      # TypeScript type checking
 pnpm format         # Format code with Prettier
 pnpm format:check   # Check formatting without writing
 pnpm build          # Production build
+pnpm test:unit      # Logic tests in unit/, no build needed
 pnpm test:e2e       # Playwright end-to-end suite
 pnpm registry:build # Rebuild the shadcn registry in public/r
 ```
@@ -117,7 +118,7 @@ Each live preview on a docs page renders a file from `src/examples/`, and its Co
 3. **One logical change per PR.** Keep PRs focused and reviewable.
 4. **Run the checks** before opening:
    ```bash
-   pnpm lint && pnpm typecheck && pnpm format:check
+   pnpm lint && pnpm typecheck && pnpm test:unit && pnpm format:check
    ```
    Changing calendar behavior (drag, resize, navigation, views)? Run `pnpm test:e2e` too.
 5. **Fill out the PR template.** Attach a screenshot or short recording for any visual or interaction change.

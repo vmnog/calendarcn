@@ -56,7 +56,7 @@ const BASE_UI_SERVER: WebServer = {
 };
 
 /**
- * End-to-end regression suite.
+ * End-to-end regression suite and unit tests.
  *
  * `chromium` drives the demo at `/`, against a production build (`next build`
  * + `next start`) so the dev-only overlays (Next.js indicator, Agentation
@@ -64,6 +64,9 @@ const BASE_UI_SERVER: WebServer = {
  * installed in a shadcn/ui project set up with Base UI (e2e/base-ui/), which
  * `pnpm test:e2e:base-ui` builds first. Locally, a server already running on
  * a project's port is reused.
+ *
+ * `unit` runs the tests in unit/ that need no page (repeat rules, .ics,
+ * range math). It starts no server and no browser.
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -95,6 +98,10 @@ export default defineConfig({
         viewport: { width: 1440, height: 900 },
         baseURL: BASE_UI_URL,
       },
+    },
+    {
+      name: "unit",
+      testDir: "./unit",
     },
   ],
   webServer: [
