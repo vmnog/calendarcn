@@ -1,0 +1,68 @@
+---
+title: Theme Toggle
+description: A button that cycles the theme through system, light and dark.
+---
+
+<ComponentPreview name="theme-toggle-demo" height={240} />
+
+Theme Toggle is the button at the bottom of the [Calendar Sidebar](/docs/components/calendar-sidebar). Each click moves to the next theme: system, light, dark, then system again. Its icon shows the current one: a monitor, a sun or a moon.
+
+## Installation
+
+<InstallTabs item="theme-toggle" />
+
+It installs `ThemeProvider` too, a client wrapper around [next-themes](https://github.com/pacocoursey/next-themes)' provider.
+
+## Usage
+
+Wrap your app in `ThemeProvider`, in the root layout. With `attribute="class"`, dark mode sets the `dark` class that shadcn/ui's dark tokens use:
+
+```tsx title="app/layout.tsx"
+import { ThemeProvider } from "@/components/theme-provider";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+Then render the toggle anywhere inside it:
+
+```tsx
+import { ThemeToggle } from "@/components/theme-toggle";
+
+<ThemeToggle />;
+```
+
+If your app already has a next-themes provider, keep yours: the toggle only needs `useTheme()`.
+
+## Features
+
+- Server rendering shows the system icon until the page loads in the browser, where the stored theme is known, so the markup always matches.
+- It forwards its ref and props to the button, so it works as a tooltip trigger: the Calendar Sidebar wraps it in a tooltip.
+
+## API Reference
+
+### ThemeToggle
+
+Takes the props of a `<button>`. It's a ghost icon button, `size-7`, in the muted text color; `className` changes it.
+
+### ThemeProvider
+
+Takes next-themes' `ThemeProvider` props, such as `attribute`, `defaultTheme`, `enableSystem` and `storageKey`.

@@ -1,0 +1,121 @@
+---
+title: Details Sidebar
+description: The right context panel of the demo, with the selected event's details and event search.
+---
+
+<ComponentPreview name="details-sidebar-demo" />
+
+Details Sidebar is the right column of the [live demo](/), Notion Calendar's context panel. It shows the selected event's details in the [`EventDetailPanel`](/docs/components/event-details), and otherwise a search field and a list of useful shortcuts. On wide screens it's a fixed column beside the calendar; on narrower ones it opens as a sheet from the right ([Sidebar Overlay](/docs/components/sidebar-overlay)).
+
+It reads the events and the selection from the surrounding [`CalendarProvider`](/docs/components/calendar-core), and edits the event through it.
+
+## Installation
+
+<InstallTabs item="details-sidebar" />
+
+## Usage
+
+The panel's open state is shadcn/ui's `SidebarProvider`: open it with `useSidebar()` (`toggleSidebar`, `setOpen`), and set the provider's `--sidebar-width` to `CONTEXT_PANEL_WIDTH`. Put it last in the provider's row, after the calendar, and turn the views' popover off while the panel shows the details:
+
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import {
+  CONTEXT_PANEL_WIDTH,
+  DetailsSidebar,
+} from "@/components/details-sidebar";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
+import { WeekView } from "@/components/week-view";
+
+export function CalendarPage() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <SidebarProvider
+        className="h-screen"
+        style={
+          { "--sidebar-width": CONTEXT_PANEL_WIDTH } as React.CSSProperties
+        }
+      >
+        <Calendar />
+        <DetailsSidebar />
+      </SidebarProvider>
+    </CalendarProvider>
+  );
+}
+
+function Calendar() {
+  const { open, toggleSidebar } = useSidebar();
+
+  return (
+    <div className="flex min-w-0 flex-1 flex-col">
+      <WeekView showEventPopover={!open} onEventPopoverExpand={toggleSidebar} />
+    </div>
+  );
+}
+```
+
+On narrow screens, pass `overlay`. The demo shows the panel inline from 1280px wide and as an overlay below that, and opens the sheet when an event is selected on a phone (the views' popover doesn't fit beside an event there):
+
+```tsx
+const isWide = useMediaQuery("(min-width: 1280px)");
+const { isMobile, setOpenMobile } = useSidebar();
+
+<CalendarProvider onEventSelect={() => isMobile && setOpenMobile(true)}>
+  {/* ... */}
+  <DetailsSidebar overlay={!isWide} />
+</CalendarProvider>;
+```
+
+Replace the shortcuts listed while nothing is selected with `shortcuts`:
+
+```tsx
+<DetailsSidebar
+  shortcuts={[
+    { label: "Command menu", keys: ["⌘", "K"] },
+    { label: "Today", keys: ["T"] },
+  ]}
+/>
+```
+
+The panel uses the calendar sidebar's colors: see [Colors](/docs/components/calendar-sidebar#colors).
+
+## Features
+
+- Selecting an event shows its details, editable in place. Creating one by clicking a slot focuses its title.
+- Search events by title. Results are grouped by day, past days dimmed, with "Today" always shown. Click a result to see its details, and "Search" to go back.
+- The repeat row's arrows step through a repeating event's series.
+- <Kbd>/</Kbd> and the panel's button toggle it in the demo (the shortcut is the
+  page's own). As a sheet it closes on an outside tap or <Kbd>Esc</Kbd>, and
+  opens without focusing the search field, so a phone's keyboard stays down.
+
+## API Reference
+
+### DetailsSidebar
+
+Other props go to the inline panel's fixed column.
+
+<PropsTable
+  rows={[
+    {
+      name: "overlay",
+      type: "boolean",
+      default: "false",
+      description:
+        "Renders the panel as a sheet from the right (phones and tablets).",
+    },
+    {
+      name: "shortcuts",
+      type: "DetailsSidebarShortcut[]",
+      default: "USEFUL_SHORTCUTS",
+      description:
+        "Shortcuts listed while no event is selected or searched: `{ label, keys }`, each key shown as a key cap.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description:
+        "Classes for the inline panel's fixed column, e.g. `h-full` to fit a container that isn't the viewport.",
+    },
+  ]}
+/>
+
+`CONTEXT_PANEL_WIDTH` (`309px`) is the panel's width: Notion Calendar's 308px plus a 1px border. `USEFUL_SHORTCUTS` is the default list.

@@ -73,7 +73,7 @@ src/
 │   ├── event-detail-<section>.tsx # One file per details panel section (time, participants…)
 │   ├── event-detail-parts.tsx    # Details panel rows, groups, class constants and menu helpers
 │   ├── docs/                     # Docs-only components (previews, props tables)
-│   └── sidebar-*.tsx, nav-*.tsx  # Demo sidebars and navigation
+│   └── calendar-sidebar.tsx, details-sidebar.tsx  # The demo's left and right sidebars
 ├── examples/                     # Live docs examples, shown with their source
 ├── hooks/                        # Drag, resize, keyboard, scroll and gesture hooks
 │   ├── use-inline-edit.ts        # Inline text field of the details panel

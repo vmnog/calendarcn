@@ -2,12 +2,21 @@
   "title": "Components",
   "pages": [
     "calendar",
+    "calendar-app",
     "calendar-core",
     "time-grid",
     "day-view",
     "week-view",
     "month-view",
     "agenda-view",
-    "event-details"
+    "event-details",
+    "calendar-header",
+    "command-menu",
+    "calendar-sidebar",
+    "mini-calendar",
+    "calendar-list",
+    "theme-toggle",
+    "details-sidebar",
+    "sidebar-overlay"
   ]
 }

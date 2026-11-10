@@ -1,0 +1,167 @@
+---
+title: Calendar Sidebar
+description: The left sidebar of the demo, with the mini calendar, scheduling and the calendar list.
+---
+
+<ComponentPreview name="calendar-sidebar-demo" />
+
+Calendar Sidebar is the left column of the [live demo](/), modeled on Notion Calendar's: the [Mini Calendar](/docs/components/mini-calendar), a scheduling row and a "Meet with..." field, the [Calendar List](/docs/components/calendar-list), "Add calendar account", and a footer with the [Theme Toggle](/docs/components/theme-toggle). On wide screens it's a fixed column that pushes the page over; on phones it opens as a sheet from the left ([Sidebar Overlay](/docs/components/sidebar-overlay)).
+
+It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves and picking a day goes there. The scheduling row, the "Meet with..." field and "Add calendar account" are placeholders, like the demo's: they're yours to wire up.
+
+## Installation
+
+<InstallTabs item="calendar-sidebar" />
+
+## Usage
+
+The sidebar is built from shadcn/ui's sidebar parts, so it needs a `SidebarProvider` around it, inside the `CalendarProvider`. Put it first in the provider's row, with the calendar beside it:
+
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import { CalendarSidebar } from "@/components/calendar-sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { WeekView } from "@/components/week-view";
+
+export function CalendarPage() {
+  return (
+    <CalendarProvider defaultEvents={events} calendars={calendars}>
+      <SidebarProvider className="h-screen">
+        <CalendarSidebar />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <WeekView />
+        </div>
+      </SidebarProvider>
+    </CalendarProvider>
+  );
+}
+```
+
+The sidebar owns no open state: pass `open` to show or hide it. On phones, pass `overlay` and close the sheet from `onOpenChange`, which it calls on an outside tap, <Kbd>Esc</Kbd>, its close button and after a day is picked. The demo keeps one state per layout, so the overlay doesn't pop open when the window narrows:
+
+```tsx
+function Sidebar() {
+  const { isMobile } = useSidebar();
+  const [open, setOpen] = React.useState(true);
+  const [overlayOpen, setOverlayOpen] = React.useState(false);
+
+  return (
+    <CalendarSidebar
+      open={isMobile ? overlayOpen : open}
+      onOpenChange={setOverlayOpen}
+      overlay={isMobile}
+    />
+  );
+}
+```
+
+Add your own buttons to the footer, before the theme toggle, with `footerActions`. The demo puts its docs and GitHub links there:
+
+```tsx
+<CalendarSidebar
+  footerActions={
+    <Button variant="ghost" size="icon" className="size-7" asChild>
+      <a href="/help">
+        <CircleHelpIcon />
+        <span className="sr-only">Help</span>
+      </a>
+    </Button>
+  }
+/>
+```
+
+### Hiding calendars
+
+The list's eye buttons hide and show calendars. Hiding only dims the row; to take a calendar's events off the views, read the hidden ids and pass the provider only the shown events. Its changes then cover those, so keep the hidden ones when you store them:
+
+```tsx
+const [hiddenCalendarIds, setHiddenCalendarIds] = React.useState<string[]>([]);
+const isShown = (event: CalendarEvent) =>
+  !event.calendarId || !hiddenCalendarIds.includes(event.calendarId);
+
+<CalendarProvider
+  events={events.filter(isShown)}
+  onEventsChange={(shown) =>
+    setEvents([...shown, ...events.filter((event) => !isShown(event))])
+  }
+  calendars={calendars}
+>
+  <SidebarProvider>
+    <CalendarSidebar
+      hiddenCalendarIds={hiddenCalendarIds}
+      onHiddenCalendarIdsChange={setHiddenCalendarIds}
+    />
+    {/* ... */}
+  </SidebarProvider>
+</CalendarProvider>;
+```
+
+### Colors
+
+The sidebars bring Notion Calendar's colors as their own tokens, added to your CSS file on install: `--calendar-sidebar`, `--calendar-sidebar-foreground`, `--calendar-sidebar-muted-foreground`, `--calendar-sidebar-primary` and the rest of shadcn/ui's sidebar set, each with a `calendar-` prefix. Inside the sidebar they replace your `--sidebar-*` tokens, so the rest of your app keeps its own sidebar theme. Change them in your CSS to restyle both sidebars.
+
+## Features
+
+- The mini calendar shows the month of the days on screen, highlights them, and marks today. Browse months with its arrows; the next navigation brings it back.
+- Picking a day goes to its period in the current view: the day in day view, its week in week view.
+- Calendars are grouped by account, each account collapsible. Hover a calendar to show or hide it.
+- The theme toggle cycles system, light and dark.
+- On phones, the sheet closes on an outside tap, <Kbd>Esc</Kbd>, its close button (where the header's toggle sits) or a day pick.
+
+## API Reference
+
+### CalendarSidebar
+
+<PropsTable
+  rows={[
+    {
+      name: "open",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the sidebar shows. Inline, a closed sidebar gives its width back to the page.",
+    },
+    {
+      name: "onOpenChange",
+      type: "(open: boolean) => void",
+      description:
+        "Called when the overlay asks to close: an outside tap, Esc, its close button, or a day picked in the mini calendar.",
+    },
+    {
+      name: "overlay",
+      type: "boolean",
+      default: "false",
+      description: "Renders the sidebar as a sheet from the left (phones).",
+    },
+    {
+      name: "footerActions",
+      type: "ReactNode",
+      description: "Buttons shown in the footer, before the theme toggle.",
+    },
+    {
+      name: "hiddenCalendarIds",
+      type: "string[]",
+      description: "Ids of the hidden calendars (controlled).",
+    },
+    {
+      name: "defaultHiddenCalendarIds",
+      type: "string[]",
+      default: "[]",
+      description: "Ids of the calendars hidden at first (uncontrolled).",
+    },
+    {
+      name: "onHiddenCalendarIdsChange",
+      type: "(hiddenCalendarIds: string[]) => void",
+      description:
+        "Called with the new hidden ids when a calendar is shown or hidden.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description:
+        "Classes for the inline sidebar's fixed column, e.g. `h-full` to fit a container that isn't the viewport.",
+    },
+  ]}
+/>
+
+`CALENDAR_SIDEBAR_WIDTH` (`15rem`) is the sidebar's width, inline and as an overlay.

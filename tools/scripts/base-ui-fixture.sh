@@ -69,9 +69,11 @@ config.registries = { ...config.registries, "@calendarcn": process.argv[1] };
 fs.writeFileSync("components.json", JSON.stringify(config, null, 2) + "\n");
 ' "$REGISTRY_URL"
 
-# The opt-in data items install too, so tsc and next build check them
-echo "Installing @calendarcn/calendar, conference-providers and sample-data..."
-npx -y "$SHADCN" add @calendarcn/calendar @calendarcn/conference-providers @calendarcn/sample-data -y
+# The opt-in data items, the command menu and the sidebars install too, so
+# tsc and next build check them. calendar-app is the live demo as one block:
+# it brings all of them, and /calendar-app renders it
+echo "Installing @calendarcn/calendar, calendar-app, command-menu, conference-providers, sample-data and the sidebars..."
+npx -y "$SHADCN" add @calendarcn/calendar @calendarcn/calendar-app @calendarcn/command-menu @calendarcn/conference-providers @calendarcn/sample-data @calendarcn/calendar-sidebar @calendarcn/details-sidebar -y
 
 echo "Type-checking..."
 npx tsc --noEmit

@@ -5,6 +5,8 @@ import type { ComponentType, ReactElement } from "react";
 
 import { AgendaViewDemo } from "@/examples/agenda-view-demo";
 import { CalendarDemo } from "@/examples/calendar-demo";
+import { CalendarHeaderDemo } from "@/examples/calendar-header-demo";
+import { CommandMenuDemo } from "@/examples/command-menu-demo";
 import { ConfigDemo } from "@/examples/config-demo";
 import { ControlledEventsDemo } from "@/examples/controlled-events-demo";
 import { CustomEventContentDemo } from "@/examples/custom-event-content-demo";
@@ -18,6 +20,13 @@ import { SampleDataDemo } from "@/examples/sample-data-demo";
 import { TimeGridDemo } from "@/examples/time-grid-demo";
 import { TypedEventsDemo } from "@/examples/typed-events-demo";
 import { WeekViewDemo } from "@/examples/week-view-demo";
+// The demo's sidebars
+import { CalendarListDemo } from "@/examples/calendar-list-demo";
+import { CalendarSidebarDemo } from "@/examples/calendar-sidebar-demo";
+import { DetailsSidebarDemo } from "@/examples/details-sidebar-demo";
+import { MiniCalendarDemo } from "@/examples/mini-calendar-demo";
+import { SidebarOverlayDemo } from "@/examples/sidebar-overlay-demo";
+import { ThemeToggleDemo } from "@/examples/theme-toggle-demo";
 
 /** Folder the example files live in, relative to the project root */
 export const EXAMPLES_DIR = "src/examples";
@@ -29,6 +38,8 @@ export const EXAMPLES_DIR = "src/examples";
 const EXAMPLES = {
   "agenda-view-demo": AgendaViewDemo,
   "calendar-demo": CalendarDemo,
+  "calendar-header-demo": CalendarHeaderDemo,
+  "command-menu-demo": CommandMenuDemo,
   "config-demo": ConfigDemo,
   "controlled-events-demo": ControlledEventsDemo,
   "custom-event-content-demo": CustomEventContentDemo,
@@ -42,6 +53,13 @@ const EXAMPLES = {
   "time-grid-demo": TimeGridDemo,
   "typed-events-demo": TypedEventsDemo,
   "week-view-demo": WeekViewDemo,
+  // The demo's sidebars
+  "calendar-list-demo": CalendarListDemo,
+  "calendar-sidebar-demo": CalendarSidebarDemo,
+  "details-sidebar-demo": DetailsSidebarDemo,
+  "mini-calendar-demo": MiniCalendarDemo,
+  "sidebar-overlay-demo": SidebarOverlayDemo,
+  "theme-toggle-demo": ThemeToggleDemo,
 } satisfies Record<string, ComponentType>;
 
 export type ExampleName = keyof typeof EXAMPLES;

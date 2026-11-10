@@ -40,7 +40,7 @@ CalendarCN is a client-side React calendar component built with Next.js App Rout
 
 `CalendarProvider` (`calendar-provider.tsx`) is the single source of truth for calendar state: events, view, `currentDate`, `numberOfDays`, selection and view settings. Each value can be controlled by the app (`value` + `onValueChange`) or owned by the provider (`defaultValue`). Views read state with `useCalendar()` and change it through its actions (`updateEvent`, `addEventFromRange`, `goToDate`, `switchView`, ...).
 
-`page.tsx` is the demo: it renders the provider with mock events, then demo-only chrome (sidebars, header, command menu) around `<TimeGrid view={view} />` or `MonthView`.
+`page.tsx` is the demo: it renders the `CalendarApp` block (`calendar-app.tsx`) with the sample data, plus its own logos, avatar and links. `CalendarApp` holds the app around the provider: the sidebars, header, command menu, theme cycling, .ics import and export, and `<TimeGrid view={view} />`, `MonthView` or `AgendaView`. What people install as `@calendarcn/calendar-app` is the live demo.
 
 ### View Sync
 

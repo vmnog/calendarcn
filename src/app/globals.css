@@ -20,9 +20,11 @@
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
   --color-sidebar: var(--sidebar);
-  --color-context-panel: var(--context-panel);
+  --color-calendar-sidebar-muted-foreground: var(
+    --calendar-sidebar-muted-foreground
+  );
+  --color-calendar-context-panel: var(--calendar-context-panel);
   --color-calendar-weekend: var(--calendar-weekend);
   --color-calendar-current-week: var(--calendar-current-week);
   --color-calendar-day-hover: var(--calendar-day-hover);
@@ -136,15 +138,24 @@
   --calendar-day-hover: #eeece8;
   --calendar-day-hover-current-week: #e2e1dc;
   --sidebar: #f8f8f7;
-  --context-panel: #ffffff;
   --sidebar-foreground: #939391;
-  --sidebar-muted-foreground: #cfcfce;
   --sidebar-primary: #32302c;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #efefef;
   --sidebar-accent-foreground: #32302c;
   --sidebar-border: #e5e5e5;
   --sidebar-ring: #797875;
+  /* Calendar and details sidebars (calendar-sidebar, details-sidebar items) */
+  --calendar-sidebar: #f8f8f7;
+  --calendar-sidebar-foreground: #939391;
+  --calendar-sidebar-muted-foreground: #cfcfce;
+  --calendar-sidebar-primary: #32302c;
+  --calendar-sidebar-primary-foreground: #ffffff;
+  --calendar-sidebar-accent: #efefef;
+  --calendar-sidebar-accent-foreground: #32302c;
+  --calendar-sidebar-border: #e5e5e5;
+  --calendar-sidebar-ring: #797875;
+  --calendar-context-panel: #ffffff;
 }
 
 html.dark,
@@ -200,15 +211,23 @@ html.dark,
   --calendar-day-hover: #2e2e2e;
   --calendar-day-hover-current-week: #3d3d3d;
   --sidebar: #202020;
-  --context-panel: #191919;
   --sidebar-foreground: #868686;
-  --sidebar-muted-foreground: #555555;
   --sidebar-primary: #d9d9d9;
   --sidebar-primary-foreground: #191919;
   --sidebar-accent: #2a2a2a;
   --sidebar-accent-foreground: #d9d9d9;
   --sidebar-border: #333333;
   --sidebar-ring: #7f7f7f;
+  --calendar-sidebar: #202020;
+  --calendar-sidebar-foreground: #868686;
+  --calendar-sidebar-muted-foreground: #555555;
+  --calendar-sidebar-primary: #d9d9d9;
+  --calendar-sidebar-primary-foreground: #191919;
+  --calendar-sidebar-accent: #2a2a2a;
+  --calendar-sidebar-accent-foreground: #d9d9d9;
+  --calendar-sidebar-border: #333333;
+  --calendar-sidebar-ring: #7f7f7f;
+  --calendar-context-panel: #191919;
 }
 
 @layer base {
@@ -284,4 +303,10 @@ html.dark,
     opacity: 0.5;
     animation: none;
   }
+}
+
+/* CommandMenu: dims the page less behind it in dark mode. Your dialog's
+   overlay is the menu's preceding sibling, found by its data-command-menu */
+.dark [data-slot="dialog-overlay"]:has(~ [data-command-menu]) {
+  background-color: rgb(0 0 0 / 0.3);
 }

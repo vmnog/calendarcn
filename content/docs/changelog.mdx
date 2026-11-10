@@ -11,6 +11,12 @@ Entries marked **Breaking** can stop your code from compiling or change what it 
 
 Live in the registry, but not in a tagged release yet.
 
+### November 9, 2026
+
+- **Added** `calendar-app`, a new block: the whole live demo as one component, with both sidebars, the header, every view, the ⌘K menu, theme switching and .ics import and export. See [Calendar App](/docs/components/calendar-app). [#62](https://github.com/vmnog/calendarcn/pull/62)
+- **Added** `calendar-sidebar`, `details-sidebar`, `mini-calendar`, `calendar-list`, `theme-toggle` and `sidebar-overlay`, new items: the live demo's sidebars, part by part. In `calendar-core`, `CalendarInfo` gains `isSubscribed`, which the calendar list marks with a feed icon. [#61](https://github.com/vmnog/calendarcn/pull/61)
+- **Added** `calendar-header` and `command-menu`, new items: the live demo's header and ⌘K menu. `useCalendarShortcuts()` in `calendar-core` takes optional `onToggleCommandMenu`, `onToggleSidebar`, `onToggleContextPanel`, `onCycleTheme` and `onOpenSettings`. `calendar` now builds its toolbar from the header's parts, so updating it installs `calendar-header`, which ships `view-dropdown.tsx` at the same path. [#60](https://github.com/vmnog/calendarcn/pull/60)
+
 ### November 7, 2026
 
 - **Added** `conference-providers` and `sample-data`, two new items: placeholder Google Meet, Zoom and Microsoft Teams to pass to `conferenceProviders`, and the live demo's events, calendars, contacts, rooms and places. See [Sample Data](/docs/sample-data). [#58](https://github.com/vmnog/calendarcn/pull/58)
