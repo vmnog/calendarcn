@@ -6,8 +6,7 @@ import { calendarEvent, openCalendar } from "./helpers";
  * Controls that are drawn but not built yet. Each is disabled or replaced by
  * a "Soon" badge: cut, copy, duplicate and delete in both event menus, the
  * view settings the current view doesn't read, the sidebar's scheduling row,
- * "Meet with..." field and "Add calendar account", hiding a calendar in the
- * app, and the listed shortcuts nothing handles. Shift+Cmd+D is left to the
+ * "Meet with..." field and "Add calendar account", and the listed shortcuts nothing handles. Shift+Cmd+D is left to the
  * browser.
  */
 
@@ -138,19 +137,6 @@ test("the sidebar marks scheduling, meet with and add calendar account", async (
     ),
   );
   expect(addAccountLabelHeight).toBe(schedulingLabelHeight);
-});
-
-test("the app marks hiding a calendar as not built", async ({ page }) => {
-  const family = page
-    .getByRole("listitem")
-    .filter({ has: page.getByText("Family", { exact: true }) });
-  await family.hover();
-
-  await expect(family.getByText("Soon", { exact: true })).toHaveCSS(
-    "opacity",
-    "1",
-  );
-  await expect(family.locator('[aria-label="Hide Family"]')).toHaveCount(0);
 });
 
 test("the useful shortcuts mark the ones nothing handles", async ({ page }) => {

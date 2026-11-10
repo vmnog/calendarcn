@@ -14,11 +14,13 @@ import {
   calculateMonthCellLayout,
   calculatePositionedEvents,
   describeEventTime,
+  filterShownEvents,
   generateWeekRow,
   getEventsForDay,
   getKeyboardEventChange,
   getNewEventRange,
   isMultiDayEvent,
+  mergeShownEvents,
   moveEventToCalendar,
   resolveEventColor,
 } from "../src/lib/event-utils";
@@ -362,5 +364,86 @@ test.describe("events that end at midnight", () => {
     if (!moved) return;
     expect(format(moved.start, "EEE HH:mm")).toBe("Mon 22:45");
     expect(format(moved.end, "EEE HH:mm")).toBe("Mon 23:45");
+  });
+});
+
+test.describe("hidden calendars", () => {
+  const start = new Date(2026, 5, 4, 9);
+  const end = new Date(2026, 5, 4, 10);
+  const work: DetailedCalendarEvent = {
+    id: "work-1",
+    title: "Standup",
+    start,
+    end,
+    calendarId: "work",
+  };
+  const family: DetailedCalendarEvent = {
+    id: "family-1",
+    title: "Brunch",
+    start,
+    end,
+    calendarId: "family",
+  };
+  const loose: DetailedCalendarEvent = {
+    id: "loose-1",
+    title: "No calendar",
+    start,
+    end,
+  };
+  const all = [work, family, loose];
+
+  test("nothing hidden gives back the same list", () => {
+    expect(filterShownEvents(all, [])).toBe(all);
+  });
+
+  test("a hidden calendar's events are left out, the rest keep their order", () => {
+    expect(filterShownEvents(all, ["family"])).toEqual([work, loose]);
+  });
+
+  test("an event without a calendar always shows", () => {
+    expect(filterShownEvents(all, ["work", "family"])).toEqual([loose]);
+  });
+
+  test("merging with nothing hidden gives back the shown list", () => {
+    const shown = [work, loose];
+    expect(mergeShownEvents(all, shown, [])).toBe(shown);
+  });
+
+  test("an edit to a shown event lands in place and hidden events stay", () => {
+    const edited = { ...work, title: "Standup (moved)" };
+    expect(mergeShownEvents(all, [edited, loose], ["family"])).toEqual([
+      edited,
+      family,
+      loose,
+    ]);
+  });
+
+  test("a new event goes last", () => {
+    const created: DetailedCalendarEvent = {
+      id: "new-1",
+      title: "New event",
+      start,
+      end,
+      calendarId: "work",
+    };
+    expect(mergeShownEvents(all, [work, loose, created], ["family"])).toEqual([
+      work,
+      family,
+      loose,
+      created,
+    ]);
+  });
+
+  test("an event the provider dropped is dropped, hidden ones are not", () => {
+    expect(mergeShownEvents(all, [loose], ["family"])).toEqual([family, loose]);
+  });
+
+  test("an event moved to a hidden calendar keeps its place", () => {
+    const moved = { ...work, calendarId: "family" };
+    expect(mergeShownEvents(all, [moved, loose], ["family"])).toEqual([
+      moved,
+      family,
+      loose,
+    ]);
   });
 });

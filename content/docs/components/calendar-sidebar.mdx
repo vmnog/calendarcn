@@ -72,17 +72,15 @@ Add your own buttons to the footer, before the theme toggle, with `footerActions
 
 ### Hiding calendars
 
-The list's eye buttons hide and show calendars. Hiding only dims the row; to take a calendar's events off the views, read the hidden ids and pass the provider only the shown events. Its changes then cover those, so keep the hidden ones when you store them:
+The list's eye buttons hide and show calendars. Hiding only dims the row; to take a calendar's events off the views, give the provider only the shown events and merge its changes back into your full list. `filterShownEvents()` and `mergeShownEvents()` from `@/lib/event-utils` do both, and [Calendar App](/docs/components/calendar-app) does this for you:
 
 ```tsx
 const [hiddenCalendarIds, setHiddenCalendarIds] = React.useState<string[]>([]);
-const isShown = (event: CalendarEvent) =>
-  !event.calendarId || !hiddenCalendarIds.includes(event.calendarId);
 
 <CalendarProvider
-  events={events.filter(isShown)}
+  events={filterShownEvents(events, hiddenCalendarIds)}
   onEventsChange={(shown) =>
-    setEvents([...shown, ...events.filter((event) => !isShown(event))])
+    setEvents(mergeShownEvents(events, shown, hiddenCalendarIds))
   }
   calendars={calendars}
 >
@@ -95,8 +93,6 @@ const isShown = (event: CalendarEvent) =>
   </SidebarProvider>
 </CalendarProvider>;
 ```
-
-An app that doesn't filter its events yet can say so: with `calendarVisibilitySoon` each calendar shows a "Soon" badge on hover in place of its eye button. [Calendar App](/docs/components/calendar-app) sets it.
 
 ### Colors
 
@@ -156,13 +152,6 @@ The sidebars bring Notion Calendar's colors as their own tokens, added to your C
       type: "(hiddenCalendarIds: string[]) => void",
       description:
         "Called with the new hidden ids when a calendar is shown or hidden.",
-    },
-    {
-      name: "calendarVisibilitySoon",
-      type: "boolean",
-      default: "false",
-      description:
-        "Shows a \"Soon\" badge in place of each calendar's eye button, for an app that doesn't take hidden calendars' events off its views yet.",
     },
     {
       name: "className",
