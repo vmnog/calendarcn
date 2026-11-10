@@ -40,10 +40,13 @@ type ShortcutActions = CalendarShortcutActions & AppShortcutActions;
 /** Keys 2-9: show that many days */
 const NUMBER_OF_DAYS_KEY = /^[2-9]$/;
 
-/** Whether a key press is typed into a text field (single-key shortcuts skip those) */
+/** Tags of the form fields that take key presses themselves */
+const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+
+/** Whether a key press is typed into a field: an input, a textarea, a select or editable content (single-key shortcuts skip those) */
 export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+  return TYPING_TAGS.has(target.tagName) || target.isContentEditable;
 }
 
 /**
@@ -111,8 +114,9 @@ function handleShortcut(
     return;
   }
 
-  // Single keys only: Cmd+K, Ctrl+D and the like belong to the app and browser
-  if (isCommand || isTypingTarget(e.target)) return;
+  // Single keys only: Cmd+K, Ctrl+D, Alt+ArrowLeft and the like belong to the
+  // app and browser
+  if (isCommand || e.altKey || isTypingTarget(e.target)) return;
 
   if (e.key === "t" || e.key === "T") {
     e.preventDefault();
@@ -175,18 +179,18 @@ function handleShortcut(
  * - Shift+Cmd+E / Shift+Cmd+D (Ctrl on Windows and Linux): show or hide
  *   weekends / declined events
  *
- * Presses with Cmd or Ctrl are left alone, apart from those two.
+ * Presses with Cmd, Ctrl or Alt are left alone, apart from those two.
  *
  * The live demo's app keys come on with their actions: Cmd+K
  * (`onToggleCommandMenu`), Cmd+/ (`onToggleSidebar`), / (`onToggleContextPanel`),
  * Shift+M (`onCycleTheme`) and Cmd+, (`onOpenSettings`). They're checked
  * first, and one that runs stops the event from reaching later listeners.
  *
- * Key presses in inputs and textareas are ignored (except Escape, Cmd+K and
- * Cmd+,). The listener is added once on mount, so its position among other
- * `window` keydown listeners stays fixed: any other app shortcut that shares
- * a key should be handled by a listener added before this hook's, and call
- * `event.stopImmediatePropagation()`.
+ * Key presses in inputs, textareas, selects and editable content are ignored
+ * (except Escape, Cmd+K and Cmd+,). The listener is added once on mount, so
+ * its position among other `window` keydown listeners stays fixed: any other
+ * app shortcut that shares a key should be handled by a listener added before
+ * this hook's, and call `event.stopImmediatePropagation()`.
  */
 export function useCalendarShortcuts({
   enabled = true,
