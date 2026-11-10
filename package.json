@@ -25,6 +25,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test:unit": "TZ=America/New_York playwright test --project=unit",
     "test:e2e": "playwright test --project=chromium",
     "test:e2e:base-ui": "bash tools/scripts/base-ui-fixture.sh && playwright test --project=base-ui",
     "registry:build": "pnpm dlx shadcn@4.23.0 build",
