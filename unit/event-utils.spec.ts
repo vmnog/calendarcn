@@ -1,11 +1,17 @@
 import { expect, test } from "@playwright/test";
+import { differenceInMinutes, format } from "date-fns";
 
 import type {
+  CalendarEvent,
   CalendarInfo,
   DetailedCalendarEvent,
+  WeekDay,
 } from "../src/components/calendar-types";
 import {
   addReminder,
+  calculatePositionedEvents,
+  getKeyboardEventChange,
+  getNewEventRange,
   moveEventToCalendar,
   resolveEventColor,
 } from "../src/lib/event-utils";
@@ -114,5 +120,130 @@ test.describe("calendar helpers", () => {
     expect(
       moveEventToCalendar({ ...event, color: "green" }, work, calendars).color,
     ).toBe("green");
+  });
+});
+
+/**
+ * New York's clock changes in 2026: Mar 8 has 23 hours (2 AM jumps to 3 AM),
+ * Nov 1 has 25 (2 AM falls back to 1 AM)
+ */
+const SPRING_FORWARD = new Date(2026, 2, 8);
+const FALL_BACK = new Date(2026, 10, 1);
+const CLOCK_CHANGE_DAYS = [SPRING_FORWARD, FALL_BACK];
+
+/** The whole day, midnight to midnight, on a 15-minute grid */
+const FULL_DAY = { snapMinutes: 15, dayStartHour: 0, dayEndHour: 24 };
+
+/** Working hours only, on a 15-minute grid */
+const WORK_DAY = { snapMinutes: 15, dayStartHour: 8, dayEndHour: 18 };
+
+function weekDay(date: Date): WeekDay {
+  return { date, dayName: "", dayNumber: date.getDate(), isToday: false };
+}
+
+/** A time on `day`, by the clock on the wall */
+function at(day: Date, hours: number, minutes = 0): Date {
+  return new Date(
+    day.getFullYear(),
+    day.getMonth(),
+    day.getDate(),
+    hours,
+    minutes,
+  );
+}
+
+function timedEvent(start: Date, end: Date): CalendarEvent {
+  return { id: "dst", title: "Standup", start, end };
+}
+
+test.describe("time of day on clock-change days", () => {
+  for (const day of CLOCK_CHANGE_DAYS) {
+    const label = format(day, "MMM d");
+    const isoDay = format(day, "yyyy-MM-dd");
+
+    test(`a 9 AM event is drawn on the 9 AM row on ${label}`, () => {
+      const event = timedEvent(at(day, 9), at(day, 10));
+      const positionedEvents = calculatePositionedEvents(
+        [event],
+        weekDay(day),
+        FULL_DAY,
+      );
+      expect(positionedEvents).toHaveLength(1);
+      expect(positionedEvents[0].top).toBeCloseTo((9 / 24) * 100, 5);
+      expect(positionedEvents[0].height).toBeCloseTo((1 / 24) * 100, 5);
+    });
+
+    test(`the first visible hour starts at the top on ${label}`, () => {
+      const event = timedEvent(at(day, 8), at(day, 9));
+      const positionedEvents = calculatePositionedEvents(
+        [event],
+        weekDay(day),
+        WORK_DAY,
+      );
+      expect(positionedEvents).toHaveLength(1);
+      expect(positionedEvents[0].top).toBeCloseTo(0, 5);
+      expect(positionedEvents[0].height).toBeCloseTo(10, 5);
+    });
+
+    test(`a click on the 9 AM row creates a 9 AM event on ${label}`, () => {
+      const { start, end } = getNewEventRange(day, 9 * 60, FULL_DAY);
+      expect(format(start, "yyyy-MM-dd HH:mm")).toBe(`${isoDay} 09:00`);
+      expect(format(end, "yyyy-MM-dd HH:mm")).toBe(`${isoDay} 10:00`);
+    });
+  }
+
+  test("Alt+ArrowUp reaches the first visible hour on Mar 8", () => {
+    const event = timedEvent(
+      at(SPRING_FORWARD, 8, 15),
+      at(SPRING_FORWARD, 9, 15),
+    );
+    const moved = getKeyboardEventChange(
+      event,
+      "ArrowUp",
+      false,
+      "week",
+      WORK_DAY,
+    );
+    expect(moved).not.toBeNull();
+    if (!moved) return;
+    expect(format(moved.start, "HH:mm")).toBe("08:00");
+    expect(format(moved.end, "HH:mm")).toBe("09:00");
+  });
+
+  test("Alt+ArrowDown reaches the last hour of the day on Nov 1", () => {
+    const event = timedEvent(at(FALL_BACK, 22), at(FALL_BACK, 23));
+    const moved = getKeyboardEventChange(
+      event,
+      "ArrowDown",
+      false,
+      "week",
+      FULL_DAY,
+    );
+    expect(moved).not.toBeNull();
+    if (!moved) return;
+    expect(format(moved.start, "HH:mm")).toBe("22:15");
+    expect(format(moved.end, "HH:mm")).toBe("23:15");
+  });
+
+  // Mar 8 has no 2 AM hour in New York. These two pass before the fix too:
+  // they keep it from trading the bug for an event with no length.
+  test("a click on the 2 AM row creates an hour-long event on Mar 8", () => {
+    const { start, end } = getNewEventRange(SPRING_FORWARD, 2 * 60, FULL_DAY);
+    expect(differenceInMinutes(end, start)).toBe(60);
+  });
+
+  test("Alt+ArrowUp moves a 3 AM event earlier at its length on Mar 8", () => {
+    const event = timedEvent(at(SPRING_FORWARD, 3), at(SPRING_FORWARD, 4));
+    const moved = getKeyboardEventChange(
+      event,
+      "ArrowUp",
+      false,
+      "week",
+      FULL_DAY,
+    );
+    expect(moved).not.toBeNull();
+    if (!moved) return;
+    expect(moved.start < event.start).toBe(true);
+    expect(differenceInMinutes(moved.end, moved.start)).toBe(60);
   });
 });
