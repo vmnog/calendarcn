@@ -305,8 +305,8 @@ function CalendarAppShell({
   }, [theme, setTheme]);
 
   // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape, and
-  // Shift+Cmd+E / Shift+Cmd+D for weekends and declined events. Then the
-  // app's own, checked first: Cmd+K, Cmd+/, /, Shift+M and Cmd+,
+  // Shift+Cmd+E for weekends. Then the app's own, checked first: Cmd+K,
+  // Cmd+/, /, Shift+M and Cmd+,
   useCalendarShortcuts({
     enabled: shortcuts,
     onToggleCommandMenu: toggleCommandMenu,
