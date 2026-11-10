@@ -32,6 +32,19 @@ async function expectCurrentWeek(page: Page): Promise<void> {
   await expect(calendarEvent(page, "Sprint Planning")).toBeInViewport();
 }
 
+/** The key the command menu shows beside a command, read from its row */
+async function commandHint(page: Page, command: string): Promise<string> {
+  await page.keyboard.press("ControlOrMeta+k");
+  const menu = page.getByRole("dialog", { name: "Command Menu" });
+  const key = await menu
+    .getByRole("option", { name: new RegExp(`^${command}`) })
+    .locator('kbd[data-slot="kbd"]')
+    .innerText();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  return key;
+}
+
 test.beforeEach(async ({ page }) => {
   await openCalendar(page);
 });
@@ -50,6 +63,21 @@ test("J and K move a week back and forward, T returns to today", async ({
 
   await page.keyboard.press("t");
   await expectCurrentWeek(page);
+});
+
+test("the command menu's hints for next and previous week are the keys that do it", async ({
+  page,
+}) => {
+  const nextKey = await commandHint(page, "Go to next week");
+  await page.keyboard.press(nextKey.toLowerCase());
+  await expectNextWeek(page);
+
+  await page.keyboard.press("t");
+  await expectCurrentWeek(page);
+
+  const previousKey = await commandHint(page, "Go to previous week");
+  await page.keyboard.press(previousKey.toLowerCase());
+  await expectPrevWeek(page);
 });
 
 test("arrow keys move a week back and forward", async ({ page }) => {
