@@ -11,6 +11,20 @@ Entries marked **Breaking** can stop your code from compiling or change what it 
 
 Live in the registry, but not in a tagged release yet.
 
+### November 10, 2026
+
+- **Added** `calendar-app`, `calendar-core`, `calendar-list`, `calendar-sidebar`: in Calendar App, the eye beside a calendar hides its events from every view and shows them again on a second click. The .ics export still writes every event. `filterShownEvents()` and `mergeShownEvents()` are new in `calendar-core`, to do the same in a layout of your own. [#76](https://github.com/vmnog/calendarcn/pull/76)
+  - **Breaking:** `CalendarList` drops `visibilitySoon` and `CalendarSidebar` drops `calendarVisibilitySoon`, both added earlier the same day in #74. If you installed in between and set either one, remove it.
+- **Fixed** `command-menu`: the hints beside "Go to next week" and "Go to previous week" now show <Kbd>K</Kbd> and <Kbd>J</Kbd>, the keys that do it. [#75](https://github.com/vmnog/calendarcn/pull/75)
+- **Improved** `calendar-app`, `calendar-header`, `calendar-list`, `calendar-sidebar`, `details-sidebar`: controls that did nothing are disabled with a "Soon" badge: Scheduling, Meet with… and Add calendar account in the sidebar, the view settings a view doesn't read, and the useful shortcuts nothing handles (`DetailsSidebarShortcut` takes `soon`). [#74](https://github.com/vmnog/calendarcn/pull/74)
+- **Fixed** `calendar-core`, `time-grid`: an event that ends at midnight, like 11 PM to 12 AM, stays on its own day in the hour grid and month view, and dragging it no longer saves an end before its start. [#70](https://github.com/vmnog/calendarcn/pull/70)
+- **Fixed** `ics`: `toIcs()` writes a repeating timed event in its time zone, with a `TZID`, instead of in UTC, so it repeats at the same clock time when the clocks change. `parseIcs()` keeps a repeating event's IANA `TZID` as its `timeZone`. One-off events are still written in UTC. [#73](https://github.com/vmnog/calendarcn/pull/73)
+- **Improved** `calendar-app`, `calendar-core`, `calendar-header`, `event-details`: Cut, Copy, Duplicate and Delete in the event menus, and "Declined events" in the view settings, are disabled with a "Soon" badge, since nothing handled them. <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>D</Kbd></KbdGroup> goes back to the browser. [#72](https://github.com/vmnog/calendarcn/pull/72)
+- **Fixed** `calendar-core`: an event whose `timeZone` the runtime doesn't know, like a typo or a Windows zone name, no longer takes the calendar down. It shows in the viewer's zone. `isKnownTimeZone()` is new in `@/lib/time-zones`. [#71](https://github.com/vmnog/calendarcn/pull/71)
+- **Fixed** `calendar-core`: on the days the clocks change, the day and week grids draw events on the right hour, a click on an empty slot creates the event at that row's time, and <Kbd>Alt</Kbd> with an arrow key moves an event by clock time. [#69](https://github.com/vmnog/calendarcn/pull/69)
+- **Fixed** `calendar-core`, `event-details`: shortcuts no longer run while typing in a `contenteditable` element or with a `<select>` focused, <Kbd>Alt</Kbd> with an arrow key is left to the browser unless an event has focus, and the <Kbd>Enter</Kbd> that confirms an IME composition no longer commits the event title. [#68](https://github.com/vmnog/calendarcn/pull/68)
+- **Fixed** `time-grid`, `month-view`: four gestures that saved the wrong dates. Nudging an all-day bar in day view keeps the days off screen, resizing an all-day event to one or two days keeps it all-day, an overnight event can't be resized to end before it starts, and a month bar dragged by its second day lands on the right days. [#65](https://github.com/vmnog/calendarcn/pull/65)
+
 ### November 9, 2026
 
 - **Added** `calendar-app`, a new block: the whole live demo as one component, with both sidebars, the header, every view, the ⌘K menu, theme switching and .ics import and export. See [Calendar App](/docs/components/calendar-app). [#62](https://github.com/vmnog/calendarcn/pull/62)

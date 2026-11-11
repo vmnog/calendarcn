@@ -7,7 +7,8 @@
 #
 # The section runs from its "## " heading to the next one. MDX the docs render
 # and GitHub doesn't is rewritten: <Contributor> credits become "by @handle in
-# #PR" links, <Kbd> keys become code, and /docs links point at calendarcn.xyz.
+# #PR" links, <Kbd> keys become code (a <KbdGroup> joined with "+"), and /docs
+# links point at calendarcn.xyz.
 
 set -euo pipefail
 
@@ -33,6 +34,7 @@ printf '%s\n' "$SECTION" |
   sed -E \
     -e "s#<Contributor handle=\"([^\"]+)\" pr=\{([0-9]+)\} />#by @\1 in [\#\2]($REPO_URL/pull/\2)#g" \
     -e 's#</?KbdGroup>##g' \
+    -e 's#</Kbd><Kbd>#+#g' \
     -e 's#<Kbd>([^<]+)</Kbd>#`\1`#g' \
     -e "s#\]\(/docs/#]($SITE_URL/docs/#g" |
   sed -e '/./,$!d'
