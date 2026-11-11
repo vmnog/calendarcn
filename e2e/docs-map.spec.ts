@@ -11,6 +11,7 @@ const MAP_QUESTIONS = [
   { question: "How do I install it?", id: "install" },
   { question: "How do I show my own events?", id: "your-events" },
   { question: "How do I customize it?", id: "customize" },
+  { question: "How do I get updates?", id: "updates" },
   { question: "What's coming next?", id: "whats-next" },
 ];
 

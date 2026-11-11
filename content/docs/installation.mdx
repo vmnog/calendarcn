@@ -135,4 +135,66 @@ Each item pulls in the ones it builds on, so `calendar` installs all of them exc
 
 ## Updating
 
-Run the same `add` command again with `--overwrite` to replace your copy with the latest version. If you've changed the files, commit first and review the diff.
+There's no package to upgrade. The registry at `calendarcn.xyz/r` serves the latest `main`, so every fix and improvement is live there as soon as its pull request merges, without waiting for a release. The [Changelog](/docs/changelog) lists what changed in each item and calls out breaking changes.
+
+To update, run `add` again for the items you installed. Each item updates the items it builds on, so `@calendarcn/calendar` updates all of them.
+
+<Steps>
+<Step>
+
+### Preview the changes
+
+`--dry-run` writes nothing. It lists every file the update would create, the files that changed and would be overwritten, and the identical files it skips, plus any new npm dependencies and CSS variables:
+
+```npm
+npx shadcn@latest add @calendarcn/calendar --dry-run
+```
+
+To see what changed in one of the files marked overwrite, pass its path as the list shows it:
+
+```npm
+npx shadcn@latest add @calendarcn/calendar --diff components/calendar.tsx
+```
+
+Without a path, `--diff` only shows the first five files.
+
+</Step>
+<Step>
+
+### Commit, then overwrite
+
+Commit your work first, so the update lands as a diff you can review and undo. Then run `add` with `--overwrite`:
+
+```npm
+npx shadcn@latest add @calendarcn/calendar --overwrite
+```
+
+It replaces the files that changed, creates the new ones, and installs any new npm dependencies and shadcn/ui components. Without `--overwrite`, the CLI stops to ask about each file that changed.
+
+</Step>
+<Step>
+
+### Review and reapply your edits
+
+```bash
+git diff
+```
+
+Your own edits to the copied files show up as removed lines, since the update replaced them. Put them back by hand. When a hunk holds only your edit, `git checkout -p` restores it:
+
+```bash
+git checkout -p -- components/calendar.tsx
+```
+
+Then type-check and try your app before you commit the update.
+
+</Step>
+</Steps>
+
+<Callout title="Customize with props to keep updates clean">
+  Every copied file you edit is one you merge by hand on each update. Reach for
+  props first: the [settings](/docs/components/calendar-core#configuration),
+  `renderEventContent` and `renderEventDetails`, or your own components built on
+  `useCalendar()`. `add` only writes the registry's files and the color tokens
+  in your CSS file, so code in your own files is never overwritten.
+</Callout>
