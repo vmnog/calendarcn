@@ -19,6 +19,7 @@ import {
   resolveEventColor,
 } from "@/lib/event-utils";
 import { useCalendarConfig } from "./calendar-provider";
+import { EVENT_DETAIL_MENU_SOON_CLASS } from "./event-detail-parts";
 import type {
   CalendarInfo,
   DetailedCalendarEvent,
@@ -51,28 +52,30 @@ function MenuItem({
   className,
   children,
   onSelect,
+  soon,
 }: {
   className?: string;
   children: React.ReactNode;
   onSelect?: () => void;
+  /** Not built yet: disabled, with a "Soon" badge */
+  soon?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={soon}
       className={cn(
         "relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-none select-none",
         "text-white hover:bg-[#303030] focus:bg-[#303030]",
+        "disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
       onClick={onSelect}
     >
       {children}
+      {soon && <span className={EVENT_DETAIL_MENU_SOON_CLASS}>Soon</span>}
     </button>
   );
-}
-
-function Shortcut({ children }: { children: React.ReactNode }) {
-  return <span className="ml-auto text-xs text-white/40">{children}</span>;
 }
 
 function Separator() {
@@ -272,30 +275,26 @@ export function EventContextMenu({
 
       <Separator />
 
-      {/* Cut / Copy / Duplicate */}
-      <MenuItem>
+      {/* Cut / Copy / Duplicate: not built yet */}
+      <MenuItem soon>
         <SquareDashed className="size-3.5" />
         Cut
-        <Shortcut>⌘X</Shortcut>
       </MenuItem>
-      <MenuItem>
+      <MenuItem soon>
         <TabletSmartphone className="size-3.5" />
         Copy
-        <Shortcut>⌘C</Shortcut>
       </MenuItem>
-      <MenuItem>
+      <MenuItem soon>
         <Copy className="size-3.5" />
         Duplicate
-        <Shortcut>⌘D</Shortcut>
       </MenuItem>
 
       <Separator />
 
-      {/* Delete */}
-      <MenuItem className="text-[#E56458] hover:!bg-[#DE5551] hover:!text-white focus:!bg-[#DE5551] focus:!text-white [&:hover>svg]:!text-white [&:focus>svg]:!text-white [&:hover>.ml-auto]:!text-white [&:focus>.ml-auto]:!text-white">
+      {/* Delete: not built yet */}
+      <MenuItem soon className="text-[#E56458]">
         <Trash2 className="size-3.5 text-[#E56458]" />
         Delete
-        <Shortcut>delete</Shortcut>
       </MenuItem>
     </div>,
     document.body,

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import {
   boxOf,
@@ -86,4 +87,70 @@ test("scrolling an event into view keeps it under its day header", async ({
   const box = await boxOf(event);
   expect(box.x).toBeLessThan(thursday.x + thursday.width);
   expect(box.x + box.width).toBeGreaterThan(thursday.x);
+});
+
+test.describe("an event that ends at midnight", () => {
+  /** Sprint Planning's block in Monday's column of the hour grid */
+  const inMondayColumn = (page: Page) =>
+    page
+      .getByRole("group", { name: "Monday, June 1" })
+      .locator('[data-event-id="may21"]');
+
+  // Sprint Planning (Monday Jun 1, 10 AM - 12 PM) gets an end at the midnight
+  // that starts Tuesday, typed in the details panel
+  test.beforeEach(async ({ page }) => {
+    await calendarEvent(page, "Sprint Planning").click();
+    const { endTime } = detailFields(page);
+    await endTime.click();
+    await endTime.fill("12a");
+    await endTime.press("Enter");
+    await detailTitle(page).click();
+    await expect(endTime).toHaveValue("12 AM");
+  });
+
+  test("stays in the hour grid on its own day", async ({ page }) => {
+    await expect(inMondayColumn(page)).toHaveCount(1);
+    await expect(calendarEvent(page, "Sprint Planning")).toHaveAccessibleName(
+      "Sprint Planning, 10:00 AM to 12:00 AM, Monday, June 1",
+    );
+  });
+
+  test("keeps its length when dragged earlier", async ({ page }) => {
+    const event = calendarEvent(page, "Sprint Planning");
+    await dragBy(page, event, {
+      dx: 0,
+      dy: -(await hourHeight(page)),
+      offsetY: 20,
+    });
+
+    await expect(event).toHaveAccessibleName(
+      "Sprint Planning, 9:00 AM to 11:00 PM, Monday, June 1",
+    );
+  });
+
+  test("shows the new start while its top edge is dragged", async ({
+    page,
+  }) => {
+    const event = calendarEvent(page, "Sprint Planning");
+    const box = await boxOf(event);
+    const x = box.x + box.width / 2;
+    const hour = await hourHeight(page);
+
+    // Press just below the top edge (inside the resize hot zone)
+    await page.mouse.move(x, box.y + 2);
+    await page.mouse.down();
+    await page.mouse.move(x, box.y + 2 + hour, { steps: 12 });
+    // The faded original and the live preview, both in Monday's column
+    await expect(
+      page
+        .getByRole("group", { name: "Monday, June 1" })
+        .getByText("Sprint Planning", { exact: true }),
+    ).toHaveCount(2);
+    await page.mouse.up();
+
+    await expect(inMondayColumn(page)).toHaveCount(1);
+    await expect(event).toHaveAccessibleName(
+      "Sprint Planning, 11:00 AM to 12:00 AM, Monday, June 1",
+    );
+  });
 });

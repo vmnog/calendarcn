@@ -117,6 +117,7 @@ const [events, setEvents] = React.useState<DetailedCalendarEvent[]>([]);
 ```
 
 - `calendars` fill the sidebar's calendar list and the details' calendar picker; an event without its own `color` takes its calendar's.
+- The eye beside a calendar in the sidebar hides its events: they leave every view and the event search, and come back when it's shown again. An event created on a hidden calendar, or moved to one, shows that calendar again.
 - `contacts` and `rooms` are who and what the details' participants field invites. `conferenceProviders` fill its Conferencing menu, and `locationSuggestions` its location field.
 - `createEvent` builds the event a click on an empty slot creates, `onEventCreate`, `onEventUpdate` and `onEventSelect` report single changes, and `onVisibleRangeChange` with `loading` loads events by range: see [Loading Events](/docs/loading-events).
 
@@ -124,7 +125,7 @@ const [events, setEvents] = React.useState<DetailedCalendarEvent[]>([]);
 
 The command menu's "Import .ics file..." reads a file with [`parseIcs()`](/docs/import-export), adds its events and goes to the first one. An event whose id is already there is replaced, so importing the same file again updates it. Controlled or not, the new list comes back through `onEventsChange`, and `onEventsImport` gets only the imported events, to save them.
 
-"Export .ics file" writes every event with [`toIcs()`](/docs/import-export#export-events) and downloads it as `exportFileName`, with `exportCalendarName` as the calendar's name.
+"Export .ics file" writes every event, those of hidden calendars included, with [`toIcs()`](/docs/import-export#export-events) and downloads it as `exportFileName`, with `exportCalendarName` as the calendar's name.
 
 ### Your own buttons
 
@@ -176,6 +177,10 @@ From 768px up, while the details sidebar is closed, a selected event shows its d
 | Settings, with `onOpenSettings`   | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
 
 They listen on the whole page. Pass `shortcuts={false}` to turn them all off.
+
+## Not built yet
+
+The app draws a few of Notion Calendar's controls that don't work yet. Each is disabled and marked "Soon": the sidebar's scheduling row, "Meet with..." field and "Add calendar account", the view settings the current view doesn't read, and an event's cut, copy, duplicate and delete. The [roadmap](/docs/roadmap) lists them all.
 
 ## Parts
 

@@ -121,8 +121,8 @@ export function CommandMenu({
       commands: [
         { label: "Go to date...", soon: true },
         { label: "Go to today", keys: ["T"], run: goToToday },
-        { label: "Go to next week", keys: ["J"], run: goToNext },
-        { label: "Go to previous week", keys: ["K"], run: goToPrev },
+        { label: "Go to next week", keys: ["K"], run: goToNext },
+        { label: "Go to previous week", keys: ["J"], run: goToPrev },
         { label: "Search events", soon: true },
       ],
     },

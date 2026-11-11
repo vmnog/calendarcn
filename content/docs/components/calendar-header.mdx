@@ -187,4 +187,4 @@ The period on screen: the day in day view ("Thursday, Jun 4"), the week number i
 
 ### CalendarViewSwitcher
 
-The view dropdown, wired to the provider: day, week, month or agenda, 2 to 9 days, and the weekend, declined events and week number settings. It takes no props. `ViewDropdown` in `components/view-dropdown.tsx` is the same menu driven by props instead of `useCalendar()`.
+The view dropdown, wired to the provider: day, week, month or agenda, 2 to 9 days, and the weekend, declined events and week number settings. It takes no props. A setting the current view doesn't read is disabled and marked "Soon": "Declined events" in every view, "Weekends" in day and week view, "Week numbers" outside month view. `ViewDropdown` in `components/view-dropdown.tsx` is the same menu driven by props instead of `useCalendar()`.

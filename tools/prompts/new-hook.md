@@ -17,7 +17,7 @@ Requirements:
      optionRef.current = option;
    }, [option]);
    ```
-4. If using global event listeners (mousemove, mouseup, keydown):
+4. If using global event listeners (pointermove, pointerup, pointercancel, keydown) — pointer events, never mouse events; a drag or resize starts through `usePointerGesture().startGesture`:
    - Store handler in a ref
    - Add listener in useEffect
    - Clean up in useEffect return

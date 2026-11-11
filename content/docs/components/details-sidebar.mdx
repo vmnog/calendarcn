@@ -76,6 +76,8 @@ Replace the shortcuts listed while nothing is selected with `shortcuts`:
 />
 ```
 
+Mark a shortcut your app doesn't handle yet with `soon: true`: its row shows a "Soon" badge in place of the keys. The default list marks the Notion Calendar shortcuts CalendarCN doesn't have.
+
 The panel uses the calendar sidebar's colors: see [Colors](/docs/components/calendar-sidebar#colors).
 
 ## Features
@@ -107,7 +109,7 @@ Other props go to the inline panel's fixed column.
       type: "DetailsSidebarShortcut[]",
       default: "USEFUL_SHORTCUTS",
       description:
-        "Shortcuts listed while no event is selected or searched: `{ label, keys }`, each key shown as a key cap.",
+        'Shortcuts listed while no event is selected or searched: `{ label, keys, soon }`. Each key shows as a key cap; a `soon` one shows a "Soon" badge instead.',
     },
     {
       name: "className",

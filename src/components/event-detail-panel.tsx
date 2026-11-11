@@ -21,7 +21,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EventDetailAiNotes } from "./event-detail-ai-notes";
@@ -37,6 +36,7 @@ import {
   EVENT_DETAIL_INPUT_CLASS,
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_MENU_ITEM_CLASS,
+  EVENT_DETAIL_MENU_SOON_CLASS,
   EVENT_DETAIL_MUTED_CLASS,
   EVENT_DETAIL_PLACEHOLDER_CLASS,
   EVENT_DETAIL_ROW_HEIGHT_CLASS,
@@ -370,34 +370,35 @@ export function EventDetailPanel<
               className={cn("min-w-[180px]", EVENT_DETAIL_MENU_CLASS)}
               onKeyDown={stopEscapePropagation}
             >
-              <DropdownMenuItem className={EVENT_DETAIL_MENU_ITEM_CLASS}>
+              <DropdownMenuItem
+                disabled
+                className={EVENT_DETAIL_MENU_ITEM_CLASS}
+              >
                 <SquareDashed className="size-3.5" />
                 Cut
-                <DropdownMenuShortcut className="text-white/40">
-                  ⌘X
-                </DropdownMenuShortcut>
+                <span className={EVENT_DETAIL_MENU_SOON_CLASS}>Soon</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className={EVENT_DETAIL_MENU_ITEM_CLASS}>
+              <DropdownMenuItem
+                disabled
+                className={EVENT_DETAIL_MENU_ITEM_CLASS}
+              >
                 <TabletSmartphone className="size-3.5" />
                 Copy
-                <DropdownMenuShortcut className="text-white/40">
-                  ⌘C
-                </DropdownMenuShortcut>
+                <span className={EVENT_DETAIL_MENU_SOON_CLASS}>Soon</span>
               </DropdownMenuItem>
-              <DropdownMenuItem className={EVENT_DETAIL_MENU_ITEM_CLASS}>
+              <DropdownMenuItem
+                disabled
+                className={EVENT_DETAIL_MENU_ITEM_CLASS}
+              >
                 <Copy className="size-3.5" />
                 Duplicate
-                <DropdownMenuShortcut className="text-white/40">
-                  ⌘D
-                </DropdownMenuShortcut>
+                <span className={EVENT_DETAIL_MENU_SOON_CLASS}>Soon</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-[#303030]" />
-              <DropdownMenuItem className="text-xs text-[#E56458] focus:!bg-[#DE5551] focus:!text-white focus:[&>svg]:!text-white focus:[&>[data-slot=dropdown-menu-shortcut]]:!text-white">
+              <DropdownMenuItem disabled className="text-xs text-[#E56458]">
                 <Trash2 className="size-3.5 text-[#E56458]" />
                 Delete
-                <DropdownMenuShortcut className="text-white/40 tracking-normal">
-                  delete
-                </DropdownMenuShortcut>
+                <span className={EVENT_DETAIL_MENU_SOON_CLASS}>Soon</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

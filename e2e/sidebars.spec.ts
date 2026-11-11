@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
@@ -18,6 +20,13 @@ function miniCalendarInView(page: Page): Locator {
 /** The context panel's inline column */
 function contextPanel(page: Page): Locator {
   return page.locator('[data-slot="sidebar-container"]');
+}
+
+/** A calendar's row in the sidebar's list, by its name */
+function calendarRow(page: Page, name: string): Locator {
+  return page
+    .getByRole("listitem")
+    .filter({ has: page.getByText(name, { exact: true }) });
 }
 
 test.describe("wide screens", () => {
@@ -42,16 +51,87 @@ test.describe("wide screens", () => {
     await expect(miniCalendarInView(page)).toHaveCount(7);
   });
 
-  test("hiding a calendar dims it until it's shown again", async ({ page }) => {
-    // The eye toggle sits inside the row's button, so find it by its label
-    const family = page.getByRole("listitem").filter({ hasText: /^Family$/ });
+  test("hiding a calendar takes its events off the views until it's shown again", async ({
+    page,
+  }) => {
+    const work = calendarRow(page, "Work");
+    // On the Work calendar: "Launch Review" once, "Friday Wrap-up" every week
+    await expect(calendarEvent(page, "Launch Review")).toBeVisible();
+
+    await work.hover();
+    await work.locator('[aria-label="Hide Work"]').click();
+    await expect(calendarEvent(page, "Launch Review")).toHaveCount(0);
+    await expect(calendarEvent(page, "Friday Wrap-up")).toHaveCount(0);
+    await expect(work.getByText("Work", { exact: true })).toHaveCSS(
+      "opacity",
+      "0.5",
+    );
+    // Another calendar's event stays
+    await expect(calendarEvent(page, "Weekend in Hudson Valley")).toBeVisible();
+
+    // Month view reads the same events
+    await page.keyboard.press("m");
+    await expect(page.getByRole("main").getByText("Launch Review")).toHaveCount(
+      0,
+    );
+    await page.keyboard.press("w");
+
+    await work.hover();
+    await work.locator('[aria-label="Show Work"]').click();
+    await expect(calendarEvent(page, "Launch Review")).toBeVisible();
+    await expect(work.getByText("Work", { exact: true })).toHaveCSS(
+      "opacity",
+      "1",
+    );
+  });
+
+  test("hiding the selected event's calendar closes its details", async ({
+    page,
+  }) => {
+    await calendarEvent(page, "Launch Review").click();
+    await expect(contextPanel(page).getByPlaceholder("Title")).toHaveValue(
+      "Launch Review",
+    );
+
+    const work = calendarRow(page, "Work");
+    await work.hover();
+    await work.locator('[aria-label="Hide Work"]').click();
+    await expect(page.getByText("Useful shortcuts")).toBeVisible();
+  });
+
+  test("an event moved to a hidden calendar shows that calendar again", async ({
+    page,
+  }) => {
+    const family = calendarRow(page, "Family");
     await family.hover();
     await family.locator('[aria-label="Hide Family"]').click();
-    await expect(family.locator('[aria-label="Show Family"]')).toBeAttached();
-    await expect(family.getByText("Family")).toHaveCSS("opacity", "0.5");
+    await expect(calendarEvent(page, "Weekend in Hudson Valley")).toHaveCount(
+      0,
+    );
 
-    await family.locator('[aria-label="Show Family"]').click();
-    await expect(family.getByText("Family")).toHaveCSS("opacity", "1");
+    // The right-click menu's "Block on calendar" moves the event
+    await calendarEvent(page, "Launch Review").click({ button: "right" });
+    await page.getByRole("button", { name: "Block on calendar" }).hover();
+    await page.getByRole("button", { name: "Family", exact: true }).click();
+
+    await expect(calendarEvent(page, "Launch Review")).toBeVisible();
+    await expect(calendarEvent(page, "Weekend in Hudson Valley")).toBeVisible();
+    await expect(family.locator('[aria-label="Hide Family"]')).toBeAttached();
+  });
+
+  test("the .ics export keeps a hidden calendar's events", async ({ page }) => {
+    const work = calendarRow(page, "Work");
+    await work.hover();
+    await work.locator('[aria-label="Hide Work"]').click();
+    await expect(calendarEvent(page, "Launch Review")).toHaveCount(0);
+
+    await page.keyboard.press("ControlOrMeta+k");
+    const menu = page.getByRole("dialog", { name: "Command Menu" });
+    const download = page.waitForEvent("download");
+    await menu.getByRole("option", { name: /^Export \.ics file/ }).click();
+    const file = await (await download).path();
+
+    expect(await readFile(file, "utf8")).toContain("SUMMARY:Launch Review");
   });
 
   test("an account's calendars fold away and back", async ({ page }) => {
@@ -59,7 +139,9 @@ test.describe("wide screens", () => {
       name: "you@work.example.com",
       exact: true,
     });
-    const work = page.getByRole("listitem").filter({ hasText: /^Work$/ });
+    const work = page
+      .getByRole("listitem")
+      .filter({ has: page.getByText("Work", { exact: true }) });
 
     await workAccount.click();
     await expect(work).toHaveCount(0);

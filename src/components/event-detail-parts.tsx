@@ -63,6 +63,10 @@ export const EVENT_DETAIL_MENU_CLASS = "bg-[#252525] border-[#303030]";
 export const EVENT_DETAIL_MENU_ITEM_CLASS =
   "text-xs text-white focus:!bg-[#303030] focus:!text-white";
 
+/** "Soon" badge of a menu item that isn't built yet, on `EVENT_DETAIL_MENU_CLASS` */
+export const EVENT_DETAIL_MENU_SOON_CLASS =
+  "ml-auto rounded bg-white/10 px-1.5 py-0.5 text-[10px] leading-none font-medium text-white/60";
+
 /** Main text of a menu item */
 export const EVENT_DETAIL_MENU_TEXT_CLASS = "text-[#E0E0E0]";
 

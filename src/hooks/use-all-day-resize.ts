@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { addDays } from "date-fns";
+
 import {
   isPrimaryPress,
   suppressNextClick,
@@ -38,6 +40,18 @@ function clamp(value: number, min: number, max: number): number {
   if (value < min) return min;
   if (value > max) return max;
   return value;
+}
+
+/** `day` at the time of day of `time` */
+function atTimeOf(day: Date, time: Date): Date {
+  const result = new Date(day);
+  result.setHours(
+    time.getHours(),
+    time.getMinutes(),
+    time.getSeconds(),
+    time.getMilliseconds(),
+  );
+  return result;
 }
 
 interface ResizeInfo {
@@ -215,42 +229,37 @@ export function useAllDayResize({
       const event = eventsRef.current.find((e) => e.id === resize.eventId);
       if (!event) return;
 
-      const currentDays = daysRef.current;
-      const newStartDate = currentDays[resize.currentStartColumn];
-      const newEndDate = currentDays[resize.currentEndColumn];
+      // The columns are clipped to the rendered days, so they only say
+      // which edge moved and how far. An edge that did not move keeps the
+      // event's own date.
+      const startMoved =
+        resize.currentStartColumn !== resize.originalStartColumn;
+      const endMoved = resize.currentEndColumn !== resize.originalEndColumn;
+      if (!startMoved && !endMoved) return;
 
-      if (!newStartDate || !newEndDate) return;
+      let newStart = event.start;
+      let newEnd = event.end;
 
-      // Preserve time-of-day from original event
-      const newStart = new Date(newStartDate);
-      newStart.setHours(
-        event.start.getHours(),
-        event.start.getMinutes(),
-        event.start.getSeconds(),
-        event.start.getMilliseconds(),
-      );
+      if (resize.edge === "move") {
+        const daysMoved =
+          resize.currentStartColumn - resize.originalStartColumn;
+        newStart = addDays(event.start, daysMoved);
+        newEnd = addDays(event.end, daysMoved);
+      } else {
+        const currentDays = daysRef.current;
+        const startDay = currentDays[resize.currentStartColumn];
+        const endDay = currentDays[resize.currentEndColumn];
+        if (!startDay || !endDay) return;
+        if (startMoved) newStart = atTimeOf(startDay, event.start);
+        if (endMoved) newEnd = atTimeOf(endDay, event.end);
+      }
 
-      const newEnd = new Date(newEndDate);
-      newEnd.setHours(
-        event.end.getHours(),
-        event.end.getMinutes(),
-        event.end.getSeconds(),
-        event.end.getMilliseconds(),
-      );
+      // A timed event keeps its times of day, so an edge can land on a day
+      // where the end would not be after the start
+      if (!event.isAllDay && newEnd.getTime() <= newStart.getTime()) return;
 
-      // Move preserves the original isAllDay flag (duration unchanged).
-      // Resize determines isAllDay by whether the span exceeds 24h.
-      const isMove = resize.edge === "move";
-      const MS_IN_24H = 24 * 60 * 60 * 1000;
-      const isLongerThan24h = newEnd.getTime() - newStart.getTime() > MS_IN_24H;
-      const isAllDay = isMove ? event.isAllDay === true : isLongerThan24h;
-
-      onEventChangeRef.current?.({
-        ...event,
-        start: newStart,
-        end: newEnd,
-        isAllDay,
-      });
+      // The event keeps its own isAllDay: its length never decides it
+      onEventChangeRef.current?.({ ...event, start: newStart, end: newEnd });
     };
 
     // The browser took the pointer over (e.g. for a system gesture): drop

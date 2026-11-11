@@ -34,7 +34,7 @@ Closes #
 
 <!-- CI runs all of these on your PR too, so a red check tells you what to fix. -->
 
-- [ ] `pnpm lint && pnpm typecheck && pnpm format:check` passes
+- [ ] `pnpm lint && pnpm typecheck && pnpm test:unit && pnpm format:check` passes
 - [ ] `pnpm test:e2e` passes (for changes to calendar behavior)
 - [ ] Changelog entry under `## Unreleased` in `content/docs/changelog.mdx` (for changes to registry items)
 - [ ] Tested locally in the browser

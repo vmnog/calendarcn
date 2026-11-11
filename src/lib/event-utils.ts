@@ -80,6 +80,9 @@ export function resolveEventColor(
 /** Duration in minutes of an event created by clicking an empty time slot */
 export const NEW_EVENT_DURATION_MINUTES = 60;
 
+/** Minutes in a full day: the bottom edge of the time grid, on the clock */
+const MINUTES_PER_DAY = 24 * 60;
+
 /** Days in a week: the week view's default column count and prev/next step */
 const DAYS_PER_WEEK = 7;
 
@@ -109,14 +112,34 @@ export function snapToGrid(minutes: number, snapMinutes: number): number {
 }
 
 /**
+ * Where `date` falls on `day`'s clock, in minutes since midnight: 0 when it
+ * is before that day, 1440 when it is after. On a day the clocks change this
+ * is not the minutes elapsed since midnight. The hour labels, drag and resize
+ * all go by the clock.
+ */
+function getMinutesOnDay(date: Date, day: Date): number {
+  const days = differenceInCalendarDays(date, day);
+  if (days < 0) return 0;
+  if (days > 0) return MINUTES_PER_DAY;
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+/**
+ * The time `minutes` after midnight on `day`, by the clock: 540 is 9:00 AM
+ * even on a day the clocks change, and 1440 is the next midnight. A time the
+ * clocks skip lands an hour later.
+ */
+function atMinutesOfDay(day: Date, minutes: number): Date {
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, minutes);
+}
+
+/**
  * Returns the start/end of a new event created by clicking a day column at
  * `minutesFromMidnight`. The start snaps down to the `snapMinutes` slot that
  * contains the click, so the new event always covers the clicked point.
  * Near the end of the visible hours the start is clamped to the last full
  * event length, and near midnight the end is capped at the end of the day,
- * because an event ending at the next day's 00:00 counts as multi-day (see
- * isMultiDayEvent) and would render in the all-day row instead of the
- * clicked column.
+ * so the new event's end stays on the day that was clicked.
  */
 export function getNewEventRange(
   day: Date,
@@ -132,18 +155,29 @@ export function getNewEventRange(
     dayStartHour * 60,
     Math.min(slotStart, dayEndHour * 60 - NEW_EVENT_DURATION_MINUTES),
   );
-  const start = addMinutes(startOfDay(day), startMinutes);
-  const end = addMinutes(start, NEW_EVENT_DURATION_MINUTES);
+  const start = atMinutesOfDay(day, startMinutes);
+  const clockEnd = atMinutesOfDay(
+    day,
+    startMinutes + NEW_EVENT_DURATION_MINUTES,
+  );
+  // Inside the hour the clocks skip, both land on the same time
+  const end =
+    clockEnd > start ? clockEnd : addMinutes(start, NEW_EVENT_DURATION_MINUTES);
   if (isSameDay(start, end)) return { start, end };
   return { start, end: endOfDay(start) };
 }
 
-/** Returns true when a timed event spans across midnight into a different day. */
+/**
+ * Returns true when a timed event reaches into a day after the one it starts
+ * on. An end at midnight is the end of the day before: 11 PM to 12 AM is one
+ * day.
+ */
 export function isMultiDayEvent(event: CalendarEvent): boolean {
   if (event.isAllDay) {
     return false;
   }
-  return !isSameDay(event.start, event.end);
+  const { first, last } = getEventDayRange(event);
+  return first.getTime() !== last.getTime();
 }
 
 /**
@@ -329,9 +363,11 @@ export function calculatePositionedEvents(
 ): PositionedEvent[] {
   const dayStart = startOfDay(day.date);
   const nextDayMidnight = addDays(dayStart, 1);
-  const visibleStart = addMinutes(dayStart, dayStartHour * 60);
-  const visibleEnd = addMinutes(dayStart, dayEndHour * 60);
-  const visibleMinutes = (dayEndHour - dayStartHour) * 60;
+  const visibleStartMinutes = dayStartHour * 60;
+  const visibleEndMinutes = dayEndHour * 60;
+  const visibleMinutes = visibleEndMinutes - visibleStartMinutes;
+  const visibleStart = atMinutesOfDay(dayStart, visibleStartMinutes);
+  const visibleEnd = atMinutesOfDay(dayStart, visibleEndMinutes);
 
   const dayEvents = getEventsForDay(events, day).filter(
     (event) => event.start < visibleEnd && event.end > visibleStart,
@@ -349,21 +385,23 @@ export function calculatePositionedEvents(
       totalColumns: 1,
     };
 
-    // Compute effective start/end clamped to the visible hours
-    const effectiveStart =
-      event.start > visibleStart ? event.start : visibleStart;
-    const effectiveEnd = event.end < visibleEnd ? event.end : visibleEnd;
+    // Clock times of the start and end on this day, clamped to the visible hours
+    const startMinutes = Math.max(
+      getMinutesOnDay(event.start, dayStart),
+      visibleStartMinutes,
+    );
+    const endMinutes = Math.min(
+      getMinutesOnDay(event.end, dayStart),
+      visibleEndMinutes,
+    );
 
     // Calculate top position (percentage from the first visible hour)
-    const minutesFromVisibleStart = differenceInMinutes(
-      effectiveStart,
-      visibleStart,
-    );
-    const top = (minutesFromVisibleStart / visibleMinutes) * 100;
+    const top = ((startMinutes - visibleStartMinutes) / visibleMinutes) * 100;
 
-    // Calculate height (percentage of the visible hours)
-    const durationMinutes = differenceInMinutes(effectiveEnd, effectiveStart);
-    const height = (durationMinutes / visibleMinutes) * 100;
+    // Calculate height (percentage of the visible hours). Inside the hour the
+    // clocks repeat, an event can end before it starts on the clock.
+    const height =
+      (Math.max(endMinutes - startMinutes, 0) / visibleMinutes) * 100;
 
     // Determine segment position for multi-day events
     const startsOnDay = isSameDay(event.start, dayStart);
@@ -1194,9 +1232,6 @@ export function formatHourLabel(
 /** Name read for an event whose title is empty */
 const UNTITLED_EVENT_LABEL = "Untitled event";
 
-/** Minutes in a full day; a keyboard move never ends an event past it */
-const MINUTES_PER_DAY = 24 * 60;
-
 /** Days a month-view event moves per Alt+ArrowUp/Down (one row) */
 const MONTH_KEYBOARD_STEP_DAYS = 7;
 
@@ -1241,7 +1276,7 @@ export function describeEventTime(
 
   const startTime = formatSpokenTime(event.start, hourCycle, locale);
   const endTime = formatSpokenTime(event.end, hourCycle, locale);
-  if (isSameDay(event.start, event.end)) {
+  if (!isMultiDayEvent(event)) {
     return `${startTime} to ${endTime}, ${startDate}`;
   }
   return `${startDate}, ${startTime} to ${endDate}, ${endTime}`;
@@ -1346,8 +1381,8 @@ export function getKeyboardEventChange(
   if (event.isAllDay || isMultiDayEvent(event)) return null;
 
   const dayStart = startOfDay(event.start);
-  const startMinutes = differenceInMinutes(event.start, dayStart);
-  const endMinutes = differenceInMinutes(event.end, dayStart);
+  const startMinutes = getMinutesOnDay(event.start, dayStart);
+  const endMinutes = getMinutesOnDay(event.end, dayStart);
   const visibleStart = dayStartHour * 60;
   const visibleEnd = dayEndHour * 60;
   // Next grid line in the key's direction, so an off-grid time lands on it
@@ -1357,11 +1392,16 @@ export function getKeyboardEventChange(
       : Math.ceil(minutes / snapMinutes) * snapMinutes - snapMinutes;
   const clampMinutes = (minutes: number, min: number, max: number) =>
     Math.min(Math.max(minutes, min), max);
-  // Ending at the next midnight would make it a multi-day event (all-day row)
-  const toDate = (minutes: number) =>
-    minutes >= MINUTES_PER_DAY
-      ? endOfDay(dayStart)
-      : addMinutes(dayStart, minutes);
+  // An end past the last minute of the day is capped at the end of the day
+  const toDate = (minutes: number) => {
+    if (minutes >= MINUTES_PER_DAY) return endOfDay(dayStart);
+    const date = atMinutesOfDay(dayStart, minutes);
+    // A time the clocks skip lands an hour later, which is the next real time
+    // going down. Going up, the next real time is the hour before.
+    const skipped = getMinutesOnDay(date, dayStart) - minutes;
+    if (direction > 0 || skipped <= 0) return date;
+    return atMinutesOfDay(dayStart, minutes - skipped);
+  };
 
   if (shiftKey) {
     const nextEnd = clampMinutes(
@@ -1374,6 +1414,8 @@ export function getKeyboardEventChange(
   }
 
   const length = endMinutes - startMinutes;
+  // Inside the hour the clocks repeat, the end can come first on the clock
+  if (length < 0) return null;
   const nextStart = clampMinutes(
     step(startMinutes),
     visibleStart,
@@ -1486,4 +1528,60 @@ export function moveEventToCalendar<TEvent extends DetailedCalendarEvent>(
     moved.reminders = [...to.defaultReminders];
   }
   return moved;
+}
+
+/** Whether an event is on one of the hidden calendars. An event without a calendar always shows */
+function isOnHiddenCalendar(
+  event: DetailedCalendarEvent,
+  hiddenCalendarIds: readonly string[],
+): boolean {
+  return (
+    event.calendarId !== undefined &&
+    hiddenCalendarIds.includes(event.calendarId)
+  );
+}
+
+/**
+ * The events left when some calendars are hidden: what to give
+ * `CalendarProvider` so a hidden calendar's events leave every view. Gives
+ * back the same array when nothing is hidden.
+ */
+export function filterShownEvents<TEvent extends DetailedCalendarEvent>(
+  events: TEvent[],
+  hiddenCalendarIds: readonly string[],
+): TEvent[] {
+  if (hiddenCalendarIds.length === 0) return events;
+  return events.filter(
+    (event) => !isOnHiddenCalendar(event, hiddenCalendarIds),
+  );
+}
+
+/**
+ * Every event again, after the provider changed the shown ones (its
+ * `onEventsChange` only knows about those). Hidden events stay where they
+ * are, a shown event takes its new value in place, one the provider dropped
+ * is dropped, and new events go last. Keeping the order keeps events that
+ * start together in the same columns after a calendar is hidden and shown
+ * again.
+ */
+export function mergeShownEvents<TEvent extends DetailedCalendarEvent>(
+  allEvents: TEvent[],
+  shownEvents: TEvent[],
+  hiddenCalendarIds: readonly string[],
+): TEvent[] {
+  if (hiddenCalendarIds.length === 0) return shownEvents;
+
+  const pending = new Map(shownEvents.map((event) => [event.id, event]));
+  const merged: TEvent[] = [];
+  for (const event of allEvents) {
+    if (isOnHiddenCalendar(event, hiddenCalendarIds)) {
+      merged.push(event);
+      continue;
+    }
+    const next = pending.get(event.id);
+    if (!next) continue;
+    merged.push(next);
+    pending.delete(event.id);
+  }
+  return [...merged, ...pending.values()];
 }

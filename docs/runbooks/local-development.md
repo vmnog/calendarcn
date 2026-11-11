@@ -21,7 +21,7 @@ Components install to `src/components/ui/`. Don't edit these directly — custom
 
 ### Adding a New Event Color
 
-1. Add the color name to `EventColor` union in `src/components/week-view-types.ts`
+1. Add the color name to `EventColor` union in `src/components/calendar-types.ts`
 2. Add CSS variables in `src/app/globals.css` (both `:root` and `.dark`)
 3. Add the color entry to `eventColorStyles` map in `src/components/calendar-event-item.tsx`
 
@@ -34,7 +34,7 @@ Components install to `src/components/ui/`. Don't edit these directly — custom
 
 ### Modifying Event Types
 
-1. Update the type in `src/components/week-view-types.ts` (the canonical source)
+1. Update the type in `src/components/calendar-types.ts` (the canonical source; component props are in `week-view-types.ts`)
 2. Run `pnpm typecheck` to find all affected files
 3. Update each file to handle the new type shape
 
@@ -48,6 +48,19 @@ pnpm format:check  # Check without writing
 ```
 
 Always run all three before committing: `pnpm lint && pnpm typecheck && pnpm format:check`
+
+## Unit Tests
+
+Logic that needs no page (repeat rules, the .ics parser and writer, visible range math, event helpers) is tested in `unit/`, with the same Playwright runner and `expect` as the e2e suite. No build, no server, no browser: a run takes about a second.
+
+```bash
+pnpm test:unit                          # every file in unit/
+pnpm test:unit unit/recurrence.spec.ts  # one file
+```
+
+- A test goes in `unit/` when it never uses `page`. A test that opens the demo goes in `e2e/`.
+- The script pins `TZ=America/New_York`, the zone the e2e browser uses, so results are the same on every machine. To try another zone: `TZ=Pacific/Auckland pnpm exec playwright test --project=unit`.
+- The `.ics` fixtures are shared with the e2e suite and stay in `e2e/fixtures/`.
 
 ## End-to-End Tests
 

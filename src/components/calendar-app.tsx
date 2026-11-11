@@ -23,7 +23,11 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getPeriodStart } from "@/lib/event-utils";
+import {
+  filterShownEvents,
+  getPeriodStart,
+  mergeShownEvents,
+} from "@/lib/event-utils";
 import { parseIcs, toIcs } from "@/lib/ics";
 import type { CalendarProviderProps } from "@/components/calendar-types";
 import type {
@@ -50,6 +54,9 @@ const WIDE_LAYOUT_QUERY = "(min-width: 1280px)";
 /** No events, for an app given neither `events` nor `defaultEvents` */
 const NO_EVENTS: DetailedCalendarEvent[] = [];
 
+/** No hidden calendars: every calendar shows until its eye is clicked */
+const NO_HIDDEN_CALENDARS: string[] = [];
+
 /** CalendarAppProps that configure the app's chrome rather than the provider */
 type CalendarAppShellOptions = Pick<
   CalendarAppProps,
@@ -73,6 +80,12 @@ interface CalendarAppShellProps extends CalendarAppShellOptions {
   isWideLayout: boolean;
   /** Adds events read from an .ics file, replacing those with the same id */
   onImportEvents: (events: DetailedCalendarEvent[]) => void;
+  /** Every event the app holds, hidden calendars included: what "Export .ics file" writes */
+  allEvents: DetailedCalendarEvent[];
+  /** Ids of the calendars hidden from the sidebar's list */
+  hiddenCalendarIds: string[];
+  /** Called with the new hidden ids when a calendar is shown or hidden */
+  onHiddenCalendarIdsChange: (hiddenCalendarIds: string[]) => void;
 }
 
 /**
@@ -85,7 +98,8 @@ interface CalendarAppShellProps extends CalendarAppShellOptions {
  *
  * It fills the viewport. On wide screens (1280px and up) both sidebars sit
  * inline; narrower, the details sidebar opens over the calendar, and on
- * phones the calendar sidebar does too.
+ * phones the calendar sidebar does too. The eye beside a calendar in the
+ * sidebar hides its events from every view.
  */
 export function CalendarApp({ className, ...props }: CalendarAppProps) {
   const isWideLayout = useMediaQuery(WIDE_LAYOUT_QUERY);
@@ -142,6 +156,35 @@ function CalendarAppState({
     onChange: onEventsChange,
   });
 
+  /** Calendars hidden from the sidebar's list. Their events leave every view */
+  const [hiddenCalendarIds, setHiddenCalendarIds] =
+    React.useState(NO_HIDDEN_CALENDARS);
+
+  // The provider, and with it every view, the details and the search, gets
+  // the shown calendars' events only
+  const shownEvents = React.useMemo(
+    () => filterShownEvents(events, hiddenCalendarIds),
+    [events, hiddenCalendarIds],
+  );
+
+  // The provider's changes cover the shown events, so they are merged back
+  // into the full list. An event that lands on a hidden calendar (created
+  // there, or moved to it) shows that calendar again instead of vanishing.
+  const handleShownEventsChange = React.useCallback(
+    (shown: DetailedCalendarEvent[]) => {
+      const stillHidden = hiddenCalendarIds.filter(
+        (id) => !shown.some((event) => event.calendarId === id),
+      );
+      if (stillHidden.length !== hiddenCalendarIds.length) {
+        setHiddenCalendarIds(stillHidden);
+      }
+      setEvents((current) =>
+        mergeShownEvents(current, shown, hiddenCalendarIds),
+      );
+    },
+    [hiddenCalendarIds, setEvents],
+  );
+
   // Phones show event details in the context panel sheet: the 320px popover
   // doesn't fit beside an event on a ~390px screen
   const handleEventSelect = React.useCallback(
@@ -170,14 +213,18 @@ function CalendarAppState({
   // against its generic conditional `createEvent` type.
   const calendarProviderProps: CalendarProviderProps = {
     ...(providerProps as CalendarProviderProps),
-    events,
-    onEventsChange: setEvents as CalendarProviderProps["onEventsChange"],
+    events: shownEvents,
+    onEventsChange:
+      handleShownEventsChange as CalendarProviderProps["onEventsChange"],
     onEventSelect: handleEventSelect,
     children: (
       <>
         <CalendarAppShell
           isWideLayout={isWideLayout}
           onImportEvents={importEvents}
+          allEvents={events}
+          hiddenCalendarIds={hiddenCalendarIds}
+          onHiddenCalendarIdsChange={setHiddenCalendarIds}
           scrollToHour={scrollToHour}
           headerActions={headerActions}
           sidebarFooterActions={sidebarFooterActions}
@@ -202,6 +249,9 @@ function CalendarAppState({
 function CalendarAppShell({
   isWideLayout,
   onImportEvents,
+  allEvents,
+  hiddenCalendarIds,
+  onHiddenCalendarIdsChange,
   scrollToHour = DEFAULT_SCROLL_HOUR,
   headerActions,
   sidebarFooterActions,
@@ -218,7 +268,7 @@ function CalendarAppShell({
     openMobile: contextPanelOpenMobile,
     isMobile,
   } = useSidebar();
-  const { view, weekStartsOn, events, numberOfDays, goToDate } =
+  const { view, weekStartsOn, numberOfDays, goToDate } =
     useCalendar<DetailedCalendarEvent>();
   // shadcn tracks the panel's phone state separately; read whichever is active
   const rightSidebarOpen = isMobile ? contextPanelOpenMobile : contextPanelOpen;
@@ -276,7 +326,7 @@ function CalendarAppShell({
 
   const exportIcs = React.useCallback(() => {
     const url = URL.createObjectURL(
-      new Blob([toIcs(events, { calendarName: exportCalendarName })], {
+      new Blob([toIcs(allEvents, { calendarName: exportCalendarName })], {
         type: "text/calendar;charset=utf-8",
       }),
     );
@@ -285,7 +335,7 @@ function CalendarAppShell({
     link.download = exportFileName;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
-  }, [events, exportCalendarName, exportFileName]);
+  }, [allEvents, exportCalendarName, exportFileName]);
 
   /** Popover expand button: move the details into the context panel */
   const expandEventPopover = React.useCallback(() => {
@@ -305,8 +355,8 @@ function CalendarAppShell({
   }, [theme, setTheme]);
 
   // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape, and
-  // Shift+Cmd+E / Shift+Cmd+D for weekends and declined events. Then the
-  // app's own, checked first: Cmd+K, Cmd+/, /, Shift+M and Cmd+,
+  // Shift+Cmd+E for weekends. Then the app's own, checked first: Cmd+K,
+  // Cmd+/, /, Shift+M and Cmd+,
   useCalendarShortcuts({
     enabled: shortcuts,
     onToggleCommandMenu: toggleCommandMenu,
@@ -341,6 +391,8 @@ function CalendarAppShell({
         onOpenChange={setLeftOverlayOpen}
         overlay={isMobile}
         footerActions={sidebarFooterActions}
+        hiddenCalendarIds={hiddenCalendarIds}
+        onHiddenCalendarIdsChange={onHiddenCalendarIdsChange}
       />
       <SidebarInset className="flex flex-col overflow-hidden">
         <CalendarHeader

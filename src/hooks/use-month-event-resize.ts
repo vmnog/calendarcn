@@ -145,31 +145,33 @@ export function useMonthEventResize({
       let newStart = event.start;
       let newEnd = event.end;
 
+      const targetDay = startOfDay(targetDate);
+
       if (resize.edge === "right") {
-        // Right edge: extend/shrink end date. End must be >= start.
-        const targetDay = startOfDay(targetDate);
-        const startDay = startOfDay(event.start);
-        if (targetDay >= startDay) {
-          // For all-day events, end stores the last visible day (inclusive).
-          // The layout adds +1 for span calculation, so we just use targetDay.
-          // For timed events, preserve the time-of-day from the original end.
-          newEnd = event.isAllDay
-            ? targetDay
-            : new Date(
-                targetDay.getTime() +
-                  (event.end.getTime() - startOfDay(event.end).getTime()),
-              );
-        }
+        // Right edge: extend/shrink the end. An all-day event's end is its
+        // last day (inclusive); a timed event keeps its end's time of day.
+        const candidate = event.isAllDay
+          ? targetDay
+          : new Date(
+              targetDay.getTime() +
+                (event.end.getTime() - startOfDay(event.end).getTime()),
+            );
+        // All-day: the last day can't come before the first. Timed: the end
+        // must stay after the start.
+        const isValid = event.isAllDay
+          ? targetDay >= startOfDay(event.start)
+          : candidate > event.start;
+        if (isValid) newEnd = candidate;
       } else {
-        // Left edge: extend/shrink start date. Start must be <= end.
-        const targetDay = startOfDay(targetDate);
-        const endDay = startOfDay(event.end);
-        if (targetDay <= endDay) {
-          newStart = new Date(
-            targetDay.getTime() +
-              (event.start.getTime() - startOfDay(event.start).getTime()),
-          );
-        }
+        // Left edge: extend/shrink the start, keeping its time of day
+        const candidate = new Date(
+          targetDay.getTime() +
+            (event.start.getTime() - startOfDay(event.start).getTime()),
+        );
+        const isValid = event.isAllDay
+          ? targetDay <= startOfDay(event.end)
+          : candidate < event.end;
+        if (isValid) newStart = candidate;
       }
 
       resize.currentStart = newStart;

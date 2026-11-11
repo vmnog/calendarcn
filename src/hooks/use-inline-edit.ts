@@ -97,6 +97,9 @@ export function useInlineEdit({
   const handleKeyDown = React.useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
+        // The Enter that confirms an IME composition belongs to the IME
+        // (Safari reports it as keyCode 229, with isComposing already false)
+        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
         e.preventDefault();
         inputRef.current?.blur();
         return;

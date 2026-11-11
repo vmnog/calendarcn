@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Eye, Link2, PanelLeftIcon, Plus, UserRound } from "lucide-react";
+import { Link2, PanelLeftIcon, Plus, UserRound } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useCalendar } from "@/components/calendar-provider";
@@ -37,6 +37,10 @@ export const CALENDAR_SIDEBAR_WIDTH = "15rem";
 /** No days to highlight: month view and the agenda */
 const NO_VISIBLE_DAYS: Date[] = [];
 
+/** "Soon" badge of a sidebar control that isn't built yet, as in the command menu */
+const CALENDAR_SIDEBAR_SOON_CLASS =
+  "bg-sidebar-foreground/10 text-sidebar-foreground/60 ml-auto shrink-0 rounded px-1 py-0.5 text-[10px] leading-none font-medium";
+
 interface CalendarSidebarProps {
   /** Whether the sidebar shows. Defaults to true */
   open?: boolean;
@@ -61,7 +65,9 @@ interface CalendarSidebarProps {
  * calendar list and a theme toggle. Inline it's a fixed column that pushes
  * the page over; with `overlay` it's a sheet from the left. Reads the
  * calendar's date and view from the nearest `CalendarProvider`, and needs
- * shadcn/ui's `SidebarProvider` around it.
+ * shadcn/ui's `SidebarProvider` around it. The scheduling row, the "Meet
+ * with..." field and "Add calendar account" aren't built: they are disabled
+ * and marked "Soon".
  */
 export function CalendarSidebar({
   open = true,
@@ -118,24 +124,32 @@ export function CalendarSidebar({
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               <SidebarMenuItem>
-                <SidebarMenuButton className="text-sidebar-foreground rounded-sm">
+                {/* Not built yet */}
+                <SidebarMenuButton
+                  disabled
+                  className="text-sidebar-foreground rounded-sm disabled:opacity-100"
+                >
                   <Link2 className="size-4 text-calendar-sidebar-muted-foreground" />
-                  <span className="flex-1 text-sm">Scheduling</span>
-                  <Eye className="size-4 text-calendar-sidebar-muted-foreground" />
+                  <span className="min-w-0 flex-1 truncate text-sm opacity-50">
+                    Scheduling
+                  </span>
+                  <span className={CALENDAR_SIDEBAR_SOON_CLASS}>Soon</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {/* Meet with input */}
+        {/* Meet with input: not built yet */}
         <SidebarGroup className="py-2 px-2">
           <div className="flex items-center gap-2 rounded-sm bg-[#EFEFEE] dark:bg-sidebar px-2 py-1.5">
             <UserRound className="size-4 shrink-0 text-calendar-sidebar-muted-foreground" />
             <input
               type="text"
+              disabled
               placeholder="Meet with..."
-              className="flex-1 bg-transparent text-sm text-sidebar-foreground placeholder:text-calendar-sidebar-muted-foreground outline-none"
+              className="min-w-0 flex-1 bg-transparent text-sm text-sidebar-foreground placeholder:text-calendar-sidebar-muted-foreground outline-none"
             />
+            <span className={CALENDAR_SIDEBAR_SOON_CLASS}>Soon</span>
           </div>
         </SidebarGroup>
         <CalendarList
@@ -148,9 +162,16 @@ export function CalendarSidebar({
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               <SidebarMenuItem>
-                <SidebarMenuButton className="text-sidebar-foreground text-sm rounded-sm">
-                  <Plus className="size-4" />
-                  <span>Add calendar account</span>
+                {/* Not built yet */}
+                <SidebarMenuButton
+                  disabled
+                  className="text-sidebar-foreground gap-1.5 text-sm rounded-sm disabled:opacity-100"
+                >
+                  <Plus className="size-4 opacity-50" />
+                  <span className="min-w-0 flex-1 truncate opacity-50">
+                    Add calendar account
+                  </span>
+                  <span className={CALENDAR_SIDEBAR_SOON_CLASS}>Soon</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

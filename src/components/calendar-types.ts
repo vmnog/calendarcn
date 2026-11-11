@@ -1066,7 +1066,7 @@ export interface CalendarContextValue<
   updateEvent: (event: TEvent) => void;
   /** Toggles weekend columns */
   toggleWeekends: () => void;
-  /** Toggles declined events */
+  /** Flips `viewSettings.showDeclinedEvents`. No view filters by it yet */
   toggleDeclinedEvents: () => void;
   /** Toggles week numbers */
   toggleWeekNumbers: () => void;
