@@ -60,6 +60,11 @@ export type {
   NewEventRange,
   PointerGestureStart,
   VisibleRange,
+  EventPasteTarget,
+  EventHistoryAction,
+  EventHistoryChange,
+  EventHistoryEntry,
+  EventHistory,
   CalendarInfo,
   CalendarGroup,
   CalendarConfig,
@@ -304,6 +309,11 @@ export interface WeekViewGridProps extends EventItemPopoverProps {
   selectedEventId?: string;
   /** Callback when an empty slot is clicked while no event is selected */
   onEventCreate?: (range: NewEventRange) => void;
+  /**
+   * Called with the slot under the mouse as it moves over a day column,
+   * events included: where `pasteEvent()` puts the next paste
+   */
+  onSlotHover?: (range: NewEventRange) => void;
   /** Current drag state if an event is being dragged */
   dragState?: EventDragState;
   /** Pointerdown handler to initiate event drag */

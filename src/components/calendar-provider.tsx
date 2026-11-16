@@ -18,12 +18,25 @@ import {
   AGENDA_DAYS,
   describeEventChange,
   describeEventCreated,
+  describeEventTime,
   getCalendarHeaderInfo,
   getPeriodStart,
   getVisibleDays,
   getVisibleRange,
   getWeekViewStepDays,
 } from "@/lib/event-utils";
+import {
+  EMPTY_EVENT_HISTORY,
+  applyEventChanges,
+  canApplyEventChanges,
+  describeEventAction,
+  describeHistoryStep,
+  getChangedEventId,
+  getPastedEventTimes,
+  invertEventChanges,
+  recordEventHistory,
+  resolvePasteTarget,
+} from "@/lib/event-history";
 import { createSeriesOccurrence, findSeriesOccurrence } from "@/lib/recurrence";
 import { isKnownTimeZone } from "@/lib/time-zones";
 import type {
@@ -36,6 +49,10 @@ import type {
   ConferenceProviderOption,
   EventContact,
   EventContentProps,
+  EventHistory,
+  EventHistoryAction,
+  EventHistoryChange,
+  EventPasteTarget,
   EventRoom,
   HourCycle,
   LocationSuggestion,
@@ -173,6 +190,11 @@ interface CalendarViewSyncValue {
    * selection must survive it.
    */
   closeEventPopover: (eventId: string) => void;
+  /**
+   * Time grid and month view: the slot or day under the mouse, where
+   * `pasteEvent` puts the next paste
+   */
+  reportPasteTarget: (target: EventPasteTarget) => void;
 }
 
 /**
@@ -186,6 +208,20 @@ interface CalendarSeriesValue {
   previousInSeries: SeriesOccurrence | null;
   nextInSeries: SeriesOccurrence | null;
   showSeriesOccurrence: (occurrence: SeriesOccurrence) => void;
+}
+
+/**
+ * The event menus' actions, and whether a cut or copied event waits to be
+ * pasted. Kept apart from `useCalendar()` so the right-click menu and the
+ * details popover, which also render outside a provider, can read them.
+ */
+interface CalendarEventActionsValue {
+  cutEvent: (eventId: string) => void;
+  copyEvent: (eventId: string) => void;
+  duplicateEvent: (eventId: string) => void;
+  deleteEvent: (eventId: string) => void;
+  /** Whether `pasteEvent` has an event to paste */
+  hasCopiedEvent: boolean;
 }
 
 /** Props for the internal EventContentSlot */
@@ -236,6 +272,9 @@ const NO_SERIES: CalendarSeriesValue = {
 
 const CalendarSeriesContext =
   React.createContext<CalendarSeriesValue>(NO_SERIES);
+
+const CalendarEventActionsContext =
+  React.createContext<CalendarEventActionsValue | null>(null);
 
 /** Default `createEvent`: a "New event" covering the clicked slot */
 function createDefaultEvent(range: NewEventRange): CalendarEvent {
@@ -414,6 +453,7 @@ function CalendarStateProvider({
   createEvent,
   onEventCreate,
   onEventUpdate,
+  onEventDelete,
   onEventSelect,
   onVisibleRangeChange,
   loading = false,
@@ -460,12 +500,21 @@ function CalendarStateProvider({
   const [titleFocusEventId, setTitleFocusEventId] = React.useState<
     string | null
   >(null);
-  /** Latest move, resize or create, read out by the live region */
+  /** Latest change or action, read out by the live region */
   const [announcement, setAnnouncement] = React.useState<Announcement | null>(
+    null,
+  );
+  /** Steps `undo` and `redo` walk through: the calendar's own changes */
+  const [history, setHistory] =
+    React.useState<EventHistory>(EMPTY_EVENT_HISTORY);
+  /** The event cut or copied last; `pasteEvent` adds copies of it */
+  const [copiedEvent, setCopiedEvent] = React.useState<CalendarEvent | null>(
     null,
   );
   /** Latest events, so `updateEvent` can compare without depending on them */
   const eventsRef = React.useRef(events);
+  /** The slot or day a view last had the mouse over: where a paste goes */
+  const pasteTargetRef = React.useRef<EventPasteTarget | null>(null);
   /**
    * State before the latest switch of view or day count, so a mounted view
    * that keeps its own type can undo it. Read and cleared by the next report.
@@ -536,9 +585,44 @@ function CalendarStateProvider({
     setAnnouncement((prev) => ({ id: (prev?.id ?? 0) + 1, text }));
   }, []);
 
+  /** Adds a step for `undo`: what one action just changed */
+  const recordHistory = React.useCallback(
+    (action: EventHistoryAction, changes: EventHistoryChange[]) => {
+      const time = Date.now();
+      setHistory((prev) => recordEventHistory(prev, { action, changes, time }));
+    },
+    [],
+  );
+
+  /**
+   * Applies changes the calendar makes itself (delete, cut, duplicate,
+   * paste, undo, redo) and reports each one: `onEventCreate` for an added
+   * event, `onEventUpdate` for a changed one, `onEventDelete` for a removed one
+   */
+  const commitChanges = React.useCallback(
+    (changes: EventHistoryChange[]) => {
+      setEvents((prev) => applyEventChanges(prev, changes));
+      for (const { before, after } of changes) {
+        if (!after) {
+          if (before) onEventDelete?.(before);
+          continue;
+        }
+        if (before) {
+          onEventUpdate?.(after);
+          continue;
+        }
+        onEventCreate?.(after);
+      }
+    },
+    [setEvents, onEventCreate, onEventUpdate, onEventDelete],
+  );
+
   const updateEvent = React.useCallback(
     (updatedEvent: CalendarEvent) => {
-      const previous = eventsRef.current.find((e) => e.id === updatedEvent.id);
+      const index = eventsRef.current.findIndex(
+        (e) => e.id === updatedEvent.id,
+      );
+      const previous = eventsRef.current[index];
       setEvents((prev) =>
         prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)),
       );
@@ -547,6 +631,7 @@ function CalendarStateProvider({
       // Moves and resizes (drag, keyboard, or the details) are announced;
       // edits that keep the time, like the title, are not
       if (!previous) return;
+      recordHistory("edit", [{ before: previous, after: updatedEvent, index }]);
       const message = describeEventChange(
         previous,
         updatedEvent,
@@ -555,7 +640,7 @@ function CalendarStateProvider({
       );
       if (message) announce(message);
     },
-    [setEvents, onEventUpdate, hourCycle, locale, announce],
+    [setEvents, onEventUpdate, hourCycle, locale, announce, recordHistory],
   );
 
   const addEventFromRange = React.useCallback(
@@ -564,6 +649,9 @@ function CalendarStateProvider({
       if (!newEvent) return;
       setEvents((prev) => [...prev, newEvent]);
       onEventCreate?.(newEvent);
+      recordHistory("create", [
+        { before: null, after: newEvent, index: eventsRef.current.length },
+      ]);
       selectEvent(newEvent.id);
       setTitleFocusEventId(newEvent.id);
       announce(describeEventCreated(newEvent, hourCycle, locale));
@@ -576,8 +664,136 @@ function CalendarStateProvider({
       hourCycle,
       locale,
       announce,
+      recordHistory,
     ],
   );
+
+  /** Deletes an event for `deleteEvent` and `cutEvent`; returns it, or `null` when there is none */
+  const removeEvent = React.useCallback(
+    (eventId: string, action: "delete" | "cut") => {
+      const index = eventsRef.current.findIndex((e) => e.id === eventId);
+      const event = eventsRef.current[index];
+      if (!event) return null;
+      const changes: EventHistoryChange[] = [
+        { before: event, after: null, index },
+      ];
+      commitChanges(changes);
+      recordHistory(action, changes);
+      setSelectedEventId((prev) => (prev === eventId ? null : prev));
+      return event;
+    },
+    [commitChanges, recordHistory],
+  );
+
+  const deleteEvent = React.useCallback(
+    (eventId: string) => {
+      const deleted = removeEvent(eventId, "delete");
+      if (!deleted) return;
+      announce(describeEventAction("delete", deleted));
+    },
+    [removeEvent, announce],
+  );
+
+  const cutEvent = React.useCallback(
+    (eventId: string) => {
+      const cut = removeEvent(eventId, "cut");
+      if (!cut) return;
+      setCopiedEvent(cut);
+      announce(describeEventAction("cut", cut));
+    },
+    [removeEvent, announce],
+  );
+
+  const copyEvent = React.useCallback(
+    (eventId: string) => {
+      const event = eventsRef.current.find((e) => e.id === eventId);
+      if (!event) return;
+      setCopiedEvent(event);
+      announce(describeEventAction("copy", event));
+    },
+    [announce],
+  );
+
+  /** Adds a duplicated or pasted copy, selects it and announces where it is */
+  const addEventCopy = React.useCallback(
+    (copy: CalendarEvent, action: "duplicate" | "paste") => {
+      const changes: EventHistoryChange[] = [
+        { before: null, after: copy, index: eventsRef.current.length },
+      ];
+      commitChanges(changes);
+      recordHistory(action, changes);
+      selectEvent(copy.id);
+      announce(
+        `${describeEventAction(action, copy)}, ${describeEventTime(copy, hourCycle, locale)}`,
+      );
+    },
+    [commitChanges, recordHistory, selectEvent, announce, hourCycle, locale],
+  );
+
+  const duplicateEvent = React.useCallback(
+    (eventId: string) => {
+      const source = eventsRef.current.find((e) => e.id === eventId);
+      if (!source) return;
+      addEventCopy({ ...source, id: crypto.randomUUID() }, "duplicate");
+    },
+    [addEventCopy],
+  );
+
+  /** After undo or redo: selects the event the step leaves, or clears the selection when it removed the selected one */
+  const selectChangedEvent = React.useCallback(
+    (changes: EventHistoryChange[]) => {
+      const last = changes[changes.length - 1];
+      if (!last) return;
+      if (last.after) {
+        selectEvent(last.after.id);
+        return;
+      }
+      const removedId = getChangedEventId(last);
+      setSelectedEventId((prev) => (prev === removedId ? null : prev));
+    },
+    [selectEvent],
+  );
+
+  const undo = React.useCallback(() => {
+    const entry = history.past[history.past.length - 1];
+    if (!entry) return;
+    const changes = invertEventChanges(entry.changes);
+    if (!canApplyEventChanges(eventsRef.current, changes)) return;
+    commitChanges(changes);
+    setHistory({
+      past: history.past.slice(0, -1),
+      future: [...history.future, entry],
+    });
+    selectChangedEvent(changes);
+    announce(describeHistoryStep(entry, "undo"));
+  }, [history, commitChanges, selectChangedEvent, announce]);
+
+  const redo = React.useCallback(() => {
+    const entry = history.future[history.future.length - 1];
+    if (!entry) return;
+    if (!canApplyEventChanges(eventsRef.current, entry.changes)) return;
+    commitChanges(entry.changes);
+    setHistory({
+      past: [...history.past, entry],
+      future: history.future.slice(0, -1),
+    });
+    selectChangedEvent(entry.changes);
+    announce(describeHistoryStep(entry, "redo"));
+  }, [history, commitChanges, selectChangedEvent, announce]);
+
+  // A step applies only while its events are still the objects it left
+  // (see canApplyEventChanges): an app that replaced them turns these off
+  const canUndo = React.useMemo(() => {
+    const entry = history.past[history.past.length - 1];
+    if (!entry) return false;
+    return canApplyEventChanges(events, invertEventChanges(entry.changes));
+  }, [history, events]);
+
+  const canRedo = React.useMemo(() => {
+    const entry = history.future[history.future.length - 1];
+    if (!entry) return false;
+    return canApplyEventChanges(events, entry.changes);
+  }, [history, events]);
 
   const goToToday = React.useCallback(() => {
     setCurrentDate(
@@ -831,6 +1047,24 @@ function CalendarStateProvider({
     [rangeStartTime, rangeEndTime],
   );
 
+  const pasteEvent = React.useCallback(() => {
+    if (!copiedEvent) return;
+    const target = resolvePasteTarget(
+      pasteTargetRef.current,
+      visibleRange,
+      new Date(),
+      currentDate,
+    );
+    addEventCopy(
+      {
+        ...copiedEvent,
+        ...getPastedEventTimes(copiedEvent, target),
+        id: crypto.randomUUID(),
+      },
+      "paste",
+    );
+  }, [copiedEvent, visibleRange, currentDate, addEventCopy]);
+
   // Report each new range once. While the provider is still adopting the
   // mounted view (its first commit, or a switch the view is undoing), the
   // range belongs to a view that isn't on screen, so wait for the next one.
@@ -884,6 +1118,15 @@ function CalendarStateProvider({
       toggleDeclinedEvents,
       toggleWeekNumbers,
       showDay,
+      deleteEvent,
+      duplicateEvent,
+      copyEvent,
+      cutEvent,
+      pasteEvent,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
     }),
     [
       events,
@@ -919,11 +1162,24 @@ function CalendarStateProvider({
       toggleDeclinedEvents,
       toggleWeekNumbers,
       showDay,
+      deleteEvent,
+      duplicateEvent,
+      copyEvent,
+      cutEvent,
+      pasteEvent,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
     ],
   );
 
   const closeEventPopover = React.useCallback((eventId: string) => {
     setSelectedEventId((prev) => (prev === eventId ? null : prev));
+  }, []);
+
+  const reportPasteTarget = React.useCallback((target: EventPasteTarget) => {
+    pasteTargetRef.current = target;
   }, []);
 
   const viewSync = React.useMemo<CalendarViewSyncValue>(
@@ -932,8 +1188,9 @@ function CalendarStateProvider({
       reportVisibleDays: setVisibleDays,
       reportDisplayMonth: setDisplayMonth,
       closeEventPopover,
+      reportPasteTarget,
     }),
-    [reportView, closeEventPopover],
+    [reportView, closeEventPopover, reportPasteTarget],
   );
 
   const series = React.useMemo<CalendarSeriesValue>(
@@ -944,6 +1201,17 @@ function CalendarStateProvider({
       showSeriesOccurrence,
     }),
     [selectedEvent, previousInSeries, nextInSeries, showSeriesOccurrence],
+  );
+
+  const eventActions = React.useMemo<CalendarEventActionsValue>(
+    () => ({
+      cutEvent,
+      copyEvent,
+      duplicateEvent,
+      deleteEvent,
+      hasCopiedEvent: copiedEvent !== null,
+    }),
+    [cutEvent, copyEvent, duplicateEvent, deleteEvent, copiedEvent],
   );
 
   const renderSlots = React.useMemo<CalendarRenderSlots>(
@@ -991,18 +1259,20 @@ function CalendarStateProvider({
         <CalendarRenderSlotsContext.Provider value={renderSlots}>
           <CalendarConfigContext.Provider value={config}>
             <CalendarSeriesContext.Provider value={series}>
-              <EventTitleFocusProvider
-                pendingEventId={pendingTitleFocusId}
-                clearPending={clearTitleFocus}
-              >
-                {children}
-                {/* Announces moves, resizes and creates to screen readers */}
-                <div role="status" aria-live="polite" className="sr-only">
-                  {announcement && (
-                    <span key={announcement.id}>{announcement.text}</span>
-                  )}
-                </div>
-              </EventTitleFocusProvider>
+              <CalendarEventActionsContext.Provider value={eventActions}>
+                <EventTitleFocusProvider
+                  pendingEventId={pendingTitleFocusId}
+                  clearPending={clearTitleFocus}
+                >
+                  {children}
+                  {/* Announces changes, the event actions, undo and redo to screen readers */}
+                  <div role="status" aria-live="polite" className="sr-only">
+                    {announcement && (
+                      <span key={announcement.id}>{announcement.text}</span>
+                    )}
+                  </div>
+                </EventTitleFocusProvider>
+              </CalendarEventActionsContext.Provider>
             </CalendarSeriesContext.Provider>
           </CalendarConfigContext.Provider>
         </CalendarRenderSlotsContext.Provider>
@@ -1057,6 +1327,16 @@ export function useCalendarRenderSlots(): CalendarRenderSlots {
  */
 export function useCalendarSeries(): CalendarSeriesValue {
   return React.useContext(CalendarSeriesContext);
+}
+
+/**
+ * Internal: the event menus' cut, copy, duplicate and delete, and whether a
+ * cut or copied event waits to be pasted, for the right-click menu, the
+ * details popover and the shortcuts. `null` outside a provider, where the
+ * menus show the actions disabled.
+ */
+export function useCalendarEventActions(): CalendarEventActionsValue | null {
+  return React.useContext(CalendarEventActionsContext);
 }
 
 /**

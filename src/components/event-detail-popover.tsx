@@ -22,7 +22,11 @@ import {
   isInsideCalendarPopover,
   useCalendarPopoverBoundary,
 } from "./calendar-popover-context";
-import { useCalendarRenderSlots, useCalendarSeries } from "./calendar-provider";
+import {
+  useCalendarEventActions,
+  useCalendarRenderSlots,
+  useCalendarSeries,
+} from "./calendar-provider";
 import { useEventTitleFocus } from "./event-title-focus-context";
 import type { CalendarEvent, EventPopoverAnchor } from "./week-view-types";
 
@@ -140,6 +144,7 @@ export function EventDetailPopover({
   const { pendingEventId, clearPending } = useEventTitleFocus();
   const { renderEventDetails } = useCalendarRenderSlots();
   const series = useCalendarSeries();
+  const eventActions = useCalendarEventActions();
   const panelRef = React.useRef<HTMLDivElement>(null);
   /** Just created by click-to-create: its title should be focused */
   const isNew = pendingEventId === event.id;
@@ -322,6 +327,20 @@ export function EventDetailPopover({
             nextInSeries
               ? () => series.showSeriesOccurrence(nextInSeries)
               : undefined
+          }
+          onCut={
+            eventActions ? () => eventActions.cutEvent(event.id) : undefined
+          }
+          onCopy={
+            eventActions ? () => eventActions.copyEvent(event.id) : undefined
+          }
+          onDuplicate={
+            eventActions
+              ? () => eventActions.duplicateEvent(event.id)
+              : undefined
+          }
+          onDelete={
+            eventActions ? () => eventActions.deleteEvent(event.id) : undefined
           }
           headerActions={popoverHeaderActions}
           autoFocusTitle={isNew}

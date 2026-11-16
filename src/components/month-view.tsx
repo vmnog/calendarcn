@@ -26,6 +26,7 @@ import {
   MONTH_VIEW_ROWS,
   generateConsecutiveWeeks,
   generateWeekRow,
+  parseCellDate,
 } from "@/lib/event-utils";
 import { isMultiDayEvent } from "@/lib/event-utils";
 import { MonthViewGrid } from "./month-view-grid";
@@ -79,8 +80,12 @@ export function MonthView({
     loading,
   } = useCalendar();
   const { locale } = useCalendarConfig();
-  const { reportView, reportDisplayMonth, closeEventPopover } =
-    useCalendarViewSync();
+  const {
+    reportView,
+    reportDisplayMonth,
+    closeEventPopover,
+    reportPasteTarget,
+  } = useCalendarViewSync();
   /**
    * Whether the provider navigates by month. False for the commit before it
    * adopts this view (on mount, or right after a switch it doesn't follow).
@@ -335,6 +340,18 @@ export function MonthView({
     [clearSelection],
   );
 
+  /** Reports the day under the mouse, where a paste goes */
+  const handleRootPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (e.pointerType !== "mouse" || !(e.target instanceof Element)) return;
+      const cell = e.target.closest<HTMLElement>("[data-date]");
+      const value = cell?.dataset.date;
+      if (!value) return;
+      reportPasteTarget({ date: parseCellDate(value), hasTime: false });
+    },
+    [reportPasteTarget],
+  );
+
   return (
     <CalendarPopoverBoundaryProvider
       boundaryRef={boundaryRef}
@@ -346,6 +363,7 @@ export function MonthView({
         className={cn("flex h-full flex-col overflow-hidden", className)}
         aria-busy={loading || undefined}
         onClick={handleRootClick}
+        onPointerMove={handleRootPointerMove}
         onKeyDown={handleEventKeyDown}
       >
         {/* Day-of-week header — right-aligned to match day number positions */}

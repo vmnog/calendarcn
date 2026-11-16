@@ -48,6 +48,7 @@ export function WeekViewGrid({
   onEventClick,
   selectedEventId,
   onEventCreate,
+  onSlotHover,
   dragState,
   onEventDragPointerDown,
   resizeState,
@@ -84,17 +85,40 @@ export function WeekViewGrid({
     return () => observer.disconnect();
   }, []);
 
-  /** Creates an event in a column at a viewport Y position */
-  const createEventAt = React.useCallback(
+  /** The new-event range of the slot at a viewport Y position in a column */
+  const getSlotRange = React.useCallback(
     (column: HTMLElement, columnDate: Date, clientY: number) => {
-      if (!onEventCreate) return;
       // The column's top edge is `dayStartHour`, not midnight
       const columnTop = column.getBoundingClientRect().top;
       const minutesFromMidnight =
         config.dayStartHour * 60 + ((clientY - columnTop) / hourHeight) * 60;
-      onEventCreate(getNewEventRange(columnDate, minutesFromMidnight, config));
+      return getNewEventRange(columnDate, minutesFromMidnight, config);
     },
-    [onEventCreate, hourHeight, config],
+    [hourHeight, config],
+  );
+
+  /** Creates an event in a column at a viewport Y position */
+  const createEventAt = React.useCallback(
+    (column: HTMLElement, columnDate: Date, clientY: number) => {
+      if (!onEventCreate) return;
+      onEventCreate(getSlotRange(column, columnDate, clientY));
+    },
+    [onEventCreate, getSlotRange],
+  );
+
+  /**
+   * Reports the mouse's slot, where a paste goes. Pointer moves in a
+   * popover or menu bubble here through React portals: those are skipped,
+   * since their DOM is outside the column.
+   */
+  const handleColumnPointerMove = React.useCallback(
+    (e: React.PointerEvent<HTMLDivElement>, columnDate: Date) => {
+      if (!onSlotHover || e.pointerType !== "mouse") return;
+      if (!(e.target instanceof Node)) return;
+      if (!e.currentTarget.contains(e.target)) return;
+      onSlotHover(getSlotRange(e.currentTarget, columnDate, e.clientY));
+    },
+    [onSlotHover, getSlotRange],
   );
 
   /**
@@ -241,6 +265,7 @@ export function WeekViewGrid({
               onEventPopoverClose={onEventPopoverClose}
               onColumnPointerDownCapture={handleColumnPointerDownCapture}
               onColumnPointerDown={handleColumnPointerDown}
+              onColumnPointerMove={handleColumnPointerMove}
               onColumnClick={handleColumnClick}
             />
           );
@@ -584,6 +609,10 @@ interface DayEventsColumnProps extends EventItemPopoverProps {
     e: React.PointerEvent<HTMLDivElement>,
     columnDate: Date,
   ) => void;
+  onColumnPointerMove?: (
+    e: React.PointerEvent<HTMLDivElement>,
+    columnDate: Date,
+  ) => void;
   onColumnClick?: (
     e: React.MouseEvent<HTMLDivElement>,
     columnDate: Date,
@@ -623,6 +652,7 @@ function DayEventsColumn({
   onEventPopoverClose,
   onColumnPointerDownCapture,
   onColumnPointerDown,
+  onColumnPointerMove,
   onColumnClick,
 }: DayEventsColumnProps) {
   return (
@@ -633,6 +663,7 @@ function DayEventsColumn({
       className="relative h-full pointer-events-auto"
       onPointerDownCapture={onColumnPointerDownCapture}
       onPointerDown={(e) => onColumnPointerDown?.(e, columnDate)}
+      onPointerMove={(e) => onColumnPointerMove?.(e, columnDate)}
       onClick={(e) => onColumnClick?.(e, columnDate)}
     >
       {events.map((positionedEvent) => {

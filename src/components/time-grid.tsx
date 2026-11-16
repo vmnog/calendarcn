@@ -36,6 +36,7 @@ import type {
   CalendarEvent,
   HourCycle,
   HourSlot,
+  NewEventRange,
   TimeGridProps,
   TimeGridView,
   WeekDay,
@@ -201,8 +202,12 @@ export function TimeGrid({
     locale,
     secondaryTimeZone,
   } = useCalendarConfig();
-  const { reportView, reportVisibleDays, closeEventPopover } =
-    useCalendarViewSync();
+  const {
+    reportView,
+    reportVisibleDays,
+    closeEventPopover,
+    reportPasteTarget,
+  } = useCalendarViewSync();
   const numberOfDays = numberOfDaysProp ?? providerNumberOfDays;
   /** Day columns this grid pins the provider to (none in day view) */
   const fixedNumberOfDays = view === "week" ? numberOfDaysProp : undefined;
@@ -524,6 +529,13 @@ export function TimeGrid({
     [goToDate, view, weekStartsOn, numberOfDays],
   );
 
+  /** The slot under the mouse: where the next paste goes */
+  const handleSlotHover = React.useCallback(
+    (range: NewEventRange) =>
+      reportPasteTarget({ date: range.start, hasTime: true }),
+    [reportPasteTarget],
+  );
+
   const handleEventKeyDown = useEventKeyboard({
     containerRef: calendarBoundaryRef,
     scrollContainerRef,
@@ -642,6 +654,7 @@ export function TimeGrid({
                   onEventClick={handleEventClick}
                   selectedEventId={selectedEventId}
                   onEventCreate={addEventFromRange}
+                  onSlotHover={handleSlotHover}
                   dragState={dragState ?? undefined}
                   onEventDragPointerDown={handleEventPointerDown}
                   resizeState={resizeState ?? undefined}
