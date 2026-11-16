@@ -11,6 +11,11 @@ Entries marked **Breaking** can stop your code from compiling or change what it 
 
 Live in the registry, but not in a tagged release yet.
 
+### November 16, 2026
+
+- **Added** `year-view`, a new item, with `calendar-core`, `calendar-header`, `command-menu`, `calendar` and `calendar-app`: the year as twelve month grids, like Google Calendar's year view, with today in red and a dot on each day that has events. <Kbd>Y</Kbd>, the view switcher and the command menu open it, previous and next move a year, and a click on a day opens its week. `ViewType` gains `"year"`, `monthName` is empty in year view so a title reads "2026", and `countEventsByDay()` is new in `calendar-core`.
+  - **Breaking:** a `Record<ViewType, …>` or an exhaustive `switch` over `ViewType` in your code needs a `"year"` entry.
+
 ### November 10, 2026
 
 - **Added** `calendar-app`, `calendar-core`, `calendar-list`, `calendar-sidebar`: in Calendar App, the eye beside a calendar hides its events from every view and shows them again on a second click. The .ics export still writes every event. `filterShownEvents()` and `mergeShownEvents()` are new in `calendar-core`, to do the same in a layout of your own. [#76](https://github.com/vmnog/calendarcn/pull/76)

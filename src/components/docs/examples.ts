@@ -20,6 +20,7 @@ import { SampleDataDemo } from "@/examples/sample-data-demo";
 import { TimeGridDemo } from "@/examples/time-grid-demo";
 import { TypedEventsDemo } from "@/examples/typed-events-demo";
 import { WeekViewDemo } from "@/examples/week-view-demo";
+import { YearViewDemo } from "@/examples/year-view-demo";
 // The demo's sidebars
 import { CalendarListDemo } from "@/examples/calendar-list-demo";
 import { CalendarSidebarDemo } from "@/examples/calendar-sidebar-demo";
@@ -53,6 +54,7 @@ const EXAMPLES = {
   "time-grid-demo": TimeGridDemo,
   "typed-events-demo": TypedEventsDemo,
   "week-view-demo": WeekViewDemo,
+  "year-view-demo": YearViewDemo,
   // The demo's sidebars
   "calendar-list-demo": CalendarListDemo,
   "calendar-sidebar-demo": CalendarSidebarDemo,

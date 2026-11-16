@@ -30,6 +30,7 @@ const PERIOD_LABELS: Record<ViewType, string> = {
   day: "day",
   week: "week",
   month: "month",
+  year: "year",
   agenda: `${AGENDA_DAYS} days`,
 };
 
@@ -147,7 +148,7 @@ interface CalendarPeriodLabelProps {
 
 /**
  * The period on screen, for beside the title: the day ("Thursday, Jun 4"),
- * the week number ("Week 23") or the agenda's range. Empty in month view,
+ * the week number ("Week 23") or the agenda's range. Empty in month and year view,
  * where the title already says it.
  */
 export function CalendarPeriodLabel({ className }: CalendarPeriodLabelProps) {
@@ -165,7 +166,7 @@ export function CalendarPeriodLabel({ className }: CalendarPeriodLabelProps) {
 }
 
 /**
- * The view dropdown wired to the provider: day, week, month or agenda, the
+ * The view dropdown wired to the provider: day, week, month, year or agenda, the
  * number of days, and the weekend, declined event and week number settings
  */
 export function CalendarViewSwitcher() {

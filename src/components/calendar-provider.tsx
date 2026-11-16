@@ -4,8 +4,11 @@ import * as React from "react";
 import {
   addDays,
   addMonths,
+  addYears,
+  getYear,
   isSameDay,
   isSameMonth,
+  isSameYear,
   startOfDay,
   startOfMonth,
 } from "date-fns";
@@ -150,6 +153,14 @@ interface AdoptedViewDateOptions {
   isOnStartingToday: boolean;
 }
 
+/** Days the header's month, year and week number are read from */
+interface HeaderDates {
+  /** Names the week number, and the month and year unless `headerRangeEnd` is set */
+  headerDate: Date;
+  /** Last day on screen in day and week view, which names the month and year */
+  headerRangeEnd?: Date;
+}
+
 /**
  * Setters the views use to report what they currently show. Kept out of
  * `useCalendar()` because only the views write these values.
@@ -247,7 +258,7 @@ function createDefaultEvent(range: NewEventRange): CalendarEvent {
 }
 
 /**
- * Moves `date` by `amount` periods of the given view: days, months, the
+ * Moves `date` by `amount` periods of the given view: days, months, years, the
  * agenda's `AGENDA_DAYS`, or the week view's step (`numberOfDays` below a
  * week, a week otherwise)
  */
@@ -259,6 +270,7 @@ function shiftPeriod(
 ): Date {
   if (view === "day") return addDays(date, amount);
   if (view === "month") return addMonths(date, amount);
+  if (view === "year") return addYears(date, amount);
   if (view === "agenda") return addDays(date, amount * AGENDA_DAYS);
   return addDays(date, amount * getWeekViewStepDays(numberOfDays));
 }
@@ -277,6 +289,59 @@ function getAgendaStartFrom(
   const periodEnd = shiftPeriod(date, view, 1, numberOfDays);
   if (now >= date && now < periodEnd) return startOfDay(now);
   return startOfDay(date);
+}
+
+/**
+ * Day a switch out of year view lands on: today when the year on screen
+ * contains it, the year's first day otherwise
+ */
+function getYearViewExitDate(yearStart: Date, now: Date): Date {
+  if (isSameYear(yearStart, now)) return startOfDay(now);
+  return yearStart;
+}
+
+/**
+ * Whether a view shows no day range in `visibleDays`: month view reports
+ * its month instead, and year view shows a whole year
+ */
+function hasNoVisibleDays(view: ViewType): boolean {
+  return view === "month" || view === "year";
+}
+
+/**
+ * Days the header is labelled from. Week and day views name the month
+ * after the LAST visible day, so a week crossing into the next month is
+ * labelled with the later month (Notion Calendar's behavior). Month view
+ * labels its own month, the agenda the month it starts in, and year view
+ * its year.
+ */
+function getHeaderDates(
+  view: ViewType,
+  currentDate: Date,
+  visibleDays: Date[],
+  displayMonth: Date | null,
+): HeaderDates {
+  if (view === "month") return { headerDate: displayMonth ?? currentDate };
+  if (view === "year") return { headerDate: currentDate };
+  const headerDate = visibleDays[0] ?? currentDate;
+  if (view === "agenda") return { headerDate };
+  return { headerDate, headerRangeEnd: visibleDays[visibleDays.length - 1] };
+}
+
+/** Year the header names: the year of the last day on screen, else of its date */
+function getHeaderYear(
+  view: ViewType,
+  currentDate: Date,
+  visibleDays: Date[],
+  displayMonth: Date | null,
+): number {
+  const { headerDate, headerRangeEnd } = getHeaderDates(
+    view,
+    currentDate,
+    visibleDays,
+    displayMonth,
+  );
+  return getYear(headerRangeEnd ?? headerDate);
 }
 
 /**
@@ -339,7 +404,7 @@ function resolveDayHours(
  * it draws, and the provider lines up with it as follows.
  *
  * - Uncontrolled `view`: the provider adopts the mounted view's type
- *   (DayView, WeekView, MonthView, AgendaView, or TimeGrid's `view`), so a
+ *   (DayView, WeekView, MonthView, AgendaView, YearView, or TimeGrid's `view`), so a
  *   lone view just works. `defaultView` only applies until a view mounts.
  * - Controlled `view` always wins: the provider never changes it to match
  *   the mounted view (development builds warn about a mismatch). Render the
@@ -348,12 +413,12 @@ function resolveDayHours(
  *   against the provider's `numberOfDays`. Without it the view follows the
  *   provider.
  * - Switches the mounted view doesn't follow (`switchView`, `showDay`,
- *   `setNumberOfDays`, the D/W/M and 2-9 shortcuts while a lone WeekView
+ *   `setNumberOfDays`, the D/W/M/A/Y and 2-9 shortcuts while a lone WeekView
  *   stays mounted) are undone, date included. To make switching work,
  *   render the view from `view`, as the demo does with `TimeGrid`.
  * - Without `date` or `defaultDate`, the calendar starts on today's period
  *   of the adopted view: today for DayView and AgendaView, this week for
- *   WeekView.
+ *   WeekView, this year for YearView.
  */
 export function CalendarProvider<TEvent extends CalendarEvent = CalendarEvent>(
   props: CalendarProviderProps<TEvent>,
@@ -452,7 +517,9 @@ function CalendarStateProvider({
   /** Month the month view shows; kept after leaving it until it reports again */
   const [displayMonth, setDisplayMonth] = React.useState<Date | null>(null);
   const [visibleDays, setVisibleDays] = React.useState<Date[]>(() =>
-    getVisibleDays(currentDate, view, numberOfDays),
+    hasNoVisibleDays(view)
+      ? []
+      : getVisibleDays(currentDate, view, numberOfDays),
   );
   /** ID of a just-created event whose title input should be focused once */
   const [titleFocusEventId, setTitleFocusEventId] = React.useState<
@@ -499,9 +566,10 @@ function CalendarStateProvider({
     return () => clearTimeout(timer);
   }, [highlightedDate]);
 
-  // Month view shows no day range; consumers sync to `displayMonth` instead
+  // Month and year view show no day range; consumers sync to
+  // `displayMonth` or `currentDate` instead
   React.useEffect(() => {
-    if (view !== "month") return;
+    if (!hasNoVisibleDays(view)) return;
     setVisibleDays([]);
   }, [view]);
 
@@ -630,6 +698,8 @@ function CalendarStateProvider({
 
       // Stay put while the occurrence is on screen
       const start = target.start;
+      // Year view shows the whole year of the occurrence
+      if (view === "year" && isSameYear(start, currentDate)) return;
       const isOnScreen =
         view === "month"
           ? isSameMonth(start, displayMonth ?? currentDate)
@@ -656,6 +726,20 @@ function CalendarStateProvider({
     ],
   );
 
+  const { headerDate, headerRangeEnd } = getHeaderDates(
+    view,
+    currentDate,
+    visibleDays,
+    displayMonth,
+  );
+  /** Year the header names, which `switchView("year")` opens */
+  const headerYear = getHeaderYear(
+    view,
+    currentDate,
+    visibleDays,
+    displayMonth,
+  );
+
   const switchView = React.useCallback(
     (newView: ViewType) => {
       if (newView === view) return;
@@ -671,11 +755,29 @@ function CalendarStateProvider({
         );
         return;
       }
+      // The title keeps its year: January's month view opens the new year
+      if (newView === "year") {
+        setCurrentDate(new Date(headerYear, 0, 1));
+        return;
+      }
       setCurrentDate((prev) =>
-        getPeriodStart(prev, newView, weekStartsOn, numberOfDays),
+        getPeriodStart(
+          view === "year" ? getYearViewExitDate(prev, new Date()) : prev,
+          newView,
+          weekStartsOn,
+          numberOfDays,
+        ),
       );
     },
-    [view, currentDate, weekStartsOn, numberOfDays, setView, setCurrentDate],
+    [
+      view,
+      currentDate,
+      weekStartsOn,
+      numberOfDays,
+      headerYear,
+      setView,
+      setCurrentDate,
+    ],
   );
 
   const changeNumberOfDays = React.useCallback(
@@ -755,7 +857,7 @@ function CalendarStateProvider({
       // may not change, so it waits for the view's report.
       if (dateProp !== undefined) return;
       setVisibleDays(
-        nextView === "month"
+        hasNoVisibleDays(nextView)
           ? []
           : getVisibleDays(nextDate, nextView, nextNumberOfDays),
       );
@@ -794,24 +896,13 @@ function CalendarStateProvider({
     }));
   }, []);
 
-  // Week/day views name the month after the LAST visible day, so a week
-  // crossing into the next month is labeled with the later month (Notion
-  // Calendar's behavior). Month view labels its own month instead, and the
-  // agenda the month it starts in.
-  const headerDate =
-    view === "month"
-      ? (displayMonth ?? currentDate)
-      : (visibleDays[0] ?? currentDate);
-  const headerRangeEnd =
-    view === "month" || view === "agenda"
-      ? undefined
-      : visibleDays[visibleDays.length - 1];
-  const { monthName, year, weekNumber } = getCalendarHeaderInfo(
-    headerDate,
-    weekStartsOn,
-    locale,
-    headerRangeEnd,
-  );
+  const {
+    monthName: headerMonthName,
+    year,
+    weekNumber,
+  } = getCalendarHeaderInfo(headerDate, weekStartsOn, locale, headerRangeEnd);
+  // Year view's header names the year alone
+  const monthName = view === "year" ? "" : headerMonthName;
 
   // Derived from the provider's own period, not the live `visibleDays`, so a
   // horizontal scroll moves it once it snaps instead of at every day it passes

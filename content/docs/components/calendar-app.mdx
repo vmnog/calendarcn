@@ -5,7 +5,7 @@ description: The live demo as one block, with both sidebars, the header, every v
 
 <LiveDemoPreview />
 
-`CalendarApp` is the [live demo](/), whole: the [Calendar Sidebar](/docs/components/calendar-sidebar) on the left, the [Calendar Header](/docs/components/calendar-header) over the day, week, month and agenda views, the [Details Sidebar](/docs/components/details-sidebar) on the right, the [Command Menu](/docs/components/command-menu), theme switching, .ics import and export, and the keyboard shortcuts. The live demo renders this block, so what you install is what you see there.
+`CalendarApp` is the [live demo](/), whole: the [Calendar Sidebar](/docs/components/calendar-sidebar) on the left, the [Calendar Header](/docs/components/calendar-header) over the day, week, month, year and agenda views, the [Details Sidebar](/docs/components/details-sidebar) on the right, the [Command Menu](/docs/components/command-menu), theme switching, .ics import and export, and the keyboard shortcuts. The live demo renders this block, so what you install is what you see there.
 
 It takes every [`CalendarProvider`](/docs/components/calendar-core#calendarprovider) prop, so your events, calendars, contacts, rooms and conferencing services go in as props. For a smaller calendar to put inside a page of yours, use the [Calendar](/docs/components/calendar) block instead.
 
@@ -166,7 +166,7 @@ From 768px up, while the details sidebar is closed, a selected event shows its d
 
 ## Keyboard shortcuts
 
-`CalendarApp` turns on the calendar's single-key [shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>A</Kbd>…) and the app's own:
+`CalendarApp` turns on the calendar's single-key [shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>Y</Kbd>, <Kbd>A</Kbd>…) and the app's own:
 
 | Action                            | Shortcut                                      |
 | --------------------------------- | --------------------------------------------- |
@@ -189,7 +189,7 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
 - [Calendar Core](/docs/components/calendar-core): `CalendarProvider`, `useCalendar()` and `useCalendarShortcuts()`.
 - [Calendar Sidebar](/docs/components/calendar-sidebar): the left sidebar, with the [Mini Calendar](/docs/components/mini-calendar), the [Calendar List](/docs/components/calendar-list) and the [Theme Toggle](/docs/components/theme-toggle).
 - [Calendar Header](/docs/components/calendar-header): the toolbar, with the view switcher and the panel toggles.
-- [Time Grid](/docs/components/time-grid), [Month View](/docs/components/month-view) and [Agenda View](/docs/components/agenda-view): the views.
+- [Time Grid](/docs/components/time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) and [Agenda View](/docs/components/agenda-view): the views.
 - [Details Sidebar](/docs/components/details-sidebar): the right sidebar, with the [Event Details](/docs/components/event-details).
 - [Command Menu](/docs/components/command-menu): the <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu.
 - [Sidebar Overlay](/docs/components/sidebar-overlay): both sidebars as sheets on narrow screens, and their colors.

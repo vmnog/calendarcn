@@ -146,6 +146,29 @@ test("the agenda reports the 30 days it lists", async ({ page }) => {
   await waitForLoaded(page);
 });
 
+test("year view reports its whole year", async ({ page }) => {
+  await waitForLoaded(page);
+
+  await demo(page)
+    .getByRole("group", { name: "View" })
+    .getByRole("button", { name: "Year" })
+    .click();
+  await expectLatestRange(page, {
+    start: "2026-01-01",
+    end: "2027-01-01",
+    status: "loading",
+  });
+  await expect(loadingBar(page)).toBeVisible();
+  await waitForLoaded(page);
+
+  await demo(page).getByRole("button", { name: "Next year" }).click();
+  await expectLatestRange(page, {
+    start: "2027-01-01",
+    end: "2028-01-01",
+    status: "loading",
+  });
+});
+
 test("a sideways scroll reports once, after it snaps", async ({ page }) => {
   await waitForLoaded(page);
 

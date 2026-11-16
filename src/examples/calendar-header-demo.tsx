@@ -9,6 +9,7 @@ import { CalendarHeader } from "@/components/calendar-header";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { MonthView } from "@/components/month-view";
 import { TimeGrid } from "@/components/time-grid";
+import { YearView } from "@/components/year-view";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { createSampleEvents } from "@/lib/sample-events";
@@ -60,6 +61,7 @@ function CalendarLayout() {
         <div className="flex min-h-0 flex-1 flex-col">
           {view === "month" && <MonthView />}
           {view === "agenda" && <AgendaView />}
+          {view === "year" && <YearView />}
           {(view === "day" || view === "week") && (
             <TimeGrid view={view} scrollToHour={8} />
           )}

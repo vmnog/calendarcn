@@ -160,6 +160,11 @@ export function CommandMenu({
           run: () => switchView("month"),
         },
         {
+          label: "Display year view",
+          keys: ["Y"],
+          run: () => switchView("year"),
+        },
+        {
           label: "Display agenda view",
           keys: ["A"],
           run: () => switchView("agenda"),

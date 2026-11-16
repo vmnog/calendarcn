@@ -69,6 +69,7 @@ src/
 │   ├── week-view-*.tsx           # Time grid parts: all-day row, grid, time axis, now line
 │   ├── month-view*.tsx           # MonthView and its parts
 │   ├── agenda-view.tsx           # AgendaView: the coming days' events as a list
+│   ├── year-view.tsx             # YearView: the year as twelve month grids
 │   ├── calendar-event-item.tsx   # Event rendering
 │   ├── event-*.tsx               # Detail panel, popover and context menu
 │   ├── event-detail-<section>.tsx # One file per details panel section (time, participants…)

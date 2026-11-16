@@ -24,6 +24,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   day: "Day",
   week: "Week",
   month: "Month",
+  year: "Year",
   agenda: "Agenda",
 };
 
@@ -36,6 +37,7 @@ const VIEW_OPTIONS: Array<{
   { value: "day", label: "Day", shortcuts: ["1", "or", "D"] },
   { value: "week", label: "Week", shortcuts: ["0", "or", "W"] },
   { value: "month", label: "Month", shortcuts: ["M"] },
+  { value: "year", label: "Year", shortcuts: ["Y"] },
   { value: "agenda", label: "Agenda", shortcuts: ["A"] },
 ];
 
@@ -46,7 +48,7 @@ const DAYS_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 const WEEKENDS_SETTING_VIEWS: ViewType[] = ["month", "agenda"];
 
 /** Views that draw week numbers when "Week numbers" is on. The rest ignore it for now */
-const WEEK_NUMBERS_SETTING_VIEWS: ViewType[] = ["month"];
+const WEEK_NUMBERS_SETTING_VIEWS: ViewType[] = ["month", "year"];
 
 /**
  * Shortcut hints inside menu items drop the key-cap background. Classes
@@ -191,7 +193,7 @@ export function ViewDropdown({
               {SOON_BADGE}
             </DropdownMenuCheckboxItem>
 
-            {/* Only month view draws week numbers */}
+            {/* Month and year view draw week numbers */}
             <DropdownMenuCheckboxItem
               disabled={weekNumbersSoon}
               className={cn(weekNumbersSoon && SOON_ITEM_CLASS)}
