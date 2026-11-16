@@ -60,7 +60,7 @@ Display and interaction settings are plain props: a 24-hour clock, a [date-fns l
 
 <ComponentPreview name="secondary-time-zone-demo" />
 
-`secondaryTimeZone` takes an IANA time zone, like `"Asia/Kolkata"`. The day and week views then show its hours in a second column left of the time axis, as Notion Calendar does with an additional time zone. Each column has its zone's short label at the top, and the current-time line shows the time in both. A zone half an hour or 45 minutes off yours shows the minutes: beside your 10 AM, India's column reads 7:30 PM.
+`secondaryTimeZone` takes an IANA time zone, like `"Asia/Kolkata"`. The day and week views then show its hours in a second column left of the time axis, as Notion Calendar does with an additional time zone. Each column has its zone's short label at the top, and the current-time line keeps its one time badge, in your column, as in Notion Calendar. A zone half an hour or 45 minutes off yours shows the minutes: beside your 10 AM, India's column reads 7:30 PM.
 
 ```tsx
 <CalendarProvider defaultEvents={events} secondaryTimeZone="Asia/Kolkata">

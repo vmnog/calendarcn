@@ -164,7 +164,7 @@ function withIsToday(
  *
  * With the provider's `secondaryTimeZone`, the time axis gets a second
  * column on its left: that zone's hours on the same lines, its short label
- * above them, and its current time on the now line.
+ * above them. The now line keeps its one badge, in the viewer's column.
  *
  * Renders the same markup on the server and during hydration: everything that
  * depends on the viewer's clock (today, the current-time line, past events)
@@ -663,7 +663,7 @@ export function TimeGrid({
               scrollDays={bufferedDays}
               scrollStyle={scrollStyle}
               behindSelection={!!selectedEventId}
-              secondaryTimeZone={secondaryTimeZone}
+              timeAxisWidth={timeAxisWidth}
             />
           </div>
         </div>

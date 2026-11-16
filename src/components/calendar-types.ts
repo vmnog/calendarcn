@@ -920,7 +920,7 @@ interface CalendarProviderBaseProps<
    * IANA time zone (e.g. "Asia/Kolkata") whose hours the day and week views
    * show in a second column, left of the time axis, as Notion Calendar's
    * additional time zone. Each column gets its zone's short label at the
-   * top, and the current-time line shows both clocks. A zone the runtime
+   * top, and the current-time line keeps its one badge, in the viewer's column. A zone the runtime
    * doesn't know is ignored. Defaults to none
    */
   secondaryTimeZone?: string;

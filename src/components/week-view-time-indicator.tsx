@@ -5,17 +5,16 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useNow } from "@/hooks/use-now";
 import { formatNowLineTime } from "@/lib/event-utils";
-import { getZonedTimeOfDay } from "@/lib/time-zones";
 import { useCalendarConfig } from "./calendar-provider";
 import type { WeekViewTimeIndicatorProps } from "./week-view-types";
 
-/** Milliseconds in a minute, to read a zone's time of day in minutes */
-const MINUTE_MS = 60_000;
+/** Width of the badge column in pixels (4rem), the viewer's column of the time axis */
+const BADGE_COLUMN_WIDTH = 64;
 
 /**
  * Current time indicator showing time badge and horizontal lines
  * - Time badge with current time (e.g., "5:48PM", or "17:48" on a 24-hour clock) on the left
- * - With a second time zone, a badge with its time in the time axis's second column, before the viewer's
+ * - With a second time zone, still one badge: in the viewer's column, the one next to the days
  * - Thick line on today's column
  * - Thin line on other day columns
  * Moves on every minute boundary via the shared `useNow` clock. Renders
@@ -28,7 +27,7 @@ export function WeekViewTimeIndicator({
   scrollDays,
   scrollStyle,
   behindSelection,
-  secondaryTimeZone,
+  timeAxisWidth = BADGE_COLUMN_WIDTH,
   className,
 }: WeekViewTimeIndicatorProps) {
   const currentTime = useNow();
@@ -60,19 +59,6 @@ export function WeekViewTimeIndicator({
     hourCycle,
     locale,
   );
-  // One badge per time axis column: the second zone's clock first
-  const badgeTimes = secondaryTimeZone
-    ? [
-        formatNowLineTime(
-          Math.floor(
-            getZonedTimeOfDay(currentTime, secondaryTimeZone) / MINUTE_MS,
-          ),
-          hourCycle,
-          locale,
-        ),
-        formattedTime,
-      ]
-    : [formattedTime];
 
   const lineDays = scrollDays ?? days;
   const lineTodayIndex = lineDays.findIndex((d) => d.isToday);
@@ -113,17 +99,19 @@ export function WeekViewTimeIndicator({
       style={{ top: topPosition }}
     >
       <div className="flex -translate-y-1/2 items-center">
-        {/* Time badges - one per time axis column, in the columns' order */}
-        {badgeTimes.map((time, index) => (
+        {/* Room for a second time zone's column, which has no badge */}
+        {timeAxisWidth > BADGE_COLUMN_WIDTH && (
           <div
-            key={index}
-            className="flex w-16 flex-shrink-0 items-center justify-end pr-1"
-          >
-            <span className="bg-primary text-primary-foreground rounded-xs px-1 py-0.5 text-xxs font-medium">
-              {time}
-            </span>
-          </div>
-        ))}
+            className="flex-shrink-0"
+            style={{ width: timeAxisWidth - BADGE_COLUMN_WIDTH }}
+          />
+        )}
+        {/* Time badge - positioned in the viewer's column of the time axis */}
+        <div className="flex w-16 flex-shrink-0 items-center justify-end pr-1">
+          <span className="bg-primary text-primary-foreground rounded-xs px-1 py-0.5 text-xxs font-medium">
+            {formattedTime}
+          </span>
+        </div>
 
         {/* Horizontal lines across day columns */}
         {scrollStyle ? (

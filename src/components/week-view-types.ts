@@ -351,10 +351,11 @@ export interface WeekViewTimeIndicatorProps {
   /** Whether to render behind selected events */
   behindSelection?: boolean;
   /**
-   * IANA zone of the time axis's second column: adds a badge with the
-   * current time in that zone, in that column, before the viewer's
+   * Width in px of the whole time axis, two columns with a second time
+   * zone. The badge stays in the last column, next to the days. Defaults to
+   * one column (4rem)
    */
-  secondaryTimeZone?: string;
+  timeAxisWidth?: number;
   /** Optional className */
   className?: string;
 }

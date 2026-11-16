@@ -112,16 +112,21 @@ test("the second zone's label and hours sit in a column left of the viewer's", a
   ).toBeAttached();
 });
 
-test("the now line shows the current time in both zones", async ({ page }) => {
+test("the now line keeps one badge, in the viewer's column", async ({
+  page,
+}) => {
   const frame = await boxOf(demo(page));
-  const own = await boxOf(text(page, "8:00AM"));
-  const second = await boxOf(text(page, "5:30PM"));
 
-  expect(Math.abs(centerY(own) - centerY(second))).toBeLessThan(1);
-  expect(second.x + second.width).toBeLessThanOrEqual(
-    frame.x + AXIS_COLUMN_WIDTH,
-  );
+  // 8:00 AM in New York. Kolkata's 5:30 PM gets no badge, as in Notion
+  // Calendar, and no other time badge exists
+  await expect(demo(page).getByText(/^\d{1,2}:\d{2}[AP]M$/)).toHaveCount(1);
+  await expect(text(page, "5:30PM")).toHaveCount(0);
+
+  const own = await boxOf(text(page, "8:00AM"));
   expect(own.x).toBeGreaterThanOrEqual(frame.x + AXIS_COLUMN_WIDTH);
+  expect(own.x + own.width).toBeLessThanOrEqual(
+    frame.x + 2 * AXIS_COLUMN_WIDTH,
+  );
 });
 
 test("the header, all-day row and grid stay in line beside the wider axis", async ({
