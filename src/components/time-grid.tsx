@@ -13,11 +13,18 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import {
   formatHourLabel,
+  formatTimeOfDayLabel,
   getPeriodStart,
   getVisibleDayCount,
   getWeekViewStepDays,
   isMultiDayEvent,
 } from "@/lib/event-utils";
+import {
+  getSecondaryTimeAxisInstant,
+  getTimeZoneOffsetDifference,
+  getViewerTimeZone,
+} from "@/lib/time-zones";
+import { getTimeZoneLabel } from "@/lib/timezone-label";
 import { expandRecurringEvents } from "@/lib/recurrence";
 import { useHorizontalScroll } from "@/hooks/use-horizontal-scroll";
 import { useEventKeyboard } from "@/hooks/use-event-keyboard";
@@ -54,8 +61,14 @@ import { CalendarLoadingBar } from "./calendar-loading-bar";
 /** Minimum height of each hour row in pixels */
 const MIN_HOUR_HEIGHT = 48;
 
-/** Width of the time axis column in pixels (4rem = 64px) */
+/**
+ * Width of one time axis column in pixels (4rem = 64px). A second time zone
+ * adds a second column of the same width.
+ */
 export const TIME_AXIS_WIDTH = 64;
+
+/** Hour labels of a second time zone column before they're known (on the server and during hydration) */
+const NO_LABELS: string[] = [];
 
 /** Buffer days per view mode (each side, for horizontal scroll) */
 const BUFFER_DAYS_BY_VIEW: Record<TimeGridView, number> = {
@@ -151,6 +164,10 @@ function withIsToday(
  * driving it from the provider (`<TimeGrid view={view} />`) keeps the
  * vertical scroll position across day/week switches.
  *
+ * With the provider's `secondaryTimeZone`, the time axis gets a second
+ * column on its left: that zone's hours on the same lines, its short label
+ * above them. The now line keeps its one badge, in the viewer's column.
+ *
  * Renders the same markup on the server and during hydration: everything that
  * depends on the viewer's clock (today, the current-time line, past events)
  * reads the shared `useNow` clock, which is unknown until hydration finishes.
@@ -178,8 +195,14 @@ export function TimeGrid({
     weekStartsOn,
     loading,
   } = useCalendar();
-  const { snapMinutes, dayStartHour, dayEndHour, hourCycle, locale } =
-    useCalendarConfig();
+  const {
+    snapMinutes,
+    dayStartHour,
+    dayEndHour,
+    hourCycle,
+    locale,
+    secondaryTimeZone,
+  } = useCalendarConfig();
   const {
     reportView,
     reportVisibleDays,
@@ -203,6 +226,10 @@ export function TimeGrid({
   const selectedEventId = selectedEvent?.id;
   const VISIBLE_DAYS = getVisibleDayCount(view, numberOfDays);
   const visibleHourCount = dayEndHour - dayStartHour;
+  /** Width of the time axis: one column, or two with a second time zone */
+  const timeAxisWidth = secondaryTimeZone
+    ? TIME_AXIS_WIDTH * 2
+    : TIME_AXIS_WIDTH;
   // A drag held at the grid's side edge moves by one prev/next step
   const edgeNavigationDays =
     view === "day" ? DAY_VIEW_EDGE_NAV_DAYS : getWeekViewStepDays(numberOfDays);
@@ -225,6 +252,32 @@ export function TimeGrid({
     () => generateHours(dayStartHour, dayEndHour, hourCycle, locale),
     [dayStartHour, dayEndHour, hourCycle, locale],
   );
+
+  // The second time zone's column: its short label, and the time its clock
+  // shows at each hour row. Both depend on the viewer's zone, so like the
+  // viewer's own label they stay blank on the server and during hydration
+  // (`today` is null until then). The offset is read at noon on today, or
+  // on the first day shown when today isn't on screen.
+  const secondaryAxis = React.useMemo(() => {
+    if (!secondaryTimeZone || today === null) return null;
+    const primaryTimeZone = getViewerTimeZone();
+    const instant = getSecondaryTimeAxisInstant(
+      baseDays.map((day) => day.date),
+      today,
+      primaryTimeZone,
+    );
+    const offsetMinutes = getTimeZoneOffsetDifference(
+      instant,
+      primaryTimeZone,
+      secondaryTimeZone,
+    );
+    return {
+      label: getTimeZoneLabel(instant, secondaryTimeZone),
+      hourLabels: hours.map((slot) =>
+        formatTimeOfDayLabel(slot.hour * 60 + offsetMinutes, hourCycle, locale),
+      ),
+    };
+  }, [secondaryTimeZone, today, baseDays, hours, hourCycle, locale]);
 
   // The stored events, for the drag and resize hooks to commit from
   const allDayEvents = React.useMemo(
@@ -249,7 +302,7 @@ export function TimeGrid({
     const updateDimensions = () => {
       const container = scrollContainerRef.current;
       if (!container) return;
-      const availableWidth = container.clientWidth - TIME_AXIS_WIDTH;
+      const availableWidth = container.clientWidth - timeAxisWidth;
       setDayColumnWidth(availableWidth / VISIBLE_DAYS);
       setHourHeight(
         Math.max(MIN_HOUR_HEIGHT, container.clientHeight / visibleHourCount),
@@ -263,7 +316,7 @@ export function TimeGrid({
       observer.observe(scrollContainerRef.current);
     }
     return () => observer.disconnect();
-  }, [VISIBLE_DAYS, visibleHourCount]);
+  }, [VISIBLE_DAYS, visibleHourCount, timeAxisWidth]);
 
   /** Whether `scrollToHour` has been applied; it only applies once */
   const hasScrolledToHourRef = React.useRef(false);
@@ -335,7 +388,7 @@ export function TimeGrid({
     events: timedEvents,
     days: visibleDayDates,
     dayColumnWidth,
-    timeAxisWidth: TIME_AXIS_WIDTH,
+    timeAxisWidth,
     snapMinutes,
     dayStartHour,
     dayEndHour,
@@ -351,7 +404,7 @@ export function TimeGrid({
     events: timedEvents,
     days: visibleDayDates,
     dayColumnWidth,
-    timeAxisWidth: TIME_AXIS_WIDTH,
+    timeAxisWidth,
     snapMinutes,
     dayStartHour,
     dayEndHour,
@@ -546,7 +599,12 @@ export function TimeGrid({
             className="overflow-hidden"
           >
             <div className="flex bg-background">
-              {/* Timezone label - rendered outside scroll container */}
+              {/* Time zone labels, one per time axis column - rendered outside scroll container */}
+              {secondaryTimeZone && (
+                <div className="text-muted-foreground flex w-16 flex-shrink-0 items-center justify-end pr-2 text-xxs">
+                  {secondaryAxis?.label}
+                </div>
+              )}
               <div className="text-muted-foreground flex w-16 flex-shrink-0 items-center justify-end pr-2 text-xxs">
                 {timeZoneLabel}
               </div>
@@ -580,10 +638,15 @@ export function TimeGrid({
               visibleCount={VISIBLE_DAYS}
               dayColumnWidth={dayColumnWidth}
               highlightedDate={highlightedDate}
+              timeAxisWidth={timeAxisWidth}
             />
           </div>
           {/* Under the day columns, along the header's bottom border */}
-          {loading && <CalendarLoadingBar className="left-16" />}
+          {loading && (
+            <CalendarLoadingBar
+              className={secondaryTimeZone ? "left-32" : "left-16"}
+            />
+          )}
         </div>
 
         {/* Scrollable grid area \u2014 also serves as the collision boundary for popovers */}
@@ -595,6 +658,13 @@ export function TimeGrid({
             className="relative flex"
             style={{ height: hours.length * hourHeight }}
           >
+            {secondaryTimeZone && (
+              <WeekViewTimeAxis
+                hours={hours}
+                hourHeight={hourHeight}
+                labels={secondaryAxis?.hourLabels ?? NO_LABELS}
+              />
+            )}
             <WeekViewTimeAxis hours={hours} hourHeight={hourHeight} />
             {/* Buffer wrappers clip rather than hide: a hidden box can still be
                 scrolled by script or the browser (e.g. scrollIntoView before
@@ -632,6 +702,7 @@ export function TimeGrid({
               scrollDays={bufferedDays}
               scrollStyle={scrollStyle}
               behindSelection={!!selectedEventId}
+              timeAxisWidth={timeAxisWidth}
             />
           </div>
         </div>

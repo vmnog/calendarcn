@@ -39,6 +39,7 @@ export function WeekViewAllDayRow({
   visibleCount,
   dayColumnWidth,
   highlightedDate,
+  timeAxisWidth,
   className,
 }: WeekViewAllDayRowProps) {
   const allEventRows = calculateAllDayEventRows(allDayEvents, days);
@@ -71,8 +72,13 @@ export function WeekViewAllDayRow({
         className,
       )}
     >
-      {/* All-day label */}
-      <div className="border-border text-muted-foreground flex w-16 flex-shrink-0 items-start justify-end border-r px-2 py-2 text-xxs">
+      {/* All-day label, as wide as the time axis below it */}
+      <div
+        className="border-border text-muted-foreground flex w-16 flex-shrink-0 items-start justify-end border-r px-2 py-2 text-xxs"
+        style={
+          timeAxisWidth === undefined ? undefined : { width: timeAxisWidth }
+        }
+      >
         All-day
       </div>
 

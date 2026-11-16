@@ -158,7 +158,7 @@ Renders a single event segment. Handles:
 
 All three use `useSyncExternalStore` with a server snapshot of `null` (or `false`). The server and the hydration render show no today badge, no time line, and no faded events. React re-renders with the real time right after hydration. A client-only render gets the real time on its first render, so the demo looks the same either way. One timer serves every subscriber.
 
-The timezone label follows the same pattern (`useTimeZoneLabel`). Month cells tag themselves with a timezone-free `data-date` (`yyyy-MM-dd`) for the same reason.
+The timezone label follows the same pattern (`useTimeZoneLabel`). So does the second time zone's column (`secondaryTimeZone`): `TimeGrid` keeps its width from the first render and fills in its labels once `useToday()` is known. Month cells tag themselves with a timezone-free `data-date` (`yyyy-MM-dd`) for the same reason.
 
 ## Styling Architecture
 

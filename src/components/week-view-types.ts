@@ -316,6 +316,12 @@ export interface WeekViewTimeAxisProps {
   hours: HourSlot[];
   /** Height of each hour row in pixels */
   hourHeight: number;
+  /**
+   * Labels shown instead of the slots' own, one per slot in order: the time
+   * grid's second time zone column. A missing or empty label leaves its row
+   * blank
+   */
+  labels?: string[];
   /** Optional className */
   className?: string;
 }
@@ -389,6 +395,12 @@ export interface WeekViewTimeIndicatorProps {
   scrollStyle?: React.CSSProperties;
   /** Whether to render behind selected events */
   behindSelection?: boolean;
+  /**
+   * Width in px of the whole time axis, two columns with a second time
+   * zone. The badge stays in the last column, next to the days. Defaults to
+   * one column (4rem)
+   */
+  timeAxisWidth?: number;
   /** Optional className */
   className?: string;
 }
@@ -431,6 +443,11 @@ export interface WeekViewAllDayRowProps extends EventItemPopoverProps {
   dayColumnWidth?: number;
   /** Date to highlight with a temporary background animation */
   highlightedDate?: Date | null;
+  /**
+   * Width in px of the "All-day" corner: the width of the time axis below
+   * it, two columns with a second time zone. Defaults to one column (4rem)
+   */
+  timeAxisWidth?: number;
   /** Optional className */
   className?: string;
 }
