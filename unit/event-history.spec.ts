@@ -14,6 +14,7 @@ import {
   applyEventChanges,
   canApplyEventChanges,
   describeEventAction,
+  describeEventNotice,
   describeHistoryStep,
   getPastedEventTimes,
   invertEventChanges,
@@ -322,4 +323,24 @@ test("announcements name the action and the event", () => {
   };
   expect(describeHistoryStep(paste, "undo")).toBe("Undid pasting Review");
   expect(describeHistoryStep(paste, "redo")).toBe("Redid pasting Review");
+});
+
+test("notices read as Notion Calendar's toasts", () => {
+  expect(describeEventNotice("delete", standup)).toStrictEqual({
+    message: "Event deleted",
+    title: "Standup",
+  });
+  expect(describeEventNotice("cut", standup)).toStrictEqual({
+    message: "Event cut",
+  });
+  expect(describeEventNotice("copy", standup)).toStrictEqual({
+    message: "Event copied to clipboard",
+    title: "Standup",
+  });
+});
+
+test("a notice calls an event without a title Untitled event", () => {
+  expect(
+    describeEventNotice("delete", { ...standup, title: "  " }),
+  ).toStrictEqual({ message: "Event deleted", title: "Untitled event" });
 });
