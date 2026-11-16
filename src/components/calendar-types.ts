@@ -692,6 +692,12 @@ export interface CalendarConfig {
   /** date-fns locale for day names, month names and dates */
   locale: Locale;
   /**
+   * IANA zone whose hours the day and week views show in a second column
+   * beside the time axis. Unset when there is none, or when the provider's
+   * `secondaryTimeZone` is a zone the runtime doesn't know.
+   */
+  secondaryTimeZone?: string;
+  /**
    * Day the week starts on, for date pickers. Unset outside a
    * CalendarProvider, where the locale's first day applies.
    */
@@ -910,6 +916,14 @@ interface CalendarProviderBaseProps<
    * Defaults to `enUS`
    */
   locale?: Locale;
+  /**
+   * IANA time zone (e.g. "Asia/Kolkata") whose hours the day and week views
+   * show in a second column, left of the time axis, as Notion Calendar's
+   * additional time zone. Each column gets its zone's short label at the
+   * top, and the current-time line shows both clocks. A zone the runtime
+   * doesn't know is ignored. Defaults to none
+   */
+  secondaryTimeZone?: string;
   /**
    * Calendars the details panel's calendar picker offers, grouped by `email`,
    * and the event context menu under "Block on calendar" (hidden when

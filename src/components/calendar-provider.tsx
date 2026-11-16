@@ -25,6 +25,7 @@ import {
   getWeekViewStepDays,
 } from "@/lib/event-utils";
 import { createSeriesOccurrence, findSeriesOccurrence } from "@/lib/recurrence";
+import { isKnownTimeZone } from "@/lib/time-zones";
 import type {
   CalendarConfig,
   CalendarContextValue,
@@ -404,6 +405,7 @@ function CalendarStateProvider({
   dayEndHour = DEFAULT_DAY_END_HOUR,
   hourCycle = DEFAULT_HOUR_CYCLE,
   locale = enUS,
+  secondaryTimeZone,
   calendars = NO_CALENDARS,
   contacts = NO_CONTACTS,
   rooms = NO_ROOMS,
@@ -955,6 +957,11 @@ function CalendarStateProvider({
       ...resolveDayHours(dayStartHour, dayEndHour),
       hourCycle,
       locale,
+      // An unknown zone would make its labels throw: draw one column instead
+      secondaryTimeZone:
+        secondaryTimeZone && isKnownTimeZone(secondaryTimeZone)
+          ? secondaryTimeZone
+          : undefined,
       weekStartsOn,
       calendars,
       contacts,
@@ -968,6 +975,7 @@ function CalendarStateProvider({
       dayEndHour,
       hourCycle,
       locale,
+      secondaryTimeZone,
       weekStartsOn,
       calendars,
       contacts,

@@ -1225,6 +1225,66 @@ export function formatHourLabel(
   return `${hourOnClock} ${period}`;
 }
 
+/** A time of day in minutes, wrapped into one day (0 to 1439): -180 becomes 1260, 9 PM */
+function wrapMinutesOfDay(minutes: number): number {
+  const whole = Math.floor(minutes);
+  return ((whole % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+}
+
+/** The period `format(date, "a")` writes for `hour` (0-23), "AM" or "PM" in English */
+function getDayPeriod(hour: number, locale: Locale): string {
+  return locale.localize.dayPeriod(hour < 12 ? "am" : "pm", {
+    width: "abbreviated",
+    context: "formatting",
+  });
+}
+
+/**
+ * Formats a time of day, given in minutes since midnight and wrapped into
+ * one day, for the second time zone's column of the time axis: "7 PM" or
+ * "7:30 PM" on a 12-hour clock, "19:00" or "19:30" on a 24-hour clock.
+ * Whole hours read exactly like `formatHourLabel`. Like it, this reads the
+ * number alone, so it doesn't depend on the runtime's time zone.
+ */
+export function formatTimeOfDayLabel(
+  minutes: number,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  const time = wrapMinutesOfDay(minutes);
+  const hour = Math.floor(time / 60);
+  const minute = time % 60;
+  if (minute === 0) return formatHourLabel(hour, hourCycle, locale);
+
+  const paddedMinute = String(minute).padStart(2, "0");
+  if (hourCycle === 24) {
+    return `${String(hour).padStart(2, "0")}:${paddedMinute}`;
+  }
+  const hourOnClock = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hourOnClock}:${paddedMinute} ${getDayPeriod(hour, locale)}`;
+}
+
+/**
+ * Formats the time in a badge of the current-time line, from minutes since
+ * midnight wrapped into one day: "5:48PM" on a 12-hour clock, "17:48" on a
+ * 24-hour clock. Reads the number alone, so a second time zone's badge
+ * reads like the viewer's.
+ */
+export function formatNowLineTime(
+  minutes: number,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  const time = wrapMinutesOfDay(minutes);
+  const hour = Math.floor(time / 60);
+  const paddedMinute = String(time % 60).padStart(2, "0");
+  if (hourCycle === 24) {
+    return `${String(hour).padStart(2, "0")}:${paddedMinute}`;
+  }
+  const hourOnClock = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hourOnClock}:${paddedMinute}${getDayPeriod(hour, locale)}`.toUpperCase();
+}
+
 // ---------------------------------------------------------------------------
 // Accessibility: labels, announcements and keyboard editing
 // ---------------------------------------------------------------------------

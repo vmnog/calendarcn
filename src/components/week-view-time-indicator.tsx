@@ -1,16 +1,21 @@
 "use client";
 
-import { format } from "date-fns";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { useNow } from "@/hooks/use-now";
+import { formatNowLineTime } from "@/lib/event-utils";
+import { getZonedTimeOfDay } from "@/lib/time-zones";
 import { useCalendarConfig } from "./calendar-provider";
 import type { WeekViewTimeIndicatorProps } from "./week-view-types";
+
+/** Milliseconds in a minute, to read a zone's time of day in minutes */
+const MINUTE_MS = 60_000;
 
 /**
  * Current time indicator showing time badge and horizontal lines
  * - Time badge with current time (e.g., "5:48PM", or "17:48" on a 24-hour clock) on the left
+ * - With a second time zone, a badge with its time in the time axis's second column, before the viewer's
  * - Thick line on today's column
  * - Thin line on other day columns
  * Moves on every minute boundary via the shared `useNow` clock. Renders
@@ -23,6 +28,7 @@ export function WeekViewTimeIndicator({
   scrollDays,
   scrollStyle,
   behindSelection,
+  secondaryTimeZone,
   className,
 }: WeekViewTimeIndicatorProps) {
   const currentTime = useNow();
@@ -49,10 +55,24 @@ export function WeekViewTimeIndicator({
     ((minutesSinceMidnight - visibleStartMinutes) / 60) * hourHeight;
 
   // "5:48PM" on a 12-hour clock, "17:48" on a 24-hour clock
-  const formattedTime =
-    hourCycle === 24
-      ? format(currentTime, "HH:mm", { locale })
-      : format(currentTime, "h:mma", { locale }).toUpperCase();
+  const formattedTime = formatNowLineTime(
+    minutesSinceMidnight,
+    hourCycle,
+    locale,
+  );
+  // One badge per time axis column: the second zone's clock first
+  const badgeTimes = secondaryTimeZone
+    ? [
+        formatNowLineTime(
+          Math.floor(
+            getZonedTimeOfDay(currentTime, secondaryTimeZone) / MINUTE_MS,
+          ),
+          hourCycle,
+          locale,
+        ),
+        formattedTime,
+      ]
+    : [formattedTime];
 
   const lineDays = scrollDays ?? days;
   const lineTodayIndex = lineDays.findIndex((d) => d.isToday);
@@ -93,12 +113,17 @@ export function WeekViewTimeIndicator({
       style={{ top: topPosition }}
     >
       <div className="flex -translate-y-1/2 items-center">
-        {/* Time badge - positioned in the time axis area */}
-        <div className="flex w-16 flex-shrink-0 items-center justify-end pr-1">
-          <span className="bg-primary text-primary-foreground rounded-xs px-1 py-0.5 text-xxs font-medium">
-            {formattedTime}
-          </span>
-        </div>
+        {/* Time badges - one per time axis column, in the columns' order */}
+        {badgeTimes.map((time, index) => (
+          <div
+            key={index}
+            className="flex w-16 flex-shrink-0 items-center justify-end pr-1"
+          >
+            <span className="bg-primary text-primary-foreground rounded-xs px-1 py-0.5 text-xxs font-medium">
+              {time}
+            </span>
+          </div>
+        ))}
 
         {/* Horizontal lines across day columns */}
         {scrollStyle ? (

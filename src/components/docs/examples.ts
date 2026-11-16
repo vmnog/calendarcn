@@ -17,6 +17,7 @@ import { IcsDemo } from "@/examples/ics-demo";
 import { MonthViewDemo } from "@/examples/month-view-demo";
 import { RangeLoadingDemo } from "@/examples/range-loading-demo";
 import { SampleDataDemo } from "@/examples/sample-data-demo";
+import { SecondaryTimeZoneDemo } from "@/examples/secondary-time-zone-demo";
 import { TimeGridDemo } from "@/examples/time-grid-demo";
 import { TypedEventsDemo } from "@/examples/typed-events-demo";
 import { WeekViewDemo } from "@/examples/week-view-demo";
@@ -50,6 +51,7 @@ const EXAMPLES = {
   "month-view-demo": MonthViewDemo,
   "range-loading-demo": RangeLoadingDemo,
   "sample-data-demo": SampleDataDemo,
+  "secondary-time-zone-demo": SecondaryTimeZoneDemo,
   "time-grid-demo": TimeGridDemo,
   "typed-events-demo": TypedEventsDemo,
   "week-view-demo": WeekViewDemo,
