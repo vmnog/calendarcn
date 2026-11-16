@@ -973,6 +973,8 @@ function CalendarStateProvider({
       }
       // The title keeps its year: January's month view opens the new year
       if (newView === "year") {
+        // Year view draws no events, so none stays selected for the keys
+        setSelectedEventId(null);
         setCurrentDate(new Date(headerYear, 0, 1));
         return;
       }
@@ -1137,7 +1139,9 @@ function CalendarStateProvider({
   );
 
   const pasteEvent = React.useCallback(() => {
-    if (!copiedEvent) return;
+    // Year view has no slot or day to paste onto, and a paste would land
+    // out of sight on a spot a view left behind
+    if (!copiedEvent || view === "year") return;
     const target = resolvePasteTarget(
       pasteTargetRef.current,
       visibleRange,
@@ -1152,7 +1156,7 @@ function CalendarStateProvider({
       },
       "paste",
     );
-  }, [copiedEvent, visibleRange, currentDate, addEventCopy]);
+  }, [copiedEvent, view, visibleRange, currentDate, addEventCopy]);
 
   // Report each new range once. While the provider is still adopting the
   // mounted view (its first commit, or a switch the view is undoing), the

@@ -5,6 +5,7 @@ import {
   CURRENT_WEEK_LABEL,
   FROZEN_NOW,
   boxOf,
+  calendarEvent,
   expectHeader,
   openCalendar,
 } from "./helpers";
@@ -187,6 +188,27 @@ test.describe("desktop", () => {
       .click();
 
     await expect(january.getByRole("rowheader")).toHaveCount(0);
+  });
+
+  test("a paste does nothing in year view, where no day or slot is drawn", async ({
+    page,
+  }) => {
+    await calendarEvent(page, "Launch Review").click();
+    await page.keyboard.press("ControlOrMeta+c");
+    await page.keyboard.press("m");
+    await expectHeader(page, "June 2026");
+    const launchReviews = calendarEvent(page, "Launch Review");
+    const before = await launchReviews.count();
+    expect(before).toBeGreaterThan(0);
+
+    await page.keyboard.press("y");
+    await expectHeader(page, "2026");
+    await yearDayByDate(page, "Wednesday, June 10").hover();
+    await page.keyboard.press("ControlOrMeta+v");
+
+    await page.keyboard.press("m");
+    await expectHeader(page, "June 2026");
+    await expect(launchReviews).toHaveCount(before);
   });
 
   test("y typed into a field stays there, and opens the year outside it", async ({
