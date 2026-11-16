@@ -44,7 +44,29 @@ const [events, setEvents] = React.useState(initialEvents);
 </CalendarProvider>;
 ```
 
-Use `onEventCreate`, `onEventUpdate` and `onEventSelect` to react to one change at a time, for example to save it to a server. `onEventCreate` also gets an occurrence of a repeating event the first time it is edited: see [Repeating events](#repeating-events). To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/loading-events).
+Use `onEventCreate`, `onEventUpdate`, `onEventDelete` and `onEventSelect` to react to one change at a time, for example to save it to a server. `onEventCreate` also gets an occurrence of a repeating event the first time it is edited: see [Repeating events](#repeating-events). To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/loading-events).
+
+### Undo and redo
+
+<KbdGroup>
+  <Kbd>⌘</Kbd>
+  <Kbd>Z</Kbd>
+</KbdGroup>
+takes back the calendar's own changes, newest first: creating, moving, resizing
+and editing an event, and deleting, duplicating, cutting or pasting one.
+<KbdGroup>
+  <Kbd>⇧</Kbd>
+  <Kbd>⌘</Kbd>
+  <Kbd>Z</Kbd>
+</KbdGroup>
+does them again, until a new change clears what's left to redo. `undo()`,
+`redo()`, `canUndo` and `canRedo` from `useCalendar()` do the same from your own
+buttons. Edits to one event less than a second apart, like a title typed letter
+by letter, are one step, and the provider keeps the last 100 steps.
+
+Undo and redo report what they change like any other change: the full list through `onEventsChange`, then `onEventCreate`, `onEventUpdate` or `onEventDelete` for each event, so an app that saves one change at a time stays in sync. An undone delete adds the event back with its old id.
+
+A step applies only while its events are the very objects the calendar left in `events`. Replace one from outside, by reloading your events from a server for example, and the steps that touch it can't be undone: `canUndo` turns false and the key goes back to the browser, so an undo never overwrites a newer version. Keep the objects you get in `onEventsChange`, as `useState` does, and undo keeps working. Changes your app makes to `events` itself, like an import, are not steps.
 
 ### Server rendering
 
@@ -57,7 +79,6 @@ An event with a `recurrenceRule` (or an RRULE in `recurrence`) is one event in `
 - An occurrence's id is the series' id and its date, `launch-2026-06-20`. Selecting it, `selectedEvent` and the details' series arrows work as for any event.
 - Editing an occurrence (drag, resize, the keyboard or the details) changes that date only. It is added to your events with `seriesId` (the series' id) and `originalStart` (the start it had), through `onEventCreate` and `onEventsChange`, and drawn in place of the generated one. Later edits to it go through `onEventUpdate`. A new repeat rule takes it out of the series, to repeat on its own from its date.
 - Editing the series' own event, its first date, changes the series: every occurrence you haven't stored follows it.
-- `excludedDates` leaves dates out, like an .ics `EXDATE`.
 - Occurrences keep the series' clock time in its `timeZone` when the clocks change. An all-day series keeps whole days.
 - `recurrence` written as display text ("Every week on Thu") is a label only: draw those occurrences as events of your own.
 
@@ -129,7 +150,7 @@ interface Meeting extends CalendarEvent {
       name: "onEventsChange",
       type: "(events: TEvent[]) => void",
       description:
-        "Called with the full next list whenever events change: drag, resize, create, or an edit in the details. A repeating event stays one event; an edited occurrence is added as its own.",
+        "Called with the full next list whenever events change: drag, resize, create, an edit in the details, delete, duplicate, cut, paste, undo and redo. A repeating event stays one event; an edited occurrence is added as its own.",
     },
     {
       name: "view",
@@ -275,13 +296,19 @@ interface Meeting extends CalendarEvent {
       name: "onEventCreate",
       type: "(event: TEvent) => void",
       description:
-        "Called after an event is added: one created by clicking an empty slot, or an occurrence of a repeating event stored on its first edit (with `seriesId` and `originalStart`).",
+        "Called after an event is added: one created by clicking an empty slot, a duplicate or a paste, an occurrence of a repeating event stored on its first edit (with `seriesId` and `originalStart`), or one `undo` or `redo` brings back.",
     },
     {
       name: "onEventUpdate",
       type: "(event: TEvent) => void",
       description:
-        "Called after an event changes: drag, resize, keyboard move or an edit in the details.",
+        "Called after an event changes: drag, resize, keyboard move, an edit in the details, or `undo` and `redo` changing it back.",
+    },
+    {
+      name: "onEventDelete",
+      type: "(event: TEvent) => void",
+      description:
+        "Called after an event is removed: deleted, cut, or taken away by `undo` or `redo` (an undone create, duplicate or paste).",
     },
     {
       name: "onEventSelect",
@@ -489,6 +516,59 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       type: "(event: TEvent) => void",
       description:
         "Replaces the event with the same id. A generated occurrence of a repeating event is added instead, through `onEventCreate`: see [Repeating events](#repeating-events).",
+    },
+    {
+      name: "deleteEvent",
+      type: "(eventId: string) => void",
+      description:
+        "Deletes the event through `onEventsChange` and `onEventDelete`, and clears the selection when it was selected. Undoable.",
+    },
+    {
+      name: "duplicateEvent",
+      type: "(eventId: string) => void",
+      description:
+        "Adds a copy of the event at the same time, with a new id from `crypto.randomUUID()`, through `onEventsChange` and `onEventCreate`, and selects it. Undoable.",
+    },
+    {
+      name: "copyEvent",
+      type: "(eventId: string) => void",
+      description:
+        "Keeps a copy of the event for `pasteEvent`. Changes no event.",
+    },
+    {
+      name: "cutEvent",
+      type: "(eventId: string) => void",
+      description:
+        "Keeps a copy of the event for `pasteEvent`, then deletes it. Undoable.",
+    },
+    {
+      name: "pasteEvent",
+      type: "() => void",
+      description:
+        "Adds a copy of the cut or copied event, with a new id, and selects it: at the time slot under the mouse in day and week view, on the day under it in month view at the event's own time of day, else today or the first day on screen. All-day events stay all-day. Does nothing when nothing was cut or copied. Undoable.",
+    },
+    {
+      name: "undo",
+      type: "() => void",
+      description:
+        "Undoes the latest create, move, resize, edit, delete, duplicate, cut or paste: reports it through `onEventsChange` and `onEventCreate`, `onEventUpdate` or `onEventDelete`, and selects the event it brings back or changes.",
+    },
+    {
+      name: "redo",
+      type: "() => void",
+      description: "Does again the latest step `undo` took back.",
+    },
+    {
+      name: "canUndo",
+      type: "boolean",
+      description:
+        "Whether `undo` has a step to take back: false with none, or once the app replaced or removed one of that step's events itself. See [Undo and redo](#undo-and-redo).",
+    },
+    {
+      name: "canRedo",
+      type: "boolean",
+      description:
+        "Whether `redo` has a step to do again. Any new change clears them.",
     },
     {
       name: "toggleWeekends",

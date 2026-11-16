@@ -179,6 +179,10 @@ export function DetailsSidebar({
     previousInSeries,
     nextInSeries,
     showSeriesOccurrence,
+    deleteEvent,
+    duplicateEvent,
+    copyEvent,
+    cutEvent,
   } = useCalendar<DetailedCalendarEvent>();
   const {
     toggleSidebar,
@@ -277,6 +281,24 @@ export function DetailsSidebar({
     ? () => showSeriesOccurrence(nextInSeries)
     : undefined;
 
+  /**
+   * The "..." menu's actions for the event the panel shows. Deleting or
+   * cutting a search pick also leaves the pick, which the provider doesn't
+   * select
+   */
+  const getEventActions = (eventId: string) => ({
+    onCut: () => {
+      cutEvent(eventId);
+      setSearchSelectedEvent(null);
+    },
+    onCopy: () => copyEvent(eventId),
+    onDuplicate: () => duplicateEvent(eventId),
+    onDelete: () => {
+      deleteEvent(eventId);
+      setSearchSelectedEvent(null);
+    },
+  });
+
   const panel = (
     <>
       <SidebarHeader className="h-14 justify-center px-4">
@@ -349,6 +371,7 @@ export function DetailsSidebar({
             onEventChange={updateEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
+            {...getEventActions(selectedEvent.id)}
             autoFocusTitle={panelOpen && pendingEventId === selectedEvent.id}
             onTitleAutoFocused={clearPending}
           />
@@ -358,6 +381,7 @@ export function DetailsSidebar({
             onEventChange={updateEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
+            {...getEventActions(resolvedSearchEvent.id)}
           />
         ) : isLoadingResults ? (
           <div className="px-4 pl-8 pt-8">

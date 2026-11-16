@@ -45,6 +45,22 @@ Leave out `onEventChange` to show an event read-only, for example one from a cal
 <EventDetailPanel event={event} />
 ```
 
+The "..." menu cuts, copies, duplicates and deletes the event through `onCut`, `onCopy`, `onDuplicate` and `onDelete`; an action you don't pass is disabled. The views' popover passes the provider's. For a panel you render yourself, pass `useCalendar()`'s:
+
+```tsx
+const { cutEvent, copyEvent, duplicateEvent, deleteEvent } =
+  useCalendar<DetailedCalendarEvent>();
+
+<EventDetailPanel
+  event={selectedEvent}
+  onEventChange={updateEvent}
+  onCut={() => cutEvent(selectedEvent.id)}
+  onCopy={() => copyEvent(selectedEvent.id)}
+  onDuplicate={() => duplicateEvent(selectedEvent.id)}
+  onDelete={() => deleteEvent(selectedEvent.id)}
+/>;
+```
+
 The repeat row's arrows step through a series. In the views' popover they work on their own: the provider finds the selected event's neighbors (`previousInSeries` and `nextInSeries` from `useCalendar()`, `null` at the series' ends) and `showSeriesOccurrence` selects one and moves to it. Occurrences your events don't hold are generated from the rule, so stepping to one selects it without adding anything; its first edit stores it, through `onEventCreate`. Pass the same to a panel you render yourself:
 
 ```tsx
@@ -155,7 +171,7 @@ An image file works too: `icon: <img src="/logos/zoom.svg" alt="" className="siz
 - Edit the description in place: the event takes the text when you leave it, and <Kbd>Esc</Kbd> restores it. Web addresses in it become links, and are also listed after the event's links.
 - Move the event to another of the provider's `calendars` (grouped by account) or give it its own color, set it busy or free and pick who can see it, from menus that open beside the panel. Hovering a choice previews it; <Kbd>Esc</Kbd> closes the menu and keeps the old value.
 - Add reminders from presets, or type a number to get it in minutes, hours, days or weeks ("2h", "10 mins"), up to 4 weeks before. Reminders stay sorted, and one that fires with another ("60min" and "1hour") isn't added twice. Adding one closes the list, and typing opens it again. Hover a reminder to remove it.
-- Right-click an event on the calendar to change its color or calendar. Cut, copy, duplicate and delete are listed as "Soon": they are not built yet.
+- Right-click an event on the calendar to change its color or calendar, or to cut, copy, duplicate or delete it. The details' "..." menu has the same four actions, each with its key: see [Keyboard shortcuts](/docs/keyboard-shortcuts).
 
 ## Custom details
 
@@ -267,6 +283,30 @@ export function CompactDetails({
       type: "() => void",
       description:
         "Shows the next event of a repeating series (the repeat row's ›). Leave it out at the end of the series to disable the arrow. The views' popover passes the provider's `nextInSeries`.",
+    },
+    {
+      name: "onCut",
+      type: "() => void",
+      description:
+        "The \"...\" menu's Cut (⌘X): keeps a copy of the event for pasting and deletes it. The item is disabled without it. The views' popover passes the provider's `cutEvent`.",
+    },
+    {
+      name: "onCopy",
+      type: "() => void",
+      description:
+        "The \"...\" menu's Copy (⌘C): keeps a copy of the event for pasting. The item is disabled without it. The views' popover passes the provider's `copyEvent`.",
+    },
+    {
+      name: "onDuplicate",
+      type: "() => void",
+      description:
+        "The \"...\" menu's Duplicate (⌘D): adds a copy at the same time and selects it. The item is disabled without it. The views' popover passes the provider's `duplicateEvent`.",
+    },
+    {
+      name: "onDelete",
+      type: "() => void",
+      description:
+        "The \"...\" menu's Delete (delete): deletes the event. The item is disabled without it. The views' popover passes the provider's `deleteEvent`.",
     },
   ]}
 />
