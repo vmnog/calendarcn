@@ -174,16 +174,18 @@ function CalendarToast({ notice, duration, onDismiss }: CalendarToastProps) {
           <p className="truncate text-white/60">{`“${title}”`}</p>
         ) : null}
         {onUndo ? (
-          <button
-            type="button"
-            className={cn(
-              TOAST_BUTTON_CLASS,
-              "mt-1.5 -ml-1.5 px-1.5 py-0.5 font-medium text-white",
-            )}
-            onClick={handleUndo}
-          >
-            Undo
-          </button>
+          <div className="mt-1.5 flex justify-end">
+            <button
+              type="button"
+              className={cn(
+                TOAST_BUTTON_CLASS,
+                "bg-white/10 px-2 py-0.5 font-medium text-white hover:bg-white/15",
+              )}
+              onClick={handleUndo}
+            >
+              Undo
+            </button>
+          </div>
         ) : null}
       </div>
       <button
