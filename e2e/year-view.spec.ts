@@ -211,6 +211,33 @@ test.describe("desktop", () => {
     await expect(launchReviews).toHaveCount(before);
   });
 
+  test("a toast stays at the bottom right, over the year grid", async ({
+    page,
+  }) => {
+    await calendarEvent(page, "Launch Review").click();
+    await page.keyboard.press("Delete");
+    await page.keyboard.press("y");
+    await expectHeader(page, "2026");
+
+    const toast = page
+      .getByRole("region", { name: "Notifications" })
+      .locator('[data-slot="calendar-toast"]');
+    await expect(toast).toContainText("Event deleted");
+    const box = await boxOf(toast);
+    expect(box.x + box.width).toBeGreaterThan(1440 - 400);
+    expect(box.y + box.height).toBeGreaterThan(900 - 100);
+    // Nothing of the year grid sits on top of it
+    const isOnTop = await toast.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const hit = document.elementFromPoint(
+        rect.left + rect.width / 2,
+        rect.top + rect.height / 2,
+      );
+      return hit !== null && element.contains(hit);
+    });
+    expect(isOnTop).toBe(true);
+  });
+
   test("y typed into a field stays there, and opens the year outside it", async ({
     page,
   }) => {

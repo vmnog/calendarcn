@@ -100,6 +100,21 @@ test.describe("wide screens", () => {
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toBe("calendar.ics");
   });
+
+  test("deleting an event shows a toast whose Undo brings it back", async ({
+    page,
+  }) => {
+    await calendarEvent(page, "Launch Review").click();
+    await page.keyboard.press("Backspace");
+    await expect(calendarEvent(page, "Launch Review")).toHaveCount(0);
+
+    const toaster = page.getByRole("region", { name: "Notifications" });
+    await expect(toaster).toContainText("Event deleted");
+    await expect(toaster).toContainText("“Launch Review”");
+    await toaster.getByRole("button", { name: "Undo" }).click();
+    await expect(calendarEvent(page, "Launch Review")).toBeVisible();
+    await expect(toaster).toHaveCount(0);
+  });
 });
 
 test.describe("phones", () => {

@@ -5,7 +5,7 @@ description: The live demo as one block, with both sidebars, the header, every v
 
 <LiveDemoPreview />
 
-`CalendarApp` is the [live demo](/), whole: the [Calendar Sidebar](/docs/components/calendar-sidebar) on the left, the [Calendar Header](/docs/components/calendar-header) over the day, week, month, year and agenda views, the [Details Sidebar](/docs/components/details-sidebar) on the right, the [Command Menu](/docs/components/command-menu), theme switching, .ics import and export, and the keyboard shortcuts. The live demo renders this block, so what you install is what you see there.
+`CalendarApp` is the [live demo](/), whole: the [Calendar Sidebar](/docs/components/calendar-sidebar) on the left, the [Calendar Header](/docs/components/calendar-header) over the day, week, month, year and agenda views, the [Details Sidebar](/docs/components/details-sidebar) on the right, the [Command Menu](/docs/components/command-menu), the [toasts](/docs/components/calendar-toaster) after a delete, cut or copy, theme switching, .ics import and export, and the keyboard shortcuts. The live demo renders this block, so what you install is what you see there.
 
 It takes every [`CalendarProvider`](/docs/components/calendar-core#calendarprovider) prop, so your events, calendars, contacts, rooms and conferencing services go in as props. For a smaller calendar to put inside a page of yours, use the [Calendar](/docs/components/calendar) block instead.
 
@@ -192,6 +192,7 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
 - [Time Grid](/docs/components/time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) and [Agenda View](/docs/components/agenda-view): the views.
 - [Details Sidebar](/docs/components/details-sidebar): the right sidebar, with the [Event Details](/docs/components/event-details).
 - [Command Menu](/docs/components/command-menu): the <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu.
+- [Calendar Toaster](/docs/components/calendar-toaster): the toasts after a delete, cut or copy, with Undo.
 - [Sidebar Overlay](/docs/components/sidebar-overlay): both sidebars as sheets on narrow screens, and their colors.
 - [Import and Export](/docs/import-export): `parseIcs()` and `toIcs()`.
 - [Sample Data](/docs/sample-data) and the [conference providers](/docs/components/event-details#conference-providers): the demo's data.

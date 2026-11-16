@@ -33,6 +33,7 @@ import {
   applyEventChanges,
   canApplyEventChanges,
   describeEventAction,
+  describeEventNotice,
   describeHistoryStep,
   getChangedEventId,
   getPastedEventTimes,
@@ -46,6 +47,9 @@ import type {
   CalendarContextValue,
   CalendarEvent,
   CalendarInfo,
+  CalendarNotice,
+  CalendarNoticeInput,
+  CalendarNoticeValue,
   CalendarProviderProps,
   CalendarRenderSlots,
   ConferenceProviderOption,
@@ -54,6 +58,7 @@ import type {
   EventHistory,
   EventHistoryAction,
   EventHistoryChange,
+  EventHistoryEntry,
   EventPasteTarget,
   EventRoom,
   HourCycle,
@@ -251,6 +256,16 @@ interface Announcement {
   text: string;
 }
 
+/** The notice on screen, and the undo step its Undo takes back */
+interface ShownNotice {
+  notice: CalendarNotice;
+  /**
+   * The step the notice's Undo takes back, or `null` for a notice without
+   * one. The notice closes as soon as another step is the latest.
+   */
+  step: EventHistoryEntry | null;
+}
+
 /** Props of the stateful provider, once the starting date is known */
 type CalendarStateProviderProps = CalendarProviderProps & {
   /** Starting date when `date` is not controlled */
@@ -285,6 +300,16 @@ const CalendarSeriesContext =
 
 const CalendarEventActionsContext =
   React.createContext<CalendarEventActionsValue | null>(null);
+
+/** Outside a provider: no notice, and nothing to show or close */
+const NO_NOTICE: CalendarNoticeValue = {
+  notice: null,
+  showNotice: () => {},
+  dismissNotice: () => {},
+};
+
+const CalendarNoticeContext =
+  React.createContext<CalendarNoticeValue>(NO_NOTICE);
 
 /** Default `createEvent`: a "New event" covering the clicked slot */
 function createDefaultEvent(range: NewEventRange): CalendarEvent {
@@ -576,10 +601,24 @@ function CalendarStateProvider({
   const [copiedEvent, setCopiedEvent] = React.useState<CalendarEvent | null>(
     null,
   );
+  /** The notice `CalendarToaster` shows, one at a time */
+  const [shownNotice, setShownNotice] = React.useState<ShownNotice | null>(
+    null,
+  );
+  // A notice's Undo takes back its own step and nothing else, so the notice
+  // closes once that step stops being the latest: a newer change, or undo
+  // or redo moving it. Adjusted while rendering, like CalendarApp's layout
+  // state, so a stale Undo never reaches the screen and never comes back.
+  const latestStep = history.past[history.past.length - 1];
+  if (shownNotice?.step && shownNotice.step !== latestStep) {
+    setShownNotice(null);
+  }
   /** Latest events, so `updateEvent` can compare without depending on them */
   const eventsRef = React.useRef(events);
   /** The slot or day a view last had the mouse over: where a paste goes */
   const pasteTargetRef = React.useRef<EventPasteTarget | null>(null);
+  /** Id of the latest notice; each new one counts up */
+  const noticeIdRef = React.useRef(0);
   /**
    * State before the latest switch of view or day count, so a mounted view
    * that keeps its own type can undo it. Read and cleared by the next report.
@@ -651,11 +690,41 @@ function CalendarStateProvider({
     setAnnouncement((prev) => ({ id: (prev?.id ?? 0) + 1, text }));
   }, []);
 
-  /** Adds a step for `undo`: what one action just changed */
+  /**
+   * Shows a notice in place of the one on screen. With a `step`, its Undo
+   * takes that step back, and it closes once another step is the latest
+   */
+  const openNotice = React.useCallback(
+    (content: CalendarNoticeInput, step: EventHistoryEntry | null) => {
+      noticeIdRef.current += 1;
+      setShownNotice({ notice: { ...content, id: noticeIdRef.current }, step });
+    },
+    [],
+  );
+
+  const showNotice = React.useCallback(
+    (content: CalendarNoticeInput) => {
+      openNotice(content, null);
+      // The toaster isn't a live region: the provider's reads every notice
+      announce(
+        content.title
+          ? `${content.message}, ${content.title}`
+          : content.message,
+      );
+    },
+    [openNotice, announce],
+  );
+
+  const dismissNotice = React.useCallback((id: number) => {
+    setShownNotice((prev) => (prev?.notice.id === id ? null : prev));
+  }, []);
+
+  /** Adds a step for `undo`: what one action just changed. Returns the step */
   const recordHistory = React.useCallback(
     (action: EventHistoryAction, changes: EventHistoryChange[]) => {
-      const time = Date.now();
-      setHistory((prev) => recordEventHistory(prev, { action, changes, time }));
+      const entry: EventHistoryEntry = { action, changes, time: Date.now() };
+      setHistory((prev) => recordEventHistory(prev, entry));
+      return entry;
     },
     [],
   );
@@ -734,7 +803,10 @@ function CalendarStateProvider({
     ],
   );
 
-  /** Deletes an event for `deleteEvent` and `cutEvent`; returns it, or `null` when there is none */
+  /**
+   * Deletes an event for `deleteEvent` and `cutEvent`; returns it with its
+   * undo step, or `null` when there is none
+   */
   const removeEvent = React.useCallback(
     (eventId: string, action: "delete" | "cut") => {
       const index = eventsRef.current.findIndex((e) => e.id === eventId);
@@ -744,30 +816,32 @@ function CalendarStateProvider({
         { before: event, after: null, index },
       ];
       commitChanges(changes);
-      recordHistory(action, changes);
+      const step = recordHistory(action, changes);
       setSelectedEventId((prev) => (prev === eventId ? null : prev));
-      return event;
+      return { event, step };
     },
     [commitChanges, recordHistory],
   );
 
   const deleteEvent = React.useCallback(
     (eventId: string) => {
-      const deleted = removeEvent(eventId, "delete");
-      if (!deleted) return;
-      announce(describeEventAction("delete", deleted));
+      const removed = removeEvent(eventId, "delete");
+      if (!removed) return;
+      announce(describeEventAction("delete", removed.event));
+      openNotice(describeEventNotice("delete", removed.event), removed.step);
     },
-    [removeEvent, announce],
+    [removeEvent, announce, openNotice],
   );
 
   const cutEvent = React.useCallback(
     (eventId: string) => {
-      const cut = removeEvent(eventId, "cut");
-      if (!cut) return;
-      setCopiedEvent(cut);
-      announce(describeEventAction("cut", cut));
+      const removed = removeEvent(eventId, "cut");
+      if (!removed) return;
+      setCopiedEvent(removed.event);
+      announce(describeEventAction("cut", removed.event));
+      openNotice(describeEventNotice("cut", removed.event), removed.step);
     },
-    [removeEvent, announce],
+    [removeEvent, announce, openNotice],
   );
 
   const copyEvent = React.useCallback(
@@ -776,8 +850,9 @@ function CalendarStateProvider({
       if (!event) return;
       setCopiedEvent(event);
       announce(describeEventAction("copy", event));
+      openNotice(describeEventNotice("copy", event), null);
     },
-    [announce],
+    [announce, openNotice],
   );
 
   /** Adds a duplicated or pasted copy, selects it and announces where it is */
@@ -860,6 +935,14 @@ function CalendarStateProvider({
     if (!entry) return false;
     return canApplyEventChanges(events, entry.changes);
   }, [history, events]);
+
+  // Undo shows exactly while Cmd+Z would take the notice's step back: the
+  // step is the latest (closed above otherwise) and still applies
+  const notice = React.useMemo<CalendarNotice | null>(() => {
+    if (!shownNotice) return null;
+    if (!shownNotice.step || !canUndo) return shownNotice.notice;
+    return { ...shownNotice.notice, onUndo: undo };
+  }, [shownNotice, canUndo, undo]);
 
   const goToToday = React.useCallback(() => {
     setCurrentDate(
@@ -1307,6 +1390,11 @@ function CalendarStateProvider({
     [cutEvent, copyEvent, duplicateEvent, deleteEvent, copiedEvent],
   );
 
+  const noticeValue = React.useMemo<CalendarNoticeValue>(
+    () => ({ notice, showNotice, dismissNotice }),
+    [notice, showNotice, dismissNotice],
+  );
+
   const renderSlots = React.useMemo<CalendarRenderSlots>(
     () => ({ renderEventContent, renderEventDetails }),
     [renderEventContent, renderEventDetails],
@@ -1347,18 +1435,20 @@ function CalendarStateProvider({
           <CalendarConfigContext.Provider value={config}>
             <CalendarSeriesContext.Provider value={series}>
               <CalendarEventActionsContext.Provider value={eventActions}>
-                <EventTitleFocusProvider
-                  pendingEventId={pendingTitleFocusId}
-                  clearPending={clearTitleFocus}
-                >
-                  {children}
-                  {/* Announces changes, the event actions, undo and redo to screen readers */}
-                  <div role="status" aria-live="polite" className="sr-only">
-                    {announcement && (
-                      <span key={announcement.id}>{announcement.text}</span>
-                    )}
-                  </div>
-                </EventTitleFocusProvider>
+                <CalendarNoticeContext.Provider value={noticeValue}>
+                  <EventTitleFocusProvider
+                    pendingEventId={pendingTitleFocusId}
+                    clearPending={clearTitleFocus}
+                  >
+                    {children}
+                    {/* Announces changes, the event actions, undo and redo to screen readers */}
+                    <div role="status" aria-live="polite" className="sr-only">
+                      {announcement && (
+                        <span key={announcement.id}>{announcement.text}</span>
+                      )}
+                    </div>
+                  </EventTitleFocusProvider>
+                </CalendarNoticeContext.Provider>
               </CalendarEventActionsContext.Provider>
             </CalendarSeriesContext.Provider>
           </CalendarConfigContext.Provider>
@@ -1424,6 +1514,18 @@ export function useCalendarSeries(): CalendarSeriesValue {
  */
 export function useCalendarEventActions(): CalendarEventActionsValue | null {
   return React.useContext(CalendarEventActionsContext);
+}
+
+/**
+ * Returns the notice the calendar shows after an action ("Event deleted",
+ * "Event cut", "Event copied to clipboard"), for `CalendarToaster` or a
+ * toast library of your own, with `showNotice` to show a notice of yours
+ * and `dismissNotice` to close one. A notice with an undo closes by itself
+ * once another change is the latest. Outside a provider: no notice, and
+ * both functions do nothing.
+ */
+export function useCalendarNotice(): CalendarNoticeValue {
+  return React.useContext(CalendarNoticeContext);
 }
 
 /**

@@ -11,6 +11,7 @@ import { AgendaView } from "@/components/agenda-view";
 import { CalendarHeader } from "@/components/calendar-header";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { CalendarSidebar } from "@/components/calendar-sidebar";
+import { CalendarToaster } from "@/components/calendar-toaster";
 import { CommandMenu } from "@/components/command-menu";
 import {
   CONTEXT_PANEL_WIDTH,
@@ -92,8 +93,9 @@ interface CalendarAppShellProps extends CalendarAppShellOptions {
 /**
  * The live demo as one component: the calendar sidebar on the left, the
  * header and the day, week, month, year or agenda view in the middle, the details
- * sidebar on the right, the ⌘K command menu, theme cycling, .ics import and
- * export, and the keyboard shortcuts. Takes every `CalendarProvider` prop,
+ * sidebar on the right, the ⌘K command menu, the toasts after a delete,
+ * cut or copy, theme cycling, .ics import and export, and the keyboard
+ * shortcuts. Takes every `CalendarProvider` prop,
  * so events can be controlled or left to the app, and the calendars,
  * contacts, rooms and conferencing come from your data.
  *
@@ -405,7 +407,7 @@ function CalendarAppShell({
         >
           {headerActions}
         </CalendarHeader>
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="relative flex flex-1 flex-col overflow-hidden">
           {view === "month" && (
             <MonthView
               showEventPopover={!showDetailsInPanel}
@@ -429,6 +431,8 @@ function CalendarAppShell({
               onEventPopoverExpand={expandEventPopover}
             />
           )}
+          {/* Notion Calendar's toasts, at the bottom right over the view */}
+          <CalendarToaster />
         </div>
       </SidebarInset>
       <DetailsSidebar overlay={!isWideLayout} />

@@ -693,6 +693,41 @@ export interface EventHistory<TEvent extends CalendarEvent = CalendarEvent> {
 }
 
 /**
+ * A short message the calendar shows after an action, as Notion Calendar's
+ * toasts do: "Event deleted", "Event cut", "Event copied to clipboard".
+ * `CalendarToaster` draws it; `useCalendarNotice()` returns it.
+ */
+export interface CalendarNotice {
+  /** Counts up with every notice shown, so a repeated message is a new toast */
+  id: number;
+  /** The first line, e.g. "Event deleted" */
+  message: string;
+  /**
+   * The second line: an event's title, which `CalendarToaster` shows in
+   * curly quotes. No second line without it
+   */
+  title?: string;
+  /** Takes the action back. `CalendarToaster` shows an Undo button only with it */
+  onUndo?: () => void;
+}
+
+/** What `showNotice` takes: a notice without its `id` */
+export type CalendarNoticeInput = Omit<CalendarNotice, "id">;
+
+/** What `useCalendarNotice()` returns */
+export interface CalendarNoticeValue {
+  /** The notice to show now, or `null`. One at a time: a new one replaces it */
+  notice: CalendarNotice | null;
+  /**
+   * Shows a notice of your own in place of the one on screen, and reads it
+   * out in the provider's live region
+   */
+  showNotice: (notice: CalendarNoticeInput) => void;
+  /** Closes the notice with this id. Does nothing once a newer one replaced it */
+  dismissNotice: (id: number) => void;
+}
+
+/**
  * A calendar events can belong to (e.g. "Work"), listed by the details
  * panel's calendar picker and the event context menu's "Block on calendar"
  * submenu
