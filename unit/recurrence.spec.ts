@@ -7,11 +7,18 @@ import type {
   RecurrenceRule,
 } from "../src/components/calendar-types";
 import {
+  MAX_OCCURRENCES_PER_RANGE,
+  applyRecurringEdit,
   createSeriesOccurrence,
+  createStandaloneCopy,
   describeRecurrenceRule,
+  expandRecurringEvents,
+  findEventOrOccurrence,
   findSeriesOccurrence,
   formatRRule,
   getAdjacentOccurrence,
+  getOccurrenceRemoval,
+  moveRecurrenceRule,
   parseRecurrence,
 } from "../src/lib/recurrence";
 
@@ -45,6 +52,32 @@ function occurrences(
   }
   return dates;
 }
+
+/** Each event's id and local start, for comparing lists of events */
+function summary(events: DetailedCalendarEvent[]): [string, string | null][] {
+  return events.map((event) => [event.id, local(event.start)]);
+}
+
+/**
+ * Every 2 weeks on Saturday, 6 times, from Saturday June 6 2026, 10 to
+ * 11 AM: June 6 and 20, July 4 and 18, August 1 and 15
+ */
+const launch: DetailedCalendarEvent = {
+  id: "launch",
+  title: "Launch Review",
+  calendarId: "work",
+  start: new Date(2026, 5, 6, 10),
+  end: new Date(2026, 5, 6, 11),
+  recurrenceRule: {
+    frequency: "weekly",
+    interval: 2,
+    weekdays: [6],
+    end: { type: "after", count: 6 },
+  },
+};
+
+/** June 1 to July 12 2026, the end left out */
+const summer = { start: new Date(2026, 5, 1), end: new Date(2026, 6, 12) };
 
 test.describe("occurrences", () => {
   test("a monthly series on the 31st skips months without it", () => {
@@ -252,16 +285,49 @@ test.describe("findSeriesOccurrence", () => {
     ).toBe("2026-07-04 10:00");
   });
 
-  test("finds occurrences the events don't have, up to the series' end", () => {
+  test("generates the occurrences the events don't have, up to the series' end", () => {
     const next = findSeriesOccurrence([first], first, "next");
-    expect(next?.event).toBeUndefined();
     expect(local(next?.start ?? null)).toBe("2026-06-20 10:00");
-    // A copy made for it gets an id that names its day
+    // Generated as the views draw it: an id that names its day, and its series
     expect(next?.id).toBe("launch-2026-06-20");
+    expect(next?.event?.seriesId).toBe("launch");
 
-    const last = { ...first, id: "last", start: new Date(2026, 7, 15, 10) };
+    const last: DetailedCalendarEvent = {
+      ...first,
+      id: "launch-2026-08-15",
+      start: new Date(2026, 7, 15, 10),
+      end: new Date(2026, 7, 15, 11),
+      seriesId: "launch",
+      originalStart: new Date(2026, 7, 15, 10),
+    };
     expect(findSeriesOccurrence([first, last], last, "next")).toBeNull();
     expect(findSeriesOccurrence([first], first, "previous")).toBeNull();
+  });
+
+  test("skips excluded dates", () => {
+    const series = { ...first, excludedDates: [new Date(2026, 5, 20, 10)] };
+    expect(findSeriesOccurrence([series], series, "next")?.id).toBe(
+      "launch-2026-07-04",
+    );
+  });
+
+  test("finds an edited occurrence by its original day", () => {
+    // June 20 from an .ics file: an id of its own, moved to Sunday, renamed
+    const moved: DetailedCalendarEvent = {
+      ...first,
+      id: "launch_20260620T100000",
+      title: "Launch Review (moved)",
+      start: new Date(2026, 5, 21, 15),
+      end: new Date(2026, 5, 21, 16),
+      seriesId: "launch",
+      originalStart: new Date(2026, 5, 20, 10),
+    };
+    const events = [first, moved];
+    expect(findSeriesOccurrence(events, first, "next")?.event).toBe(moved);
+    expect(findSeriesOccurrence(events, moved, "previous")?.event).toBe(first);
+    expect(findSeriesOccurrence(events, moved, "next")?.id).toBe(
+      "launch-2026-07-04",
+    );
   });
 
   test("steps between the events of a text-only series", () => {
@@ -277,6 +343,333 @@ test.describe("findSeriesOccurrence", () => {
     expect(findSeriesOccurrence(events, events[0], "next")?.event).toBe(
       events[1],
     );
+  });
+});
+
+test.describe("expandRecurringEvents", () => {
+  test("draws a series on each of its dates in the range, its first as the event itself", () => {
+    const expanded = expandRecurringEvents([launch], summer);
+    expect(summary(expanded)).toEqual([
+      ["launch", "2026-06-06 10:00"],
+      ["launch-2026-06-20", "2026-06-20 10:00"],
+      ["launch-2026-07-04", "2026-07-04 10:00"],
+    ]);
+    expect(expanded[0]).toBe(launch);
+
+    // A range after its first date gets only the dates in it
+    const july = { start: new Date(2026, 6, 1), end: new Date(2026, 7, 2) };
+    expect(summary(expandRecurringEvents([launch], july))).toEqual([
+      ["launch-2026-07-04", "2026-07-04 10:00"],
+      ["launch-2026-07-18", "2026-07-18 10:00"],
+      ["launch-2026-08-01", "2026-08-01 10:00"],
+    ]);
+  });
+
+  test("an occurrence carries its series' id, its original start and its fields", () => {
+    const series = { ...launch, excludedDates: [new Date(2026, 6, 4, 10)] };
+    const [, june20] = expandRecurringEvents([series], summer);
+    expect(june20).toEqual({
+      ...launch,
+      id: "launch-2026-06-20",
+      start: new Date(2026, 5, 20, 10),
+      end: new Date(2026, 5, 20, 11),
+      seriesId: "launch",
+      originalStart: new Date(2026, 5, 20, 10),
+    });
+    expect(june20.excludedDates).toBeUndefined();
+  });
+
+  test("leaves out excluded dates, the first one included", () => {
+    const series = {
+      ...launch,
+      excludedDates: [new Date(2026, 5, 6, 10), new Date(2026, 5, 20, 10)],
+    };
+    expect(summary(expandRecurringEvents([series], summer))).toEqual([
+      ["launch-2026-07-04", "2026-07-04 10:00"],
+    ]);
+  });
+
+  test("an edited occurrence takes the place of its generated one", () => {
+    // June 20, moved to Sunday afternoon
+    const moved: DetailedCalendarEvent = {
+      ...launch,
+      id: "launch-2026-06-20",
+      start: new Date(2026, 5, 21, 15),
+      end: new Date(2026, 5, 21, 16),
+      seriesId: "launch",
+      originalStart: new Date(2026, 5, 20, 10),
+    };
+    // July 4, from an .ics file, under an id of its own
+    const imported: DetailedCalendarEvent = {
+      ...launch,
+      id: "launch_20260704T100000",
+      start: new Date(2026, 6, 4, 9),
+      end: new Date(2026, 6, 4, 10),
+      seriesId: "launch",
+      originalStart: new Date(2026, 6, 4, 10),
+    };
+    expect(
+      summary(expandRecurringEvents([launch, moved, imported], summer)),
+    ).toEqual([
+      ["launch", "2026-06-06 10:00"],
+      ["launch-2026-06-20", "2026-06-21 15:00"],
+      ["launch_20260704T100000", "2026-07-04 09:00"],
+    ]);
+  });
+
+  test("a copy the series arrows stored before stands for its day and doesn't repeat", () => {
+    // ADR-004's June 20 copy, moved to Sunday: the series' rule, no seriesId
+    const copy: DetailedCalendarEvent = {
+      ...launch,
+      id: "launch-2026-06-20",
+      start: new Date(2026, 5, 21, 10),
+      end: new Date(2026, 5, 21, 11),
+    };
+    expect(summary(expandRecurringEvents([launch, copy], summer))).toEqual([
+      ["launch", "2026-06-06 10:00"],
+      ["launch-2026-07-04", "2026-07-04 10:00"],
+      ["launch-2026-06-20", "2026-06-21 10:00"],
+    ]);
+  });
+
+  test("keeps the series' clock time in its zone across daylight saving", () => {
+    // 9 AM in New York every Monday from March 2 2026 (EST); EDT from March 8
+    const standup: DetailedCalendarEvent = {
+      id: "standup",
+      title: "Standup",
+      start: new Date("2026-03-02T14:00:00Z"),
+      end: new Date("2026-03-02T14:15:00Z"),
+      timeZone: "America/New_York",
+      recurrenceRule: { frequency: "weekly" },
+    };
+    const march = {
+      start: new Date("2026-03-01T05:00:00Z"),
+      end: new Date("2026-03-17T04:00:00Z"),
+    };
+    expect(
+      expandRecurringEvents([standup], march).map((event) =>
+        event.start.toISOString(),
+      ),
+    ).toEqual([
+      "2026-03-02T14:00:00.000Z",
+      "2026-03-09T13:00:00.000Z",
+      "2026-03-16T13:00:00.000Z",
+    ]);
+
+    // 11 AM in São Paulo, which keeps one offset, when New York falls back
+    const review: DetailedCalendarEvent = {
+      id: "review",
+      title: "Review",
+      start: new Date("2026-10-24T14:00:00Z"),
+      end: new Date("2026-10-24T15:00:00Z"),
+      timeZone: "America/Sao_Paulo",
+      recurrenceRule: { frequency: "weekly" },
+    };
+    const autumn = { start: new Date(2026, 9, 24), end: new Date(2026, 10, 8) };
+    expect(
+      expandRecurringEvents([review], autumn).map((event) =>
+        event.start.toISOString(),
+      ),
+    ).toEqual([
+      "2026-10-24T14:00:00.000Z",
+      "2026-10-31T14:00:00.000Z",
+      "2026-11-07T14:00:00.000Z",
+    ]);
+  });
+
+  test("an all-day series keeps whole days across daylight saving", () => {
+    const trash: DetailedCalendarEvent = {
+      id: "trash",
+      title: "Trash day",
+      start: new Date(2026, 9, 26),
+      end: new Date(2026, 9, 26),
+      isAllDay: true,
+      recurrenceRule: { frequency: "weekly" },
+    };
+    const range = { start: new Date(2026, 9, 25), end: new Date(2026, 10, 10) };
+    expect(
+      expandRecurringEvents([trash], range).map((event) => [
+        local(event.start),
+        local(event.end),
+      ]),
+    ).toEqual([
+      ["2026-10-26 00:00", "2026-10-26 00:00"],
+      ["2026-11-02 00:00", "2026-11-02 00:00"],
+      ["2026-11-09 00:00", "2026-11-09 00:00"],
+    ]);
+  });
+
+  test("reads an RRULE in recurrence, but not display text", () => {
+    const base = {
+      title: "Sync",
+      start: new Date(2026, 5, 1, 9),
+      end: new Date(2026, 5, 1, 10),
+    };
+    const rrule: DetailedCalendarEvent = {
+      ...base,
+      id: "rrule",
+      recurrence: "FREQ=DAILY;COUNT=3",
+    };
+    const text: DetailedCalendarEvent = {
+      ...base,
+      id: "text",
+      recurrence: "Every day",
+    };
+    expect(summary(expandRecurringEvents([rrule, text], summer))).toEqual([
+      ["rrule", "2026-06-01 09:00"],
+      ["rrule-2026-06-02", "2026-06-02 09:00"],
+      ["rrule-2026-06-03", "2026-06-03 09:00"],
+      ["text", "2026-06-01 09:00"],
+    ]);
+  });
+
+  test("events that don't repeat come back as they are, in range or not", () => {
+    const lunch: DetailedCalendarEvent = {
+      id: "lunch",
+      title: "Lunch",
+      start: new Date(2025, 0, 1, 12),
+      end: new Date(2025, 0, 1, 13),
+    };
+    const expanded = expandRecurringEvents([lunch], summer);
+    expect(expanded).toHaveLength(1);
+    expect(expanded[0]).toBe(lunch);
+  });
+
+  test("caps the occurrences of one series in one range", () => {
+    const daily: DetailedCalendarEvent = {
+      id: "daily",
+      title: "Daily",
+      start: new Date(2026, 0, 1, 9),
+      end: new Date(2026, 0, 1, 10),
+      recurrenceRule: { frequency: "daily" },
+    };
+    const fourYears = {
+      start: new Date(2026, 0, 1),
+      end: new Date(2030, 0, 1),
+    };
+    expect(expandRecurringEvents([daily], fourYears)).toHaveLength(
+      MAX_OCCURRENCES_PER_RANGE,
+    );
+  });
+});
+
+test.describe("findEventOrOccurrence", () => {
+  test("finds stored events and the occurrences their ids name", () => {
+    const series = { ...launch, excludedDates: [new Date(2026, 6, 18, 10)] };
+    const moved: DetailedCalendarEvent = {
+      ...launch,
+      id: "launch-2026-07-04",
+      start: new Date(2026, 6, 5, 10),
+      end: new Date(2026, 6, 5, 11),
+      seriesId: "launch",
+      originalStart: new Date(2026, 6, 4, 10),
+    };
+    const events = [series, moved];
+    expect(findEventOrOccurrence(events, "launch")).toBe(series);
+    expect(findEventOrOccurrence(events, "launch-2026-07-04")).toBe(moved);
+    expect(
+      local(findEventOrOccurrence(events, "launch-2026-06-20")?.start ?? null),
+    ).toBe("2026-06-20 10:00");
+    // A Saturday the rule skips, an excluded one, one after the series'
+    // end, and ids nothing names
+    for (const id of [
+      "launch-2026-06-13",
+      "launch-2026-07-18",
+      "launch-2026-08-29",
+      "lunch",
+      "lunch-2026-06-20",
+    ]) {
+      expect(findEventOrOccurrence(events, id), id).toBeNull();
+    }
+  });
+});
+
+test.describe("applyRecurringEdit", () => {
+  /** The June 20 occurrence, generated */
+  function june20(): DetailedCalendarEvent {
+    const occurrence = findEventOrOccurrence([launch], "launch-2026-06-20");
+    if (!occurrence) throw new Error("No June 20 occurrence");
+    return occurrence;
+  }
+
+  test("an edit to an occurrence keeps it in its series", () => {
+    const occurrence = june20();
+    const edited = {
+      ...occurrence,
+      start: new Date(2026, 5, 20, 14),
+      end: new Date(2026, 5, 20, 15),
+    };
+    expect(applyRecurringEdit([launch], occurrence, edited)).toBe(edited);
+  });
+
+  test("a new rule takes an occurrence out of its series", () => {
+    const occurrence = june20();
+    const edited: DetailedCalendarEvent = {
+      ...occurrence,
+      recurrenceRule: { frequency: "daily" },
+    };
+    const stored = applyRecurringEdit([launch], occurrence, edited);
+    expect(stored.id).toBe("launch-2026-06-20");
+    expect(stored.seriesId).toBeUndefined();
+    expect(stored.originalStart).toBeUndefined();
+
+    // It repeats on its own, and the series still skips June 20
+    const days = { start: new Date(2026, 5, 20), end: new Date(2026, 5, 23) };
+    expect(summary(expandRecurringEvents([launch, stored], days))).toEqual([
+      ["launch-2026-06-20", "2026-06-20 10:00"],
+      ["launch-2026-06-20-2026-06-21", "2026-06-21 10:00"],
+      ["launch-2026-06-20-2026-06-22", "2026-06-22 10:00"],
+    ]);
+  });
+
+  test("moving the series' event to another day takes its rule along", () => {
+    // Saturday June 6 to Friday June 5: every other Friday from then on
+    const moved = {
+      ...launch,
+      start: new Date(2026, 5, 5, 10),
+      end: new Date(2026, 5, 5, 11),
+    };
+    const stored = applyRecurringEdit([launch], launch, moved);
+    expect(stored.recurrenceRule).toEqual({
+      ...launch.recurrenceRule,
+      weekdays: [5],
+    });
+    expect(summary(expandRecurringEvents([stored], summer))).toEqual([
+      ["launch", "2026-06-05 10:00"],
+      ["launch-2026-06-19", "2026-06-19 10:00"],
+      ["launch-2026-07-03", "2026-07-03 10:00"],
+    ]);
+
+    // Within its day the rule stays as it is
+    const later = {
+      ...launch,
+      start: new Date(2026, 5, 6, 14),
+      end: new Date(2026, 5, 6, 15),
+    };
+    expect(applyRecurringEdit([launch], launch, later)).toBe(later);
+
+    // A weekday of the month takes the new day's place in its month; the
+    // last one stays the last
+    const firstSaturday: RecurrenceRule = {
+      frequency: "monthly",
+      monthlyBy: "weekday-of-month",
+      weekOfMonth: 1,
+    };
+    expect(
+      moveRecurrenceRule(
+        firstSaturday,
+        new Date(2026, 5, 6),
+        new Date(2026, 5, 13),
+      ),
+    ).toEqual({ ...firstSaturday, weekOfMonth: 2 });
+    const lastSaturday: RecurrenceRule = { ...firstSaturday, weekOfMonth: -1 };
+    expect(
+      moveRecurrenceRule(
+        lastSaturday,
+        new Date(2026, 5, 27),
+        new Date(2026, 5, 28),
+      ),
+    ).toEqual(lastSaturday);
   });
 });
 
@@ -351,5 +744,102 @@ test.describe("RRULE", () => {
     ]) {
       expect(parseRecurrence(text, start), text).toBeNull();
     }
+  });
+});
+
+test.describe("getOccurrenceRemoval", () => {
+  test("a generated date is excluded from its series", () => {
+    const june20 = findEventOrOccurrence([launch], "launch-2026-06-20");
+    if (!june20) throw new Error("No June 20 occurrence");
+    const removal = getOccurrenceRemoval([launch], june20);
+    if (!removal) throw new Error("No removal");
+    expect(removal.series).toBe(launch);
+    expect(removal.removed).toBeNull();
+    expect(removal.excluded.excludedDates).toEqual([new Date(2026, 5, 20, 10)]);
+    // The series no longer draws it
+    const expanded = expandRecurringEvents([removal.excluded], summer);
+    expect(summary(expanded).map(([id]) => id)).toEqual([
+      "launch",
+      "launch-2026-07-04",
+    ]);
+  });
+
+  test("a stored date is removed and excluded by the day it stands for", () => {
+    // June 20, moved to Sunday: it still stands for June 20
+    const moved: DetailedCalendarEvent = {
+      ...launch,
+      id: "launch-2026-06-20",
+      start: new Date(2026, 5, 21, 15),
+      end: new Date(2026, 5, 21, 16),
+      seriesId: "launch",
+      originalStart: new Date(2026, 5, 20, 10),
+    };
+    const removal = getOccurrenceRemoval([launch, moved], moved);
+    expect(removal?.removed).toBe(moved);
+    expect(removal?.excluded.excludedDates).toEqual([
+      new Date(2026, 5, 20, 10),
+    ]);
+
+    // A copy ADR-004's arrows stored has no originalStart: its id names it
+    const copy: DetailedCalendarEvent = { ...launch, id: "launch-2026-07-04" };
+    const copyRemoval = getOccurrenceRemoval([launch, copy], copy);
+    expect(copyRemoval?.removed).toBe(copy);
+    expect(copyRemoval?.excluded.excludedDates).toEqual([
+      new Date(2026, 6, 4, 10),
+    ]);
+  });
+
+  test("the series' own event and events that don't repeat have no removal", () => {
+    expect(getOccurrenceRemoval([launch], launch)).toBeNull();
+    const lunch: DetailedCalendarEvent = {
+      id: "lunch",
+      title: "Lunch",
+      start: new Date(2026, 5, 1, 12),
+      end: new Date(2026, 5, 1, 13),
+    };
+    expect(getOccurrenceRemoval([launch, lunch], lunch)).toBeNull();
+  });
+});
+
+test.describe("createStandaloneCopy", () => {
+  test("drops the series fields and the repeat rule", () => {
+    const june20 = findEventOrOccurrence([launch], "launch-2026-06-20");
+    if (!june20) throw new Error("No June 20 occurrence");
+    const copy = createStandaloneCopy(june20, "copy");
+    expect(copy.id).toBe("copy");
+    for (const field of [
+      "seriesId",
+      "originalStart",
+      "recurrenceRule",
+      "recurrence",
+      "excludedDates",
+    ]) {
+      expect(field in copy, field).toBe(false);
+    }
+    expect(local(copy.start)).toBe("2026-06-20 10:00");
+    // Nothing repeats from it
+    const range = { start: new Date(2026, 5, 1), end: new Date(2026, 8, 1) };
+    expect(expandRecurringEvents([copy], range)).toEqual([copy]);
+  });
+
+  test("drops them from the series' own event, even with excluded dates", () => {
+    const series = { ...launch, excludedDates: [new Date(2026, 5, 20, 10)] };
+    const copy = createStandaloneCopy(series, "copy");
+    for (const field of ["recurrenceRule", "excludedDates"]) {
+      expect(field in copy, field).toBe(false);
+    }
+  });
+
+  test("copies an event that doesn't repeat as it is", () => {
+    const lunch: DetailedCalendarEvent = {
+      id: "lunch",
+      title: "Lunch",
+      start: new Date(2026, 5, 1, 12),
+      end: new Date(2026, 5, 1, 13),
+    };
+    expect(createStandaloneCopy(lunch, "copy")).toEqual({
+      ...lunch,
+      id: "copy",
+    });
   });
 });

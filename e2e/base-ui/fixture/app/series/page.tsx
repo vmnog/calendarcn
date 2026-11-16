@@ -6,9 +6,10 @@ import { Calendar } from "@/components/calendar"
 import type { DetailedCalendarEvent } from "@/components/calendar-types"
 
 /**
- * A weekly "Standup" on Thursday, June 4 2026, the only event of its
- * series, so the details' next arrow adds the June 11 occurrence. The ids
- * `onEventCreate` reports are listed above the calendar.
+ * A weekly "Standup" from Thursday, June 4 2026, drawn every Thursday: the
+ * details' next arrow selects the June 11 occurrence, and its first edit
+ * stores it, which `onEventCreate` reports. The ids it reports are listed
+ * above the calendar.
  */
 const EVENTS: DetailedCalendarEvent[] = [
   {

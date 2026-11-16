@@ -38,7 +38,7 @@ test.describe("parseIcs", () => {
   test("reads a Google Calendar export", () => {
     const events = parseIcs(readFixture("google.ics"));
 
-    // The cancelled occurrence is left out
+    // The cancelled occurrence becomes an excluded date of its series
     expect(events.map((event) => event.title)).toEqual([
       "Team sync",
       "Team sync (moved)",
@@ -64,16 +64,23 @@ test.describe("parseIcs", () => {
     expect(sync.location).toBe("Google Meet");
     expect(sync.status).toBe("busy");
     expect(sync.reminders).toEqual([{ amount: 10, unit: "minutes" }]);
+    // STATUS:CANCELLED with RECURRENCE-ID 20260605T100000 in São Paulo
+    expect(sync.excludedDates).toEqual([new Date("2026-06-05T13:00:00.000Z")]);
 
-    // An edited occurrence repeats the series' UID with a RECURRENCE-ID
+    // An edited occurrence repeats the series' UID with a RECURRENCE-ID: it
+    // gets the id the calendar gives that date's occurrence
     const moved = findEvent(
       events,
-      "7kukuqrfedlm2f9t0vvh6vbi1q@google.com_20260603T100000",
+      "7kukuqrfedlm2f9t0vvh6vbi1q@google.com-2026-06-03",
     );
     expect(isoRange(moved)).toEqual([
       "2026-06-03T14:00:00.000Z",
       "2026-06-03T14:30:00.000Z",
     ]);
+    expect(moved.seriesId).toBe("7kukuqrfedlm2f9t0vvh6vbi1q@google.com");
+    expect(moved.originalStart).toEqual(new Date("2026-06-03T13:00:00.000Z"));
+    expect(moved.timeZone).toBe("America/Sao_Paulo");
+    expect(moved.recurrenceRule).toEqual(sync.recurrenceRule);
 
     // Folded across lines, with multi-byte characters and escapes
     const review = findEvent(events, "2b9qlh0r6k8s3fvdvm7oq0g5ne@google.com");
@@ -543,6 +550,57 @@ test.describe("toIcs", () => {
     expect(ics).toContain("DTEND;TZID=America/New_York:20260601T091500\r\n");
     expect(ics).toContain("RRULE:FREQ=WEEKLY;BYDAY=MO\r\n");
     expect(parseIcs(ics)).toEqual([event]);
+  });
+
+  test("writes excluded dates and edited occurrences, and reads them back", () => {
+    const series: DetailedCalendarEvent = {
+      id: "standup",
+      title: "Standup",
+      // 9:00 AM in New York (EDT, UTC-4)
+      start: new Date("2026-06-01T13:00:00Z"),
+      end: new Date("2026-06-01T13:15:00Z"),
+      timeZone: "America/New_York",
+      recurrenceRule: { frequency: "weekly", weekdays: [1] },
+      excludedDates: [new Date("2026-06-08T13:00:00Z")],
+    };
+    // June 15, moved to Tuesday at 10 AM
+    const moved: DetailedCalendarEvent = {
+      ...series,
+      id: "standup-2026-06-15",
+      title: "Standup (moved)",
+      start: new Date("2026-06-16T14:00:00Z"),
+      end: new Date("2026-06-16T14:15:00Z"),
+      excludedDates: undefined,
+      seriesId: "standup",
+      originalStart: new Date("2026-06-15T13:00:00Z"),
+    };
+    const ics = toIcs([series, moved], { timestamp });
+
+    expect(ics).toContain("EXDATE;TZID=America/New_York:20260608T090000\r\n");
+    expect(ics).toContain(
+      "RECURRENCE-ID;TZID=America/New_York:20260615T090000\r\n",
+    );
+    expect(ics).toContain("DTSTART;TZID=America/New_York:20260616T100000\r\n");
+    // Both under the series' UID, the rule written once
+    expect(ics.split("\r\nUID:standup\r\n")).toHaveLength(3);
+    expect(ics.split("\r\nRRULE:")).toHaveLength(2);
+    expect(parseIcs(ics)).toEqual([series, moved]);
+  });
+
+  test("writes an all-day series' excluded dates as dates", () => {
+    const payday: DetailedCalendarEvent = {
+      id: "payday",
+      title: "Payday",
+      start: new Date(2026, 5, 5),
+      end: new Date(2026, 5, 5),
+      isAllDay: true,
+      recurrenceRule: { frequency: "monthly" },
+      excludedDates: [new Date(2026, 6, 5)],
+    };
+    const ics = toIcs([payday], { timestamp });
+
+    expect(ics).toContain("EXDATE;VALUE=DATE:20260705\r\n");
+    expect(parseIcs(ics)).toEqual([payday]);
   });
 
   test("writes the start on the day its weekday rule names", () => {

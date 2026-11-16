@@ -18,6 +18,7 @@ import {
   getWeekViewStepDays,
   isMultiDayEvent,
 } from "@/lib/event-utils";
+import { expandRecurringEvents } from "@/lib/recurrence";
 import { useHorizontalScroll } from "@/hooks/use-horizontal-scroll";
 import { useEventKeyboard } from "@/hooks/use-event-keyboard";
 import { useEventDrag } from "@/hooks/use-event-drag";
@@ -225,6 +226,7 @@ export function TimeGrid({
     [dayStartHour, dayEndHour, hourCycle, locale],
   );
 
+  // The stored events, for the drag and resize hooks to commit from
   const allDayEvents = React.useMemo(
     () => events.filter((e) => e.isAllDay || isMultiDayEvent(e)),
     [events],
@@ -414,6 +416,30 @@ export function TimeGrid({
     [bufferedBaseDays],
   );
 
+  // What the grid draws: repeating events on each of their dates in the
+  // buffered days, generated for them and never stored (ADR-007)
+  const bufferStartTime = bufferedDayDates[0].getTime();
+  const bufferEndTime = addDays(
+    bufferedDayDates[bufferedDayDates.length - 1],
+    1,
+  ).getTime();
+  const displayedEvents = React.useMemo(
+    () =>
+      expandRecurringEvents(events, {
+        start: new Date(bufferStartTime),
+        end: new Date(bufferEndTime),
+      }),
+    [events, bufferStartTime, bufferEndTime],
+  );
+  const displayedAllDayEvents = React.useMemo(
+    () => displayedEvents.filter((e) => e.isAllDay || isMultiDayEvent(e)),
+    [displayedEvents],
+  );
+  const displayedTimedEvents = React.useMemo(
+    () => displayedEvents.filter((e) => !e.isAllDay && !isMultiDayEvent(e)),
+    [displayedEvents],
+  );
+
   const { allDayResizeState, handleAllDayResizePointerDown } = useAllDayResize({
     days: bufferedDayDates,
     dayColumnWidth,
@@ -538,7 +564,7 @@ export function TimeGrid({
           <div className="overflow-hidden" ref={allDayScrollRef}>
             <WeekViewAllDayRow
               days={bufferedDays}
-              allDayEvents={allDayEvents}
+              allDayEvents={displayedAllDayEvents}
               onEventClick={handleEventClick}
               selectedEventId={selectedEventId}
               scrollStyle={scrollStyle}
@@ -580,7 +606,7 @@ export function TimeGrid({
                   days={bufferedDays}
                   hours={hours}
                   hourHeight={hourHeight}
-                  events={timedEvents}
+                  events={displayedTimedEvents}
                   onEventClick={handleEventClick}
                   selectedEventId={selectedEventId}
                   onEventCreate={addEventFromRange}

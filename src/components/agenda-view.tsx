@@ -43,6 +43,7 @@ import {
   getVisibleDays,
   resolveEventColor,
 } from "@/lib/event-utils";
+import { expandRecurringEvents } from "@/lib/recurrence";
 import type {
   AgendaDay,
   AgendaEntry,
@@ -212,13 +213,18 @@ export function AgendaView({
   }, [currentDate]);
 
   const listedDays = useMemo(() => {
-    const days = getAgendaDays(events, currentDate, AGENDA_DAYS);
+    // A repeating event is listed under each of its dates in the range
+    const occurrences = expandRecurringEvents(events, {
+      start: rangeStart,
+      end: addDays(rangeEnd, 1),
+    });
+    const days = getAgendaDays(occurrences, currentDate, AGENDA_DAYS);
     return days.filter((day) => {
       if (!showWeekends && isWeekend(day.date)) return false;
       if (day.entries.length > 0) return true;
       return today !== null && isSameDay(day.date, today);
     });
-  }, [events, currentDate, showWeekends, today]);
+  }, [events, rangeStart, rangeEnd, currentDate, showWeekends, today]);
 
   const months = useMemo(() => groupByMonth(listedDays), [listedDays]);
   const hasEvents = listedDays.some((day) => day.entries.length > 0);

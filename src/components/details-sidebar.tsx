@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ArrowLeft, CalendarSearch, PanelRightIcon, X } from "lucide-react";
 import {
+  addDays,
   format,
   isBefore,
   isSameYear,
@@ -37,6 +38,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { resolveEventColor } from "@/lib/event-utils";
+import { expandRecurringEvents } from "@/lib/recurrence";
 import { formatDuration } from "@/lib/time-input";
 
 /**
@@ -48,6 +50,12 @@ export const CONTEXT_PANEL_WIDTH = "309px";
 
 /** Muted text color the context panel uses for labels and placeholders */
 const PANEL_MUTED_FOREGROUND = "#C7C5C1";
+
+/**
+ * Days before and after today the event search lists a repeating event's
+ * dates for: a year either side
+ */
+const SEARCH_RANGE_DAYS = 365;
 
 /** A shortcut the context panel lists while no event is selected */
 export interface DetailsSidebarShortcut {
@@ -227,7 +235,16 @@ export function DetailsSidebar({
       return [];
     }
     const query = debouncedQuery.trim().toLowerCase();
-    return events.filter((event) => event.title.toLowerCase().includes(query));
+    // A repeating event is listed on each of its dates within a year of
+    // today. Expanded before matching, so an edited date keeps its own title
+    const today = startOfDay(new Date());
+    const occurrences = expandRecurringEvents(events, {
+      start: addDays(today, -SEARCH_RANGE_DAYS),
+      end: addDays(today, SEARCH_RANGE_DAYS + 1),
+    });
+    return occurrences.filter((event) =>
+      event.title.toLowerCase().includes(query),
+    );
   }, [events, debouncedQuery]);
 
   const { pastGroups, todayGroup, futureGroups } = React.useMemo(() => {
