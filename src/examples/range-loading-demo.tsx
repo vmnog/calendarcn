@@ -17,6 +17,7 @@ import { AgendaView } from "@/components/agenda-view";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { MonthView } from "@/components/month-view";
 import { TimeGrid } from "@/components/time-grid";
+import { YearView } from "@/components/year-view";
 import { Button } from "@/components/ui/button";
 import type {
   CalendarEvent,
@@ -39,6 +40,7 @@ const VIEW_OPTIONS: { value: ViewType; label: string }[] = [
   { value: "day", label: "Day" },
   { value: "week", label: "Week" },
   { value: "month", label: "Month" },
+  { value: "year", label: "Year" },
   { value: "agenda", label: "Agenda" },
 ];
 
@@ -148,7 +150,7 @@ function CalendarHeader() {
 
   return (
     <header className="flex flex-col gap-2 border-b px-3 py-2">
-      {/* The switcher gets its own row: four views don't fit beside the
+      {/* The switcher gets its own row: five views don't fit beside the
           title in the half of the example the calendar gets */}
       <div className="flex items-center gap-2">
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">
@@ -211,6 +213,10 @@ function CalendarBody() {
 
   if (view === "agenda") {
     return <AgendaView />;
+  }
+
+  if (view === "year") {
+    return <YearView />;
   }
 
   return <TimeGrid view={view} scrollToHour={8} />;

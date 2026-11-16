@@ -85,6 +85,7 @@ The [Calendar](/docs/components/calendar) block takes every `CalendarProvider` p
 | Week   | `numberOfDays` days from the first column, 7 by default                 | May 31 → Jun 7                       |
 | Month  | The whole six-week grid, days from the months before and after included | May 31 → Jul 12                      |
 | Agenda | The 30 days it lists, from its first day                                | Jun 4 → Jul 4                        |
+| Year   | The whole year, January 1 to the next January 1                         | Jan 1 2026 → Jan 1 2027              |
 
 When month view hides weekends, the range starts and ends on the first and last weekday it shows. The setting doesn't change the other views' range: day and week views always show weekends, and the agenda only leaves weekend days out of its list.
 
@@ -113,7 +114,7 @@ A range can come back: going to next week and back reports this week again. Cach
 
 ## Loading bar
 
-`loading` draws a 2px indeterminate bar along the bottom of the day headers in Day View, Week View and Month View, and along the top of Agenda View. It doesn't block anything: people can keep dragging, creating and navigating while events load. With reduced motion turned on, the bar holds still instead of sliding. The view is marked `aria-busy` while loading.
+`loading` draws a 2px indeterminate bar along the bottom of the day headers in Day View, Week View and Month View, and along the top of Agenda View and Year View. It doesn't block anything: people can keep dragging, creating and navigating while events load. With reduced motion turned on, the bar holds still instead of sliding. The view is marked `aria-busy` while loading.
 
 The bar is `CalendarLoadingBar` in `components/calendar-loading-bar.tsx`, and its animation is a `.calendar-loading-bar` class. Both come with [Calendar Core](/docs/components/calendar-core#installation), so every view you install has it.
 

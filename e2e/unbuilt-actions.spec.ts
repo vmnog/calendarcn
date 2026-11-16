@@ -63,6 +63,24 @@ test("agenda view keeps weekends and marks week numbers", async ({ page }) => {
   ).toBeDisabled();
 });
 
+test("year view keeps week numbers and marks weekends", async ({ page }) => {
+  await page.keyboard.press("y");
+  await page.getByRole("button", { name: "Year", exact: true }).click();
+  await page.getByRole("menuitem", { name: "View settings" }).click();
+
+  await expect(
+    page.getByRole("menuitemcheckbox", { name: "Week numbers", exact: true }),
+  ).toBeEnabled();
+  for (const setting of ["Weekends", "Declined events"]) {
+    await expect(
+      page.getByRole("menuitemcheckbox", {
+        name: `${setting} Soon`,
+        exact: true,
+      }),
+    ).toBeDisabled();
+  }
+});
+
 test("Shift+Cmd+D is left to the browser, Shift+Cmd+E still toggles weekends", async ({
   page,
 }) => {

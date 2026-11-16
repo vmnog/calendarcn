@@ -19,6 +19,7 @@ import {
 } from "@/components/details-sidebar";
 import { MonthView } from "@/components/month-view";
 import { TimeGrid } from "@/components/time-grid";
+import { YearView } from "@/components/year-view";
 import {
   SidebarInset,
   SidebarProvider,
@@ -91,7 +92,7 @@ interface CalendarAppShellProps extends CalendarAppShellOptions {
 
 /**
  * The live demo as one component: the calendar sidebar on the left, the
- * header and the day, week, month or agenda view in the middle, the details
+ * header and the day, week, month, year or agenda view in the middle, the details
  * sidebar on the right, the ⌘K command menu, the toasts after a delete,
  * cut or copy, theme cycling, .ics import and export, and the keyboard
  * shortcuts. Takes every `CalendarProvider` prop,
@@ -419,6 +420,7 @@ function CalendarAppShell({
               onEventPopoverExpand={expandEventPopover}
             />
           )}
+          {view === "year" && <YearView />}
           {/* One grid for day and week: switching re-lays it out instead of
               remounting, so the vertical scroll position is kept */}
           {(view === "day" || view === "week") && (

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { format } from "date-fns";
 
-import { getVisibleRange } from "@/lib/event-utils";
+import { getPeriodStart, getVisibleRange } from "@/lib/event-utils";
 import type { VisibleRange } from "@/components/calendar-types";
 
 /**
@@ -62,4 +62,19 @@ test("month view with hidden weekends starts and ends on weekdays", () => {
   expect(formatRange(getVisibleRange(THURSDAY, "month", 7, 6, false))).toBe(
     "2026-06-01 → 2026-07-11",
   );
+});
+
+test("year view covers its whole year, whatever the week start or weekends", () => {
+  expect(formatRange(getVisibleRange(THURSDAY, "year", 7, 0, true))).toBe(
+    "2026-01-01 → 2027-01-01",
+  );
+  expect(formatRange(getVisibleRange(THURSDAY, "year", 3, 1, false))).toBe(
+    "2026-01-01 → 2027-01-01",
+  );
+});
+
+test("year view's period starts at midnight on January 1", () => {
+  expect(
+    format(getPeriodStart(THURSDAY, "year", 0, 7), "yyyy-MM-dd HH:mm"),
+  ).toBe("2026-01-01 00:00");
 });

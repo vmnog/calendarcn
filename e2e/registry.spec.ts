@@ -12,6 +12,7 @@ const ITEM_NAMES = [
   "week-view",
   "month-view",
   "agenda-view",
+  "year-view",
   "calendar",
   "ics",
   "conference-providers",

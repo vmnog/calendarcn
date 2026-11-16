@@ -12,6 +12,7 @@ import { AgendaView } from "./agenda-view";
 import { CalendarProvider, useCalendar } from "./calendar-provider";
 import { MonthView } from "./month-view";
 import { TimeGrid } from "./time-grid";
+import { YearView } from "./year-view";
 import type { CalendarEvent, CalendarProviderProps } from "./calendar-types";
 import type { CalendarProps } from "./week-view-types";
 
@@ -20,7 +21,7 @@ const DEFAULT_SCROLL_HOUR = 8;
 
 /**
  * The full calendar: a toolbar with the title, view switcher, today and
- * previous/next, over a day, week, month or agenda view. Takes every
+ * previous/next, over a day, week, month, year or agenda view. Takes every
  * `CalendarProvider` prop, so events, view and date can be controlled or
  * left to the calendar.
  */
@@ -105,6 +106,10 @@ function CalendarBody({ scrollToHour }: CalendarBodyProps) {
 
   if (view === "agenda") {
     return <AgendaView />;
+  }
+
+  if (view === "year") {
+    return <YearView />;
   }
 
   // One grid for day and week: switching re-lays it out instead of

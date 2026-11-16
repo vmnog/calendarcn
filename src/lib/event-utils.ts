@@ -19,6 +19,8 @@ import {
   isWeekend,
   parse,
   differenceInCalendarDays,
+  addYears,
+  startOfYear,
 } from "date-fns";
 import type { Locale } from "date-fns";
 import type {
@@ -962,7 +964,7 @@ export function getWeekViewStepDays(numberOfDays: number): number {
 /**
  * Returns the first day of the period that contains `date`: the day itself
  * in day view, the agenda and a week view shorter than a week, the start of
- * its week otherwise.
+ * its week otherwise, and January 1 in year view.
  */
 export function getPeriodStart(
   date: Date,
@@ -970,6 +972,7 @@ export function getPeriodStart(
   weekStartsOn: WeekStartsOn,
   numberOfDays: number,
 ): Date {
+  if (view === "year") return startOfYear(date);
   if (view === "day" || view === "agenda") return startOfDay(date);
   if (view === "week" && getWeekViewStepDays(numberOfDays) < DAYS_PER_WEEK) {
     return startOfDay(date);
@@ -998,7 +1001,8 @@ export function getVisibleDays(
  * `MONTH_VIEW_ROWS` weeks from the week containing `currentDate`, days of
  * other months included; with weekends hidden, the weekend columns at the
  * grid's edges are left out. Only month view hides weekends, so
- * `showWeekends` doesn't change the other views' range.
+ * `showWeekends` doesn't change the other views' range. Year view spans its
+ * year, January 1 to the next January 1, weekends always included.
  */
 export function getVisibleRange(
   currentDate: Date,
@@ -1007,6 +1011,10 @@ export function getVisibleRange(
   weekStartsOn: WeekStartsOn,
   showWeekends: boolean,
 ): VisibleRange {
+  if (view === "year") {
+    const start = startOfYear(currentDate);
+    return { start, end: addYears(start, 1) };
+  }
   if (view !== "month") {
     const start = startOfDay(currentDate);
     const end = addDays(start, getVisibleDayCount(view, numberOfDays));
@@ -1149,6 +1157,40 @@ export function formatAgendaTime(
 export function formatAgendaDayOfSpan(entry: AgendaEntry): string | null {
   if (entry.dayCount === 1) return null;
   return `Day ${entry.dayIndex} of ${entry.dayCount}`;
+}
+
+// ---------------------------------------------------------------------------
+// Year view
+// ---------------------------------------------------------------------------
+
+/**
+ * How many events fall on each day of `range` (end exclusive), keyed by
+ * `formatCellDate` ("2026-06-04"). An event counts on every day it covers,
+ * as the agenda lists it: an all-day event through the start of its last
+ * day, a timed event that ends at midnight not on the day that starts then.
+ * Days without events are left out. Year view marks days with it.
+ */
+export function countEventsByDay(
+  events: CalendarEvent[],
+  range: VisibleRange,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  const rangeFirst = startOfDay(range.start);
+  const rangeLast = addDays(startOfDay(range.end), -1);
+  for (const event of events) {
+    const { first, last } = getEventDayRange(event);
+    if (last < rangeFirst || first > rangeLast) continue;
+    const end = last > rangeLast ? rangeLast : last;
+    for (
+      let day = first < rangeFirst ? rangeFirst : first;
+      day <= end;
+      day = addDays(day, 1)
+    ) {
+      const key = formatCellDate(day);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  return counts;
 }
 
 // ---------------------------------------------------------------------------

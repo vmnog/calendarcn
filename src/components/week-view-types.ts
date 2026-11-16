@@ -177,6 +177,21 @@ export interface AgendaViewProps extends EventPopoverProps {
 }
 
 /**
+ * Props for the YearView component. Date, events, week start, locale and
+ * week numbers come from the surrounding CalendarProvider.
+ */
+export interface YearViewProps {
+  /**
+   * Called when a day is clicked, or picked with Enter or Space. Defaults to
+   * the provider's `showDay()`, which opens the day's week and briefly
+   * highlights the day.
+   */
+  onDayClick?: (date: Date) => void;
+  /** Optional className for the root element */
+  className?: string;
+}
+
+/**
  * Props for CalendarToaster. The notices come from the surrounding
  * CalendarProvider.
  */
@@ -206,7 +221,7 @@ export type CalendarProps<TEvent extends CalendarEvent = CalendarEvent> =
      */
     scrollToHour?: number;
     /**
-     * Whether the single-key shortcuts (T, J, K, D, W, M, A, 2-9, Escape) are
+     * Whether the single-key shortcuts (T, J, K, D, W, M, Y, A, 2-9, Escape) are
      * on. They listen on `window`, so turn them off when several calendars
      * share a page. Defaults to true.
      */

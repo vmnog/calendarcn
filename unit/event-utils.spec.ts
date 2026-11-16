@@ -13,6 +13,7 @@ import {
   calculateAllDayEventRows,
   calculateMonthCellLayout,
   calculatePositionedEvents,
+  countEventsByDay,
   describeEventTime,
   filterShownEvents,
   generateWeekRow,
@@ -445,5 +446,93 @@ test.describe("hidden calendars", () => {
       family,
       loose,
     ]);
+  });
+});
+
+test.describe("countEventsByDay", () => {
+  // Thursday June 4 to Sunday June 7, 2026 (end exclusive)
+  const range = { start: new Date(2026, 5, 4), end: new Date(2026, 5, 8) };
+  const timed = (id: string, start: Date, end: Date): CalendarEvent => ({
+    id,
+    title: id,
+    start,
+    end,
+  });
+
+  test("a timed event counts on its day", () => {
+    const counts = countEventsByDay(
+      [timed("a", new Date(2026, 5, 4, 9), new Date(2026, 5, 4, 10))],
+      range,
+    );
+    expect([...counts]).toEqual([["2026-06-04", 1]]);
+  });
+
+  test("events on the same day add up", () => {
+    const counts = countEventsByDay(
+      [
+        timed("a", new Date(2026, 5, 5, 9), new Date(2026, 5, 5, 10)),
+        timed("b", new Date(2026, 5, 5, 14), new Date(2026, 5, 5, 15)),
+      ],
+      range,
+    );
+    expect(counts.get("2026-06-05")).toBe(2);
+  });
+
+  test("an overnight event counts on both days, one ending at midnight on its first only", () => {
+    const counts = countEventsByDay(
+      [
+        timed("overnight", new Date(2026, 5, 4, 22), new Date(2026, 5, 5, 2)),
+        timed("to-midnight", new Date(2026, 5, 6, 23), new Date(2026, 5, 7)),
+      ],
+      range,
+    );
+    expect([...counts]).toEqual([
+      ["2026-06-04", 1],
+      ["2026-06-05", 1],
+      ["2026-06-06", 1],
+    ]);
+  });
+
+  test("an all-day event counts through the start of its last day", () => {
+    const trip: CalendarEvent = {
+      id: "trip",
+      title: "Trip",
+      start: new Date(2026, 5, 5),
+      end: new Date(2026, 5, 7),
+      isAllDay: true,
+    };
+    expect([...countEventsByDay([trip], range)]).toEqual([
+      ["2026-06-05", 1],
+      ["2026-06-06", 1],
+      ["2026-06-07", 1],
+    ]);
+  });
+
+  test("days outside the range are left out", () => {
+    const long: CalendarEvent = {
+      id: "long",
+      title: "Long",
+      start: new Date(2026, 5, 1),
+      end: new Date(2026, 5, 10),
+      isAllDay: true,
+    };
+    const counts = countEventsByDay(
+      [
+        timed("before", new Date(2026, 5, 3, 9), new Date(2026, 5, 3, 10)),
+        timed("after", new Date(2026, 5, 8, 9), new Date(2026, 5, 8, 10)),
+        long,
+      ],
+      range,
+    );
+    expect([...counts]).toEqual([
+      ["2026-06-04", 1],
+      ["2026-06-05", 1],
+      ["2026-06-06", 1],
+      ["2026-06-07", 1],
+    ]);
+  });
+
+  test("no events counts nothing", () => {
+    expect(countEventsByDay([], range).size).toBe(0);
   });
 });

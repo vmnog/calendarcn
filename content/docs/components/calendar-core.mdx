@@ -179,12 +179,12 @@ interface Meeting extends CalendarEvent {
     },
     {
       name: "view",
-      type: '"day" | "week" | "month" | "agenda"',
+      type: '"day" | "week" | "month" | "agenda" | "year"',
       description: "Active view (controlled).",
     },
     {
       name: "defaultView",
-      type: '"day" | "week" | "month" | "agenda"',
+      type: '"day" | "week" | "month" | "agenda" | "year"',
       default: '"week"',
       description: "Initial view when `view` is not controlled.",
     },
@@ -202,7 +202,7 @@ interface Meeting extends CalendarEvent {
       name: "defaultDate",
       type: "Date",
       description:
-        "Initial first day when `date` is not controlled. Defaults to today in day and agenda views and the start of this week otherwise. Without `date` or `defaultDate`, nothing renders until hydration finishes.",
+        "Initial first day when `date` is not controlled. Defaults to today in day and agenda views, January 1 in year view, and the start of this week otherwise. Without `date` or `defaultDate`, nothing renders until hydration finishes.",
     },
     {
       name: "onDateChange",
@@ -396,7 +396,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     },
     {
       name: "view",
-      type: '"day" | "week" | "month" | "agenda"',
+      type: '"day" | "week" | "month" | "agenda" | "year"',
       description: "Active view.",
     },
     {
@@ -424,7 +424,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "visibleDays",
       type: "Date[]",
       description:
-        "Days the day or week view shows right now, updated live while it scrolls sideways, or the 30 days the agenda lists. Empty in month view.",
+        "Days the day or week view shows right now, updated live while it scrolls sideways, or the 30 days the agenda lists. Empty in month and year view.",
     },
     {
       name: "displayMonth",
@@ -436,7 +436,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "visibleRange",
       type: "VisibleRange",
       description:
-        "Dates the view draws, `end` exclusive: the days on screen in day and week view, the whole six-week grid in month view, the 30 days the agenda lists. A sideways scroll moves it once it snaps.",
+        "Dates the view draws, `end` exclusive: the days on screen in day and week view, the whole six-week grid in month view, the 30 days the agenda lists, the whole year in year view. A sideways scroll moves it once it snaps.",
     },
     {
       name: "loading",
@@ -481,7 +481,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "monthName",
       type: "string",
       description:
-        'Month name for a header, in the calendar\'s locale ("October"). Week and day views use the last visible day, so a week that crosses into the next month shows the later month.',
+        'Month name for a header, in the calendar\'s locale ("October"). Week and day views use the last visible day, so a week that crosses into the next month shows the later month. Empty in year view, where a title shows the year alone.',
     },
     {
       name: "year",
@@ -502,7 +502,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "goToPrev",
       type: "() => void",
       description:
-        "Goes back one period: a day, a week (or `numberOfDays`), a month or the agenda's 30 days.",
+        "Goes back one period: a day, a week (or `numberOfDays`), a month, a year or the agenda's 30 days.",
     },
     {
       name: "goToNext",
@@ -814,7 +814,7 @@ Passed to `renderEventContent`.
     },
     {
       name: "view",
-      type: '"day" | "week" | "month" | "agenda"',
+      type: '"day" | "week" | "month" | "agenda" | "year"',
       description: "View the event is drawn in.",
     },
     {

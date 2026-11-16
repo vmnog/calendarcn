@@ -3,9 +3,10 @@ import type { Locale } from "date-fns";
 
 /**
  * Calendar view mode — "day" shows a single column, "week" shows 7 columns,
- * "month" a month grid and "agenda" a list of the coming days' events
+ * "month" a month grid, "agenda" a list of the coming days' events and
+ * "year" twelve month grids
  */
-export type ViewType = "day" | "week" | "month" | "agenda";
+export type ViewType = "day" | "week" | "month" | "agenda" | "year";
 
 /**
  * Views drawn by the hourly time grid: "day" (one column) and "week"
@@ -985,8 +986,8 @@ interface CalendarProviderBaseProps<
   date?: Date;
   /**
    * Initial first day when `date` is not controlled. Defaults to the start of
-   * today's period (today in day and agenda views, the start of this week
-   * otherwise).
+   * today's period (today in day and agenda views, January 1 in year view,
+   * the start of this week otherwise).
    * Today is unknown during server rendering and hydration, so without
    * `date` or `defaultDate` the provider renders nothing until hydration ends.
    */
@@ -1135,7 +1136,8 @@ export interface CalendarContextValue<
   viewSettings: ViewSettings;
   /**
    * Days the day/week view currently shows, updated live while it scrolls
-   * horizontally, or the days the agenda covers. Empty in month view.
+   * horizontally, or the days the agenda covers. Empty in month and year
+   * view.
    */
   visibleDays: Date[];
   /**
@@ -1147,7 +1149,8 @@ export interface CalendarContextValue<
    * Dates the view draws (end exclusive): the visible days in day and week
    * view, the whole six-week grid in month view, trimmed to the first and
    * last weekday when month view hides weekends. Follows settled
-   * navigation, so a horizontal scroll moves it once it snaps.
+   * navigation, so a horizontal scroll moves it once it snaps. Year view
+   * spans its year, January 1 to the next January 1.
    */
   visibleRange: VisibleRange;
   /** Whether the provider's `loading` prop is set */
@@ -1180,7 +1183,7 @@ export interface CalendarContextValue<
   showSeriesOccurrence: (occurrence: SeriesOccurrence<TEvent>) => void;
   /** Day briefly highlighted after `showDay`, or `null` */
   highlightedDate: Date | null;
-  /** Month name for the header (e.g. "October") */
+  /** Month name for the header (e.g. "October"). Empty in year view, where the header names the year alone */
   monthName: string;
   /** Four-digit year for the header (e.g. "2026") */
   year: string;
@@ -1188,13 +1191,13 @@ export interface CalendarContextValue<
   weekNumber: number;
   /** Goes to the period that contains today */
   goToToday: () => void;
-  /** Goes back one period (day, week, month or agenda range, by view) */
+  /** Goes back one period (day, week, month, year or agenda range, by view) */
   goToPrev: () => void;
-  /** Goes forward one period (day, week, month or agenda range, by view) */
+  /** Goes forward one period (day, week, month, year or agenda range, by view) */
   goToNext: () => void;
   /** Sets the first displayed day as given (no snapping to a week start) */
   goToDate: (date: Date) => void;
-  /** Switches the view, snapping the date to the new view's period */
+  /** Switches the view, snapping the date to the new view's period. Year view opens on the year the header shows */
   switchView: (view: ViewType) => void;
   /** Sets how many days the week view shows */
   setNumberOfDays: (numberOfDays: number) => void;

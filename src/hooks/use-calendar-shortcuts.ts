@@ -231,6 +231,12 @@ function handleShortcut(
     return;
   }
 
+  if (e.key === "y" || e.key === "Y") {
+    e.preventDefault();
+    actions.switchView("year");
+    return;
+  }
+
   // Cmd+A / Ctrl+A never get here, so they still select all
   if (e.key === "a" || e.key === "A") {
     e.preventDefault();
@@ -243,7 +249,7 @@ function handleShortcut(
  *
  * - T: today
  * - J / ArrowLeft, K / ArrowRight: previous / next period
- * - D or 1: day view, W or 0: week view, M: month view, A: agenda
+ * - D or 1: day view, W or 0: week view, M: month view, Y: year view, A: agenda
  * - 2-9: number of days
  * - Escape: clear the selection
  * - Delete / Backspace: delete the selected event

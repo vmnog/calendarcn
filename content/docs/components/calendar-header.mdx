@@ -32,7 +32,7 @@ export function Schedule() {
 }
 ```
 
-On its own it shows the title, the view switcher, today, previous and next. The view switcher sets the provider's view, so render the view the provider is on below it, as the preview does: [`TimeGrid`](/docs/components/time-grid) for day and week, [`MonthView`](/docs/components/month-view) and [`AgendaView`](/docs/components/agenda-view).
+On its own it shows the title, the view switcher, today, previous and next. The view switcher sets the provider's view, so render the view the provider is on below it, as the preview does: [`TimeGrid`](/docs/components/time-grid) for day and week, [`MonthView`](/docs/components/month-view), [`YearView`](/docs/components/year-view) and [`AgendaView`](/docs/components/agenda-view).
 
 ### Panels
 
@@ -158,7 +158,7 @@ function Toolbar() {
 
 ### CalendarNavigation
 
-Today, then previous and next. The arrows are labelled with the period they move by: a day, a week, a month or the agenda's 30 days.
+Today, then previous and next. The arrows are labelled with the period they move by: a day, a week, a month, a year or the agenda's 30 days.
 
 <PropsTable
   rows={[
@@ -173,7 +173,7 @@ Today, then previous and next. The arrows are labelled with the period they move
 
 ### CalendarPeriodLabel
 
-The period on screen: the day in day view ("Thursday, Jun 4"), the week number in week view ("Week 23") and the dates in the agenda ("Jun 4 – Jul 3"). It's empty in month view, where the title says it all. Day and month names follow the provider's `locale`.
+The period on screen: the day in day view ("Thursday, Jun 4"), the week number in week view ("Week 23") and the dates in the agenda ("Jun 4 – Jul 3"). It's empty in month and year view, where the title says it all. In year view the title shows the year alone. Day and month names follow the provider's `locale`.
 
 <PropsTable
   rows={[
@@ -187,4 +187,4 @@ The period on screen: the day in day view ("Thursday, Jun 4"), the week number i
 
 ### CalendarViewSwitcher
 
-The view dropdown, wired to the provider: day, week, month or agenda, 2 to 9 days, and the weekend, declined events and week number settings. It takes no props. A setting the current view doesn't read is disabled and marked "Soon": "Declined events" in every view, "Weekends" in day and week view, "Week numbers" outside month view. `ViewDropdown` in `components/view-dropdown.tsx` is the same menu driven by props instead of `useCalendar()`.
+The view dropdown, wired to the provider: day, week, month, year or agenda, 2 to 9 days, and the weekend, declined events and week number settings. It takes no props. A setting the current view doesn't read is disabled and marked "Soon": "Declined events" in every view, "Weekends" in day, week and year view, "Week numbers" outside month and year view. `ViewDropdown` in `components/view-dropdown.tsx` is the same menu driven by props instead of `useCalendar()`.

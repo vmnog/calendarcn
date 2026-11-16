@@ -2,7 +2,7 @@
 
 ## Overview
 
-CalendarCN is a client-side React calendar component built with Next.js App Router. There is no backend for calendar data — all state lives in React and resets on page reload. The app renders day, week, month and agenda views with interactive drag, resize, and selection behaviors.
+CalendarCN is a client-side React calendar component built with Next.js App Router. There is no backend for calendar data — all state lives in React and resets on page reload. The app renders day, week, month, year and agenda views with interactive drag, resize, and selection behaviors.
 
 ## System Diagram
 
@@ -40,7 +40,7 @@ CalendarCN is a client-side React calendar component built with Next.js App Rout
 
 `CalendarProvider` (`calendar-provider.tsx`) is the single source of truth for calendar state: events, view, `currentDate`, `numberOfDays`, selection and view settings. Each value can be controlled by the app (`value` + `onValueChange`) or owned by the provider (`defaultValue`). Views read state with `useCalendar()` and change it through its actions (`updateEvent`, `addEventFromRange`, `goToDate`, `switchView`, ...).
 
-`page.tsx` is the demo: it renders the `CalendarApp` block (`calendar-app.tsx`) with the sample data, plus its own logos, avatar and links. `CalendarApp` holds the app around the provider: the sidebars, header, command menu, theme cycling, .ics import and export, and `<TimeGrid view={view} />`, `MonthView` or `AgendaView`. What people install as `@calendarcn/calendar-app` is the live demo.
+`page.tsx` is the demo: it renders the `CalendarApp` block (`calendar-app.tsx`) with the sample data, plus its own logos, avatar and links. `CalendarApp` holds the app around the provider: the sidebars, header, command menu, theme cycling, .ics import and export, and `<TimeGrid view={view} />`, `MonthView`, `YearView` or `AgendaView`. What people install as `@calendarcn/calendar-app` is the live demo.
 
 ### View Sync
 
@@ -106,6 +106,10 @@ Month grid with continuous vertical scroll, its own drag/resize hooks, and "+N m
 ### AgendaView (`agenda-view.tsx`)
 
 A list of the events of `AGENDA_DAYS` (30) days from `currentDate`, grouped by day by `getAgendaDays()` in `event-utils.ts`. Empty days are skipped, except today. A multi-day event is listed under each of its days with its position ("Day 2 of 3"). No drag or resize: events are selected, opened and moved from the keyboard like in the other views. Prev/next move by 30 days.
+
+### YearView (`year-view.tsx`)
+
+The year of `currentDate` as twelve month grids, drawn by react-day-picker's `DayPicker` (`numberOfMonths={12}`, navigation off). `countEventsByDay()` in `event-utils.ts` counts each day's events once per change of the events or the year; a day with events gets a dot and its count in its name. No events are drawn. A click on a day calls `showDay()` (or `onDayClick`). Prev/next move by a year, `visibleRange` is the whole year, and `visibleDays` stays empty.
 
 ### WeekViewGrid (`week-view-grid.tsx`)
 

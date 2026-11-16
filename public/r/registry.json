@@ -467,6 +467,20 @@
       ]
     },
     {
+      "name": "year-view",
+      "type": "registry:component",
+      "title": "Year View",
+      "description": "The year as twelve month grids, with today and the days that have events marked.",
+      "dependencies": ["date-fns", "react-day-picker@^9"],
+      "registryDependencies": ["@calendarcn/calendar-core"],
+      "files": [
+        {
+          "path": "src/components/year-view.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
       "name": "calendar-header",
       "type": "registry:component",
       "title": "Calendar Header",
@@ -532,12 +546,13 @@
       "name": "calendar",
       "type": "registry:block",
       "title": "Calendar",
-      "description": "The full calendar: a toolbar with the view switcher, today and previous/next, over day, week, month and agenda views, with keyboard shortcuts.",
+      "description": "The full calendar: a toolbar with the view switcher, today and previous/next, over day, week, month, year and agenda views, with keyboard shortcuts.",
       "registryDependencies": [
         "@calendarcn/calendar-header",
         "@calendarcn/time-grid",
         "@calendarcn/month-view",
-        "@calendarcn/agenda-view"
+        "@calendarcn/agenda-view",
+        "@calendarcn/year-view"
       ],
       "files": [
         {
@@ -738,13 +753,14 @@
       "name": "calendar-app",
       "type": "registry:block",
       "title": "Calendar App",
-      "description": "The live demo as one block: both sidebars, the header, day, week, month and agenda views, the ⌘K menu, the toasts, theme, .ics import and export, and keyboard shortcuts.",
+      "description": "The live demo as one block: both sidebars, the header, day, week, month, year and agenda views, the ⌘K menu, the toasts, theme, .ics import and export, and keyboard shortcuts.",
       "dependencies": ["next-themes"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "@calendarcn/time-grid",
         "@calendarcn/month-view",
         "@calendarcn/agenda-view",
+        "@calendarcn/year-view",
         "@calendarcn/calendar-header",
         "@calendarcn/command-menu",
         "@calendarcn/calendar-toaster",
