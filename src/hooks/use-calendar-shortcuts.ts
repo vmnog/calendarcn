@@ -1,6 +1,9 @@
 import * as React from "react";
 
-import { useCalendar } from "@/components/calendar-provider";
+import {
+  useCalendar,
+  useCalendarEventActions,
+} from "@/components/calendar-provider";
 import type { CalendarContextValue } from "@/components/calendar-types";
 
 interface UseCalendarShortcutsOptions {
@@ -33,8 +36,29 @@ type CalendarShortcutActions = Pick<
   | "toggleWeekends"
 >;
 
+/** Event actions the event keys run, and what says whether each has something to act on */
+type EditShortcutActions = Pick<
+  CalendarContextValue,
+  | "deleteEvent"
+  | "duplicateEvent"
+  | "copyEvent"
+  | "cutEvent"
+  | "pasteEvent"
+  | "undo"
+  | "redo"
+  | "canUndo"
+  | "canRedo"
+> & {
+  /** The selected event's id, or `null` when none (or a missing one) is selected */
+  selectedEventId: string | null;
+  /** Whether a cut or copied event waits to be pasted */
+  hasCopiedEvent: boolean;
+};
+
 /** Everything the window listener reads */
-type ShortcutActions = CalendarShortcutActions & AppShortcutActions;
+type ShortcutActions = CalendarShortcutActions &
+  EditShortcutActions &
+  AppShortcutActions;
 
 /** Keys 2-9: show that many days */
 const NUMBER_OF_DAYS_KEY = /^[2-9]$/;
@@ -46,6 +70,59 @@ const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 export function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   return TYPING_TAGS.has(target.tagName) || target.isContentEditable;
+}
+
+/** Whether a key press is part of an IME composition (Safari reports keyCode 229 with `isComposing` already false) */
+function isComposingKey(e: KeyboardEvent): boolean {
+  return e.isComposing || e.keyCode === 229;
+}
+
+/** Whether text is selected on the page, which Cmd+C and Cmd+X then copy or cut instead */
+function hasTextSelection(): boolean {
+  const selection = window.getSelection();
+  return selection !== null && !selection.isCollapsed;
+}
+
+/**
+ * Handles the keys that change events: Delete and Backspace, Cmd+X, Cmd+C
+ * and Cmd+D on the selected event, Cmd+V, Cmd+Z and Shift+Cmd+Z (Ctrl on
+ * Windows and Linux). Returns whether one ran. A key with nothing to act on
+ * (no selected event, nothing to paste, undo or redo) is left to the
+ * browser, and so is every key typed into a field, during an IME
+ * composition, with Alt, or (Cmd+C, Cmd+X) with text selected on the page.
+ */
+function handleEditShortcut(
+  e: KeyboardEvent,
+  actions: EditShortcutActions,
+): boolean {
+  if (e.altKey || isComposingKey(e) || isTypingTarget(e.target)) return false;
+  const run = (action: () => void) => {
+    e.preventDefault();
+    action();
+    return true;
+  };
+  const isCommand = e.metaKey || e.ctrlKey;
+  const key = e.key.toLowerCase();
+  const { selectedEventId } = actions;
+
+  if (isCommand && key === "z") {
+    if (e.shiftKey) return actions.canRedo && run(actions.redo);
+    return actions.canUndo && run(actions.undo);
+  }
+  if (isCommand && !e.shiftKey && key === "v") {
+    return actions.hasCopiedEvent && run(actions.pasteEvent);
+  }
+  if (!selectedEventId) return false;
+  if (!isCommand && (e.key === "Delete" || e.key === "Backspace")) {
+    return run(() => actions.deleteEvent(selectedEventId));
+  }
+  if (!isCommand || e.shiftKey) return false;
+  if (key === "d") return run(() => actions.duplicateEvent(selectedEventId));
+  // With text selected, Cmd+C and Cmd+X copy or cut the text
+  if (hasTextSelection()) return false;
+  if (key === "c") return run(() => actions.copyEvent(selectedEventId));
+  if (key === "x") return run(() => actions.cutEvent(selectedEventId));
+  return false;
 }
 
 /**
@@ -169,9 +246,14 @@ function handleShortcut(
  * - D or 1: day view, W or 0: week view, M: month view, A: agenda
  * - 2-9: number of days
  * - Escape: clear the selection
+ * - Delete / Backspace: delete the selected event
+ * - Cmd+X, Cmd+C, Cmd+D: cut, copy, duplicate the selected event; Cmd+V:
+ *   paste it at the slot under the mouse (Ctrl on Windows and Linux)
+ * - Cmd+Z / Shift+Cmd+Z: undo / redo
  * - Shift+Cmd+E (Ctrl on Windows and Linux): show or hide weekends
  *
- * Presses with Cmd, Ctrl or Alt are left alone, apart from that one.
+ * Other presses with Cmd, Ctrl or Alt are left alone, and an event key with
+ * nothing to act on is too.
  *
  * The live demo's app keys come on with their actions: Cmd+K
  * (`onToggleCommandMenu`), Cmd+/ (`onToggleSidebar`), / (`onToggleContextPanel`),
@@ -179,7 +261,8 @@ function handleShortcut(
  * first, and one that runs stops the event from reaching later listeners.
  *
  * Key presses in inputs, textareas, selects and editable content are ignored
- * (except Escape, Cmd+K and Cmd+,). The listener is added once on mount, so
+ * (except Escape, Cmd+K and Cmd+,), and the event keys also during an IME
+ * composition. The listener is added once on mount, so
  * its position among other `window` keydown listeners stays fixed: any other
  * app shortcut that shares a key should be handled by a listener added before
  * this hook's, and call `event.stopImmediatePropagation()`.
@@ -200,7 +283,20 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    selectedEvent,
+    deleteEvent,
+    duplicateEvent,
+    copyEvent,
+    cutEvent,
+    pasteEvent,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useCalendar();
+  const eventActions = useCalendarEventActions();
+  const selectedEventId = selectedEvent?.id ?? null;
+  const hasCopiedEvent = eventActions?.hasCopiedEvent ?? false;
 
   /** Latest actions, read by the window listener */
   const actionsRef = React.useRef<ShortcutActions>({
@@ -211,6 +307,17 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    selectedEventId,
+    hasCopiedEvent,
+    deleteEvent,
+    duplicateEvent,
+    copyEvent,
+    cutEvent,
+    pasteEvent,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
     onToggleCommandMenu,
     onToggleSidebar,
     onToggleContextPanel,
@@ -227,6 +334,17 @@ export function useCalendarShortcuts({
       setNumberOfDays,
       clearSelection,
       toggleWeekends,
+      selectedEventId,
+      hasCopiedEvent,
+      deleteEvent,
+      duplicateEvent,
+      copyEvent,
+      cutEvent,
+      pasteEvent,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
       onToggleCommandMenu,
       onToggleSidebar,
       onToggleContextPanel,
@@ -241,6 +359,17 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    selectedEventId,
+    hasCopiedEvent,
+    deleteEvent,
+    duplicateEvent,
+    copyEvent,
+    cutEvent,
+    pasteEvent,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
     onToggleCommandMenu,
     onToggleSidebar,
     onToggleContextPanel,
@@ -252,6 +381,7 @@ export function useCalendarShortcuts({
     if (!enabled) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (handleAppShortcut(e, actionsRef.current)) return;
+      if (handleEditShortcut(e, actionsRef.current)) return;
       handleShortcut(e, actionsRef.current);
     };
     window.addEventListener("keydown", handleKeyDown);

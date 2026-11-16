@@ -3,7 +3,7 @@ title: Keyboard shortcuts
 description: Move around the calendar without touching the mouse.
 ---
 
-The [Calendar](/docs/components/calendar) block and the [live demo](/) share a set of single-key shortcuts. Single-key shortcuts pause while you type in an input, a select or editable content, and leave presses with <Kbd>⌘</Kbd>, <Kbd>Ctrl</Kbd> or <Kbd>Alt</Kbd> to your app and the browser.
+The [Calendar](/docs/components/calendar) block and the [live demo](/) share a set of single-key shortcuts. Single-key shortcuts pause while you type in an input, a select or editable content, and leave presses with <Kbd>⌘</Kbd>, <Kbd>Ctrl</Kbd> or <Kbd>Alt</Kbd> to your app and the browser, apart from the event keys below.
 
 They come from `useCalendarShortcuts()`, part of [Calendar Core](/docs/components/calendar-core), not from the views. A calendar you build from the views alone only handles keys while one of its events has focus: see [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility) for moving and resizing events from the keyboard.
 
@@ -27,10 +27,19 @@ They come from `useCalendarShortcuts()`, part of [Calendar Core](/docs/component
 
 ## Events
 
-| Action                | Shortcut                                                  |
-| --------------------- | --------------------------------------------------------- |
-| Deselect event        | <Kbd>Esc</Kbd>                                            |
-| Show or hide weekends | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>E</Kbd></KbdGroup> |
+| Action                                    | Shortcut                                                                                                                                    |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Deselect event                            | <Kbd>Esc</Kbd>                                                                                                                              |
+| Delete the selected event                 | <Kbd>Delete</Kbd> or <Kbd>⌫</Kbd>                                                                                                           |
+| Cut, copy or duplicate the selected event | <KbdGroup><Kbd>⌘</Kbd><Kbd>X</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>C</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>D</Kbd></KbdGroup> |
+| Paste                                     | <KbdGroup><Kbd>⌘</Kbd><Kbd>V</Kbd></KbdGroup>                                                                                               |
+| Undo                                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup>                                                                                               |
+| Redo                                      | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup>                                                                                   |
+| Show or hide weekends                     | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>E</Kbd></KbdGroup>                                                                                   |
+
+A paste goes where the mouse is: in day and week view the copy starts at the time slot under it, and in month view it lands on the day under it at its own time of day. With the mouse elsewhere it goes to the last spot it pointed at, while that is on screen, else to today, else to the first day on screen. All-day events stay all-day, and every paste is a new event. Undo covers creating, moving, resizing and editing events and every action above; see [Calendar Core](/docs/components/calendar-core#undo-and-redo).
+
+These keys act only when they have something to act on (a selected event, something cut or copied, a change to undo or redo) and otherwise leave the press to the browser. They pause while you type in a field or compose text with an input method, and <KbdGroup><Kbd>⌘</Kbd><Kbd>C</Kbd></KbdGroup> and <KbdGroup><Kbd>⌘</Kbd><Kbd>X</Kbd></KbdGroup> also while text is selected on the page.
 
 In a field or menu of the event details, <Kbd>Esc</Kbd> only closes it and restores the value from before. Press it again to deselect the event.
 
@@ -83,4 +92,4 @@ Pass `shortcuts={false}` to the Calendar block, or `useCalendarShortcuts({ enabl
 
 ### Change them
 
-The hook is your code: the keys live in `handleShortcut()` and `handleAppShortcut()` in `hooks/use-calendar-shortcuts.ts`, so remap or remove them there. The app keys are checked before the calendar's, and one that runs stops the event from reaching later `keydown` listeners. To give your app another key the calendar also uses, handle it in a `keydown` listener added before the hook's and call `event.stopImmediatePropagation()`.
+The hook is your code: the keys live in `handleShortcut()`, `handleEditShortcut()` and `handleAppShortcut()` in `hooks/use-calendar-shortcuts.ts`, so remap or remove them there. The app keys are checked before the calendar's, and one that runs stops the event from reaching later `keydown` listeners. To give your app another key the calendar also uses, handle it in a `keydown` listener added before the hook's and call `event.stopImmediatePropagation()`.

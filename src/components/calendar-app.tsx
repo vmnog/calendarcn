@@ -354,9 +354,10 @@ function CalendarAppShell({
     setTheme("system");
   }, [theme, setTheme]);
 
-  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape, and
-  // Shift+Cmd+E for weekends. Then the app's own, checked first: Cmd+K,
-  // Cmd+/, /, Shift+M and Cmd+,
+  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape,
+  // Shift+Cmd+E for weekends, and the event keys: Delete/Backspace, Cmd+X,
+  // Cmd+C, Cmd+V, Cmd+D, Cmd+Z and Shift+Cmd+Z. Then the app's own, checked
+  // first: Cmd+K, Cmd+/, /, Shift+M and Cmd+,
   useCalendarShortcuts({
     enabled: shortcuts,
     onToggleCommandMenu: toggleCommandMenu,

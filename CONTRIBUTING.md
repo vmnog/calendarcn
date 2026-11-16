@@ -82,6 +82,7 @@ src/
 │   └── use-field-popover.ts      # Focus, blur and Escape for the details' time and date fields
 └── lib/
     ├── event-utils.ts            # Event positioning and filtering
+    ├── event-history.ts          # Undo steps and where a paste goes
     ├── recurrence.ts             # Repeat rules: RRULE, labels, series occurrences
     ├── time-zones.ts             # Time zone list, offsets and zone changes
     ├── timezone-label.ts         # Time zone labels ("GMT-3 Sao Paulo")

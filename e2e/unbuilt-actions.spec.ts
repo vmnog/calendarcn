@@ -1,44 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-import { calendarEvent, openCalendar } from "./helpers";
+import { openCalendar } from "./helpers";
 
 /**
  * Controls that are drawn but not built yet. Each is disabled or replaced by
- * a "Soon" badge: cut, copy, duplicate and delete in both event menus, the
+ * a "Soon" badge: the
  * view settings the current view doesn't read, the sidebar's scheduling row,
  * "Meet with..." field and "Add calendar account", and the listed shortcuts nothing handles. Shift+Cmd+D is left to the
  * browser.
  */
 
-/** Event actions with no handler yet */
-const UNBUILT_ACTIONS = ["Cut", "Copy", "Duplicate", "Delete"] as const;
-
 test.beforeEach(async ({ page }) => {
   await openCalendar(page);
-});
-
-test("the event's right-click menu marks its unbuilt actions", async ({
-  page,
-}) => {
-  await calendarEvent(page, "Quick Sync").click({ button: "right" });
-
-  for (const action of UNBUILT_ACTIONS) {
-    await expect(
-      page.getByRole("button", { name: `${action} Soon`, exact: true }),
-    ).toBeDisabled();
-  }
-});
-
-test("the details panel's menu marks its unbuilt actions", async ({ page }) => {
-  await calendarEvent(page, "Quick Sync").click();
-  await page.getByRole("button", { name: "More actions" }).click();
-
-  const menu = page.getByRole("menu");
-  for (const action of UNBUILT_ACTIONS) {
-    await expect(
-      menu.getByRole("menuitem", { name: `${action} Soon`, exact: true }),
-    ).toBeDisabled();
-  }
 });
 
 test("week view marks every view setting as not built", async ({ page }) => {

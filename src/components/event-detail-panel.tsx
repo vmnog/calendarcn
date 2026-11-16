@@ -21,6 +21,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EventDetailAiNotes } from "./event-detail-ai-notes";
@@ -31,12 +32,12 @@ import { EventDetailDescription } from "./event-detail-description";
 import { EventDetailLinks } from "./event-detail-links";
 import { EventDetailLocation } from "./event-detail-location";
 import {
+  EVENT_ACTION_KEYS,
   EVENT_DETAIL_HOVER_BORDER_CLASS,
   EVENT_DETAIL_ICON_BUTTON_CLASS,
   EVENT_DETAIL_INPUT_CLASS,
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_MENU_ITEM_CLASS,
-  EVENT_DETAIL_MENU_SOON_CLASS,
   EVENT_DETAIL_MUTED_CLASS,
   EVENT_DETAIL_PLACEHOLDER_CLASS,
   EVENT_DETAIL_ROW_HEIGHT_CLASS,
@@ -73,6 +74,14 @@ interface EventDetailPanelProps<
    * out at the series' end: the arrow is disabled then.
    */
   onNextWeek?: () => void;
+  /** The "..." menu's Cut: keeps a copy for pasting and deletes the event. Disabled without it */
+  onCut?: () => void;
+  /** The "..." menu's Copy: keeps a copy of the event for pasting. Disabled without it */
+  onCopy?: () => void;
+  /** The "..." menu's Duplicate: adds a copy at the same time. Disabled without it */
+  onDuplicate?: () => void;
+  /** The "..." menu's Delete. Disabled without it */
+  onDelete?: () => void;
   /** Extra action buttons rendered in the header row (after the "..." menu). */
   headerActions?: React.ReactNode;
   /** When true, focuses and selects the title input once (e.g. for a just-created event). */
@@ -196,6 +205,10 @@ export function EventDetailPanel<
   onEventChange,
   onPrevWeek,
   onNextWeek,
+  onCut,
+  onCopy,
+  onDuplicate,
+  onDelete,
   headerActions,
   autoFocusTitle,
   onTitleAutoFocused,
@@ -371,34 +384,56 @@ export function EventDetailPanel<
               onKeyDown={stopEscapePropagation}
             >
               <DropdownMenuItem
-                disabled
+                disabled={!onCut}
+                aria-keyshortcuts={EVENT_ACTION_KEYS.cut.aria}
                 className={EVENT_DETAIL_MENU_ITEM_CLASS}
+                onClick={onCut}
               >
                 <SquareDashed className="size-3.5" />
                 Cut
-                <span className={EVENT_DETAIL_MENU_SOON_CLASS}>Soon</span>
+                <DropdownMenuShortcut aria-hidden className="text-white/40">
+                  {EVENT_ACTION_KEYS.cut.label}
+                </DropdownMenuShortcut>
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled
+                disabled={!onCopy}
+                aria-keyshortcuts={EVENT_ACTION_KEYS.copy.aria}
                 className={EVENT_DETAIL_MENU_ITEM_CLASS}
+                onClick={onCopy}
               >
                 <TabletSmartphone className="size-3.5" />
                 Copy
-                <span className={EVENT_DETAIL_MENU_SOON_CLASS}>Soon</span>
+                <DropdownMenuShortcut aria-hidden className="text-white/40">
+                  {EVENT_ACTION_KEYS.copy.label}
+                </DropdownMenuShortcut>
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled
+                disabled={!onDuplicate}
+                aria-keyshortcuts={EVENT_ACTION_KEYS.duplicate.aria}
                 className={EVENT_DETAIL_MENU_ITEM_CLASS}
+                onClick={onDuplicate}
               >
                 <Copy className="size-3.5" />
                 Duplicate
-                <span className={EVENT_DETAIL_MENU_SOON_CLASS}>Soon</span>
+                <DropdownMenuShortcut aria-hidden className="text-white/40">
+                  {EVENT_ACTION_KEYS.duplicate.label}
+                </DropdownMenuShortcut>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-[#303030]" />
-              <DropdownMenuItem disabled className="text-xs text-[#E56458]">
+              <DropdownMenuItem
+                disabled={!onDelete}
+                aria-keyshortcuts={EVENT_ACTION_KEYS.delete.aria}
+                className="text-xs text-[#E56458] focus:!bg-[#DE5551] focus:!text-white focus:[&>svg]:!text-white focus:[&>[data-slot=dropdown-menu-shortcut]]:!text-white"
+                onClick={onDelete}
+              >
                 <Trash2 className="size-3.5 text-[#E56458]" />
                 Delete
-                <span className={EVENT_DETAIL_MENU_SOON_CLASS}>Soon</span>
+                <DropdownMenuShortcut
+                  aria-hidden
+                  className="text-white/40 tracking-normal"
+                >
+                  {EVENT_ACTION_KEYS.delete.label}
+                </DropdownMenuShortcut>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
