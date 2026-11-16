@@ -74,6 +74,10 @@ A repeating event (`recurrenceRule`, or an RRULE in `recurrence`) is one event i
 
 The provider records each change it makes itself (a click-create, every `updateEvent`, delete, cut, duplicate, paste) as a step of `{ before, after, index }` changes, one per event (`src/lib/event-history.ts`). `undo()` applies a step's inverse to the current events and `redo()` the step again, both through `onEventsChange` and one `onEventCreate`, `onEventUpdate` or `onEventDelete` per event. A step applies only while each event it touches is the very object it left (`canApplyEventChanges`), so events the app replaced from outside (a reload) are never overwritten by an old undo. Edits to one event less than a second apart merge into one step; 100 steps are kept. Copy, the series arrows' occurrence copies and changes the app makes itself are not steps.
 
+### Notices
+
+After a delete, a cut or a copy the provider keeps one notice (`CalendarNotice`: a message, an optional title and an optional undo), read with `useCalendarNotice()` and drawn by `CalendarToaster`. A delete's or cut's notice holds the undo step it came from and closes, during render, as soon as that step is no longer the latest, so its Undo only ever takes back its own action. The notice is not announced by the toaster: the provider's live region reads every action.
+
 ### Event Positioning Pipeline
 
 ```
@@ -182,6 +186,7 @@ Components access event colors via the `eventColorStyles` map (`calendar-event-i
 | Selected event   | 20      | Elevated above peers             |
 | Drag placeholder | 25      | Shows drop target                |
 | Dragging copy    | 30      | Follows cursor                   |
+| Toast            | 40      | Calendar Toaster, over the view  |
 | Portal overlay   | 9999    | Popover/context menu             |
 
 ## Technology Decisions
