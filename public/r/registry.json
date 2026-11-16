@@ -515,6 +515,20 @@
       }
     },
     {
+      "name": "calendar-toaster",
+      "type": "registry:component",
+      "title": "Calendar Toaster",
+      "description": "Notion Calendar's toasts: \"Event deleted\" and \"Event cut\" with Undo, and \"Event copied to clipboard\", at the bottom right of the calendar.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": ["@calendarcn/calendar-core"],
+      "files": [
+        {
+          "path": "src/components/calendar-toaster.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
       "name": "calendar",
       "type": "registry:block",
       "title": "Calendar",
@@ -724,7 +738,7 @@
       "name": "calendar-app",
       "type": "registry:block",
       "title": "Calendar App",
-      "description": "The live demo as one block: both sidebars, the header, day, week, month and agenda views, the ⌘K menu, theme, .ics import and export, and keyboard shortcuts.",
+      "description": "The live demo as one block: both sidebars, the header, day, week, month and agenda views, the ⌘K menu, the toasts, theme, .ics import and export, and keyboard shortcuts.",
       "dependencies": ["next-themes"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
@@ -733,6 +747,7 @@
         "@calendarcn/agenda-view",
         "@calendarcn/calendar-header",
         "@calendarcn/command-menu",
+        "@calendarcn/calendar-toaster",
         "@calendarcn/calendar-sidebar",
         "@calendarcn/details-sidebar",
         "@calendarcn/theme-toggle",

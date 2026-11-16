@@ -1,0 +1,104 @@
+---
+title: Calendar Toaster
+description: Notion Calendar's toasts after you delete, cut or copy an event, with Undo.
+---
+
+<ComponentPreview name="calendar-toaster-demo" />
+
+Calendar Toaster says what just happened to an event, the way Notion Calendar does: a small toast at the bottom right of the calendar, with an Undo button when the action can be taken back. In the preview, right-click an event and pick Delete, Cut or Copy.
+
+| Action          | Toast                                       | Undo |
+| --------------- | ------------------------------------------- | ---- |
+| Delete an event | "Event deleted", with the event's title     | Yes  |
+| Cut an event    | "Event cut"                                 | Yes  |
+| Copy an event   | "Event copied to clipboard", with the title | No   |
+
+Pasting, duplicating, creating, moving and editing an event show no toast, and neither do undo and redo. One toast shows at a time: a new one replaces the last.
+
+## Installation
+
+<InstallTabs item="calendar-toaster" />
+
+## Usage
+
+Render it inside your `CalendarProvider`, in a positioned element around the view. It sits 16px from that element's bottom right:
+
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import { CalendarToaster } from "@/components/calendar-toaster";
+import { WeekView } from "@/components/week-view";
+
+export function Schedule() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <div className="relative h-[600px]">
+        <WeekView />
+        <CalendarToaster />
+      </div>
+    </CalendarProvider>
+  );
+}
+```
+
+[Calendar App](/docs/components/calendar-app) renders it over its views. The [Calendar](/docs/components/calendar) block doesn't: add it next to the views if you want the toasts there. Without a toaster the calendar shows no toasts, and everything else works the same.
+
+### Undo
+
+The toast's Undo does what <KbdGroup><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup> does: it takes back that delete or cut and selects the event again. It only ever takes back its own action, so the toast closes as soon as anything else becomes the latest change: moving or editing an event, creating, duplicating or pasting one, or another delete. <KbdGroup><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup> closes it too. A paste right after a cut closes the "Event cut" toast, since undoing the cut then would leave two copies.
+
+### Timing
+
+A toast closes by itself after 5 seconds, or with its close button. While the pointer or focus is on it, it stays; once both leave, its 5 seconds start over. It slides in and fades out, and does neither when the system asks for reduced motion.
+
+### Your own notices
+
+The toasts come from the provider's notice: see [`useCalendarNotice()`](/docs/components/calendar-core#usecalendarnotice). Show a notice of yours in the same place, or render the calendar's with a toast library you already use instead of this component:
+
+```tsx
+const { showNotice } = useCalendarNotice();
+
+showNotice({ message: "Event saved", title: event.title });
+```
+
+A notice with `onUndo` gets an Undo button that calls it.
+
+## Accessibility
+
+- Screen readers hear the calendar's live region, which already reads "Deleted Team sync", "Cut Team sync" or "Copied Team sync". The toast itself isn't a live region, so nothing is read twice. A notice you show with `showNotice` is read there too.
+- The toaster is a region named "Notifications", so its Undo and Close buttons are a landmark jump away, and <KbdGroup><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup> does the same as Undo from anywhere.
+- Hovering or focusing a toast keeps it open, so there's time to reach its buttons.
+
+## Colors
+
+The toast is dark in both themes, like the event menus:
+
+| Part                | Light      | Dark       |
+| ------------------- | ---------- | ---------- |
+| Background          | `#252525`  | `#252525`  |
+| Border              | none       | `#303030`  |
+| Text                | `#F0F0F0`  | `#F0F0F0`  |
+| Title line and icon | white, 60% | white, 60% |
+
+Change them in `components/calendar-toaster.tsx`.
+
+## API Reference
+
+### CalendarToaster
+
+<PropsTable
+  rows={[
+    {
+      name: "duration",
+      type: "number",
+      default: "5000",
+      description:
+        "Milliseconds a toast stays before it closes by itself. The pointer or focus on it holds it.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description:
+        "Classes for the toaster, which sits `absolute` at the bottom right of its nearest positioned parent.",
+    },
+  ]}
+/>
