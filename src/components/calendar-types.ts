@@ -635,6 +635,63 @@ export interface VisibleRange {
 }
 
 /**
+ * Where `pasteEvent()` puts the next paste: the time slot (day and week
+ * view) or the day (month view) a view last had the mouse over
+ */
+export interface EventPasteTarget {
+  /** The slot's start, or any time on the day */
+  date: Date;
+  /**
+   * Whether `date` is a time slot to start at. False for a day: the copy
+   * keeps its own time of day
+   */
+  hasTime: boolean;
+}
+
+/** What one undo step did, named in its undo and redo announcements */
+export type EventHistoryAction =
+  | "create"
+  | "edit"
+  | "delete"
+  | "cut"
+  | "duplicate"
+  | "paste";
+
+/**
+ * One event's part of an undo step: the event before and after it. A `null`
+ * `before` means the step added the event; a `null` `after` that it removed it.
+ */
+export interface EventHistoryChange<
+  TEvent extends CalendarEvent = CalendarEvent,
+> {
+  before: TEvent | null;
+  after: TEvent | null;
+  /**
+   * The event's place in the events list: where an added event went, or
+   * where a removed one was (undoing the removal puts it back there)
+   */
+  index: number;
+}
+
+/** One undo step: the changes one action made, each to a different event */
+export interface EventHistoryEntry<
+  TEvent extends CalendarEvent = CalendarEvent,
+> {
+  action: EventHistoryAction;
+  changes: EventHistoryChange<TEvent>[];
+  /** When it was recorded, in milliseconds since the epoch, to merge quick edits */
+  time: number;
+}
+
+/** The steps `undo` and `redo` walk through */
+export interface EventHistory<TEvent extends CalendarEvent = CalendarEvent> {
+  /** Steps `undo` takes back, the latest last */
+  past: EventHistoryEntry<TEvent>[];
+  /** Steps `redo` does again, the latest undone last */
+  future: EventHistoryEntry<TEvent>[];
+}
+
+/**
  * A calendar events can belong to (e.g. "Work"), listed by the details
  * panel's calendar picker and the event context menu's "Block on calendar"
  * submenu
@@ -851,7 +908,8 @@ interface CalendarProviderBaseProps<
   defaultEvents?: TEvent[];
   /**
    * Called with the full next list whenever events change (drag, resize,
-   * create, edit, or an occurrence the series arrows open)
+   * create, edit, delete, duplicate, cut, paste, undo, redo, or an
+   * occurrence the series arrows open)
    */
   onEventsChange?: (events: TEvent[]) => void;
   /** Active view (controlled) */
@@ -941,11 +999,20 @@ interface CalendarProviderBaseProps<
   locationSuggestions?: LocationSuggestion[];
   /**
    * Called after an event is added: one created by clicking an empty slot,
-   * or an occurrence copy the series arrows add (`showSeriesOccurrence`)
+   * a duplicate or a paste, an occurrence copy the series arrows add
+   * (`showSeriesOccurrence`), or one `undo` or `redo` brings back
    */
   onEventCreate?: (event: TEvent) => void;
-  /** Called after an event is changed (drag, resize, or an edit in the details) */
+  /**
+   * Called after an event is changed (drag, resize, an edit in the details,
+   * or `undo` or `redo` changing it back)
+   */
   onEventUpdate?: (event: TEvent) => void;
+  /**
+   * Called after an event is removed: deleted, cut, or taken away again by
+   * `undo` or `redo` (an undone create, duplicate or paste)
+   */
+  onEventDelete?: (event: TEvent) => void;
   /** Called whenever an event is selected (clicked, or just created) */
   onEventSelect?: (eventId: string) => void;
   /**
@@ -1064,6 +1131,45 @@ export interface CalendarContextValue<
   addEventFromRange: (range: NewEventRange) => void;
   /** Replaces the event with the same id */
   updateEvent: (event: TEvent) => void;
+  /**
+   * Deletes the event through `onEventsChange` and `onEventDelete`, and
+   * clears the selection when it was selected. Undoable
+   */
+  deleteEvent: (eventId: string) => void;
+  /**
+   * Adds a copy of the event at the same time, with a new id from
+   * `crypto.randomUUID()`, through `onEventsChange` and `onEventCreate`, and
+   * selects it. Undoable
+   */
+  duplicateEvent: (eventId: string) => void;
+  /** Keeps a copy of the event for `pasteEvent`. Changes no event */
+  copyEvent: (eventId: string) => void;
+  /** Keeps a copy of the event for `pasteEvent`, then deletes it. Undoable */
+  cutEvent: (eventId: string) => void;
+  /**
+   * Adds a copy of the cut or copied event, with a new id, and selects it:
+   * at the time slot under the mouse in day and week view, on the day under
+   * it in month view at the event's own time of day, else today or the
+   * first day on screen. All-day events stay all-day. Does nothing when
+   * nothing was cut or copied. Undoable
+   */
+  pasteEvent: () => void;
+  /**
+   * Undoes the latest create, move, resize, edit, delete, duplicate, cut or
+   * paste: reports it through `onEventsChange` and `onEventCreate`,
+   * `onEventUpdate` or `onEventDelete`, and selects the event it brings
+   * back or changes
+   */
+  undo: () => void;
+  /** Does again the latest step `undo` took back */
+  redo: () => void;
+  /**
+   * Whether `undo` has a step to take back: false with none, or once the
+   * app replaced or removed one of that step's events itself
+   */
+  canUndo: boolean;
+  /** Whether `redo` has a step to do again. Any new change clears them */
+  canRedo: boolean;
   /** Toggles weekend columns */
   toggleWeekends: () => void;
   /** Flips `viewSettings.showDeclinedEvents`. No view filters by it yet */

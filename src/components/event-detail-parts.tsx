@@ -67,6 +67,18 @@ export const EVENT_DETAIL_MENU_ITEM_CLASS =
 export const EVENT_DETAIL_MENU_SOON_CLASS =
   "ml-auto rounded bg-white/10 px-1.5 py-0.5 text-[10px] leading-none font-medium text-white/60";
 
+/**
+ * Keys of the event actions: shown beside them in the right-click menu and
+ * the details' "..." menu (`label`), and given to assistive tech as
+ * `aria-keyshortcuts` (`aria`). `useCalendarShortcuts` handles them.
+ */
+export const EVENT_ACTION_KEYS = {
+  cut: { label: "⌘X", aria: "Meta+X Control+X" },
+  copy: { label: "⌘C", aria: "Meta+C Control+C" },
+  duplicate: { label: "⌘D", aria: "Meta+D Control+D" },
+  delete: { label: "delete", aria: "Delete Backspace" },
+} as const;
+
 /** Main text of a menu item */
 export const EVENT_DETAIL_MENU_TEXT_CLASS = "text-[#E0E0E0]";
 

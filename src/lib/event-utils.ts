@@ -1254,7 +1254,7 @@ function formatSpokenTime(
 }
 
 /** An event's title, or a stand-in when it has none */
-function getSpokenTitle(event: CalendarEvent): string {
+export function getSpokenTitle(event: CalendarEvent): string {
   return event.title.trim() || UNTITLED_EVENT_LABEL;
 }
 
