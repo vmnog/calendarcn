@@ -2,6 +2,7 @@ import { addDays, differenceInCalendarDays, startOfDay } from "date-fns";
 
 import type {
   CalendarEvent,
+  CalendarNoticeInput,
   EventHistory,
   EventHistoryAction,
   EventHistoryChange,
@@ -42,6 +43,13 @@ const ACTION_NAMES: Record<EventHistoryAction, string> = {
   cut: "cutting",
   duplicate: "duplicating",
   paste: "pasting",
+};
+
+/** First line of the notice each action shows, as Notion Calendar's toasts word it */
+const ACTION_NOTICES: Record<"delete" | "cut" | "copy", string> = {
+  delete: "Event deleted",
+  cut: "Event cut",
+  copy: "Event copied to clipboard",
 };
 
 /** An edit step's one change with both events, or `null` for any other step */
@@ -246,4 +254,18 @@ export function describeHistoryStep(
   const event = change ? (change.after ?? change.before) : null;
   if (!event) return verb;
   return `${verb} ${ACTION_NAMES[entry.action]} ${getSpokenTitle(event)}`;
+}
+
+/**
+ * The notice an action shows: "Event deleted" and "Event copied to
+ * clipboard" with the event's title (a blank one reads "Untitled event"),
+ * "Event cut" without. Duplicate, paste and edits show none.
+ */
+export function describeEventNotice(
+  action: "delete" | "cut" | "copy",
+  event: CalendarEvent,
+): CalendarNoticeInput {
+  const message = ACTION_NOTICES[action];
+  if (action === "cut") return { message };
+  return { message, title: getSpokenTitle(event) };
 }

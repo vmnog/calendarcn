@@ -65,6 +65,9 @@ export type {
   EventHistoryChange,
   EventHistoryEntry,
   EventHistory,
+  CalendarNotice,
+  CalendarNoticeInput,
+  CalendarNoticeValue,
   CalendarInfo,
   CalendarGroup,
   CalendarConfig,
@@ -170,6 +173,23 @@ export interface MonthViewProps extends EventPopoverProps {
  */
 export interface AgendaViewProps extends EventPopoverProps {
   /** Optional className for the root element */
+  className?: string;
+}
+
+/**
+ * Props for CalendarToaster. The notices come from the surrounding
+ * CalendarProvider.
+ */
+export interface CalendarToasterProps {
+  /**
+   * Milliseconds a toast stays before it closes by itself. The pointer or
+   * focus on it holds it. Defaults to 5000
+   */
+  duration?: number;
+  /**
+   * Classes for the toaster. It sits `absolute` at the bottom right of its
+   * nearest positioned parent
+   */
   className?: string;
 }
 
