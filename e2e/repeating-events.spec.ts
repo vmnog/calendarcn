@@ -259,3 +259,91 @@ test("an imported series skips its cancelled date and draws its moved one once",
   // The week after, in the grid's buffer
   await expect(teamSync("Monday, June 8")).toHaveCount(1);
 });
+
+test("undo takes an edited date back to its generated time, and redo edits it again", async ({
+  page,
+}) => {
+  await nextWeeks(page, 2);
+  await expectHeader(page, "June 2026 Week 25");
+  await waitUntilSettled(launchReview(page, "June 20"));
+  await dragBy(page, launchReview(page, "June 20"), {
+    dx: 0,
+    dy: -(await hourHeight(page)),
+    offsetY: 20,
+  });
+  await expect(launchReview(page, "June 20")).toHaveAccessibleName(
+    /9:00 AM to 10:30 AM/,
+  );
+
+  // One step: the stored date goes and the generated one is drawn again
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(launchReview(page, "June 20")).toHaveAccessibleName(
+    /10:00 AM to 11:30 AM/,
+  );
+  await expect(launchReview(page, "June 20")).toHaveCount(1);
+  expect(countLines(await exportIcs(page), "SUMMARY:Launch Review")).toBe(1);
+
+  await page.keyboard.press("ControlOrMeta+Shift+z");
+  await expect(launchReview(page, "June 20")).toHaveAccessibleName(
+    /9:00 AM to 10:30 AM/,
+  );
+  await expect(launchReview(page, "June 20")).toHaveCount(1);
+  expect(countLines(await exportIcs(page), "SUMMARY:Launch Review")).toBe(2);
+});
+
+test("deleting one date leaves the others, and undo brings it back", async ({
+  page,
+}) => {
+  await nextWeeks(page, 2);
+  await launchReview(page, "June 20").click();
+  await page.keyboard.press("Delete");
+  await expect(launchReview(page, "June 20")).toHaveCount(0);
+  // The date after it stays
+  await nextWeeks(page, 2);
+  await expect(launchReview(page, "July 4")).toHaveCount(1);
+  await page.getByRole("button", { name: "Today", exact: true }).click();
+  await expect(launchReview(page, "June 6")).toHaveCount(1);
+
+  // The series skips it: one EXDATE, and the series is still one event
+  const exdate = "EXDATE;TZID=America/Sao_Paulo:20260620T110000";
+  const ics = await exportIcs(page);
+  expect(countLines(ics, exdate)).toBe(1);
+  expect(countLines(ics, "SUMMARY:Launch Review")).toBe(1);
+
+  await page.keyboard.press("ControlOrMeta+z");
+  await nextWeeks(page, 2);
+  await expect(launchReview(page, "June 20")).toHaveAccessibleName(
+    /10:00 AM to 11:30 AM/,
+  );
+  await expect(launchReview(page, "June 20")).toHaveCount(1);
+  expect(countLines(await exportIcs(page), exdate)).toBe(0);
+});
+
+test("duplicating a date makes a copy that is no occurrence of the series", async ({
+  page,
+}) => {
+  await nextWeeks(page, 2);
+  await launchReview(page, "June 20").click();
+  await page.keyboard.press("ControlOrMeta+d");
+
+  // The original date stays as it was, and the copy is drawn beside it
+  await expect(launchReview(page, "June 20")).toHaveCount(2);
+  await expect(
+    page.getByRole("main").getByRole("button", {
+      name: /^Launch Review, 10:00 AM to 11:30 AM, Saturday, June 20$/,
+    }),
+  ).toHaveCount(2);
+
+  // The copy is an event of its own: the export has the series and the
+  // copy, and neither writes a RECURRENCE-ID
+  const ics = await exportIcs(page);
+  expect(countLines(ics, "SUMMARY:Launch Review")).toBe(2);
+  expect(ics).not.toContain("RECURRENCE-ID");
+
+  await page.getByRole("button", { name: "Today", exact: true }).click();
+  await expect(launchReview(page, "June 6")).toHaveCount(1);
+
+  await page.keyboard.press("ControlOrMeta+z");
+  await nextWeeks(page, 2);
+  await expect(launchReview(page, "June 20")).toHaveCount(1);
+});

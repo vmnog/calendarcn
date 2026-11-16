@@ -1279,3 +1279,49 @@ export function applyRecurringEdit<TEvent extends SeriesEvent>(
   if (moved === rule) return edited;
   return { ...edited, recurrenceRule: moved };
 }
+
+/**
+ * What deleting one date of a repeating series changes: `event` is an
+ * occurrence of a series (generated, edited and stored, or a copy ADR-004's
+ * arrows stored) and `removed` is the stored event that goes (`event`
+ * itself when it is stored, else `null`). `series` is the series' event as
+ * stored and `excluded` the same event with the date added to its
+ * `excludedDates`, so the date is no longer drawn. `null` when `event` is
+ * the series' own event or doesn't belong to a series: deleting those
+ * removes the event.
+ */
+export function getOccurrenceRemoval<TEvent extends SeriesEvent>(
+  events: TEvent[],
+  event: TEvent,
+): { series: TEvent; excluded: TEvent; removed: TEvent | null } | null {
+  const byId = new Map(events.map((other) => [other.id, other]));
+  const series = getSeries(byId, event);
+  if (!series || series.id === event.id) return null;
+  const stored = byId.get(event.id) ?? null;
+  const timeZone = getRuleTimeZone(series);
+  const day = getOccurrenceDay(series, event, timeZone);
+  const date =
+    event.originalStart ??
+    fromZonedDayTime(day, getZonedTimeOfDay(series.start, timeZone), timeZone);
+  const dayNumber = toDayNumber(day);
+  const isExcluded = getExcludedDays(series, timeZone).has(dayNumber);
+  const excluded = isExcluded
+    ? series
+    : { ...series, excludedDates: [...(series.excludedDates ?? []), date] };
+  return { series, excluded, removed: stored };
+}
+
+/**
+ * A copy of `event` under a new id that is no occurrence of any series: it
+ * drops `seriesId` and `originalStart`, and keeps its repeat rule, so it
+ * repeats on its own from its date (Google Calendar's "Duplicate").
+ */
+export function createStandaloneCopy<TEvent extends SeriesEvent>(
+  event: TEvent,
+  id: string,
+): TEvent {
+  const copy: TEvent = { ...event, id };
+  delete copy.seriesId;
+  delete copy.originalStart;
+  return copy;
+}

@@ -10,12 +10,14 @@ import {
   MAX_OCCURRENCES_PER_RANGE,
   applyRecurringEdit,
   createSeriesOccurrence,
+  createStandaloneCopy,
   describeRecurrenceRule,
   expandRecurringEvents,
   findEventOrOccurrence,
   findSeriesOccurrence,
   formatRRule,
   getAdjacentOccurrence,
+  getOccurrenceRemoval,
   moveRecurrenceRule,
   parseRecurrence,
 } from "../src/lib/recurrence";
@@ -742,5 +744,72 @@ test.describe("RRULE", () => {
     ]) {
       expect(parseRecurrence(text, start), text).toBeNull();
     }
+  });
+});
+
+test.describe("getOccurrenceRemoval", () => {
+  test("a generated date is excluded from its series", () => {
+    const june20 = findEventOrOccurrence([launch], "launch-2026-06-20");
+    if (!june20) throw new Error("No June 20 occurrence");
+    const removal = getOccurrenceRemoval([launch], june20);
+    if (!removal) throw new Error("No removal");
+    expect(removal.series).toBe(launch);
+    expect(removal.removed).toBeNull();
+    expect(removal.excluded.excludedDates).toEqual([new Date(2026, 5, 20, 10)]);
+    // The series no longer draws it
+    const expanded = expandRecurringEvents([removal.excluded], summer);
+    expect(summary(expanded).map(([id]) => id)).toEqual([
+      "launch",
+      "launch-2026-07-04",
+    ]);
+  });
+
+  test("a stored date is removed and excluded by the day it stands for", () => {
+    // June 20, moved to Sunday: it still stands for June 20
+    const moved: DetailedCalendarEvent = {
+      ...launch,
+      id: "launch-2026-06-20",
+      start: new Date(2026, 5, 21, 15),
+      end: new Date(2026, 5, 21, 16),
+      seriesId: "launch",
+      originalStart: new Date(2026, 5, 20, 10),
+    };
+    const removal = getOccurrenceRemoval([launch, moved], moved);
+    expect(removal?.removed).toBe(moved);
+    expect(removal?.excluded.excludedDates).toEqual([
+      new Date(2026, 5, 20, 10),
+    ]);
+
+    // A copy ADR-004's arrows stored has no originalStart: its id names it
+    const copy: DetailedCalendarEvent = { ...launch, id: "launch-2026-07-04" };
+    const copyRemoval = getOccurrenceRemoval([launch, copy], copy);
+    expect(copyRemoval?.removed).toBe(copy);
+    expect(copyRemoval?.excluded.excludedDates).toEqual([
+      new Date(2026, 6, 4, 10),
+    ]);
+  });
+
+  test("the series' own event and events that don't repeat have no removal", () => {
+    expect(getOccurrenceRemoval([launch], launch)).toBeNull();
+    const lunch: DetailedCalendarEvent = {
+      id: "lunch",
+      title: "Lunch",
+      start: new Date(2026, 5, 1, 12),
+      end: new Date(2026, 5, 1, 13),
+    };
+    expect(getOccurrenceRemoval([launch, lunch], lunch)).toBeNull();
+  });
+});
+
+test.describe("createStandaloneCopy", () => {
+  test("drops seriesId and originalStart and keeps the rule", () => {
+    const june20 = findEventOrOccurrence([launch], "launch-2026-06-20");
+    if (!june20) throw new Error("No June 20 occurrence");
+    const copy = createStandaloneCopy(june20, "copy");
+    expect(copy.id).toBe("copy");
+    expect("seriesId" in copy).toBe(false);
+    expect("originalStart" in copy).toBe(false);
+    expect(copy.recurrenceRule).toEqual(launch.recurrenceRule);
+    expect(local(copy.start)).toBe("2026-06-20 10:00");
   });
 });
