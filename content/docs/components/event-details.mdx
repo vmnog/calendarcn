@@ -61,7 +61,7 @@ const { cutEvent, copyEvent, duplicateEvent, deleteEvent } =
 />;
 ```
 
-The repeat row's arrows step through a series. In the views' popover they work on their own: the provider finds the selected event's neighbors (`previousInSeries` and `nextInSeries` from `useCalendar()`, `null` at the series' ends) and `showSeriesOccurrence` selects one and moves to it. An occurrence your events have no event for yet is added as a copy of the selected event, through `onEventsChange` and `onEventCreate`. Pass the same to a panel you render yourself:
+The repeat row's arrows step through a series. In the views' popover they work on their own: the provider finds the selected event's neighbors (`previousInSeries` and `nextInSeries` from `useCalendar()`, `null` at the series' ends) and `showSeriesOccurrence` selects one and moves to it. Occurrences your events don't hold are generated from the rule, so stepping to one selects it without adding anything; its first edit stores it, through `onEventCreate`. Pass the same to a panel you render yourself:
 
 ```tsx
 const { previousInSeries, nextInSeries, showSeriesOccurrence } =
@@ -79,7 +79,7 @@ const { previousInSeries, nextInSeries, showSeriesOccurrence } =
 />;
 ```
 
-Outside a provider, `findSeriesOccurrence(events, event, "next")` (from `@/lib/recurrence`) finds the occurrence: the event when you have one for it, else its start and an id, for `createSeriesOccurrence(event, occurrence)` to copy the event to. The copy's id names the day it stands for, so it stays that day's occurrence after it is moved or renamed. A series is the events with the same title, calendar and rule; a `recurrenceRule` counts its days in the event's `timeZone`, so a 9 AM New York series stays at 9 AM there across daylight saving changes.
+Outside a provider, `findSeriesOccurrence(events, event, "next")` (from `@/lib/recurrence`) finds the occurrence: `{ id, start, event }`, with the event stored for that date or the one generated for it. A series is a repeating event plus the events that name it with `seriesId`; `excludedDates` are skipped. A `recurrenceRule` counts its days in the event's `timeZone`, so a 9 AM New York series stays at 9 AM there across daylight saving changes. Events whose `recurrence` is display text step between the events with the same title, calendar and text.
 
 ## Conference providers
 
@@ -384,6 +384,24 @@ Passed to `renderEventDetails` on `CalendarProvider`.
         'Repeat rule as display text, e.g. "Every week on Thu", or an RRULE `.ics` import couldn\'t fit in `recurrenceRule` (it reads "Custom repeat"). Used when `recurrenceRule` is not set.',
     },
     {
+      name: "excludedDates",
+      type: "Date[]",
+      description:
+        "Dates a repeating event skips, each the start of an occurrence (RFC 5545 `EXDATE`). `.ics` import and export read and write it.",
+    },
+    {
+      name: "seriesId",
+      type: "string",
+      description:
+        "On an occurrence of a repeating event: the series' event id. Generated occurrences carry it, and an edited one is stored with it.",
+    },
+    {
+      name: "originalStart",
+      type: "Date",
+      description:
+        "On an occurrence: its start in the series before any edit (RFC 5545 `RECURRENCE-ID`), so an edited occurrence replaces the right date.",
+    },
+    {
       name: "participants",
       type: "EventParticipant[]",
       description:
@@ -435,7 +453,7 @@ Passed to `renderEventDetails` on `CalendarProvider`.
 
 ### RecurrenceRule
 
-The structured repeat rule in `recurrenceRule`: the part of an RFC 5545 RRULE the repeat row edits. Days are counted in the event's `timeZone`, from the series' first event, which always counts as the first occurrence.
+The structured repeat rule in `recurrenceRule`: the part of an RFC 5545 RRULE the repeat row edits. Days are counted in the event's `timeZone`, from the series' first event, which always counts as the first occurrence. An all-day series counts whole days in the viewer's calendar.
 
 <PropsTable
   nameHeader="Field"

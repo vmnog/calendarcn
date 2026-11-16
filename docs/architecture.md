@@ -66,6 +66,10 @@ User interaction → Hook (drag/resize) → onEventChange callback → CalendarP
 2. User pointermove → hook computes snapped position, updates `dragState` / `resizeState`
 3. User pointerup → hook calls `onEventChange(updatedEvent)` → the provider's `updateEvent` merges it into `events`
 
+### Repeating Events
+
+A repeating event (`recurrenceRule`, or an RRULE in `recurrence`) is one event in the provider's `events`. Each view expands it for the dates it draws with `expandRecurringEvents()` (`src/lib/recurrence.ts`): the time grid over its buffered days, month view over its buffered rows, the agenda over its 30 days, and the details sidebar's search over a year either side of today. Occurrences get the id `<seriesId>-<yyyy-MM-dd>`, `seriesId` and `originalStart`, and are never stored. `selectedEvent` resolves such an id with `findEventOrOccurrence()`. The first edit of an occurrence reaches `updateEvent` with an id `events` doesn't have: the provider adds it as a stored event (`applyRecurringEdit()` decides what is stored) and reports it through `onEventCreate`. The drag and resize hooks receive the stored events and commit an occurrence from the copy the gesture started with. [ADR-007](decisions/007-repeating-events-are-expanded.md) has the rules.
+
 ### Undo History
 
 The provider records each change it makes itself (a click-create, every `updateEvent`, delete, cut, duplicate, paste) as a step of `{ before, after, index }` changes, one per event (`src/lib/event-history.ts`). `undo()` applies a step's inverse to the current events and `redo()` the step again, both through `onEventsChange` and one `onEventCreate`, `onEventUpdate` or `onEventDelete` per event. A step applies only while each event it touches is the very object it left (`canApplyEventChanges`), so events the app replaced from outside (a reload) are never overwritten by an old undo. Edits to one event less than a second apart merge into one step; 100 steps are kept. Copy, the series arrows' occurrence copies and changes the app makes itself are not steps.
@@ -77,7 +81,7 @@ After a delete, a cut or a copy the provider keeps one notice (`CalendarNotice`:
 ### Event Positioning Pipeline
 
 ```
-events[] → getEventsForDay(day) → assignColumns() → calculatePositionedEvents()
+events[] → expandRecurringEvents(range) → getEventsForDay(day) → assignColumns() → calculatePositionedEvents()
 ```
 
 1. **Filter**: `getEventsForDay()` selects events overlapping a specific day

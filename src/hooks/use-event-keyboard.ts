@@ -4,6 +4,7 @@ import { useCallback } from "react";
 
 import { useCalendar, useCalendarConfig } from "@/components/calendar-provider";
 import { getKeyboardEventChange } from "@/lib/event-utils";
+import { findEventOrOccurrence } from "@/lib/recurrence";
 
 interface UseEventKeyboardOptions {
   /** Element holding the view's events; focus is put back on an event inside it */
@@ -132,7 +133,7 @@ export function useEventKeyboard({
       e.preventDefault();
       e.stopPropagation();
 
-      const event = events.find((ev) => ev.id === eventId);
+      const event = findEventOrOccurrence(events, eventId);
       if (!event) return;
       const changed = getKeyboardEventChange(
         event,

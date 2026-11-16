@@ -39,17 +39,19 @@ Each event keeps the file's `UID` as its `id`. The preview uses that to replace 
 
 ### What gets imported
 
-| iCalendar                        | Event field                                                                  |
-| -------------------------------- | ---------------------------------------------------------------------------- |
-| `UID`                            | `id`. An edited occurrence of a recurring event gets `UID_RECURRENCE-ID`.    |
-| `SUMMARY`                        | `title`                                                                      |
-| `DTSTART`, `DTEND` or `DURATION` | `start`, `end` and `isAllDay`                                                |
-| `DESCRIPTION`, `LOCATION`        | `description`, `location`                                                    |
-| `RRULE`                          | `recurrenceRule`, e.g. `FREQ=WEEKLY;BYDAY=MO` to a weekly rule on Mondays    |
-| `TRANSP`                         | `status`: `TRANSPARENT` is free, `OPAQUE` is busy                            |
-| `CLASS`                          | `visibility`: public, or private for `PRIVATE` and `CONFIDENTIAL`            |
-| `COLOR`                          | `color`, when it names one of the seven event colors                         |
-| `VALARM`                         | `reminders`, for alarms set a fixed time before the start. See **Reminders** |
+| iCalendar                        | Event field                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `UID`                            | `id`. An edited occurrence of a recurring event gets `<UID>-<yyyy-MM-dd>`, the id of that date's occurrence. |
+| `SUMMARY`                        | `title`                                                                                                      |
+| `DTSTART`, `DTEND` or `DURATION` | `start`, `end` and `isAllDay`                                                                                |
+| `DESCRIPTION`, `LOCATION`        | `description`, `location`                                                                                    |
+| `RRULE`                          | `recurrenceRule`, e.g. `FREQ=WEEKLY;BYDAY=MO` to a weekly rule on Mondays                                    |
+| `EXDATE`                         | `excludedDates`                                                                                              |
+| `RECURRENCE-ID`                  | `originalStart` of an edited occurrence, with the series' `UID` as `seriesId`                                |
+| `TRANSP`                         | `status`: `TRANSPARENT` is free, `OPAQUE` is busy                                                            |
+| `CLASS`                          | `visibility`: public, or private for `PRIVATE` and `CONFIDENTIAL`                                            |
+| `COLOR`                          | `color`, when it names one of the seven event colors                                                         |
+| `VALARM`                         | `reminders`, for alarms set a fixed time before the start. See **Reminders**                                 |
 
 Dates and times follow RFC 5545:
 
@@ -58,9 +60,9 @@ Dates and times follow RFC 5545:
 - **Text.** Folded lines are joined and escaped commas, semicolons and line breaks are restored.
 - **Reminders.** A `VALARM` set a fixed time before the start (`TRIGGER:-PT15M`) becomes a reminder in its largest whole unit, and `-P1W` in weeks. On an all-day event, an alarm that isn't a whole number of days is a day and a time of day: Apple's `-PT15H` is 1 day before at 9 AM. Alarms after the start, relative to the end or at a fixed date are skipped.
 
-<Callout title="Recurring events aren't expanded">
+<Callout title="Recurring events">
 
-A weekly meeting comes in as one event on its first date, with its rule in `recurrenceRule`, so the details show and edit it. A rule `recurrenceRule` can't hold exactly (`BYMONTHDAY=1,15`, `BYHOUR`, a fifth weekday of the month, ...) is kept as written in `recurrence` and reads "Custom repeat". Expanding rules into occurrences is planned under **Recurring events** on the [roadmap](/docs/roadmap). Until then, edited occurrences come in as their own events, cancelled ones are left out, and `EXDATE` is ignored. Attendees, attachments, to-dos (`VTODO`) and other components are skipped.
+A weekly meeting comes in as one event with its rule in `recurrenceRule`, and the views draw it on every date. A rule `recurrenceRule` can't hold exactly (`BYMONTHDAY=1,15`, `BYHOUR`, a fifth weekday of the month, ...) is kept as written in `recurrence`, reads "Custom repeat" and draws once. An edited occurrence comes in as its own event with `seriesId` and `originalStart` and takes its date's place; a cancelled one becomes an `excludedDates` entry of its series. Attendees, attachments, to-dos (`VTODO`) and other components are skipped.
 
 </Callout>
 
@@ -84,7 +86,7 @@ function downloadIcs(events: DetailedCalendarEvent[]) {
 }
 ```
 
-Timed events are written in UTC and all-day events as dates, with the exclusive end iCalendar expects. A repeating timed event is written as clock time with a `TZID` instead (its `timeZone`, else the viewer's zone), so other calendars keep it at the same clock time when the clocks change. `recurrenceRule` is written as an `RRULE`, its end date as an `UNTIL` at the end of that day in the event's time zone. Without one, `recurrence` is written only when it holds a rule (`FREQ=...`), so a display string such as "Every weekday" is left out. Each reminder becomes a `VALARM` with a trigger before the start: `-PT10M`, `-PT2H`, `-P1D`, and weeks as `-P1W`. An all-day reminder with a `time` is written in minutes from the event's midnight start: 1 day before at 9 AM is `-PT900M`, and on the day at 9 AM is `PT540M`. `parseIcs()` reads each one back the same. Long lines are folded at 75 octets and lines end with CRLF, so Google Calendar, Apple Calendar and Outlook all import the file.
+Timed events are written in UTC and all-day events as dates, with the exclusive end iCalendar expects. A repeating timed event is written as clock time with a `TZID` instead (its `timeZone`, else the viewer's zone), so other calendars keep it at the same clock time when the clocks change. `recurrenceRule` is written as an `RRULE`, its end date as an `UNTIL` at the end of that day in the event's time zone. Without one, `recurrence` is written only when it holds a rule (`FREQ=...`), so a display string such as "Every weekday" is left out. `excludedDates` are written as `EXDATE`, and an edited occurrence as a `VEVENT` with its series' `UID`, a `RECURRENCE-ID` and no rule, in the series' zone. Each reminder becomes a `VALARM` with a trigger before the start: `-PT10M`, `-PT2H`, `-P1D`, and weeks as `-P1W`. An all-day reminder with a `time` is written in minutes from the event's midnight start: 1 day before at 9 AM is `-PT900M`, and on the day at 9 AM is `PT540M`. `parseIcs()` reads each one back the same. Long lines are folded at 75 octets and lines end with CRLF, so Google Calendar, Apple Calendar and Outlook all import the file.
 
 ## Sync with Google Calendar
 
@@ -302,7 +304,7 @@ export async function GET() {
 }
 ```
 
-The file holds every event with recurring events unexpanded, so this suits small calendars best.
+The file holds each repeating event once, with its rule, and the views draw its dates, so this suits small calendars best.
 
 ## API Reference
 
@@ -312,7 +314,7 @@ The file holds every event with recurring events unexpanded, so this suits small
 function parseIcs(text: string): DetailedCalendarEvent[];
 ```
 
-Reads every `VEVENT` in the text, in file order, and skips cancelled events, events without a start, and other components. An event without a `UID` gets `ics-event-N`, and a repeated id gets `-2`, `-3`, ….
+Reads every `VEVENT` in the text, in file order, and turns a cancelled occurrence of a recurring event into an excluded date of its series, skips other cancelled events, events without a start, and other components. An event without a `UID` gets `ics-event-N`, and a repeated id gets `-2`, `-3`, ….
 
 ### toIcs
 

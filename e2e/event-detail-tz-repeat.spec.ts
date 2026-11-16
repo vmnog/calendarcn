@@ -308,7 +308,10 @@ test("the popover's series arrows step through the series in every view", async 
   // disables the arrow
   await page.keyboard.press("m");
   await expectHeader(page, "June 2026");
-  await calendarEvent(page, "Launch Review").click();
+  // Launch Review is drawn on every other Saturday: open its first date
+  await page
+    .getByRole("button", { name: /^Launch Review, .*Saturday, June 6$/ })
+    .click();
   await expect(arrow("previous")).toBeDisabled();
   await arrow("next").click();
   await expect(popover.getByTestId("event-start-date")).toHaveValue(
@@ -372,8 +375,12 @@ test("an occurrence moved within its day or to another day keeps its place in th
   await next.click();
   await expect(fields.startDate).toHaveValue("Sun Jun 21");
   await expect(fields.startTime).toHaveValue("10:30 AM");
+  // Its own date is drawn once: the series' June 20 is not drawn as well
+  // (July 4 is also in the grid's buffer now, so only June 20 and 21 count)
   await expect(
-    page.getByRole("button", { name: /^Launch Review, / }),
+    page.getByRole("button", {
+      name: /^Launch Review, .*(Saturday, June 20|Sunday, June 21)$/,
+    }),
   ).toHaveCount(1);
 });
 
