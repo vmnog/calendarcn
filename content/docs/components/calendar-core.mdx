@@ -97,6 +97,24 @@ When you load events by range ([Loading Events](/docs/loading-events)), include 
 
 Display and interaction settings are plain props: a 24-hour clock, a [date-fns locale](https://date-fns.org/docs/I18n) for day and month names, the first day of the week, the visible hours of the time grid, and the minute step that drag, resize and click-to-create snap to. Events outside the visible hours are clipped at the edge, and hidden when they lie fully outside. Read the resolved settings anywhere with `useCalendarConfig()`, for example to format times in a custom renderer the way the calendar does.
 
+### Second time zone
+
+<ComponentPreview name="secondary-time-zone-demo" />
+
+`secondaryTimeZone` takes an IANA time zone, like `"Asia/Kolkata"`. The day and week views then show its hours in a second column left of the time axis, as Notion Calendar does with an additional time zone. Each column has its zone's short label at the top, and the current-time line keeps its one time badge, in your column, as in Notion Calendar. A zone half an hour or 45 minutes off yours shows the minutes: beside your 10 AM, India's column reads 7:30 PM.
+
+```tsx
+<CalendarProvider defaultEvents={events} secondaryTimeZone="Asia/Kolkata">
+  <WeekView />
+</CalendarProvider>
+```
+
+- The column shows one offset for every day on screen: the one at noon today while today is on screen, else at noon on the first day shown. In a week where either zone changes its clocks, it is off by that change on the days on the other side of it.
+- The column is 64px wide at every screen size, so on a phone the days get less room. To show it on wide screens only, pass the prop there.
+- Screen readers read each zone's label once. Both columns' hours are hidden from them, like the time axis itself, since each event's label already reads its time.
+- A zone the runtime doesn't know shows no second column.
+- [Calendar](/docs/components/calendar) and [Calendar App](/docs/components/calendar-app) take the prop too. Calendar App has no control to pick the zone yet: "Show additional time zones..." in its command menu is still marked Soon.
+
 ## Custom event content
 
 <ComponentPreview name="custom-event-content-demo" />
@@ -257,6 +275,12 @@ interface Meeting extends CalendarEvent {
       default: "enUS",
       description:
         "date-fns locale for day names, month names, dates and week numbers.",
+    },
+    {
+      name: "secondaryTimeZone",
+      type: "string",
+      description:
+        'IANA time zone, e.g. `"Asia/Kolkata"`, whose hours the day and week views show in a second column left of the time axis. A zone the runtime doesn\'t know is ignored. See [Second time zone](#second-time-zone).',
     },
     {
       name: "calendars",
@@ -627,6 +651,12 @@ Returns the resolved settings of the nearest provider. Outside a provider it ret
     },
     { name: "hourCycle", type: "12 | 24", description: "Clock style." },
     { name: "locale", type: "Locale", description: "date-fns locale." },
+    {
+      name: "secondaryTimeZone",
+      type: "string | undefined",
+      description:
+        "IANA id of the second time zone column, or `undefined` when there is none or the runtime doesn't know the zone given.",
+    },
     {
       name: "weekStartsOn",
       type: "0 | 1 | 2 | 3 | 4 | 5 | 6",

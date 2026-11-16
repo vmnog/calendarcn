@@ -1,3 +1,5 @@
+import { isSameDay } from "date-fns";
+
 import { getTimeZoneCity } from "@/lib/timezone-label";
 import type {
   DetailedCalendarEvent,
@@ -44,6 +46,15 @@ const FALLBACK_TIME_ZONES = [
 
 /** Milliseconds in a day, for times of day */
 const DAY_MS = 86_400_000;
+
+/** Milliseconds in an hour */
+const HOUR_MS = 3_600_000;
+
+/**
+ * Hour of the day whose offsets the time axis's second column follows:
+ * noon, clear of the night hours when clocks change
+ */
+const SECONDARY_TIME_AXIS_HOUR = 12;
 
 /** One `Intl.DateTimeFormat` per zone and name style; building them is slow */
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
@@ -123,6 +134,22 @@ export function getTimeZoneOffsetMinutes(date: Date, timeZone: string): number {
 
   const minutes = Number(match[2]) * 60 + Number(match[3]);
   return match[1] === "-" ? -minutes : minutes;
+}
+
+/**
+ * Minutes a clock in `toTimeZone` is ahead of a clock in `fromTimeZone` at
+ * `date`: 570 from New York to Kolkata in June (GMT−4 to GMT+5:30), -180
+ * from New York to Los Angeles. Negative when it is behind.
+ */
+export function getTimeZoneOffsetDifference(
+  date: Date,
+  fromTimeZone: string,
+  toTimeZone: string,
+): number {
+  return (
+    getTimeZoneOffsetMinutes(date, toTimeZone) -
+    getTimeZoneOffsetMinutes(date, fromTimeZone)
+  );
 }
 
 /**
@@ -402,4 +429,26 @@ export function fromZonedDayTime(
   const wallClock =
     Date.UTC(day.getFullYear(), day.getMonth(), day.getDate()) + timeOfDay;
   return fromWallClock(wallClock, timeZone, new Date(wallClock));
+}
+
+/**
+ * The instant whose offsets the time axis's second column shows: noon in
+ * `timeZone` (the zone of the hour rows) on today while today is among
+ * `days`, else on the first of `days` (never empty). One instant serves the
+ * whole column, so in a week where a clock changes, the labels are off by
+ * that change on the days on the other side of it.
+ */
+export function getSecondaryTimeAxisInstant(
+  days: readonly Date[],
+  today: Date | null,
+  timeZone: string,
+): Date {
+  const visibleToday = today
+    ? days.find((day) => isSameDay(day, today))
+    : undefined;
+  return fromZonedDayTime(
+    visibleToday ?? days[0],
+    SECONDARY_TIME_AXIS_HOUR * HOUR_MS,
+    timeZone,
+  );
 }
