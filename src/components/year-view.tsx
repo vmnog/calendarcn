@@ -24,6 +24,7 @@ import {
   formatCellDate,
   formatFullDate,
 } from "@/lib/event-utils";
+import { expandRecurringEvents } from "@/lib/recurrence";
 import type { YearViewProps } from "./week-view-types";
 
 /**
@@ -146,7 +147,10 @@ export function YearView({ onDayClick, className }: YearViewProps) {
   // year rather than on every render: DayPicker asks about all 365 days
   const eventCounts = useMemo(() => {
     const start = new Date(yearStartTime);
-    return countEventsByDay(events, { start, end: addYears(start, 1) });
+    const range = { start, end: addYears(start, 1) };
+    // Repeating events count on each of their dates (ADR-007), generated
+    // for the year and never stored, as month view draws them
+    return countEventsByDay(expandRecurringEvents(events, range), range);
   }, [events, yearStartTime]);
 
   const modifiers = useMemo(

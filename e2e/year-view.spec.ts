@@ -211,6 +211,21 @@ test.describe("desktop", () => {
     await expect(launchReviews).toHaveCount(before);
   });
 
+  test("a repeating event counts on each of its dates", async ({ page }) => {
+    await page.keyboard.press("y");
+    // Launch Review repeats every 2 weeks on Saturday from June 6, 6 times
+    await expect(
+      yearDayByDate(page, "Saturday, July 18").first(),
+    ).toHaveAccessibleName(/, \d+ events?$/);
+    await expect(
+      yearDayByDate(page, "Saturday, August 15").first(),
+    ).toHaveAccessibleName(/, \d+ events?$/);
+    // July 25 falls between two repeats and has no events of its own
+    await expect(yearDay(page, "Saturday, July 25")).toBeVisible();
+    // The series ends after August 15
+    await expect(yearDay(page, "Saturday, August 29")).toBeVisible();
+  });
+
   test("a toast stays at the bottom right, over the year grid", async ({
     page,
   }) => {
