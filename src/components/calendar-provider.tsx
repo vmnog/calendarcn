@@ -38,7 +38,13 @@ import {
   recordEventHistory,
   resolvePasteTarget,
 } from "@/lib/event-history";
-import { createSeriesOccurrence, findSeriesOccurrence } from "@/lib/recurrence";
+import {
+  applyRecurringEdit,
+  createStandaloneCopy,
+  findEventOrOccurrence,
+  findSeriesOccurrence,
+  getOccurrenceRemoval,
+} from "@/lib/recurrence";
 import { isKnownTimeZone } from "@/lib/time-zones";
 import type {
   CalendarConfig,
@@ -595,10 +601,11 @@ function CalendarStateProvider({
     setVisibleDays([]);
   }, [view]);
 
-  const selectedEvent = React.useMemo(
-    () => events.find((e) => e.id === selectedEventId) ?? null,
-    [events, selectedEventId],
-  );
+  // A generated occurrence of a repeating event is selected by its id too
+  const selectedEvent = React.useMemo(() => {
+    if (selectedEventId === null) return null;
+    return findEventOrOccurrence(events, selectedEventId);
+  }, [events, selectedEventId]);
 
   // Only honor the focus request while that event is still the selected one
   const pendingTitleFocusId =
@@ -688,28 +695,51 @@ function CalendarStateProvider({
 
   const updateEvent = React.useCallback(
     (updatedEvent: CalendarEvent) => {
-      const index = eventsRef.current.findIndex(
-        (e) => e.id === updatedEvent.id,
-      );
-      const previous = eventsRef.current[index];
-      setEvents((prev) =>
-        prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)),
-      );
-      onEventUpdate?.(updatedEvent);
+      const current = eventsRef.current;
+      const index = current.findIndex((e) => e.id === updatedEvent.id);
+      const stored = index === -1 ? undefined : current[index];
+      // Not stored: an occurrence the views generated from a repeating
+      // event's rule (or an id nothing has)
+      const generated = stored
+        ? null
+        : findEventOrOccurrence(current, updatedEvent.id);
+      const previous = stored ?? generated ?? undefined;
+      const next = previous
+        ? applyRecurringEdit(current, previous, updatedEvent)
+        : updatedEvent;
+
+      if (generated) {
+        // Its first edit stores it as an event of its own, standing for its
+        // date in the series (ADR-007). It is one "create" step: undoing it
+        // removes the stored event and the generated date comes back
+        const changes: EventHistoryChange[] = [
+          { before: null, after: next, index: current.length },
+        ];
+        commitChanges(changes);
+        recordHistory("create", changes);
+      } else {
+        setEvents((prev) => prev.map((e) => (e.id === next.id ? next : e)));
+        onEventUpdate?.(next);
+        if (previous) {
+          recordHistory("edit", [{ before: previous, after: next, index }]);
+        }
+      }
 
       // Moves and resizes (drag, keyboard, or the details) are announced;
       // edits that keep the time, like the title, are not
       if (!previous) return;
-      recordHistory("edit", [{ before: previous, after: updatedEvent, index }]);
-      const message = describeEventChange(
-        previous,
-        updatedEvent,
-        hourCycle,
-        locale,
-      );
+      const message = describeEventChange(previous, next, hourCycle, locale);
       if (message) announce(message);
     },
-    [setEvents, onEventUpdate, hourCycle, locale, announce, recordHistory],
+    [
+      setEvents,
+      commitChanges,
+      onEventUpdate,
+      hourCycle,
+      locale,
+      announce,
+      recordHistory,
+    ],
   );
 
   const addEventFromRange = React.useCallback(
@@ -743,12 +773,27 @@ function CalendarStateProvider({
    */
   const removeEvent = React.useCallback(
     (eventId: string, action: "delete" | "cut") => {
-      const index = eventsRef.current.findIndex((e) => e.id === eventId);
-      const event = eventsRef.current[index];
+      const current = eventsRef.current;
+      const index = current.findIndex((e) => e.id === eventId);
+      // A generated date of a repeating event isn't stored
+      const event = current[index] ?? findEventOrOccurrence(current, eventId);
       if (!event) return null;
-      const changes: EventHistoryChange[] = [
-        { before: event, after: null, index },
-      ];
+      // One date of a series goes by being excluded from it, and its stored
+      // event, when it has one, goes with it (ADR-007). The series' own
+      // event stands for the series and is deleted as any event
+      const removal = getOccurrenceRemoval(current, event);
+      const changes: EventHistoryChange[] = removal
+        ? [
+            ...(removal.removed
+              ? [{ before: removal.removed, after: null, index }]
+              : []),
+            {
+              before: removal.series,
+              after: removal.excluded,
+              index: current.indexOf(removal.series),
+            },
+          ]
+        : [{ before: event, after: null, index }];
       commitChanges(changes);
       const step = recordHistory(action, changes);
       setSelectedEventId((prev) => (prev === eventId ? null : prev));
@@ -780,7 +825,7 @@ function CalendarStateProvider({
 
   const copyEvent = React.useCallback(
     (eventId: string) => {
-      const event = eventsRef.current.find((e) => e.id === eventId);
+      const event = findEventOrOccurrence(eventsRef.current, eventId);
       if (!event) return;
       setCopiedEvent(event);
       announce(describeEventAction("copy", event));
@@ -807,9 +852,13 @@ function CalendarStateProvider({
 
   const duplicateEvent = React.useCallback(
     (eventId: string) => {
-      const source = eventsRef.current.find((e) => e.id === eventId);
+      const source = findEventOrOccurrence(eventsRef.current, eventId);
       if (!source) return;
-      addEventCopy({ ...source, id: crypto.randomUUID() }, "duplicate");
+      // A copy never claims to be an occurrence of the series it came from
+      addEventCopy(
+        createStandaloneCopy(source, crypto.randomUUID()),
+        "duplicate",
+      );
     },
     [addEventCopy],
   );
@@ -914,23 +963,11 @@ function CalendarStateProvider({
 
   const showSeriesOccurrence = React.useCallback(
     (occurrence: SeriesOccurrence) => {
-      let target = occurrence.event;
-      if (!target) {
-        if (!selectedEvent) return;
-        const copy = createSeriesOccurrence(selectedEvent, occurrence);
-        // An occurrence opened before (and maybe moved or renamed since)
-        // keeps its edits rather than being replaced by a fresh copy
-        const opened = eventsRef.current.find((e) => e.id === copy.id);
-        if (!opened) {
-          setEvents((prev) => [...prev, copy]);
-          onEventCreate?.(copy);
-        }
-        target = opened ?? copy;
-      }
-      selectEvent(target.id);
+      // A generated occurrence is selected as it is: nothing is added
+      selectEvent(occurrence.id);
 
       // Stay put while the occurrence is on screen
-      const start = target.start;
+      const start = occurrence.start;
       const isOnScreen =
         view === "month"
           ? isSameMonth(start, displayMonth ?? currentDate)
@@ -943,9 +980,6 @@ function CalendarStateProvider({
       );
     },
     [
-      selectedEvent,
-      setEvents,
-      onEventCreate,
       selectEvent,
       view,
       displayMonth,
@@ -1140,9 +1174,8 @@ function CalendarStateProvider({
     );
     addEventCopy(
       {
-        ...copiedEvent,
+        ...createStandaloneCopy(copiedEvent, crypto.randomUUID()),
         ...getPastedEventTimes(copiedEvent, target),
-        id: crypto.randomUUID(),
       },
       "paste",
     );

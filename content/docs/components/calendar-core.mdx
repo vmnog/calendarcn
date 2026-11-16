@@ -44,7 +44,7 @@ const [events, setEvents] = React.useState(initialEvents);
 </CalendarProvider>;
 ```
 
-Use `onEventCreate`, `onEventUpdate`, `onEventDelete` and `onEventSelect` to react to one change at a time, for example to save it to a server. `onEventCreate` also gets the occurrence copies the details' series arrows add, so a repeating event's next occurrence is saved like a clicked-in event. To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/loading-events).
+Use `onEventCreate`, `onEventUpdate`, `onEventDelete` and `onEventSelect` to react to one change at a time, for example to save it to a server. `onEventCreate` also gets an occurrence of a repeating event the first time it is edited: see [Repeating events](#repeating-events). To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/loading-events).
 
 ### Undo and redo
 
@@ -75,6 +75,21 @@ After a delete, a cut or a copy, the provider keeps a notice worded like Notion 
 ### Server rendering
 
 Without `date` or `defaultDate`, the calendar starts on today's period. The server doesn't know the viewer's today or time zone, so in that case the provider renders nothing until hydration finishes, and server and client markup always match. Pass `defaultDate` to render on the server.
+
+## Repeating events
+
+An event with a `recurrenceRule` (or an RRULE in `recurrence`) is one event in `events`, and every view draws it on each date its rule gives, as does the details sidebar's search. The views generate those occurrences for the dates on screen with `expandRecurringEvents()`; they are never added to `events`, so `useCalendar().events`, `onEventsChange` and the .ics export hold each series once.
+
+- An occurrence's id is the series' id and its date, `launch-2026-06-20`. Selecting it, `selectedEvent` and the details' series arrows work as for any event.
+- Editing an occurrence (drag, resize, the keyboard or the details) changes that date only. It is added to your events with `seriesId` (the series' id) and `originalStart` (the start it had), through `onEventCreate` and `onEventsChange`, and drawn in place of the generated one. Later edits to it go through `onEventUpdate`. A new repeat rule takes it out of the series, to repeat on its own from its date.
+- Editing the series' own event, its first date, changes the series: every occurrence you haven't stored follows it.
+- Delete and Cut on one date leave it out of the series: its start is added to the series event's `excludedDates` (reported through `onEventUpdate`), and a stored date goes with it. The series' own event deletes the whole series. Undo and redo treat each as one step: the first edit of a generated date is a create, so undoing it brings the generated date back.
+- Duplicate and Paste on a date of a repeating event add a single event on that date: the copy has no `seriesId`, `originalStart`, `recurrenceRule`, `recurrence` or `excludedDates`, so it doesn't repeat and the series keeps its dates.
+- `excludedDates` leaves dates out, like an .ics `EXDATE`.
+- Occurrences keep the series' clock time in its `timeZone` when the clocks change. An all-day series keeps whole days.
+- `recurrence` written as display text ("Every week on Thu") is a label only: draw those occurrences as events of your own.
+
+When you load events by range ([Loading Events](/docs/loading-events)), include the repeating events whose series reaches into the range, even when their first date is earlier.
 
 ## Configuration
 
@@ -160,7 +175,7 @@ interface Meeting extends CalendarEvent {
       name: "onEventsChange",
       type: "(events: TEvent[]) => void",
       description:
-        "Called with the full next list whenever events change: drag, resize, create, an edit in the details, delete, duplicate, cut, paste, undo and redo, or an occurrence the series arrows open.",
+        "Called with the full next list whenever events change: drag, resize, create, an edit in the details, delete, duplicate, cut, paste, undo and redo. A repeating event stays one event; an edited occurrence is added as its own.",
     },
     {
       name: "view",
@@ -312,7 +327,7 @@ interface Meeting extends CalendarEvent {
       name: "onEventCreate",
       type: "(event: TEvent) => void",
       description:
-        "Called after an event is added: one created by clicking an empty slot, a duplicate or a paste, an occurrence copy the series arrows add (`showSeriesOccurrence`), or one `undo` or `redo` brings back.",
+        "Called after an event is added: one created by clicking an empty slot, a duplicate or a paste, an occurrence of a repeating event stored on its first edit (with `seriesId` and `originalStart`), or one `undo` or `redo` brings back.",
     },
     {
       name: "onEventUpdate",
@@ -373,7 +388,12 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
 <PropsTable
   nameHeader="Field"
   rows={[
-    { name: "events", type: "TEvent[]", description: "All events." },
+    {
+      name: "events",
+      type: "TEvent[]",
+      description:
+        "The stored events. A repeating event is one event here; `expandRecurringEvents()` gives its occurrences.",
+    },
     {
       name: "view",
       type: '"day" | "week" | "month" | "agenda"',
@@ -431,13 +451,14 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     {
       name: "selectedEvent",
       type: "TEvent | null",
-      description: "The selected event.",
+      description:
+        "The selected event: a stored one, or the generated occurrence its id names.",
     },
     {
       name: "previousInSeries",
       type: "SeriesOccurrence<TEvent> | null",
       description:
-        "The selected event's previous occurrence in its repeating series (`findSeriesOccurrence`): `{ id, start, event? }`, with `event` when the events have one for it, and otherwise the `id` a copy of it gets. `null` when nothing is selected, the event doesn't repeat, or it is the first.",
+        "The selected event's previous occurrence in its repeating series (`findSeriesOccurrence`): `{ id, start, event }`, with `event` the one stored for that date or the one generated for it. `null` when nothing is selected, the event doesn't repeat, or it is the first.",
     },
     {
       name: "nextInSeries",
@@ -449,7 +470,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "showSeriesOccurrence",
       type: "(occurrence: SeriesOccurrence<TEvent>) => void",
       description:
-        "Selects an occurrence and moves to its period when it is off screen. One the events don't have yet is added first, as a copy of the selected event, through `onEventsChange` and `onEventCreate`. The details' series arrows call it.",
+        "Selects an occurrence and moves to its period when it is off screen. Nothing is added: a generated occurrence is selected as it is. The details' series arrows call it.",
     },
     {
       name: "highlightedDate",
@@ -524,7 +545,8 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     {
       name: "updateEvent",
       type: "(event: TEvent) => void",
-      description: "Replaces the event with the same id.",
+      description:
+        "Replaces the event with the same id. A generated occurrence of a repeating event is added instead, through `onEventCreate`: see [Repeating events](#repeating-events).",
     },
     {
       name: "deleteEvent",
@@ -966,6 +988,34 @@ Exported from `@/lib/event-utils`. The views, the details panel and the context 
       type: "(a, b) => boolean",
       description:
         "Whether two reminders fire at the same moment, as 60 min and 1 hour do.",
+    },
+  ]}
+/>
+
+### Repeat helpers
+
+Exported from `@/lib/recurrence`. The views and the provider use them, so a view of your own can draw and edit repeating events the same way.
+
+<PropsTable
+  nameHeader="Helper"
+  rows={[
+    {
+      name: "expandRecurringEvents",
+      type: "(events, range: VisibleRange) => TEvent[]",
+      description:
+        "What to draw for the dates in `range`: events that don't repeat as they are, and each repeating event's occurrences that overlap the range, its first date as the event itself. At most `MAX_OCCURRENCES_PER_RANGE` (1000) per series.",
+    },
+    {
+      name: "findEventOrOccurrence",
+      type: "(events, id) => TEvent | null",
+      description:
+        "The stored event with that id, else the generated occurrence it names (`launch-2026-06-20`), else `null`.",
+    },
+    {
+      name: "applyRecurringEdit",
+      type: "(events, previous, edited) => TEvent",
+      description:
+        "The event to store for an edit, as `updateEvent` does it: an occurrence keeps `seriesId` and `originalStart` unless its rule changed, and the series' event moved to another day takes its rule along.",
     },
   ]}
 />

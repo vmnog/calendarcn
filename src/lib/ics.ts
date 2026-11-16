@@ -1,7 +1,16 @@
 import { addDays, addSeconds, subDays } from "date-fns";
 
-import { formatRRule, isRRule, parseRecurrence } from "@/lib/recurrence";
-import { getEventTimeZone, getViewerTimeZone } from "@/lib/time-zones";
+import {
+  formatRRule,
+  getOccurrenceId,
+  isRRule,
+  parseRecurrence,
+} from "@/lib/recurrence";
+import {
+  getEventTimeZone,
+  getViewerTimeZone,
+  getZonedDay,
+} from "@/lib/time-zones";
 import type {
   DetailedCalendarEvent,
   EventColor,
@@ -145,32 +154,44 @@ export interface ToIcsOptions {
  *   VTIMEZONE as Outlook writes it) and floating times all become instants
  *   shown in the viewer's time zone. A repeating event keeps an IANA `TZID`
  *   as its `timeZone`.
- * - `UID` to `id` (an edited occurrence, which repeats its series' UID, gets
- *   `UID_RECURRENCE-ID`), `SUMMARY`, `DESCRIPTION` and `LOCATION`.
+ * - `UID` to `id` (an edited occurrence, which repeats its series' UID with a
+ *   RECURRENCE-ID, gets `<UID>-<yyyy-MM-dd>`, the id of that date's
+ *   occurrence, with `seriesId` and `originalStart`), `SUMMARY`,
+ *   `DESCRIPTION` and `LOCATION`.
  * - `RRULE` to `recurrenceRule` (e.g. `FREQ=WEEKLY;BYDAY=TH` to a weekly rule on
  *   Thursdays), read in the event's `timeZone` when it has one, else in the
  *   viewer's. A rule it can't hold exactly (`BYMONTHDAY=1,15`, `BYHOUR`, ...)
- *   is kept as the raw text in `recurrence` instead. Occurrences are not
- *   expanded: the event shows once, at `DTSTART`.
+ *   is kept as the raw text in `recurrence` instead. `EXDATE` goes to
+ *   `excludedDates`. The views expand the rule; the event is the series.
  * - `TRANSP` to `status` (`TRANSPARENT` is free), `CLASS` to `visibility`,
  *   `COLOR` to `color` when it names one of the calendar's colors, and
  *   VALARMs that fire before the start to `reminders`.
  *
- * Cancelled events (`STATUS:CANCELLED`) are left out.
+ * Cancelled events (`STATUS:CANCELLED`) are left out; a cancelled occurrence
+ * of a series becomes one of its `excludedDates`.
  */
 export function parseIcs(text: string): DetailedCalendarEvent[] {
   const root = parseComponents(text);
   const timeZones = collectTimeZones(root);
   const usedIds = new Set<string>();
   const events: DetailedCalendarEvent[] = [];
+  /** Starts of the cancelled occurrences of each series, by its UID */
+  const cancelled = new Map<string, Date[]>();
 
   for (const vevent of findComponents(root, "VEVENT")) {
+    const occurrence = getCancelledOccurrence(vevent, timeZones);
+    if (occurrence) {
+      const dates = cancelled.get(occurrence.uid) ?? [];
+      cancelled.set(occurrence.uid, [...dates, occurrence.start]);
+      continue;
+    }
     const event = toCalendarEvent(vevent, timeZones);
     if (!event) continue;
     event.id = uniqueId(event.id || `ics-event-${events.length + 1}`, usedIds);
     events.push(event);
   }
 
+  linkSeries(events, cancelled);
   return events;
 }
 
@@ -185,8 +206,11 @@ export function parseIcs(text: string): DetailedCalendarEvent[] {
  * an IANA name. `recurrenceRule` is written as an `RRULE` (its "on" end
  * as an `UNTIL` at the end of that day in the event's time zone); without
  * one, `recurrence` is written only when it holds a rule (`FREQ=...`), so
- * display strings such as "Every weekday" are left out. Lines are folded at
- * 75 octets and joined with CRLF.
+ * display strings such as "Every weekday" are left out. `excludedDates` are
+ * written as `EXDATE`, and an edited occurrence (`seriesId` and
+ * `originalStart`) as a VEVENT with its series' `UID`, a `RECURRENCE-ID` and
+ * no `RRULE`, in the series' zone. Lines are folded at 75 octets and joined
+ * with CRLF.
  */
 export function toIcs(
   events: readonly DetailedCalendarEvent[],
@@ -368,7 +392,7 @@ function toCalendarEvent(
   const end = resolveEnd(vevent, start, isAllDay, timeZones);
 
   const event: DetailedCalendarEvent = {
-    id: getEventId(vevent),
+    id: getText(vevent, "UID") ?? "",
     title: getText(vevent, "SUMMARY") ?? "",
     start,
     end,
@@ -385,12 +409,27 @@ function toCalendarEvent(
   if (location) event.location = location;
 
   const rrule = getProperty(vevent, "RRULE")?.value.trim();
-  // A repeating event keeps its zone: its rule is counted in that zone
-  const timeZone = rrule ? getDateTimeZone(startValue) : undefined;
+  const recurrenceId = parseRecurrenceId(vevent, timeZones);
+  // A repeating event and its edited occurrences keep their zone: the rule
+  // is counted in it
+  const timeZone =
+    rrule || recurrenceId ? getDateTimeZone(startValue) : undefined;
   if (timeZone) event.timeZone = timeZone;
   const recurrenceRule = rrule ? parseRecurrence(rrule, start, timeZone) : null;
   if (recurrenceRule) event.recurrenceRule = recurrenceRule;
   if (rrule && !recurrenceRule) event.recurrence = rrule;
+  const excludedDates = rrule ? parseExcludedDates(vevent, timeZones) : [];
+  if (excludedDates.length > 0) event.excludedDates = excludedDates;
+  // An edited occurrence repeats its series' UID: it gets the id the
+  // calendar gives that date's occurrence
+  if (event.id && recurrenceId) {
+    event.seriesId = event.id;
+    event.originalStart = recurrenceId.start;
+    event.id = getOccurrenceId(
+      event.id,
+      getZonedDay(recurrenceId.start, recurrenceId.timeZone),
+    );
+  }
 
   const transparency = getProperty(vevent, "TRANSP")?.value.trim();
   if (transparency) {
@@ -410,14 +449,76 @@ function toCalendarEvent(
 }
 
 /**
- * The event's UID. An edited occurrence of a recurring event repeats the
- * series' UID with a RECURRENCE-ID, so its id gets that value appended.
+ * An occurrence's RECURRENCE-ID: the start it has in its series, and the
+ * IANA zone it is written in. `null` when the VEVENT has none.
  */
-function getEventId(vevent: IcsComponent): string {
-  const uid = getText(vevent, "UID") ?? "";
-  const recurrenceId = getProperty(vevent, "RECURRENCE-ID")?.value.trim();
-  if (!uid || !recurrenceId) return uid;
-  return `${uid}_${recurrenceId}`;
+function parseRecurrenceId(
+  vevent: IcsComponent,
+  timeZones: Map<string, ZoneResolver>,
+): { start: Date; timeZone: string | undefined } | null {
+  const property = getProperty(vevent, "RECURRENCE-ID");
+  const value = property && parseDateValue(property);
+  if (!value) return null;
+  return {
+    start: resolveDate(value, timeZones),
+    timeZone: getDateTimeZone(value),
+  };
+}
+
+/** The dates of every EXDATE of a VEVENT, comma-separated or one per line */
+function parseExcludedDates(
+  vevent: IcsComponent,
+  timeZones: Map<string, ZoneResolver>,
+): Date[] {
+  return vevent.properties
+    .filter((property) => property.name === "EXDATE")
+    .flatMap((property) =>
+      property.value.split(",").flatMap((value) => {
+        const date = parseDateValue({ ...property, value });
+        return date ? [resolveDate(date, timeZones)] : [];
+      }),
+    );
+}
+
+/**
+ * A cancelled occurrence of a series (STATUS:CANCELLED with a
+ * RECURRENCE-ID): its series' UID and the start it had. `null` for any
+ * other VEVENT.
+ */
+function getCancelledOccurrence(
+  vevent: IcsComponent,
+  timeZones: Map<string, ZoneResolver>,
+): { uid: string; start: Date } | null {
+  const status = getProperty(vevent, "STATUS")?.value.trim().toUpperCase();
+  const uid = getText(vevent, "UID");
+  const recurrenceId = parseRecurrenceId(vevent, timeZones);
+  if (status !== "CANCELLED" || !uid || !recurrenceId) return null;
+  return { uid, start: recurrenceId.start };
+}
+
+/**
+ * Joins each series to its occurrences: a cancelled occurrence becomes an
+ * excluded date of its series, and an edited one takes its series' rule,
+ * so its repeat row reads like the others
+ */
+function linkSeries(
+  events: DetailedCalendarEvent[],
+  cancelled: Map<string, Date[]>,
+): void {
+  const series = new Map(
+    events.filter((event) => !event.seriesId).map((event) => [event.id, event]),
+  );
+  for (const [uid, dates] of cancelled) {
+    const event = series.get(uid);
+    if (!event || !(event.recurrenceRule || event.recurrence)) continue;
+    event.excludedDates = [...(event.excludedDates ?? []), ...dates];
+  }
+  for (const event of events) {
+    const parent = event.seriesId ? series.get(event.seriesId) : undefined;
+    if (!parent) continue;
+    if (parent.recurrenceRule) event.recurrenceRule = parent.recurrenceRule;
+    if (parent.recurrence) event.recurrence = parent.recurrence;
+  }
 }
 
 /** `id`, or `id-2`, `id-3`, ... when a file repeats an id */
@@ -893,12 +994,16 @@ function eventToLines(
   event: DetailedCalendarEvent,
   timestamp: string,
 ): string[] {
+  // An edited occurrence is written under its series' UID, without its rule
+  const seriesId = event.originalStart ? event.seriesId : undefined;
   const lines = [
     "BEGIN:VEVENT",
-    `UID:${escapeText(event.id)}`,
+    `UID:${escapeText(seriesId ?? event.id)}`,
     `DTSTAMP:${timestamp}`,
   ];
-  const rrule = getRRule(event);
+  const rrule = seriesId ? undefined : getRRule(event);
+  // A series and its edited occurrences are written in its zone
+  const timeZone = rrule || seriesId ? getSeriesTimeZone(event) : undefined;
 
   if (event.isAllDay) {
     // The calendar's `end` is the last day; iCalendar's DTEND is the day after
@@ -908,10 +1013,19 @@ function eventToLines(
       `DTEND;VALUE=DATE:${formatDate(addDays(lastDay, 1))}`,
     );
   } else {
-    const timeZone = rrule ? getSeriesTimeZone(event) : undefined;
     lines.push(
       formatDateTimeLine("DTSTART", event.start, timeZone),
       formatDateTimeLine("DTEND", event.end, timeZone),
+    );
+  }
+  if (seriesId && event.originalStart) {
+    lines.push(
+      formatDateLine(
+        "RECURRENCE-ID",
+        event.originalStart,
+        event.isAllDay,
+        timeZone,
+      ),
     );
   }
 
@@ -923,7 +1037,12 @@ function eventToLines(
     lines.push(`LOCATION:${escapeText(event.location)}`);
   }
 
-  if (rrule) lines.push(`RRULE:${rrule}`);
+  if (rrule) {
+    lines.push(`RRULE:${rrule}`);
+    for (const date of event.excludedDates ?? []) {
+      lines.push(formatDateLine("EXDATE", date, event.isAllDay, timeZone));
+    }
+  }
 
   if (event.status) {
     lines.push(`TRANSP:${event.status === "free" ? "TRANSPARENT" : "OPAQUE"}`);
@@ -985,6 +1104,17 @@ function formatUtcDateTime(date: Date): string {
     pad(date.getUTCSeconds()),
   ].join("");
   return `${day}T${time}Z`;
+}
+
+/** A RECURRENCE-ID or EXDATE line: a DATE for all-day events, else like DTSTART */
+function formatDateLine(
+  name: string,
+  date: Date,
+  isAllDay: boolean | undefined,
+  timeZone: string | undefined,
+): string {
+  if (isAllDay) return `${name};VALUE=DATE:${formatDate(date)}`;
+  return formatDateTimeLine(name, date, timeZone);
 }
 
 /**

@@ -77,8 +77,8 @@ function IcsCalendar({ events, onImport }: IcsCalendarProps) {
     }
 
     onImport(imported);
-    // Jump to the week of the earliest imported event (a recurring event
-    // shows once, at its first occurrence)
+    // Jump to the week of the earliest imported event (a repeating event's
+    // first date)
     const earliest = imported.reduce((first, event) =>
       event.start < first.start ? event : first,
     );

@@ -212,8 +212,8 @@ test("the time zone and repeat rows edit the event", async ({ page }) => {
     recurrence.getByRole("button", { name: /^Repeat:/ }),
   ).toBeFocused();
 
-  // The provider steps through the series: the next occurrence is added as
-  // a copy and the calendar moves to its week
+  // The provider steps through the series: it selects the next occurrence,
+  // generated from the rule, and the calendar moves to its week
   const previous = recurrence.getByRole("button", {
     name: "Go to previous event in this series",
   });
@@ -231,38 +231,44 @@ test("the time zone and repeat rows edit the event", async ({ page }) => {
   );
 });
 
-test("an occurrence the series arrows add is reported to onEventCreate", async ({
+test("an occurrence is reported to onEventCreate when it is first edited", async ({
   page,
 }) => {
-  // /series: a weekly "Standup" on Thursday, June 4, the ids onEventCreate
-  // reports listed above the calendar
+  // /series: a weekly "Standup" from Thursday, June 4, drawn every
+  // Thursday; the ids onEventCreate reports are listed above the calendar
   await page.goto("/series");
   const created = page.getByLabel("Created events");
-  await calendarEvent(page, "Standup").click();
+  await page
+    .getByRole("button", { name: /^Standup, .*Thursday, June 4$/ })
+    .click();
   const details = eventDetails(page);
   const recurrence = details.locator('[data-section="recurrence"]');
-  const next = recurrence.getByRole("button", {
-    name: "Go to next event in this series",
-  });
-  const previous = recurrence.getByRole("button", {
-    name: "Go to previous event in this series",
-  });
-
-  await next.click();
+  await recurrence
+    .getByRole("button", { name: "Go to next event in this series" })
+    .click();
   await expect(details.getByTestId("event-start-date")).toHaveValue(
     "Thu Jun 11",
   );
+  // Stepping to it adds nothing: the occurrence is generated from the rule
+  await expect(created).toHaveText("");
+
+  // Its first edit stores it, under the id that names its date
+  const title = details.getByPlaceholder("Title");
+  await title.fill("Standup (moved)");
+  await title.press("Enter");
   await expect(created).toHaveText("standup-2026-06-11");
+  await expect(
+    page.getByRole("button", {
+      name: /^Standup \(moved\), .*Thursday, June 11$/,
+    }),
+  ).toBeVisible();
 
-  // Opening it again reports nothing new
-  await previous.click();
-  await expect(details.getByTestId("event-start-date")).toHaveValue(
-    "Thu Jun 4",
-  );
-  await next.click();
-  await expect(details.getByTestId("event-start-date")).toHaveValue(
-    "Thu Jun 11",
-  );
+  // A second edit updates it: nothing new is reported
+  await title.fill("Standup (moved again)");
+  await title.press("Enter");
+  await expect(
+    page.getByRole("button", { name: /^Standup \(moved again\), / }),
+  ).toBeVisible();
   await expect(created).toHaveText("standup-2026-06-11");
 });
 
