@@ -319,7 +319,7 @@ test("deleting one date leaves the others, and undo brings it back", async ({
   expect(countLines(await exportIcs(page), exdate)).toBe(0);
 });
 
-test("duplicating a date makes a copy that is no occurrence of the series", async ({
+test("duplicating a date adds a single event on that date", async ({
   page,
 }) => {
   await nextWeeks(page, 2);
@@ -334,16 +334,23 @@ test("duplicating a date makes a copy that is no occurrence of the series", asyn
     }),
   ).toHaveCount(2);
 
-  // The copy is an event of its own: the export has the series and the
-  // copy, and neither writes a RECURRENCE-ID
+  // The copy is a single event: the export has the series and the copy,
+  // only the series writes a rule, and neither writes a RECURRENCE-ID
   const ics = await exportIcs(page);
   expect(countLines(ics, "SUMMARY:Launch Review")).toBe(2);
+  expect(ics.split("\r\nRRULE:")).toHaveLength(2);
   expect(ics).not.toContain("RECURRENCE-ID");
 
   await page.getByRole("button", { name: "Today", exact: true }).click();
   await expect(launchReview(page, "June 6")).toHaveCount(1);
 
+  // The copy doesn't repeat: July 4 is still drawn once
+  await nextWeeks(page, 4);
+  await expectHeader(page, "July 2026 Week 27");
+  await expect(launchReview(page, "July 4")).toHaveCount(1);
+
   await page.keyboard.press("ControlOrMeta+z");
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   await nextWeeks(page, 2);
   await expect(launchReview(page, "June 20")).toHaveCount(1);
 });

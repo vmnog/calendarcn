@@ -802,14 +802,44 @@ test.describe("getOccurrenceRemoval", () => {
 });
 
 test.describe("createStandaloneCopy", () => {
-  test("drops seriesId and originalStart and keeps the rule", () => {
+  test("drops the series fields and the repeat rule", () => {
     const june20 = findEventOrOccurrence([launch], "launch-2026-06-20");
     if (!june20) throw new Error("No June 20 occurrence");
     const copy = createStandaloneCopy(june20, "copy");
     expect(copy.id).toBe("copy");
-    expect("seriesId" in copy).toBe(false);
-    expect("originalStart" in copy).toBe(false);
-    expect(copy.recurrenceRule).toEqual(launch.recurrenceRule);
+    for (const field of [
+      "seriesId",
+      "originalStart",
+      "recurrenceRule",
+      "recurrence",
+      "excludedDates",
+    ]) {
+      expect(field in copy, field).toBe(false);
+    }
     expect(local(copy.start)).toBe("2026-06-20 10:00");
+    // Nothing repeats from it
+    const range = { start: new Date(2026, 5, 1), end: new Date(2026, 8, 1) };
+    expect(expandRecurringEvents([copy], range)).toEqual([copy]);
+  });
+
+  test("drops them from the series' own event, even with excluded dates", () => {
+    const series = { ...launch, excludedDates: [new Date(2026, 5, 20, 10)] };
+    const copy = createStandaloneCopy(series, "copy");
+    for (const field of ["recurrenceRule", "excludedDates"]) {
+      expect(field in copy, field).toBe(false);
+    }
+  });
+
+  test("copies an event that doesn't repeat as it is", () => {
+    const lunch: DetailedCalendarEvent = {
+      id: "lunch",
+      title: "Lunch",
+      start: new Date(2026, 5, 1, 12),
+      end: new Date(2026, 5, 1, 13),
+    };
+    expect(createStandaloneCopy(lunch, "copy")).toEqual({
+      ...lunch,
+      id: "copy",
+    });
   });
 });

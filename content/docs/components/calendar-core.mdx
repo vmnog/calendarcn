@@ -80,7 +80,7 @@ An event with a `recurrenceRule` (or an RRULE in `recurrence`) is one event in `
 - Editing an occurrence (drag, resize, the keyboard or the details) changes that date only. It is added to your events with `seriesId` (the series' id) and `originalStart` (the start it had), through `onEventCreate` and `onEventsChange`, and drawn in place of the generated one. Later edits to it go through `onEventUpdate`. A new repeat rule takes it out of the series, to repeat on its own from its date.
 - Editing the series' own event, its first date, changes the series: every occurrence you haven't stored follows it.
 - Delete and Cut on one date leave it out of the series: its start is added to the series event's `excludedDates` (reported through `onEventUpdate`), and a stored date goes with it. The series' own event deletes the whole series. Undo and redo treat each as one step: the first edit of a generated date is a create, so undoing it brings the generated date back.
-- Duplicate and Paste copy a date without `seriesId` and `originalStart`, so the copy is no occurrence: it keeps the repeat rule and repeats on its own from its date.
+- Duplicate and Paste on a date of a repeating event add a single event on that date: the copy has no `seriesId`, `originalStart`, `recurrenceRule`, `recurrence` or `excludedDates`, so it doesn't repeat and the series keeps its dates.
 - `excludedDates` leaves dates out, like an .ics `EXDATE`.
 - Occurrences keep the series' clock time in its `timeZone` when the clocks change. An all-day series keeps whole days.
 - `recurrence` written as display text ("Every week on Thu") is a label only: draw those occurrences as events of your own.

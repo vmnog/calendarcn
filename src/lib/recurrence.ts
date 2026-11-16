@@ -1312,9 +1312,11 @@ export function getOccurrenceRemoval<TEvent extends SeriesEvent>(
 }
 
 /**
- * A copy of `event` under a new id that is no occurrence of any series: it
- * drops `seriesId` and `originalStart`, and keeps its repeat rule, so it
- * repeats on its own from its date (Google Calendar's "Duplicate").
+ * A copy of `event` under a new id that is a single event: no occurrence
+ * of any series and no series of its own. It drops `seriesId`,
+ * `originalStart`, `recurrenceRule`, `recurrence` and `excludedDates`, so
+ * duplicating or pasting one date of a repeating event adds one event on
+ * that date. An event that doesn't repeat is copied as it is.
  */
 export function createStandaloneCopy<TEvent extends SeriesEvent>(
   event: TEvent,
@@ -1323,5 +1325,8 @@ export function createStandaloneCopy<TEvent extends SeriesEvent>(
   const copy: TEvent = { ...event, id };
   delete copy.seriesId;
   delete copy.originalStart;
+  delete copy.recurrenceRule;
+  delete copy.recurrence;
+  delete copy.excludedDates;
   return copy;
 }
