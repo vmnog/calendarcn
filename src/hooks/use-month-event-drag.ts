@@ -200,8 +200,10 @@ export function useMonthEventDrag({
       // Commit from the handler, never from inside a state updater:
       // updaters run during render, and calling the parent's setState
       // there triggers "Cannot update a component while rendering".
-      const event = eventsRef.current.find((e) => e.id === drag.eventId);
-      if (!event) return;
+      // A repeating event's generated occurrence isn't in `events`: commit
+      // the copy the gesture started with
+      const event =
+        eventsRef.current.find((e) => e.id === drag.eventId) ?? drag.event;
 
       const daysDelta = differenceInCalendarDays(
         drag.targetDate,

@@ -16,7 +16,7 @@ Submit CalendarCN to the shadcn/ui registry directory, so it shows up next to th
 Not scheduled yet, roughly in priority order.
 
 - **Time zones**: a `timeZone` prop, and a second time zone column next to the time axis.
-- **Recurring events**: expand recurrence rules into events, and edit "this event", "this and following events" or "all events".
+- **Editing repeating events**: ask whether an edit applies to "this event", "this and following events" or "all events".
 - **More views**: a year view, and a resource view with people or rooms side by side.
 - **Large calendars**: virtualized rendering for thousands of events.
 - **Theming**: event colors as CSS variables, so you can add your own next to the seven built in, and shading for business hours.
@@ -37,6 +37,7 @@ Some controls are drawn the way Notion Calendar has them and aren't built yet. E
 
 The highlights. The [Changelog](/docs/changelog) lists every change item by item, with breaking changes called out.
 
+- **Repeating events**: a repeating event is drawn on every date of its rule in every view and in event search, and editing one date changes only that date. .ics files bring their edited and cancelled dates along. See [Calendar Core](/docs/components/calendar-core#repeating-events).
 - **The live demo as a block**: [Calendar App](/docs/components/calendar-app) installs the whole live demo with one command: both sidebars, the header, every view, the command menu, theme switching and .ics files. The live demo renders this block, so the two stay the same. Each part installs on its own too, from the [Calendar Sidebar](/docs/components/calendar-sidebar) and [Details Sidebar](/docs/components/details-sidebar) to the [Command Menu](/docs/components/command-menu) and the [Sample Data](/docs/sample-data).
 - **Notion-style event details**: the details panel matches Notion Calendar section by section: time and date, time zone, repeat, participants and rooms, conferencing, location, links and attachments, description, calendar, availability and reminders. It works the same in Radix and Base UI projects, and each section can be used on its own. See [Event Details](/docs/components/event-details).
 - **Base UI styles**: the registry installs into shadcn/ui projects set up with Base UI as well as Radix. The event details render their own popover, so they no longer rely on Radix-only features. See [Installation](/docs/installation). <Contributor handle="doneumark" pr={43} />

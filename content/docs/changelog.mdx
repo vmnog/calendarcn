@@ -11,6 +11,15 @@ Entries marked **Breaking** can stop your code from compiling or change what it 
 
 Live in the registry, but not in a tagged release yet.
 
+### November 16, 2026
+
+- **Added** `calendar-core`, `time-grid`, `month-view`, `agenda-view`, `details-sidebar`, `ics`: a repeating event is drawn on every date of its rule in the day, week, month and agenda views, and event search lists each date. The occurrences are generated for the dates on screen and never added to your events. Dragging, resizing or editing one date stores it as an event of its own with `seriesId` and `originalStart`, reported through `onEventCreate`, and `excludedDates` leaves dates out. `parseIcs()` and `toIcs()` read and write them as `RECURRENCE-ID` and `EXDATE`. `expandRecurringEvents()`, `findEventOrOccurrence()` and `applyRecurringEdit()` are new in `@/lib/recurrence`. See [Calendar Core](/docs/components/calendar-core#repeating-events).
+  - **Breaking:** an event with a `recurrenceRule` (or an RRULE in `recurrence`) now shows on every date. If you also store each occurrence as an event of its own, drop the rule from those, or give them `seriesId` and `originalStart` so they replace the generated ones.
+  - **Breaking:** the series arrows select the next occurrence without adding a copy, so stepping no longer calls `onEventCreate`. The first edit of an occurrence does.
+  - **Breaking:** `parseIcs()` names an edited occurrence `<UID>-<yyyy-MM-dd>` instead of `<UID>_<RECURRENCE-ID>`, and turns a cancelled occurrence into an excluded date of its series instead of dropping it. Remove events imported under the old ids before importing the same file again.
+  - **Breaking:** `findSeriesOccurrence()` builds a series from its event and the events that name it with `seriesId`, no longer from every event with the same title, calendar and rule. An event whose `recurrence` is display text, alone in its series, has no previous or next occurrence.
+  - **Breaking:** if your event type already has an `excludedDates`, `seriesId` or `originalStart` field of another type, it no longer fits `DetailedCalendarEvent`. Rename your field.
+
 ### November 10, 2026
 
 - **Added** `calendar-app`, `calendar-core`, `calendar-list`, `calendar-sidebar`: in Calendar App, the eye beside a calendar hides its events from every view and shows them again on a second click. The .ics export still writes every event. `filterShownEvents()` and `mergeShownEvents()` are new in `calendar-core`, to do the same in a layout of your own. [#76](https://github.com/vmnog/calendarcn/pull/76)

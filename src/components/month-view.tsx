@@ -28,6 +28,7 @@ import {
   generateWeekRow,
 } from "@/lib/event-utils";
 import { isMultiDayEvent } from "@/lib/event-utils";
+import { expandRecurringEvents } from "@/lib/recurrence";
 import { MonthViewGrid } from "./month-view-grid";
 import { MonthViewEventBar } from "./month-view-event-bar";
 import { MonthViewEventItem } from "./month-view-event-item";
@@ -286,6 +287,27 @@ export function MonthView({
     return rows;
   }, [weekRows, dynamicBuffer, weekStartsOn, locale]);
 
+  // What the grid draws: repeating events on each of their dates in the
+  // buffered rows, generated for them and never stored (ADR-007)
+  const rangeStartTime = startOfDay(
+    bufferedWeekRows[0]?.days[0]?.date ?? currentDate,
+  ).getTime();
+  const rangeEndTime = addWeeks(
+    startOfDay(
+      bufferedWeekRows[bufferedWeekRows.length - 1]?.days[0]?.date ??
+        currentDate,
+    ),
+    1,
+  ).getTime();
+  const expandedEvents = useMemo(
+    () =>
+      expandRecurringEvents(events, {
+        start: new Date(rangeStartTime),
+        end: new Date(rangeEndTime),
+      }),
+    [events, rangeStartTime, rangeEndTime],
+  );
+
   // Base offset hides the top buffer; scrollOffset + slideOffset shift within
   const baseTranslateY = -(dynamicBuffer * rowHeight);
   const transformY = baseTranslateY + scrollOffset + slideOffset;
@@ -299,8 +321,8 @@ export function MonthView({
   // Keep isAllDay true so the event stays rendered as a bar even when
   // resized down to a single day.
   const displayEvents = useMemo(() => {
-    if (!isResizing || !resizeState) return events;
-    return events.map((ev) =>
+    if (!isResizing || !resizeState) return expandedEvents;
+    return expandedEvents.map((ev) =>
       ev.id === resizeState.eventId
         ? {
             ...ev,
@@ -310,7 +332,7 @@ export function MonthView({
           }
         : ev,
     );
-  }, [events, isResizing, resizeState]);
+  }, [expandedEvents, isResizing, resizeState]);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, event: CalendarEvent) => {

@@ -168,20 +168,22 @@ export interface FormatRRuleOptions {
 }
 
 /**
- * The previous or next occurrence of a repeating event: its event when the
- * events have one for it, else only its start
+ * The previous or next occurrence of a repeating event
  */
 export interface SeriesOccurrence<
   TEvent extends CalendarEvent = CalendarEvent,
 > {
   /**
-   * Id of the occurrence: its event's, or the id a copy of it gets
-   * (`createSeriesOccurrence`)
+   * Id of the occurrence: its stored event's, or
+   * `<series id>-<yyyy-MM-dd>` for one generated from the rule
    */
   id: string;
   /** When the occurrence starts */
   start: Date;
-  /** The event of that occurrence, when the events have it */
+  /**
+   * The occurrence: the event stored for that date, or the one generated
+   * for it (`expandRecurringEvents`)
+   */
   event?: TEvent;
 }
 
@@ -416,6 +418,25 @@ export interface DetailedCalendarEvent extends CalendarEvent {
    * set; an RRULE the details can't read shows as "Custom repeat".
    */
   recurrence?: string;
+  /**
+   * Dates a repeating event skips (RFC 5545 EXDATE). Each is the start of
+   * an occurrence; the occurrence on that day, in the event's `timeZone`,
+   * is left out. `.ics` import fills it from EXDATE and from cancelled
+   * occurrences; export writes it as EXDATE
+   */
+  excludedDates?: Date[];
+  /**
+   * On an occurrence of a repeating event: the id of the series' event.
+   * The views generate occurrences with it, and an edited occurrence is
+   * stored with it (in `.ics`, the series' UID)
+   */
+  seriesId?: string;
+  /**
+   * On an occurrence of a repeating event: its start in the series, before
+   * any edit (RFC 5545 RECURRENCE-ID). It says which date an edited
+   * occurrence stands for
+   */
+  originalStart?: Date;
   /** People invited, the organizer included */
   participants?: EventParticipant[];
   /** Meeting rooms booked */
@@ -851,7 +872,8 @@ interface CalendarProviderBaseProps<
   defaultEvents?: TEvent[];
   /**
    * Called with the full next list whenever events change (drag, resize,
-   * create, edit, or an occurrence the series arrows open)
+   * create, edit). A repeating event stays one event in it; an edited
+   * occurrence is added as an event of its own
    */
   onEventsChange?: (events: TEvent[]) => void;
   /** Active view (controlled) */
@@ -941,7 +963,8 @@ interface CalendarProviderBaseProps<
   locationSuggestions?: LocationSuggestion[];
   /**
    * Called after an event is added: one created by clicking an empty slot,
-   * or an occurrence copy the series arrows add (`showSeriesOccurrence`)
+   * or an occurrence of a repeating event, stored on its first edit (with
+   * `seriesId` and `originalStart`)
    */
   onEventCreate?: (event: TEvent) => void;
   /** Called after an event is changed (drag, resize, or an edit in the details) */
@@ -979,7 +1002,10 @@ export type CalendarProviderProps<
 export interface CalendarContextValue<
   TEvent extends CalendarEvent = CalendarEvent,
 > {
-  /** All events */
+  /**
+   * The stored events. A repeating event is one event here; the views
+   * draw its occurrences with `expandRecurringEvents`
+   */
   events: TEvent[];
   /** Active view */
   view: ViewType;
@@ -1012,12 +1038,16 @@ export interface CalendarContextValue<
   loading: boolean;
   /** ID of the selected event, or `null` */
   selectedEventId: string | null;
-  /** The selected event, or `null` when nothing (or a missing event) is selected */
+  /**
+   * The selected event: a stored one, or the generated occurrence its id
+   * names. `null` when nothing (or a missing event) is selected
+   */
   selectedEvent: TEvent | null;
   /**
    * The selected event's previous occurrence in its repeating series (see
-   * `findSeriesOccurrence`), or `null`: nothing selected, the event doesn't
-   * repeat, or it is the series' first
+   * `findSeriesOccurrence`): the event stored for that date or the one
+   * generated for it. `null`: nothing selected, the event doesn't repeat,
+   * or it is the series' first
    */
   previousInSeries: SeriesOccurrence<TEvent> | null;
   /**
@@ -1026,11 +1056,10 @@ export interface CalendarContextValue<
    */
   nextInSeries: SeriesOccurrence<TEvent> | null;
   /**
-   * Selects an occurrence of the selected event's series (`previousInSeries`
-   * or `nextInSeries`) and shows it, moving to its period when it is off
-   * screen. An occurrence the events have no event for yet is added first,
-   * as a copy of the selected event (`createSeriesOccurrence`), through
-   * `onEventsChange` and `onEventCreate`.
+   * Selects an occurrence of the selected event's series
+   * (`previousInSeries` or `nextInSeries`) and shows it, moving to its
+   * period when it is off screen. Nothing is added: a generated occurrence
+   * is selected as it is.
    */
   showSeriesOccurrence: (occurrence: SeriesOccurrence<TEvent>) => void;
   /** Day briefly highlighted after `showDay`, or `null` */
@@ -1062,7 +1091,11 @@ export interface CalendarContextValue<
    * focuses its title
    */
   addEventFromRange: (range: NewEventRange) => void;
-  /** Replaces the event with the same id */
+  /**
+   * Replaces the event with the same id. A generated occurrence of a
+   * repeating event (not in `events`) is added instead, as the stored event
+   * for its date, through `onEventsChange` and `onEventCreate`
+   */
   updateEvent: (event: TEvent) => void;
   /** Toggles weekend columns */
   toggleWeekends: () => void;

@@ -81,9 +81,9 @@ test.describe("desktop", () => {
 
     await page.keyboard.press("k");
     await expectHeader(page, NEXT_AGENDA_LABEL);
-    // Jul 4 and 5 have no events
+    // Saturday, July 4 holds Launch Review's third date
     await expect(agendaDays(page).first()).toHaveAccessibleName(
-      "Monday, July 6",
+      "Saturday, July 4",
     );
 
     await page.keyboard.press("j");

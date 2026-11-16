@@ -24,7 +24,11 @@ import {
   getVisibleRange,
   getWeekViewStepDays,
 } from "@/lib/event-utils";
-import { createSeriesOccurrence, findSeriesOccurrence } from "@/lib/recurrence";
+import {
+  applyRecurringEdit,
+  findEventOrOccurrence,
+  findSeriesOccurrence,
+} from "@/lib/recurrence";
 import type {
   CalendarConfig,
   CalendarContextValue,
@@ -505,10 +509,11 @@ function CalendarStateProvider({
     setVisibleDays([]);
   }, [view]);
 
-  const selectedEvent = React.useMemo(
-    () => events.find((e) => e.id === selectedEventId) ?? null,
-    [events, selectedEventId],
-  );
+  // A generated occurrence of a repeating event is selected by its id too
+  const selectedEvent = React.useMemo(() => {
+    if (selectedEventId === null) return null;
+    return findEventOrOccurrence(events, selectedEventId);
+  }, [events, selectedEventId]);
 
   // Only honor the focus request while that event is still the selected one
   const pendingTitleFocusId =
@@ -536,24 +541,40 @@ function CalendarStateProvider({
 
   const updateEvent = React.useCallback(
     (updatedEvent: CalendarEvent) => {
-      const previous = eventsRef.current.find((e) => e.id === updatedEvent.id);
-      setEvents((prev) =>
-        prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)),
-      );
-      onEventUpdate?.(updatedEvent);
+      const current = eventsRef.current;
+      const stored = current.find((e) => e.id === updatedEvent.id);
+      // Not stored: an occurrence the views generated from a repeating
+      // event's rule (or an id nothing has)
+      const generated = stored
+        ? null
+        : findEventOrOccurrence(current, updatedEvent.id);
+      const previous = stored ?? generated;
+      const next = previous
+        ? applyRecurringEdit(current, previous, updatedEvent)
+        : updatedEvent;
+
+      if (generated) {
+        // Its first edit stores it as an event of its own, standing for its
+        // date in the series (ADR-007)
+        setEvents((prev) => {
+          if (prev.some((e) => e.id === next.id)) {
+            return prev.map((e) => (e.id === next.id ? next : e));
+          }
+          return [...prev, next];
+        });
+        onEventCreate?.(next);
+      } else {
+        setEvents((prev) => prev.map((e) => (e.id === next.id ? next : e)));
+        onEventUpdate?.(next);
+      }
 
       // Moves and resizes (drag, keyboard, or the details) are announced;
       // edits that keep the time, like the title, are not
       if (!previous) return;
-      const message = describeEventChange(
-        previous,
-        updatedEvent,
-        hourCycle,
-        locale,
-      );
+      const message = describeEventChange(previous, next, hourCycle, locale);
       if (message) announce(message);
     },
-    [setEvents, onEventUpdate, hourCycle, locale, announce],
+    [setEvents, onEventCreate, onEventUpdate, hourCycle, locale, announce],
   );
 
   const addEventFromRange = React.useCallback(
@@ -613,23 +634,11 @@ function CalendarStateProvider({
 
   const showSeriesOccurrence = React.useCallback(
     (occurrence: SeriesOccurrence) => {
-      let target = occurrence.event;
-      if (!target) {
-        if (!selectedEvent) return;
-        const copy = createSeriesOccurrence(selectedEvent, occurrence);
-        // An occurrence opened before (and maybe moved or renamed since)
-        // keeps its edits rather than being replaced by a fresh copy
-        const opened = eventsRef.current.find((e) => e.id === copy.id);
-        if (!opened) {
-          setEvents((prev) => [...prev, copy]);
-          onEventCreate?.(copy);
-        }
-        target = opened ?? copy;
-      }
-      selectEvent(target.id);
+      // A generated occurrence is selected as it is: nothing is added
+      selectEvent(occurrence.id);
 
       // Stay put while the occurrence is on screen
-      const start = target.start;
+      const start = occurrence.start;
       const isOnScreen =
         view === "month"
           ? isSameMonth(start, displayMonth ?? currentDate)
@@ -642,9 +651,6 @@ function CalendarStateProvider({
       );
     },
     [
-      selectedEvent,
-      setEvents,
-      onEventCreate,
       selectEvent,
       view,
       displayMonth,

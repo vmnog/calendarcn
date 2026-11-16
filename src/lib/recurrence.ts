@@ -3,6 +3,7 @@ import {
   addMonths,
   addWeeks,
   addYears,
+  differenceInCalendarDays,
   format,
   getDaysInMonth,
   isSameYear,
@@ -28,6 +29,7 @@ import type {
   RecurrenceRule,
   RecurrenceWeekday,
   SeriesOccurrence,
+  VisibleRange,
   WeekStartsOn,
 } from "@/components/calendar-types";
 
@@ -103,6 +105,16 @@ const DAY_MS = 86_400_000;
 const MAX_OCCURRENCES = 7300;
 
 /**
+ * Most occurrences of one series `expandRecurringEvents` returns for one
+ * range: a daily series over the event search's two years, with room to
+ * spare
+ */
+export const MAX_OCCURRENCES_PER_RANGE = 1000;
+
+/** An occurrence's id: its series' id, then its day (`launch-2026-06-20`) */
+const OCCURRENCE_ID_PATTERN = /^(.+)-(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
  * How far the custom repeat dialog's "On" and "After" ends default to, per
  * frequency: Notion Calendar suggests a week of days, four weeks, a year of
  * months and three years
@@ -118,7 +130,14 @@ export const RECURRENCE_END_DEFAULTS: Record<RecurrenceFrequency, number> = {
 type SeriesEvent = CalendarEvent &
   Pick<
     DetailedCalendarEvent,
-    "calendarId" | "recurrenceRule" | "recurrence" | "timeZone" | "timezone"
+    | "calendarId"
+    | "recurrenceRule"
+    | "recurrence"
+    | "timeZone"
+    | "timezone"
+    | "excludedDates"
+    | "seriesId"
+    | "originalStart"
   >;
 
 /** Days since 1970-01-01 of `day`'s local calendar date, so days compare without their time */
@@ -785,10 +804,12 @@ export function getAdjacentOccurrence(
 }
 
 /**
- * Id of the copy that stands for a series' occurrence on `day`: the id of
- * the series' first event and the date, e.g. "launch-2026-06-20"
+ * Id of a series' occurrence on `day` (a local midnight of a day in the
+ * series' zone): the series event's id and the date, e.g.
+ * "launch-2026-06-20". Generated occurrences, edited ones and the copies
+ * ADR-004's arrows stored all carry it.
  */
-function getOccurrenceId(seriesId: string, day: Date): string {
+export function getOccurrenceId(seriesId: string, day: Date): string {
   return `${seriesId}-${format(day, "yyyy-MM-dd")}`;
 }
 
@@ -828,72 +849,232 @@ function toOccurrence<TEvent extends SeriesEvent>(
 }
 
 /**
+ * The zone a series counts its days in: its `timeZone` when timed. An
+ * all-day series counts the viewer's calendar days, since all-day dates
+ * float, as `.ics` DATE values do.
+ */
+function getRuleTimeZone(event: SeriesEvent): string | undefined {
+  return event.isAllDay ? undefined : getEventTimeZone(event);
+}
+
+/**
+ * The rule the views expand: `recurrenceRule`, or `recurrence` when it is
+ * an RRULE a rule can hold. Display text ("Every week on Thu") is only a
+ * label: an app that sets it lays out the occurrences itself.
+ */
+function getExpandableRule(event: SeriesEvent): RecurrenceRule | null {
+  if (event.recurrenceRule) return event.recurrenceRule;
+  if (!event.recurrence || !isRRule(event.recurrence)) return null;
+  return getEventRecurrenceRule(event);
+}
+
+/** Whether two events repeat the same way; two that don't repeat do */
+function hasSameRecurrence(a: SeriesEvent, b: SeriesEvent): boolean {
+  if (a.recurrenceRule && b.recurrenceRule) {
+    const day = getZonedDay(a.start, getRuleTimeZone(a));
+    return isSameRecurrenceRule(a.recurrenceRule, b.recurrenceRule, day);
+  }
+  if (a.recurrenceRule || b.recurrenceRule) return false;
+  return (a.recurrence ?? "") === (b.recurrence ?? "");
+}
+
+/**
+ * The series a copy stored by ADR-004's arrows belongs to: the event whose
+ * id its own extends with a date (`launch-2026-06-20`), when both repeat
+ * the same way. `null` for any other event.
+ */
+function getCopiedSeries<TEvent extends SeriesEvent>(
+  byId: Map<string, TEvent>,
+  event: TEvent,
+): TEvent | null {
+  if (event.seriesId) return null;
+  const match = OCCURRENCE_ID_PATTERN.exec(event.id);
+  const series = match ? byId.get(match[1]) : undefined;
+  if (!series || series.seriesId || !getExpandableRule(series)) return null;
+  return hasSameRecurrence(series, event) ? series : null;
+}
+
+/** Whether `event` is a series: it repeats and is no other series' occurrence */
+function isSeriesEvent<TEvent extends SeriesEvent>(
+  byId: Map<string, TEvent>,
+  event: TEvent,
+): boolean {
+  if (event.seriesId || !getExpandableRule(event)) return false;
+  return getCopiedSeries(byId, event) === null;
+}
+
+/**
+ * The series `event` belongs to: the event its `seriesId` names, the series
+ * an ADR-004 copy was made from, else `event` itself when it repeats.
+ * `null` when it doesn't repeat or only carries display text.
+ */
+function getSeries<TEvent extends SeriesEvent>(
+  byId: Map<string, TEvent>,
+  event: TEvent,
+): TEvent | null {
+  if (event.seriesId) {
+    const series = byId.get(event.seriesId);
+    return series && isSeriesEvent(byId, series) ? series : null;
+  }
+  const copied = getCopiedSeries(byId, event);
+  if (copied) return copied;
+  return isSeriesEvent(byId, event) ? event : null;
+}
+
+/** The days `excludedDates` removes from a series, as day numbers in its zone */
+function getExcludedDays(
+  series: SeriesEvent,
+  timeZone: string | undefined,
+): Set<number> {
+  return new Set(
+    (series.excludedDates ?? []).map((date) =>
+      toDayNumber(getZonedDay(date, timeZone)),
+    ),
+  );
+}
+
+/**
+ * A series' occurrence on `day` (a local midnight of a day in its zone) as
+ * the rule gives it: the start's clock time in its zone, the same length
+ * (whole days when all-day), `seriesId` and `originalStart`. The series'
+ * `excludedDates` stay on the series.
+ */
+function createOccurrence<TEvent extends SeriesEvent>(
+  series: TEvent,
+  day: Date,
+  timeZone: string | undefined,
+): TEvent {
+  const start = fromZonedDayTime(
+    day,
+    getZonedTimeOfDay(series.start, timeZone),
+    timeZone,
+  );
+  const end = series.isAllDay
+    ? addDays(start, differenceInCalendarDays(series.end, series.start))
+    : new Date(start.getTime() + series.end.getTime() - series.start.getTime());
+  return {
+    ...series,
+    id: getOccurrenceId(series.id, day),
+    start,
+    end,
+    seriesId: series.id,
+    originalStart: start,
+    excludedDates: undefined,
+  };
+}
+
+/**
+ * The day of its series `event` stands for: the series' first day for the
+ * series' event, else its original start's day, the day in its id, or its
+ * own day
+ */
+function getOccurrenceDay(
+  series: SeriesEvent,
+  event: SeriesEvent,
+  timeZone: string | undefined,
+): Date {
+  if (event.id === series.id) return getZonedDay(series.start, timeZone);
+  if (event.originalStart) return getZonedDay(event.originalStart, timeZone);
+  return (
+    getOccurrenceDayFromId(series.id, event.id) ??
+    getZonedDay(event.start, timeZone)
+  );
+}
+
+/**
+ * A series' occurrence on `day`: the event stored for it (with that day's
+ * occurrence id, or naming the series and that day through `seriesId` and
+ * `originalStart`), the series' event on its first day, else the generated
+ * one
+ */
+function getOccurrenceOnDay<TEvent extends SeriesEvent>(
+  events: TEvent[],
+  series: TEvent,
+  day: Date,
+  timeZone: string | undefined,
+): TEvent {
+  const dayNumber = toDayNumber(day);
+  const id = getOccurrenceId(series.id, day);
+  const stored = events.find(
+    (other) =>
+      other.id === id ||
+      (other.seriesId === series.id &&
+        other.originalStart !== undefined &&
+        toDayNumber(getZonedDay(other.originalStart, timeZone)) === dayNumber),
+  );
+  if (stored) return stored;
+  if (dayNumber === toDayNumber(getZonedDay(series.start, timeZone))) {
+    return series;
+  }
+  return createOccurrence(series, day, timeZone);
+}
+
+/** Whether an event covers part of `range`; an all-day event covers its last day */
+function overlapsRange(event: CalendarEvent, range: VisibleRange): boolean {
+  if (event.start >= range.end) return false;
+  const end = event.isAllDay ? addDays(event.end, 1) : event.end;
+  if (end > range.start) return true;
+  // An event with no length counts when it starts in the range
+  return end.getTime() === event.start.getTime() && event.start >= range.start;
+}
+
+/**
  * The previous or next occurrence of `event`'s series, or `null` when it
  * doesn't repeat or that end of the series is reached.
  *
- * A series is the events with the same title, calendar and repeat rule.
- * With a `recurrenceRule`, occurrences are counted from the series' earliest
- * event, in the event's time zone, so the ones the list has no event for
- * are found too (returned with their start and the id a copy of them gets,
- * see `createSeriesOccurrence`). An occurrence is the event the list has on
- * that day, else the copy made for it, even if it was moved to another day
- * or renamed since. Occurrences compare by day, so an event moved within its
- * day is still that day's occurrence. A series known only by its
- * `recurrence` text steps between the events the list has, so moved and
- * skipped occurrences stay as the app set them; a lone event with a
- * readable text rule is counted like a `recurrenceRule`.
+ * A repeating event (one `expandRecurringEvents` expands) is a series of
+ * every occurrence its rule gives, counted from its start in its time zone;
+ * `event` can be it, one of its generated occurrences, an edited one
+ * (`seriesId`), or a copy ADR-004's arrows stored. Excluded dates are
+ * skipped. The occurrence returned is the event stored for that date (an
+ * edited occurrence, even moved to another day or renamed), the series'
+ * event on its first day, else the one generated for it, so `event` is
+ * always set. Occurrences compare by day, so one moved within its day keeps
+ * its place.
+ *
+ * A series known only by display text (`recurrence: "Every week on Mon"`)
+ * steps between the events with the same title, calendar and text.
  */
 export function findSeriesOccurrence<TEvent extends SeriesEvent>(
   events: TEvent[],
   event: TEvent,
   direction: "previous" | "next",
 ): SeriesOccurrence<TEvent> | null {
-  if (!event.recurrenceRule && !event.recurrence) return null;
-
-  const series = events
-    .filter((other) => other.id === event.id || isSameSeries(other, event))
-    .sort((a, b) => a.start.getTime() - b.start.getTime());
-  const rule =
-    event.recurrenceRule ??
-    (series.length === 1 ? getEventRecurrenceRule(event) : null);
-
-  if (rule) {
-    const timeZone = getEventTimeZone(event);
-    const first = series[0];
-    const day = getAdjacentOccurrenceDay(
+  const byId = new Map(events.map((other) => [other.id, other]));
+  const series = getSeries(byId, event);
+  if (series) {
+    const rule = getExpandableRule(series);
+    if (!rule) return null;
+    const timeZone = getRuleTimeZone(series);
+    const firstDay = getZonedDay(series.start, timeZone);
+    const excluded = getExcludedDays(series, timeZone);
+    let day = getAdjacentOccurrenceDay(
       rule,
-      getZonedDay(first.start, timeZone),
-      getOccurrenceDayFromId(first.id, event.id) ??
-        getZonedDay(event.start, timeZone),
+      firstDay,
+      getOccurrenceDay(series, event, timeZone),
       direction,
     );
+    while (day && excluded.has(toDayNumber(day))) {
+      day = getAdjacentOccurrenceDay(rule, firstDay, day, direction);
+    }
     if (!day) return null;
-
-    const dayNumber = toDayNumber(day);
-    const id = getOccurrenceId(first.id, day);
-    const match =
-      series.find(
-        (other) =>
-          toDayNumber(getZonedDay(other.start, timeZone)) === dayNumber,
-      ) ?? events.find((other) => other.id === id);
-    if (match) return toOccurrence(match);
-    const start = fromZonedDayTime(
-      day,
-      getZonedTimeOfDay(first.start, timeZone),
-      timeZone,
-    );
-    return { id, start };
+    return toOccurrence(getOccurrenceOnDay(events, series, day, timeZone));
   }
 
-  const index = series.findIndex((other) => other.id === event.id);
-  const neighbor = series[direction === "next" ? index + 1 : index - 1];
+  if (!event.recurrence) return null;
+  const textSeries = events
+    .filter((other) => other.id === event.id || isSameSeries(other, event))
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
+  const index = textSeries.findIndex((other) => other.id === event.id);
+  const neighbor = textSeries[direction === "next" ? index + 1 : index - 1];
   return neighbor ? toOccurrence(neighbor) : null;
 }
 
 /**
- * A copy of `event` for an occurrence of its series that the events don't
- * have yet (`findSeriesOccurrence` without an `event`): the occurrence's id
- * and start, with the event's duration
+ * A stored copy of `event` for one of its series' occurrences: the
+ * occurrence's id and start, with the event's duration. The provider no
+ * longer stores copies (ADR-007); it is kept for apps that store their
+ * occurrences themselves.
  */
 export function createSeriesOccurrence<TEvent extends CalendarEvent>(
   event: TEvent,
@@ -906,4 +1087,195 @@ export function createSeriesOccurrence<TEvent extends CalendarEvent>(
     start: occurrence.start,
     end: new Date(occurrence.start.getTime() + duration),
   };
+}
+
+/** The occurrences of `series` that cover part of `range`, see `expandRecurringEvents` */
+function getOccurrencesInRange<TEvent extends SeriesEvent>(
+  series: TEvent,
+  range: VisibleRange,
+  storedIds: Set<string>,
+): TEvent[] {
+  const rule = getExpandableRule(series);
+  if (!rule) return [];
+  const timeZone = getRuleTimeZone(series);
+  const firstDay = getZonedDay(series.start, timeZone);
+  const firstDayNumber = toDayNumber(firstDay);
+  const excluded = getExcludedDays(series, timeZone);
+  // Days too early to reach the range: before it by more than the event
+  // lasts, plus a day for the zone's offset
+  const lengthDays = Math.ceil(
+    (series.end.getTime() - series.start.getTime()) / DAY_MS,
+  );
+  const earliest = toDayNumber(range.start) - lengthDays - 1;
+
+  const occurrences: TEvent[] = [];
+  walkOccurrenceDays(rule, firstDay, (day) => {
+    const dayNumber = toDayNumber(day);
+    if (dayNumber < earliest) return true;
+    const occurrence =
+      dayNumber === firstDayNumber
+        ? series
+        : createOccurrence(series, day, timeZone);
+    if (occurrence.start >= range.end) return false;
+    if (excluded.has(dayNumber)) return true;
+    if (storedIds.has(getOccurrenceId(series.id, day))) return true;
+    if (!overlapsRange(occurrence, range)) return true;
+    occurrences.push(occurrence);
+    return occurrences.length < MAX_OCCURRENCES_PER_RANGE;
+  });
+  return occurrences;
+}
+
+/**
+ * What to draw for the dates in `range` (end exclusive): each event that
+ * doesn't repeat as it is, in range or not, and in place of each
+ * repeating event its occurrences that cover part of the range, in date
+ * order.
+ *
+ * A repeating event has a `recurrenceRule` (or an RRULE in `recurrence`)
+ * and no `seriesId`. It stands for its first occurrence; the others are
+ * generated, never stored: the event's fields, the start's clock time in
+ * its `timeZone` on each day the rule gives (daylight saving changes don't
+ * move it; an all-day series keeps whole days), the id
+ * `<series id>-<yyyy-MM-dd>`, `seriesId` and `originalStart`. A day is left
+ * out when `excludedDates` names it, when a stored event has that day's
+ * occurrence id (an edited occurrence, or a copy ADR-004's arrows stored),
+ * or when a stored event names the series and that day with `seriesId` and
+ * `originalStart`. One series returns at most `MAX_OCCURRENCES_PER_RANGE`.
+ */
+export function expandRecurringEvents<TEvent extends SeriesEvent>(
+  events: TEvent[],
+  range: VisibleRange,
+): TEvent[] {
+  const byId = new Map(events.map((event) => [event.id, event]));
+  // Occurrence ids that stored events stand for: their own ids, and the
+  // day an edited occurrence names through `originalStart`
+  const storedIds = new Set(byId.keys());
+  for (const event of events) {
+    const series = event.seriesId ? byId.get(event.seriesId) : undefined;
+    if (!series || !event.originalStart) continue;
+    const day = getZonedDay(event.originalStart, getRuleTimeZone(series));
+    storedIds.add(getOccurrenceId(series.id, day));
+  }
+
+  const expanded: TEvent[] = [];
+  for (const event of events) {
+    if (!isSeriesEvent(byId, event)) {
+      expanded.push(event);
+      continue;
+    }
+    expanded.push(...getOccurrencesInRange(event, range, storedIds));
+  }
+  return expanded;
+}
+
+/**
+ * The event with this id: a stored one, or the occurrence of a repeating
+ * event it names (`<series id>-<yyyy-MM-dd>`), generated as the views draw
+ * it. `null` when there is neither: an unknown id, or a day its series
+ * skips, excludes or stores under another id.
+ */
+export function findEventOrOccurrence<TEvent extends SeriesEvent>(
+  events: TEvent[],
+  id: string,
+): TEvent | null {
+  const stored = events.find((event) => event.id === id);
+  if (stored) return stored;
+  const match = OCCURRENCE_ID_PATTERN.exec(id);
+  if (!match) return null;
+  const day = new Date(
+    Number(match[2]),
+    Number(match[3]) - 1,
+    Number(match[4]),
+  );
+  // A day either side covers the series' zone offset
+  const range = { start: addDays(day, -1), end: addDays(day, 2) };
+  return (
+    expandRecurringEvents(events, range).find((event) => event.id === id) ??
+    null
+  );
+}
+
+/**
+ * A rule moved with its series' event from `fromDay` to `toDay` (local
+ * midnights of days in the series' zone), as Google Calendar's "All
+ * events" moves a series: a weekly rule's written-out weekdays shift by
+ * the same number of days, and a monthly rule on a weekday of the month
+ * takes the new day's place in its month (the last stays the last when the
+ * new day is also the last). Rules that read their day from the start come
+ * back as they are.
+ */
+export function moveRecurrenceRule(
+  rule: RecurrenceRule,
+  fromDay: Date,
+  toDay: Date,
+): RecurrenceRule {
+  const shift = toDayNumber(toDay) - toDayNumber(fromDay);
+  if (shift === 0) return rule;
+
+  if (rule.frequency === "weekly" && rule.weekdays?.length) {
+    const offset = ((shift % 7) + 7) % 7;
+    if (offset === 0) return rule;
+    const weekdays = [
+      ...new Set(
+        rule.weekdays.map((day) => ((day + offset) % 7) as RecurrenceWeekday),
+      ),
+    ].sort((a, b) => a - b);
+    return { ...rule, weekdays };
+  }
+
+  if (
+    rule.frequency === "monthly" &&
+    rule.monthlyBy === "weekday-of-month" &&
+    rule.weekOfMonth !== undefined
+  ) {
+    const isLast = toDay.getDate() + 7 > getDaysInMonth(toDay);
+    const weekOfMonth =
+      rule.weekOfMonth === -1 && isLast ? -1 : getWeekOfMonth(toDay);
+    if (weekOfMonth === rule.weekOfMonth) return rule;
+    return { ...rule, weekOfMonth };
+  }
+
+  return rule;
+}
+
+/**
+ * The event to store for an edit of `previous` (a stored event, or an
+ * occurrence `findEventOrOccurrence` generated), until edits ask "this
+ * event or all events":
+ *
+ * - An occurrence changes alone and keeps `seriesId` and `originalStart`,
+ *   so it replaces its date's generated occurrence. A new repeat rule
+ *   takes it out of its series instead: it repeats on its own from its
+ *   date, and its id still names that date, so the series doesn't draw it
+ *   twice.
+ * - The series' own event stands for the series, so every occurrence
+ *   follows it. Moved to another day, it takes its rule along
+ *   (`moveRecurrenceRule`).
+ * - Any other event is stored as edited.
+ */
+export function applyRecurringEdit<TEvent extends SeriesEvent>(
+  events: TEvent[],
+  previous: TEvent,
+  edited: TEvent,
+): TEvent {
+  const byId = new Map(events.map((event) => [event.id, event]));
+  const series = getSeries(byId, previous);
+  if (!series) return edited;
+
+  if (series.id !== previous.id) {
+    if (hasSameRecurrence(previous, edited)) return edited;
+    return { ...edited, seriesId: undefined, originalStart: undefined };
+  }
+
+  // A rule changed in the details is the new rule, as set
+  const rule = edited.recurrenceRule;
+  if (!rule || rule !== previous.recurrenceRule) return edited;
+  const moved = moveRecurrenceRule(
+    rule,
+    getZonedDay(previous.start, getRuleTimeZone(previous)),
+    getZonedDay(edited.start, getRuleTimeZone(edited)),
+  );
+  if (moved === rule) return edited;
+  return { ...edited, recurrenceRule: moved };
 }
