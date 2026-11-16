@@ -48,6 +48,7 @@ Views tell the provider what they draw through the internal `useCalendarViewSync
 
 - `reportView({ view, numberOfDays? })`, from a layout effect after every commit that changes the view's props or the provider's state. While `view` is uncontrolled, the provider adopts the reported type (and a `numberOfDays` the view is fixed to), so a lone `DayView`, `WeekView` or `MonthView` navigates, labels its header and fills `visibleDays` by its own type. A switch the mounted view doesn't follow (e.g. pressing D under a lone `WeekView`) is undone, date included. Controlled `view` / `numberOfDays` always win; development builds warn about a mismatch. The full rule is the JSDoc on `CalendarProvider`.
 - `reportVisibleDays` (time grid, and the agenda's 30 days) and `reportDisplayMonth` (month view), for the header and the mini calendar.
+- `reportPasteTarget` (time grid columns and month cells, on mouse moves): the slot or day under the mouse, where `pasteEvent()` puts the next paste.
 
 For the one commit before the provider adopts a view, the view's type differs from the provider's (`isProviderInSync` is false). Views skip slide animations and visible-day / display-month reports then: that date change is the adoption, not navigation.
 
@@ -64,6 +65,10 @@ User interaction → Hook (drag/resize) → onEventChange callback → CalendarP
 1. User pointerdown on event → hook captures initial state in `ref` (touch: after a long press, see `use-pointer-gesture.ts`)
 2. User pointermove → hook computes snapped position, updates `dragState` / `resizeState`
 3. User pointerup → hook calls `onEventChange(updatedEvent)` → the provider's `updateEvent` merges it into `events`
+
+### Undo History
+
+The provider records each change it makes itself (a click-create, every `updateEvent`, delete, cut, duplicate, paste) as a step of `{ before, after, index }` changes, one per event (`src/lib/event-history.ts`). `undo()` applies a step's inverse to the current events and `redo()` the step again, both through `onEventsChange` and one `onEventCreate`, `onEventUpdate` or `onEventDelete` per event. A step applies only while each event it touches is the very object it left (`canApplyEventChanges`), so events the app replaced from outside (a reload) are never overwritten by an old undo. Edits to one event less than a second apart merge into one step; 100 steps are kept. Copy, the series arrows' occurrence copies and changes the app makes itself are not steps.
 
 ### Event Positioning Pipeline
 

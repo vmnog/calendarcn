@@ -142,7 +142,7 @@ Every event is a button you can reach with <Kbd>Tab</Kbd>. The views only handle
 - In a field or menu of the details, <Kbd>Esc</Kbd> only closes it and restores the value from before. Press it again to close the details.
 - In the day and week views and the agenda, <Kbd>Alt</Kbd> + <Kbd>↑</Kbd> / <Kbd>↓</Kbd> move a timed event by one `snapMinutes` step and keep it inside the visible hours. In month view they move it a week.
 - Moving an event past the visible days moves the view with it, and focus follows the event.
-- `CalendarProvider` renders a polite live region (`role="status"`) that announces each move, resize and create, e.g. "Moved Team standup to Tuesday, October 27, 9:15 AM".
+- `CalendarProvider` renders a polite live region (`role="status"`) that announces each move, resize and create, each delete, cut, copy, duplicate and paste, and each undo and redo, e.g. "Moved Team standup to Tuesday, October 27, 9:15 AM".
 - Each event is labelled with its title and time and reports its selection with `aria-pressed`. Day columns, month cells and agenda days are labelled groups with the full date. Year view's months are grids named by month and year, and each day is a button named by its date and its number of events. Decorative parts (time axis, grid lines, drag previews) are hidden from assistive tech, and off-screen scroll buffers are `inert`.
 - With reduced motion turned on, scrolling snaps without the slide animation.
 

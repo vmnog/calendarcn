@@ -12,7 +12,8 @@ import {
 /**
  * Key presses the calendar's shortcuts leave alone: typing in a field that is
  * not an input or a textarea, Alt with an arrow (the browser's back and
- * forward), and the Enter that confirms an IME composition. They come from
+ * forward), the Enter that confirms an IME composition, and the event keys
+ * typed into a field or during a composition. They come from
  * isTypingTarget and handleShortcut in useCalendarShortcuts, and from
  * useInlineEdit.
  */
@@ -102,4 +103,68 @@ test("the Enter that confirms an IME composition keeps the title in edit", async
 
   expect(prevented).toEqual([false, false]);
   await expect(title).toBeFocused();
+});
+
+test("the event keys typed in a field leave the selected event alone", async ({
+  page,
+}) => {
+  await calendarEvent(page, "Quick Sync").click();
+
+  await focusHostElement(
+    page,
+    '<div contenteditable="true" data-testid="host-editor">abc</div>',
+  );
+  for (const key of [
+    "Backspace",
+    "Delete",
+    "ControlOrMeta+d",
+    "ControlOrMeta+x",
+  ]) {
+    await page.keyboard.press(key);
+  }
+  await focusHostElement(
+    page,
+    '<select data-testid="host-select"><option>all</option></select>',
+  );
+  await page.keyboard.press("Delete");
+
+  // Not deleted, cut or duplicated
+  await expect(calendarEvent(page, "Quick Sync")).toHaveCount(1);
+});
+
+test("a Backspace that is part of an IME composition deletes no event", async ({
+  page,
+}) => {
+  await calendarEvent(page, "Quick Sync").click();
+
+  // Chrome and Firefox flag the key with isComposing, Safari with keyCode 229
+  const prevented = await page.evaluate(() =>
+    [{ isComposing: true }, { keyCode: 229 }].map((composing) => {
+      const event = new KeyboardEvent("keydown", {
+        key: "Backspace",
+        bubbles: true,
+        cancelable: true,
+        ...composing,
+      });
+      document.body.dispatchEvent(event);
+      return event.defaultPrevented;
+    }),
+  );
+
+  expect(prevented).toEqual([false, false]);
+  await expect(calendarEvent(page, "Quick Sync")).toHaveCount(1);
+});
+
+test("Cmd+Z in the title is the field's own undo, not the calendar's", async ({
+  page,
+}) => {
+  await calendarEvent(page, "Launch Review").click();
+  await page.keyboard.press("Backspace");
+  await expect(calendarEvent(page, "Launch Review")).toHaveCount(0);
+
+  await calendarEvent(page, "Quick Sync").click();
+  await detailTitle(page).focus();
+  await page.keyboard.press("ControlOrMeta+z");
+
+  await expect(calendarEvent(page, "Launch Review")).toHaveCount(0);
 });
