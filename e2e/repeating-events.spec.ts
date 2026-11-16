@@ -354,3 +354,24 @@ test("duplicating a date adds a single event on that date", async ({
   await nextWeeks(page, 2);
   await expect(launchReview(page, "June 20")).toHaveCount(1);
 });
+
+test("deleting a generated date shows Event deleted, and its Undo brings the date back", async ({
+  page,
+}) => {
+  await nextWeeks(page, 2);
+  await launchReview(page, "June 20").click();
+  await page.keyboard.press("Delete");
+  await expect(launchReview(page, "June 20")).toHaveCount(0);
+
+  const toast = page
+    .getByRole("region", { name: "Notifications" })
+    .locator('[data-slot="calendar-toast"]');
+  await expect(toast).toContainText("Event deleted");
+  await expect(toast).toContainText("“Launch Review”");
+
+  await toast.getByRole("button", { name: "Undo" }).click();
+  await expect(launchReview(page, "June 20")).toHaveAccessibleName(
+    /10:00 AM to 11:30 AM/,
+  );
+  await expect(launchReview(page, "June 20")).toHaveCount(1);
+});
