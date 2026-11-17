@@ -187,10 +187,15 @@ test("the hour size commands do what their keys do", async ({ page }) => {
   await pickCommand(page, "hour size", "Default hour size");
   await expect.poll(() => hourHeight(page)).toBe(48);
 
-  // Each lists Notion Calendar's keys
+  // Each lists Notion Calendar's keys. The demo also offers to search
+  // events for the text typed: leave that option out
   await page.keyboard.press("ControlOrMeta+k");
   await commandMenu(page).getByPlaceholder("Type a command...").fill("hour");
-  await expect(commandMenu(page).getByRole("option")).toHaveText([
+  await expect(
+    commandMenu(page)
+      .getByRole("option")
+      .filter({ hasNotText: /^Search events/ }),
+  ).toHaveText([
     /^Default hour size\s*shift⌘0$/,
     /^Zoom hours in\s*shift⌘\.$/,
     /^Zoom hours out\s*shift⌘,$/,
