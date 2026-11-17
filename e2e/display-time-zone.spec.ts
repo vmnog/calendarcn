@@ -125,6 +125,39 @@ test("a dragged event moves the instant the app stores", async ({ page }) => {
   );
 });
 
+test("dragging one of several selected events moves them all by the calendar's clock", async ({
+  page,
+}) => {
+  const standup = exampleEvent(page, "Team standup");
+  await standup.click();
+  await exampleEvent(page, "Call with Bangalore").click({
+    modifiers: ["Shift"],
+  });
+  await exampleEvent(page, "Offsite").click({ modifiers: ["Shift"] });
+  await expect(
+    demo(page).locator('[data-event-id][aria-pressed="true"]'),
+  ).toHaveCount(3);
+
+  // Three hours later in Tokyo is past midnight in New York: the timed
+  // events move three hours, and the all-day offsite keeps its day
+  await standup.scrollIntoViewIfNeeded();
+  await dragBy(page, standup, { dx: 0, dy: 3 * (await hourHeight(page)) });
+
+  await expect(standup).toHaveAccessibleName(
+    "Team standup, 1:00 PM to 1:30 PM, Sunday, June 7",
+  );
+  await expect(exampleEvent(page, "Call with Bangalore")).toHaveAccessibleName(
+    "Call with Bangalore, 5:00 PM to 6:00 PM, Sunday, June 7",
+  );
+  await expect(stored(page, "Team standup")).toHaveText(
+    "Team standup, Sun 12:00 AM",
+  );
+  await expect(stored(page, "Call with Bangalore")).toHaveText(
+    "Call with Bangalore, Sun 4:00 AM",
+  );
+  await expect(stored(page, "Offsite")).toHaveText("Offsite, Tue, all day");
+});
+
 test("the details show the calendar's clock and the event's zone", async ({
   page,
 }) => {

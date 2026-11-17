@@ -222,6 +222,7 @@ export function CommandMenu({
     goToPrev,
     goToNext,
     switchView,
+    selectAllVisible,
     viewSettings,
     toggleWeekends,
     toggleDeclinedEvents,
@@ -496,7 +497,11 @@ export function CommandMenu({
           keepsOpen: true,
           run: () => openChoiceList("number-of-days"),
         },
-        { label: "Select all visible", soon: true },
+        {
+          label: "Select all visible",
+          keys: ["⌘", "A"],
+          run: selectAllVisible,
+        },
         {
           label: "Default hour size",
           keys: ["shift", "⌘", "0"],

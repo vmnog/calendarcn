@@ -36,6 +36,7 @@ import {
   useCalendarConfig,
   useCalendarSeriesScope,
   useCalendarViewSync,
+  useIsEventInSelection,
 } from "./calendar-provider";
 import {
   EventSeriesScopeDialog,
@@ -527,7 +528,7 @@ function AgendaNowLine() {
  */
 function AgendaEventRow({
   entry,
-  isSelected,
+  isSelected: isSelectedProp,
   showPopover,
   showEventPopover,
   onSelect,
@@ -537,6 +538,9 @@ function AgendaEventRow({
   onPopoverExpand,
 }: AgendaEventRowProps) {
   const { event } = entry;
+  // One of several selected events looks selected too
+  const isInSelection = useIsEventInSelection(event.id);
+  const isSelected = isSelectedProp || isInSelection;
   const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];

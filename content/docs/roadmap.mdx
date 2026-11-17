@@ -21,16 +21,11 @@ Not scheduled yet, roughly in priority order.
 - **Right-to-left** layouts.
 - **More blocks**: more ready-made layouts next to [Calendar App](/docs/components/calendar-app), in the style of the shadcn/ui sidebar blocks.
 
-## Marked "Soon" in the demo
-
-Some controls are drawn the way Notion Calendar has them and aren't built yet. Each is disabled and carries a "Soon" badge, in the [live demo](/) and in the code you install, so nobody clicks a control that does nothing. They still need implementing:
-
-- **Commands**: with `showComingSoon`, the [Command Menu](/docs/components/command-menu) lists the Notion Calendar commands that aren't built.
-
 ## Recently shipped
 
 The highlights. The [Changelog](/docs/changelog) lists every change item by item, with breaking changes called out.
 
+- **Selecting several events**: Shift- or <Kbd>⌘</Kbd>-click events, or press <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup> to select all visible, then delete, cut, copy, paste, duplicate or drag them together, each as one undo step with Notion Calendar's toasts. See [Calendar Core](/docs/components/calendar-core#selecting-several-events).
 - **Scheduling**: press <Kbd>S</Kbd> or click Scheduling in the sidebar, mark the times you're free on the day or week grid, and copy them as a message worded like Notion Calendar's ("Would 30 min during any of these times work for you?"). Scheduling links go to your app through `onCreateSchedulingLink`. See [Scheduling](/docs/components/scheduling).
 - **Settings and accounts**: a settings dialog like Notion Calendar's, for the calendar view, time format, theme and each account's calendars, opened with <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup>. "Add calendar account", "Support & feedback" and "About CalendarCN" call your app's handlers; the live demo adds an .ics file as a calendar. See [Calendar Settings](/docs/components/calendar-settings) and [Calendar App](/docs/components/calendar-app#settings-and-accounts).
 - **Meet with people**: type a name in the sidebar's "Meet with..." field, or press <Kbd>F</Kbd>, and that person's events show beside yours, with the times you're all free highlighted. An event you create meanwhile invites them. <Kbd>P</Kbd> shows a teammate's calendar the same way, without the meeting. Their events come from your app, from Google Calendar's free/busy for example. See [Meeting with people](/docs/components/calendar-core#meeting-with-people).

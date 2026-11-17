@@ -96,6 +96,11 @@ export const SHORTCUTS = {
   monthView: { label: "Display month view", keys: ["M"] },
   yearView: { label: "Display year view", keys: ["Y"] },
   agendaView: { label: "Display agenda view", keys: ["A"], keywords: ["list"] },
+  selectAllVisible: {
+    label: "Select all visible",
+    keys: ["⌘", "A"],
+    keywords: ["several", "multiple", "events"],
+  },
   toggleWeekends: {
     label: "Show / hide weekends",
     keys: ["⇧", "⌘", "E"],
@@ -212,6 +217,7 @@ export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
       SHORTCUTS.monthView,
       SHORTCUTS.yearView,
       SHORTCUTS.agendaView,
+      SHORTCUTS.selectAllVisible,
       SHORTCUTS.toggleWeekends,
       SHORTCUTS.defaultHourSize,
       SHORTCUTS.zoomHoursIn,

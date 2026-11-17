@@ -5,7 +5,11 @@ import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
 import { EventDetailPopover } from "./event-detail-popover";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
-import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
+import {
+  EventContentSlot,
+  useCalendarConfig,
+  useIsEventInSelection,
+} from "./calendar-provider";
 import { SeriesChangeDot } from "./event-series-scope-dialog";
 import {
   formatTime,
@@ -228,7 +232,7 @@ export function CalendarEventItem({
   positionedEvent,
   hourHeight,
   isPast: isPastProp,
-  isSelected,
+  isSelected: isSelectedProp,
   onClick,
   dragVariant = "default",
   isResizing = false,
@@ -248,6 +252,11 @@ export function CalendarEventItem({
   className,
 }: CalendarEventItemProps) {
   const { event, segmentPosition = "full" } = positionedEvent;
+  // One of several selected events looks selected but opens no details.
+  // Drag and resize copies keep their own look
+  const isInSelection =
+    useIsEventInSelection(event.id) && dragVariant === "default";
+  const isSelected = isSelectedProp || isInSelection;
   const { calendars, dayStartHour, dayEndHour, hourCycle, locale, timeZone } =
     useCalendarConfig();
   const color = resolveEventColor(event, calendars);
@@ -274,7 +283,7 @@ export function CalendarEventItem({
     height: number;
   } | null>(null);
 
-  const showPopover = isSelected && showEventPopover;
+  const showPopover = isSelectedProp && showEventPopover;
   const detailsToggle = useEventDetailsToggle({
     showPopover: showPopover ?? false,
     showEventPopover: showEventPopover ?? false,
@@ -810,7 +819,7 @@ const ALL_DAY_SLOT_CLASS =
 export function AllDayEventItem({
   event,
   isPast: isPastProp,
-  isSelected,
+  isSelected: isSelectedProp,
   onClick,
   className,
   spanStart = true,
@@ -825,6 +834,10 @@ export function AllDayEventItem({
   dragVariant,
   isResizing = false,
 }: AllDayEventItemProps) {
+  // One of several selected events looks selected but opens no details
+  const isInSelection =
+    useIsEventInSelection(event.id) && (dragVariant ?? "default") === "default";
+  const isSelected = isSelectedProp || isInSelection;
   const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
@@ -839,7 +852,7 @@ export function AllDayEventItem({
 
   /** The event element: anchors and toggles its details popover */
   const eventRef = React.useRef<HTMLDivElement>(null);
-  const showPopover = isSelected && showEventPopover;
+  const showPopover = isSelectedProp && showEventPopover;
   const detailsToggle = useEventDetailsToggle({
     showPopover: showPopover ?? false,
     showEventPopover: showEventPopover ?? false,

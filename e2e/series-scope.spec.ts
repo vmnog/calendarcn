@@ -222,6 +222,25 @@ test("details changes wait and ask once, with a summary, when the event is left"
   }
 });
 
+test("Shift-clicking another event while a change waits asks first, then selects both", async ({
+  page,
+}) => {
+  await occurrence(page, "Friday, June 5").click();
+  await detailTitle(page).fill("Design Sync");
+  await detailTitle(page).press("Enter");
+  const friday = occurrence(page, "Friday, June 5", AT_TWO, "Design Sync");
+  await expect(friday).toContainText("●");
+
+  // Adding an event to the selection leaves the waiting date: it asks first
+  await calendarEvent(page, "Quick Sync").click({ modifiers: ["Shift"] });
+  await answer(page, "This event");
+  await expect(friday).not.toContainText("●");
+  await expect(occurrence(page, "Thursday, June 4")).toBeVisible();
+  await expect(
+    page.getByRole("main").locator('[data-event-id][aria-pressed="true"]'),
+  ).toHaveCount(2);
+});
+
 test("a repeat rule change in the details offers only the following or all events", async ({
   page,
 }) => {

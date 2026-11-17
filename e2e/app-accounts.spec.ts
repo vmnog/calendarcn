@@ -131,10 +131,13 @@ test("the view settings switch, and declined events wait for the views", async (
   await expect(weekNumbers).not.toBeChecked();
   await expect.poll(() => juneFourthRowColumns(page)).not.toMatch(/^32px /);
 
-  await expect(
-    dialog.getByRole("switch", { name: "Declined events" }),
-  ).toBeDisabled();
-  await expect(dialog.getByText("Soon")).toBeVisible();
+  // Every view reads declined events since the view settings PR: no "Soon"
+  const declined = dialog.getByRole("switch", { name: "Declined events" });
+  await expect(declined).toBeEnabled();
+  const wasChecked = await declined.isChecked();
+  await declined.click();
+  await expect(declined).toBeChecked({ checked: !wasChecked });
+  await expect(dialog.getByText("Soon")).toHaveCount(0);
 });
 
 test("Manage calendar accounts opens the first account, whose calendars hide and show", async ({

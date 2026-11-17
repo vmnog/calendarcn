@@ -6,6 +6,7 @@ Pure utility functions and data:
 
 - `event-utils.ts` — event positioning algorithms (column assignment, positions as percentages of the visible hours)
 - `event-history.ts` — undo steps (apply, invert, record, merge quick edits) and where a pasted event goes
+- `event-selection.ts` — several selected events: toggling, "Select all visible", one undo step for a group (`mergeEventChanges`), where a pasted group goes, group moves, and their toasts
 - `recurrence.ts` — repeat rules: RRULE parse/format, labels, series occurrences
 - `time-zones.ts` — IANA zone list, offsets, zone days, wall-clock zone changes
 - `timezone-label.ts` — short time zone labels ("GMT-3 Sao Paulo")

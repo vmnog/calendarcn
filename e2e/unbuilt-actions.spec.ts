@@ -111,7 +111,7 @@ test("the useful shortcuts mark the ones nothing handles", async ({ page }) => {
   await expect(row("Toggle sidebar")).toContainText("/");
 });
 
-test("the week start, day count and hour size commands aren't marked Soon", async ({
+test("the week start, day count, hour size and Select all visible commands aren't marked Soon", async ({
   page,
 }) => {
   await page.keyboard.press("ControlOrMeta+k");
@@ -122,6 +122,7 @@ test("the week start, day count and hour size commands aren't marked Soon", asyn
     "Default hour size",
     "Zoom hours in",
     "Zoom hours out",
+    "Select all visible",
   ]) {
     await menu.getByPlaceholder("Type a command...").fill(name);
     const option = menu.getByRole("option", {
