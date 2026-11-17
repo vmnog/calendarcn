@@ -11,6 +11,8 @@ import {
 import { createRelativeLink } from "fumadocs-ui/mdx";
 
 import { DocsEyebrow } from "@/components/docs/docs-eyebrow";
+import { InstallTabs } from "@/components/docs/install-tabs";
+import type { InstallTabsProps } from "@/components/docs/install-tabs";
 import { getMDXComponents } from "@/components/docs/mdx-components";
 import { SITE_URL, getMarkdownPath, source } from "@/lib/source";
 
@@ -69,6 +71,10 @@ export default async function Page({ params }: DocsPageProps) {
         <MDX
           components={getMDXComponents({
             a: createRelativeLink(source, page),
+            // The Prompt tab sends an assistant to the page the tabs are on
+            InstallTabs: (props: InstallTabsProps) => (
+              <InstallTabs {...props} docsUrl={`${SITE_URL}${markdownPath}`} />
+            ),
           })}
         />
       </DocsBody>

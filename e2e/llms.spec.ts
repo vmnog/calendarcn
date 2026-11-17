@@ -3,7 +3,8 @@ import { expect, test } from "@playwright/test";
 /**
  * The docs as an AI assistant reads them: `/llms.txt`, `/llms-full.txt`, every
  * page as Markdown at its URL plus `.md`, the "Copy Markdown" and "Open"
- * buttons on each page, `/sitemap.xml` and `/robots.txt`.
+ * buttons on each page, the Prompt tab of the Installation tabs,
+ * `/sitemap.xml` and `/robots.txt`.
  */
 
 /** Origin the absolute URLs in these files start with */
@@ -26,6 +27,13 @@ const EXAMPLE_PAGES = [
   { path: WEEK_VIEW_PATH, file: "src/examples/week-view-demo.tsx" },
   { path: "/docs/loading-events", file: "src/examples/range-loading-demo.tsx" },
   { path: "/docs/import-export", file: "src/examples/ics-demo.tsx" },
+];
+
+/** Pages with Installation tabs, and the registry item their Prompt tab installs */
+const INSTALL_PAGES = [
+  { path: WEEK_VIEW_PATH, item: "week-view", title: "Week View" },
+  // A guide, whose item has no page of its own
+  { path: "/docs/import-export", item: "ics", title: "ICS Import and Export" },
 ];
 
 /** Paths of the docs pages `/sitemap.xml` lists */
@@ -219,6 +227,39 @@ test("a docs page has Copy Markdown and an Open menu linking its Markdown", asyn
     ).toHaveAttribute("href", new RegExp(prompt));
   }
 });
+
+for (const { path, item, title } of INSTALL_PAGES) {
+  test(`the Installation tabs on ${path} have a Prompt to paste into an assistant`, async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto(path);
+
+    // The Installation tabs: CLI, Manual, Prompt. Examples have tabs of their own
+    const tabs = page.getByRole("tablist").filter({ hasText: "Manual" });
+    const tab = tabs.getByRole("tab", { name: "Prompt", exact: true });
+    await tab.click();
+    const panel = page.locator(
+      `[id="${await tab.getAttribute("aria-controls")}"]`,
+    );
+
+    const prompt =
+      `Run \`npx shadcn add @calendarcn/${item}\` in this project to install CalendarCN's ${title}. ` +
+      `If the command fails, read ${SITE_URL}/docs/installation.md and set up what's missing first. ` +
+      `Then read ${SITE_URL}${path}.md in full and follow it to add ${title} to the app.`;
+    await expect(panel.locator("pre")).toHaveText(prompt);
+
+    // One click copies all of it
+    await panel.getByRole("button", { name: "Copy Text" }).click();
+    await expect(
+      panel.getByRole("button", { name: "Copied Text" }),
+    ).toBeVisible();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+      prompt,
+    );
+  });
+}
 
 test("the sitemap lists the home page and the docs, and robots.txt names it", async ({
   request,
