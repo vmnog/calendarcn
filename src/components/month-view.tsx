@@ -81,7 +81,7 @@ export function MonthView({
     showDay,
     loading,
   } = useCalendar();
-  const { locale } = useCalendarConfig();
+  const { locale, timeZone } = useCalendarConfig();
   const {
     reportView,
     reportDisplayMonth,
@@ -309,13 +309,14 @@ export function MonthView({
   const expandedEvents = useMemo(
     () =>
       filterDeclinedEvents(
-        expandRecurringEvents(events, {
-          start: new Date(rangeStartTime),
-          end: new Date(rangeEndTime),
-        }),
+        expandRecurringEvents(
+          events,
+          { start: new Date(rangeStartTime), end: new Date(rangeEndTime) },
+          timeZone,
+        ),
         showDeclinedEvents,
       ),
-    [events, rangeStartTime, rangeEndTime, showDeclinedEvents],
+    [events, rangeStartTime, rangeEndTime, timeZone, showDeclinedEvents],
   );
 
   // Base offset hides the top buffer; scrollOffset + slideOffset shift within

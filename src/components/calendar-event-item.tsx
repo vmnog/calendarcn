@@ -247,7 +247,7 @@ export function CalendarEventItem({
   className,
 }: CalendarEventItemProps) {
   const { event, segmentPosition = "full" } = positionedEvent;
-  const { calendars, dayStartHour, dayEndHour, hourCycle, locale } =
+  const { calendars, dayStartHour, dayEndHour, hourCycle, locale, timeZone } =
     useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
@@ -255,7 +255,7 @@ export function CalendarEventItem({
   const isDeclined = isDeclinedByViewer(event);
   const showsDeclined = isDeclined && !isSelected;
   // `false` on the server and during hydration, so the markup matches
-  const endIsPast = useIsPast(event.end);
+  const endIsPast = useIsPast(event.end, timeZone);
   const eventIsPast = isPastProp ?? endIsPast;
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
   const isDayView = view === "day";
@@ -821,13 +821,13 @@ export function AllDayEventItem({
   dragVariant,
   isResizing = false,
 }: AllDayEventItemProps) {
-  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
   const isDayView = view === "day";
   // `false` on the server and during hydration, so the markup matches
-  const endIsPast = useIsPast(event.end);
+  const endIsPast = useIsPast(event.end, timeZone);
   const eventIsPast = isPastProp ?? endIsPast;
   /** Declined by the viewer: an outline only, struck-through text */
   const isDeclined = isDeclinedByViewer(event);

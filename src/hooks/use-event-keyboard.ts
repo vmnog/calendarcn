@@ -135,7 +135,7 @@ export function useEventKeyboard({
       e.preventDefault();
       e.stopPropagation();
 
-      const event = findEventOrOccurrence(events, eventId);
+      const event = findEventOrOccurrence(events, eventId, config.timeZone);
       if (!event) return;
       const changed = getKeyboardEventChange(
         event,

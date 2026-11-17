@@ -53,7 +53,11 @@ import {
   isSameRecurrenceRule,
   normalizeRecurrenceRule,
 } from "@/lib/recurrence";
-import { getEventTimeZone, getZonedDay } from "@/lib/time-zones";
+import {
+  fromDisplayEvent,
+  getEventTimeZone,
+  getZonedDay,
+} from "@/lib/time-zones";
 import type {
   DetailedCalendarEvent,
   EventDetailRecurrenceProps,
@@ -696,16 +700,18 @@ export function EventDetailRecurrence<
   onPrevious,
   onNext,
 }: EventDetailRecurrenceProps<TEvent>) {
-  const { locale } = useCalendarConfig();
+  const { locale, timeZone } = useCalendarConfig();
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [customOpen, setCustomOpen] = React.useState(false);
   /** Remounts the custom dialog on each open, so it starts from the current rule */
   const [customKey, setCustomKey] = React.useState(0);
 
-  // A rule counts its days in the event's zone
-  const start = getZonedDay(event.start, getEventTimeZone(event));
-  const rule = getEventRecurrenceRule(event);
+  // A rule counts its days in the event's zone, from its instant (the event
+  // reads on the calendar's clock)
+  const seriesEvent = fromDisplayEvent(event, timeZone);
+  const start = getZonedDay(seriesEvent.start, getEventTimeZone(seriesEvent));
+  const rule = getEventRecurrenceRule(seriesEvent);
   const repeats = Boolean(rule ?? event.recurrence);
   const label = getRecurrenceLabel(event, rule, start, locale);
 

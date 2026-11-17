@@ -155,10 +155,10 @@ export function YearView({ onDayClick, className }: YearViewProps) {
   const { currentDate, events, viewSettings, weekStartsOn, showDay, loading } =
     useCalendar();
   const { showWeekends, showWeekNumbers, showDeclinedEvents } = viewSettings;
-  const { locale } = useCalendarConfig();
+  const { locale, timeZone } = useCalendarConfig();
   const { reportView } = useCalendarViewSync();
   // `null` on the server and during hydration, so no day is marked as today
-  const today = useToday();
+  const today = useToday(timeZone);
   /** The scrolling months, searched for a day's button by its date */
   const monthsRef = useRef<HTMLDivElement | null>(null);
 
@@ -180,11 +180,11 @@ export function YearView({ onDayClick, className }: YearViewProps) {
     // for the year and never stored, as month view draws them. Declined
     // events count only while they're shown.
     const counted = filterDeclinedEvents(
-      expandRecurringEvents(events, range),
+      expandRecurringEvents(events, range, timeZone),
       showDeclinedEvents,
     );
     return countEventsByDay(counted, range);
-  }, [events, yearStartTime, showDeclinedEvents]);
+  }, [events, yearStartTime, timeZone, showDeclinedEvents]);
 
   const modifiers = useMemo(
     () => ({

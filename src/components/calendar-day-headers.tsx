@@ -3,6 +3,7 @@
 import { isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useTimeZoneLabel } from "@/hooks/use-timezone-label";
+import { useCalendarConfig } from "./calendar-provider";
 import type { WeekViewDayColumnsProps } from "./week-view-types";
 
 /**
@@ -16,8 +17,9 @@ export function CalendarDayHeaders({
   highlightedDate,
   className,
 }: WeekViewDayColumnsProps) {
-  // Empty on the server and during hydration, the viewer's zone afterwards
-  const timezone = useTimeZoneLabel();
+  const { timeZone } = useCalendarConfig();
+  // Empty on the server and during hydration, the calendar's zone afterwards
+  const timezone = useTimeZoneLabel(timeZone);
 
   // Standalone mode: just render the day columns (used inside scroll container)
   if (standalone) {

@@ -18,6 +18,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { TimeZoneList } from "@/components/time-zone-list";
+import {
+  addTimeZone,
+  getViewerTimeZone,
+  makeTimeZonePrimary,
+  removeTimeZone,
+} from "@/lib/time-zones";
+import type { TimeZoneCommand } from "@/components/week-view-types";
 
 /** Reusable "Soon" badge for unimplemented command items */
 const SOON_BADGE = (
@@ -38,6 +46,14 @@ const DIALOG_CLASS =
 const COMMAND_CLASS =
   "**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5";
 
+/** Each time zone command's label, which its list's input shows too */
+const TIME_ZONE_COMMAND_LABELS: Record<TimeZoneCommand, string> = {
+  travel: "Travel to time zone...",
+  add: "Show additional time zones...",
+  primary: "Make time zone primary...",
+  hide: "Hide time zone...",
+};
+
 /** One command of the menu */
 interface MenuCommand {
   label: string;
@@ -47,6 +63,8 @@ interface MenuCommand {
   run?: () => void;
   /** Not built yet: listed disabled with a "Soon" badge, only with `showComingSoon` */
   soon?: boolean;
+  /** Runs with the menu still open: it lists what to pick next in its place */
+  keepsOpen?: boolean;
 }
 
 /** A titled group of commands */
@@ -75,12 +93,18 @@ interface CommandMenuProps {
    * disabled with a "Soon" badge, as the live demo does
    */
   showComingSoon?: boolean;
+  /**
+   * Opens the menu on a time zone command's list instead of the commands,
+   * e.g. `"travel"` for the Z key
+   */
+  timeZoneCommand?: TimeZoneCommand;
 }
 
 /**
- * The live demo's ⌘K menu. Going to today, previous and next, the views
- * and the view settings come from `useCalendar()`, so it goes inside
- * `CalendarProvider`. Commands
+ * The live demo's ⌘K menu. Going to today, previous and next, the views,
+ * the view settings and the time zones come from `useCalendar()`, so it goes
+ * inside `CalendarProvider`. A time zone command lists the zones in the
+ * menu's place. Commands
  * that belong to your app (panels, theme, .ics files) show only when you pass
  * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
  */
@@ -93,6 +117,7 @@ export function CommandMenu({
   onImportIcs,
   onExportIcs,
   showComingSoon = false,
+  timeZoneCommand,
 }: CommandMenuProps) {
   const {
     goToToday,
@@ -103,7 +128,29 @@ export function CommandMenu({
     toggleWeekends,
     toggleDeclinedEvents,
     toggleWeekNumbers,
+    timeZones,
+    changeTimeZones,
+    travelToTimeZone,
   } = useCalendar();
+  /** The time zone command whose list shows in place of the commands */
+  const [zoneCommand, setZoneCommand] = React.useState<TimeZoneCommand | null>(
+    null,
+  );
+  /** Text typed in the input, for the commands or a zone list */
+  const [query, setQuery] = React.useState("");
+  /** The input, focused again when a zone list replaces the commands */
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  // Each opening starts on the commands, or on the list `timeZoneCommand`
+  // names. Adjusted while rendering, so the first frame is already right
+  const [wasOpen, setWasOpen] = React.useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setZoneCommand(timeZoneCommand ?? null);
+      setQuery("");
+    }
+  }
+  const hasOtherZones = timeZones.secondary.length > 0;
 
   const runCommand = React.useCallback(
     (command: () => void) => {
@@ -112,6 +159,41 @@ export function CommandMenu({
     },
     [onOpenChange],
   );
+
+  /** Lists a time zone command's zones in place of the commands */
+  const openZoneCommand = (command: TimeZoneCommand) => {
+    setZoneCommand(command);
+    setQuery("");
+  };
+
+  // A click on a time zone command takes the focus: give it back to the
+  // input, so typing searches the zones
+  React.useEffect(() => {
+    if (zoneCommand) inputRef.current?.focus();
+  }, [zoneCommand]);
+
+  /** Runs the open time zone command on the zone picked */
+  const pickZone = (zone: string) => {
+    if (zoneCommand === "travel") {
+      runCommand(() => travelToTimeZone(zone));
+      return;
+    }
+    const change = {
+      add: addTimeZone,
+      primary: makeTimeZonePrimary,
+      hide: removeTimeZone,
+    }[zoneCommand ?? "add"];
+    runCommand(() => changeTimeZones((zones) => change(zones, zone)));
+  };
+
+  /** The zones "Hide time zone..." and "Make time zone primary..." list */
+  const listedZones = (() => {
+    if (zoneCommand === "primary") return [...timeZones.secondary].reverse();
+    if (zoneCommand !== "hide") return undefined;
+    // The primary zone first, then the others from the closest
+    const primary = timeZones.primary ?? getViewerTimeZone();
+    return [primary, ...[...timeZones.secondary].reverse()];
+  })();
 
   const groups: MenuGroup[] = [
     {
@@ -139,8 +221,28 @@ export function CommandMenu({
     {
       heading: "Time zones",
       commands: [
-        { label: "Travel to time zone...", soon: true },
-        { label: "Show additional time zones...", soon: true },
+        {
+          label: TIME_ZONE_COMMAND_LABELS.travel,
+          keys: ["Z"],
+          keepsOpen: true,
+          run: () => openZoneCommand("travel"),
+        },
+        {
+          label: TIME_ZONE_COMMAND_LABELS.add,
+          keepsOpen: true,
+          run: () => openZoneCommand("add"),
+        },
+        // Only with more than one zone, as in Notion Calendar
+        {
+          label: TIME_ZONE_COMMAND_LABELS.primary,
+          keepsOpen: true,
+          run: hasOtherZones ? () => openZoneCommand("primary") : undefined,
+        },
+        {
+          label: TIME_ZONE_COMMAND_LABELS.hide,
+          keepsOpen: true,
+          run: hasOtherZones ? () => openZoneCommand("hide") : undefined,
+        },
       ],
     },
     {
@@ -251,11 +353,34 @@ export function CommandMenu({
         <DialogDescription className="sr-only">
           Search for a command to run...
         </DialogDescription>
-        <Command className={COMMAND_CLASS}>
-          <CommandInput placeholder="Type a command..." />
+        <Command className={COMMAND_CLASS} shouldFilter={zoneCommand === null}>
+          <CommandInput
+            ref={inputRef}
+            placeholder={
+              zoneCommand
+                ? TIME_ZONE_COMMAND_LABELS[zoneCommand]
+                : "Type a command..."
+            }
+            value={query}
+            onValueChange={setQuery}
+            onKeyDown={(e) => {
+              // Backspace in an empty zone search goes back to the commands
+              if (e.key !== "Backspace" || !zoneCommand || query) return;
+              e.preventDefault();
+              setZoneCommand(null);
+            }}
+          />
           <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            {groups.map((group) => {
+            {zoneCommand ? (
+              <TimeZoneList
+                query={query}
+                onSelect={pickZone}
+                timeZones={listedZones}
+              />
+            ) : (
+              <CommandEmpty>No results found.</CommandEmpty>
+            )}
+            {(zoneCommand ? [] : groups).map((group) => {
               const commands = group.commands.filter((command) =>
                 command.soon ? showComingSoon : command.run !== undefined,
               );
@@ -263,11 +388,15 @@ export function CommandMenu({
 
               return (
                 <CommandGroup key={group.heading} heading={group.heading}>
-                  {commands.map(({ label, keys, run, soon }) => (
+                  {commands.map(({ label, keys, run, soon, keepsOpen }) => (
                     <CommandItem
                       key={label}
                       disabled={soon}
-                      onSelect={run ? () => runCommand(run) : undefined}
+                      onSelect={
+                        run
+                          ? () => (keepsOpen ? run() : runCommand(run))
+                          : undefined
+                      }
                     >
                       {label}
                       {soon && SOON_BADGE}

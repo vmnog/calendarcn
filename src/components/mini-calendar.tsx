@@ -11,6 +11,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { useToday } from "@/hooks/use-now";
+import { useCalendarConfig } from "@/components/calendar-provider";
 import {
   Tooltip,
   TooltipContent,
@@ -84,8 +85,9 @@ export function MiniCalendar({
   showWeekNumber = true,
   className,
 }: MiniCalendarProps) {
-  // `null` on the server and during hydration
-  const today = useToday();
+  const { timeZone } = useCalendarConfig();
+  // `null` on the server and during hydration. On the calendar's clock
+  const today = useToday(timeZone);
   const [displayedMonth, setDisplayedMonth] = React.useState<Date>(
     () => getAnchorMonth(currentDate, visibleDays) ?? today ?? new Date(),
   );
