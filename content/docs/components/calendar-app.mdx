@@ -119,6 +119,7 @@ const [events, setEvents] = React.useState<DetailedCalendarEvent[]>([]);
 - `calendars` fill the sidebar's calendar list and the details' calendar picker; an event without its own `color` takes its calendar's.
 - The eye beside a calendar in the sidebar hides its events: they leave every view and the event search, and come back when it's shown again. An event created on a hidden calendar, or moved to one, shows that calendar again.
 - `contacts` and `rooms` are who and what the details' participants field invites. `conferenceProviders` fill its Conferencing menu, and `locationSuggestions` its location field.
+- `contacts` are also who you can meet with: the sidebar's "Meet with...", <Kbd>F</Kbd> and <Kbd>P</Kbd> add them, and `contactEvents` holds their events, by email, to draw beside yours. See [Meeting with people](/docs/components/calendar-core#meeting-with-people).
 - `createEvent` builds the event a click on an empty slot creates, `onEventCreate`, `onEventUpdate` and `onEventSelect` report single changes, and `onVisibleRangeChange` with `loading` loads events by range: see [Loading Events](/docs/loading-events).
 
 ### .ics files
@@ -175,12 +176,14 @@ From 768px up, while the details sidebar is closed, a selected event shows its d
 | Toggle the details sidebar        | <Kbd>/</Kbd>                                  |
 | Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
 | Settings, with `onOpenSettings`   | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
+| Meet with...                      | <Kbd>F</Kbd>                                  |
+| Show teammate calendar...         | <Kbd>P</Kbd>                                  |
 
 They listen on the whole page. Pass `shortcuts={false}` to turn them all off.
 
 ## Not built yet
 
-The app draws a few of Notion Calendar's controls that don't work yet. Each is disabled and marked "Soon": the sidebar's scheduling row, "Meet with..." field and "Add calendar account", and the view settings the current view doesn't read. The [roadmap](/docs/roadmap) lists them all.
+The app draws a few of Notion Calendar's controls that don't work yet. Each is disabled and marked "Soon": the sidebar's scheduling row and "Add calendar account", and the view settings the current view doesn't read. The [roadmap](/docs/roadmap) lists them all.
 
 ## Parts
 
@@ -192,6 +195,7 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
 - [Time Grid](/docs/components/time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) and [Agenda View](/docs/components/agenda-view): the views.
 - [Details Sidebar](/docs/components/details-sidebar): the right sidebar, with the [Event Details](/docs/components/event-details).
 - [Command Menu](/docs/components/command-menu): the <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu.
+- [People Picker](/docs/components/people-picker): the <Kbd>F</Kbd> and <Kbd>P</Kbd> dialog, to meet with someone or show a teammate's calendar.
 - [Calendar Toaster](/docs/components/calendar-toaster): the toasts after a delete, cut or copy, with Undo.
 - [Sidebar Overlay](/docs/components/sidebar-overlay): both sidebars as sheets on narrow screens, and their colors.
 - [Import and Export](/docs/import-export): `parseIcs()` and `toIcs()`.

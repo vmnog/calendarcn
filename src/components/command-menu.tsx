@@ -70,6 +70,10 @@ interface CommandMenuProps {
   onImportIcs?: () => void;
   /** Adds "Export .ics file" */
   onExportIcs?: () => void;
+  /** Adds "Meet with..." (F): open a people picker that meets with who you pick */
+  onMeetWith?: () => void;
+  /** Adds "Show teammate calendar..." (P): open a people picker that shows their calendar */
+  onShowTeammateCalendar?: () => void;
   /**
    * Also lists the Notion Calendar commands CalendarCN doesn't have yet,
    * disabled with a "Soon" badge, as the live demo does
@@ -91,6 +95,8 @@ export function CommandMenu({
   onCycleTheme,
   onImportIcs,
   onExportIcs,
+  onMeetWith,
+  onShowTeammateCalendar,
   showComingSoon = false,
 }: CommandMenuProps) {
   const { goToToday, goToPrev, goToNext, switchView } = useCalendar();
@@ -108,8 +114,12 @@ export function CommandMenu({
       heading: "Calendar",
       commands: [
         { label: "Create event...", soon: true },
-        { label: "Meet with...", soon: true },
-        { label: "Show teammate calendar...", soon: true },
+        { label: "Meet with...", keys: ["F"], run: onMeetWith },
+        {
+          label: "Show teammate calendar...",
+          keys: ["P"],
+          run: onShowTeammateCalendar,
+        },
         { label: "Create recurring scheduling link...", soon: true },
         { label: "Create one-off scheduling link...", soon: true },
         { label: "Import .ics file...", run: onImportIcs },

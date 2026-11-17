@@ -57,12 +57,15 @@ Pass a callback to add its command. These are the demo's:
   onCycleTheme={cycleTheme}
   onImportIcs={() => fileInputRef.current?.click()}
   onExportIcs={exportIcs}
+  onMeetWith={() => openPeoplePicker("meet-with")}
+  onShowTeammateCalendar={() => openPeoplePicker("teammate")}
   showComingSoon
 />
 ```
 
 - `onImportIcs` and `onExportIcs` add "Import .ics file..." and "Export .ics file". Read and write the files with [`@calendarcn/ics`](/docs/import-export): the demo opens a hidden `<input type="file">`, passes its text to `parseIcs()` and adds the events, and downloads `toIcs(events)` as a file.
 - `onCycleTheme` adds "Set theme...". The demo goes from system to light to dark with `useTheme()` from next-themes.
+- `onMeetWith` and `onShowTeammateCalendar` add "Meet with..." (F) and "Show teammate calendar..." (P). The demo opens the [People Picker](/docs/components/people-picker) from both.
 - `onToggleSidebar` and `onToggleContextPanel` add the panel toggles, next to the [Calendar Header](/docs/components/calendar-header)'s buttons.
 - `showComingSoon` also lists the Notion Calendar commands CalendarCN doesn't have yet, disabled with a "Soon" badge, as the demo does.
 
@@ -124,6 +127,16 @@ The dialog is translucent and blurred in dark mode. The CLI also adds a rule to 
       name: "onExportIcs",
       type: "() => void",
       description: 'Adds "Export .ics file".',
+    },
+    {
+      name: "onMeetWith",
+      type: "() => void",
+      description: 'Adds "Meet with..." (F).',
+    },
+    {
+      name: "onShowTeammateCalendar",
+      type: "() => void",
+      description: 'Adds "Show teammate calendar..." (P).',
     },
     {
       name: "showComingSoon",

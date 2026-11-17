@@ -18,6 +18,10 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useToday } from "@/hooks/use-now";
 import { EventTitleFocusProvider } from "./event-title-focus-context";
 import {
+  CalendarPeopleProvider,
+  useCalendarPeopleState,
+} from "./calendar-people";
+import {
   AGENDA_DAYS,
   describeEventChange,
   describeEventCreated,
@@ -49,6 +53,7 @@ import {
   getOccurrenceRemoval,
 } from "@/lib/recurrence";
 import { isKnownTimeZone } from "@/lib/time-zones";
+import { addMeetingParticipants, findContact } from "@/lib/people";
 import type {
   CalendarConfig,
   CalendarContextValue,
@@ -60,6 +65,7 @@ import type {
   CalendarProviderProps,
   CalendarRenderSlots,
   ConferenceProviderOption,
+  DetailedCalendarEvent,
   EventContact,
   EventContentProps,
   EventHistory,
@@ -329,6 +335,29 @@ function createDefaultEvent(range: NewEventRange): CalendarEvent {
 }
 
 /**
+ * A just-created event with the people met with ("Meet with...") invited:
+ * as the details' participants field adds them, the calendar's account
+ * organizing. Returned as it is when nobody is met with.
+ */
+function withMeetingParticipants(
+  event: CalendarEvent,
+  meetWith: string[],
+  contacts: EventContact[],
+): CalendarEvent {
+  if (meetWith.length === 0) return event;
+  const detailed: DetailedCalendarEvent = event;
+  const invited: DetailedCalendarEvent = {
+    ...detailed,
+    participants: addMeetingParticipants(
+      detailed.participants ?? [],
+      meetWith.map((email) => findContact(contacts, email)),
+      detailed.calendarEmail,
+    ),
+  };
+  return invited;
+}
+
+/**
  * Moves `date` by `amount` periods of the given view: days, months, years, the
  * agenda's `AGENDA_DAYS`, or the week view's step (`numberOfDays` below a
  * week, a week otherwise)
@@ -546,6 +575,14 @@ function CalendarStateProvider({
   rooms = NO_ROOMS,
   conferenceProviders = NO_CONFERENCE_PROVIDERS,
   locationSuggestions = NO_LOCATION_SUGGESTIONS,
+  meetWith,
+  defaultMeetWith,
+  onMeetWithChange,
+  teammates,
+  defaultTeammates,
+  onTeammatesChange,
+  contactEvents,
+  workingHours,
   createEvent,
   onEventCreate,
   onEventUpdate,
@@ -576,6 +613,18 @@ function CalendarStateProvider({
     prop: numberOfDaysProp,
     defaultProp: defaultNumberOfDays,
     onChange: onNumberOfDaysChange,
+  });
+  /** Who you meet with and which teammates show, for `useCalendarPeople()` */
+  const people = useCalendarPeopleState({
+    contacts,
+    meetWith,
+    defaultMeetWith,
+    onMeetWithChange,
+    teammates,
+    defaultTeammates,
+    onTeammatesChange,
+    contactEvents,
+    workingHours,
   });
   const [viewSettings, setViewSettings] = React.useState<ViewSettings>(() => ({
     ...DEFAULT_VIEW_SETTINGS,
@@ -812,8 +861,13 @@ function CalendarStateProvider({
 
   const addEventFromRange = React.useCallback(
     (range: NewEventRange) => {
-      const newEvent = (createEvent ?? createDefaultEvent)(range);
-      if (!newEvent) return;
+      const created = (createEvent ?? createDefaultEvent)(range);
+      if (!created) return;
+      const newEvent = withMeetingParticipants(
+        created,
+        people.meetWith,
+        people.contacts,
+      );
       setEvents((prev) => [...prev, newEvent]);
       onEventCreate?.(newEvent);
       recordHistory("create", [
@@ -825,6 +879,8 @@ function CalendarStateProvider({
     },
     [
       createEvent,
+      people.meetWith,
+      people.contacts,
       setEvents,
       onEventCreate,
       selectEvent,
@@ -1481,7 +1537,9 @@ function CalendarStateProvider({
                     pendingEventId={pendingTitleFocusId}
                     clearPending={clearTitleFocus}
                   >
-                    {children}
+                    <CalendarPeopleProvider value={people}>
+                      {children}
+                    </CalendarPeopleProvider>
                     {/* Announces changes, the event actions, undo and redo to screen readers */}
                     <div role="status" aria-live="polite" className="sr-only">
                       {announcement && (

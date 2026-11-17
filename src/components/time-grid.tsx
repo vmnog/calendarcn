@@ -52,6 +52,7 @@ import { CalendarDayHeaders } from "./calendar-day-headers";
 import { WeekViewGrid } from "./week-view-grid";
 import { WeekViewTimeAxis } from "./week-view-time-axis";
 import { WeekViewTimeIndicator } from "./week-view-time-indicator";
+import { usePeopleInTimeGrid } from "./week-view-people";
 import {
   CalendarPopoverBoundaryProvider,
   isEventInsideCalendarPopover,
@@ -492,6 +493,16 @@ export function TimeGrid({
     () => displayedEvents.filter((e) => !e.isAllDay && !isMultiDayEvent(e)),
     [displayedEvents],
   );
+  // Other people's events beside yours, and the free time you all share
+  const bufferRange = React.useMemo(
+    () => ({ start: new Date(bufferStartTime), end: new Date(bufferEndTime) }),
+    [bufferStartTime, bufferEndTime],
+  );
+  const { personEvents, freeTimes } = usePeopleInTimeGrid(
+    events,
+    bufferRange,
+    bufferedDayDates,
+  );
 
   const { allDayResizeState, handleAllDayResizePointerDown } = useAllDayResize({
     days: bufferedDayDates,
@@ -691,6 +702,8 @@ export function TimeGrid({
                   onEventPopoverExpand={onEventPopoverExpand}
                   onEventPopoverClose={closeEventPopover}
                   highlightedDate={highlightedDate}
+                  personEvents={personEvents}
+                  freeTimes={freeTimes}
                   visibleStartIndex={dynamicBuffer}
                   visibleCount={VISIBLE_DAYS}
                 />

@@ -285,6 +285,71 @@ export interface EventContact {
    * typing, with a history icon
    */
   recent?: boolean;
+  /**
+   * Color their events are drawn in while their calendar shows ("Meet
+   * with...", "Show teammate calendar..."). Defaults to one picked from
+   * their place in `contacts`
+   */
+  color?: EventColor;
+}
+
+/**
+ * A person whose calendar shows beside yours, as `useCalendarPeople()`
+ * lists them: their contact, with the color their events are drawn in
+ */
+export interface CalendarPerson extends EventContact {
+  /** Color of their events: the contact's own `color`, or one picked for them */
+  color: EventColor;
+}
+
+/**
+ * What picking someone in the people picker does: meet with them ("Meet
+ * with...", F) or show their calendar ("Show teammate calendar...", P)
+ */
+export type PeoplePickerMode = "meet-with" | "teammate";
+
+/**
+ * Someone else's event as the time grid draws it beside yours: their event,
+ * with an id of its own (`person:<email>:<event id>`) and the person it
+ * belongs to. Never editable.
+ */
+export interface PersonCalendarEvent extends DetailedCalendarEvent {
+  /** The person whose calendar it comes from */
+  calendarPerson: CalendarPerson;
+}
+
+/**
+ * The people whose calendars show beside yours, returned by
+ * `useCalendarPeople()`: the ones you meet with ("Meet with...") and your
+ * teammates ("Show teammate calendar..."). Both lists hold emails, kept in
+ * the order they were added; an email is never in a list twice.
+ */
+export interface CalendarPeopleValue {
+  /** People "Meet with..." and "Show teammate calendar..." offer: the provider's `contacts` */
+  contacts: EventContact[];
+  /** Emails of the people you're meeting with */
+  meetWith: string[];
+  /** Emails of the teammates whose calendars show */
+  teammates: string[];
+  /** The people you're meeting with, then the teammates not among them */
+  shownPeople: CalendarPerson[];
+  /** Adds someone to the meeting. Does nothing when they are in it already */
+  addMeetWith: (email: string) => void;
+  /** Takes someone out of the meeting */
+  removeMeetWith: (email: string) => void;
+  /** Ends the meeting: nobody is met with anymore */
+  clearMeetWith: () => void;
+  /** Shows a teammate's calendar. Does nothing when it shows already */
+  addTeammate: (email: string) => void;
+  /** Hides a teammate's calendar again */
+  removeTeammate: (email: string) => void;
+  /**
+   * A person's events, from the provider's `contactEvents` (an empty list
+   * when it has none for them)
+   */
+  getPersonEvents: (email: string) => DetailedCalendarEvent[];
+  /** Days and hours the free times everyone shares are looked in */
+  workingHours: WorkingHours;
 }
 
 /**
@@ -654,6 +719,28 @@ export interface VisibleRange {
   start: Date;
   /** Midnight after the last visible day (exclusive) */
   end: Date;
+}
+
+/**
+ * A stretch of time, `end` exclusive: a busy time, or free time everyone
+ * shares while meeting with people
+ */
+export interface TimeSpan {
+  start: Date;
+  end: Date;
+}
+
+/**
+ * Days and hours, in the viewer's time zone, the free times everyone shares
+ * are looked for in while meeting with people
+ */
+export interface WorkingHours {
+  /** Days of the week they apply to, 0 (Sunday) to 6 (Saturday) */
+  days: RecurrenceWeekday[];
+  /** Hour (0-23) they start at */
+  startHour: number;
+  /** Hour (1-24) they end at, after `startHour` */
+  endHour: number;
 }
 
 /**
@@ -1069,6 +1156,38 @@ interface CalendarProviderBaseProps<
    * none (the typed text is kept as the location)
    */
   locationSuggestions?: LocationSuggestion[];
+  /**
+   * Emails of the people you're meeting with (controlled): "Meet with..."
+   * draws their events beside yours in day and week view, highlights the
+   * times you're all free, and an event created meanwhile invites them
+   */
+  meetWith?: string[];
+  /** People met with at first when `meetWith` is not controlled. Defaults to none */
+  defaultMeetWith?: string[];
+  /** Called with the new emails when someone is added to or taken out of the meeting */
+  onMeetWithChange?: (meetWith: string[]) => void;
+  /**
+   * Emails of the teammates whose calendars show beside yours in day and
+   * week view (controlled), as "Show teammate calendar..." adds them
+   */
+  teammates?: string[];
+  /** Teammates shown at first when `teammates` is not controlled. Defaults to none */
+  defaultTeammates?: string[];
+  /** Called with the new emails when a teammate's calendar is shown or hidden */
+  onTeammatesChange?: (teammates: string[]) => void;
+  /**
+   * Other people's events by email, drawn while you meet with them or show
+   * their calendar. Load them when `onMeetWithChange`, `onTeammatesChange`
+   * or `onVisibleRangeChange` fires, from Google Calendar's free/busy for
+   * example (an event titled "Busy" per busy time). Defaults to none
+   */
+  contactEvents?: Record<string, DetailedCalendarEvent[]>;
+  /**
+   * Days and hours, in the viewer's time zone, the free times you and the
+   * people you meet with share are looked for in. Defaults to 9 AM to 5 PM,
+   * Monday to Friday
+   */
+  workingHours?: WorkingHours;
   /**
    * Called after an event is added: one created by clicking an empty slot,
    * a duplicate or a paste, an occurrence of a repeating event stored on its

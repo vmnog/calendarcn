@@ -15,10 +15,10 @@ Everything in it is made up. Email addresses and links are on `example.com`.
 
 It adds two files to your lib folder:
 
-| File                   | Exports                                                                                                                        | What it is                                                        |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| `lib/mock-events.ts`   | `generateMockEvents`, `DEMO_CALENDARS`, `DEMO_PRIMARY_CALENDAR_ID`, `DEMO_CONTACTS`, `DEMO_ROOMS`, `DEMO_LOCATION_SUGGESTIONS` | The live demo's data.                                             |
-| `lib/sample-events.ts` | `createSampleEvents`                                                                                                           | About fifteen events in one week, the data of the docs' examples. |
+| File                   | Exports                                                                                                                                                 | What it is                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `lib/mock-events.ts`   | `generateMockEvents`, `generateContactEvents`, `DEMO_CALENDARS`, `DEMO_PRIMARY_CALENDAR_ID`, `DEMO_CONTACTS`, `DEMO_ROOMS`, `DEMO_LOCATION_SUGGESTIONS` | The live demo's data.                                             |
+| `lib/sample-events.ts` | `createSampleEvents`                                                                                                                                    | About fifteen events in one week, the data of the docs' examples. |
 
 ## Usage
 
@@ -101,7 +101,8 @@ The two primary calendars give new events default reminders: 10 minutes before o
 
 ## Contacts, rooms and places
 
-- `DEMO_CONTACTS`: nine people the participants field suggests. The first five are marked `recent`, so they're listed before you type.
+- `DEMO_CONTACTS`: nine people the participants field and "Meet with..." suggest. The first five are marked `recent`, so they're listed before you type.
+- `generateContactEvents(today)`: the weeks of four of them, Priya Shah, Alex Rivera, Sam Lee and Morgan Diaz, by email, to pass as `contactEvents`. Each has weekly routines (repeating events, from 20 weeks ago) and a meeting or two this week, busy most mornings, so meeting with them leaves free time in the afternoons. See [Meeting with people](/docs/components/calendar-core#meeting-with-people).
 - `DEMO_ROOMS`: three meeting rooms to book, with their floor and capacity.
 - `DEMO_LOCATION_SUGGESTIONS`: seven parks and places the location field suggests as you type.
 

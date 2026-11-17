@@ -48,13 +48,15 @@ In a field or menu of the event details, <Kbd>Esc</Kbd> only closes it and resto
 
 The live demo ([Calendar App](/docs/components/calendar-app)) adds keys for the parts around the calendar. They come from the same hook, each one on only when you pass its action, so a calendar without a command menu or panels never claims them:
 
-| Action                            | Shortcut                                      | Option                 |
-| --------------------------------- | --------------------------------------------- | ---------------------- |
-| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> | `onToggleCommandMenu`  |
-| Toggle the sidebar                | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> | `onToggleSidebar`      |
-| Toggle the context panel          | <Kbd>/</Kbd>                                  | `onToggleContextPanel` |
-| Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> | `onCycleTheme`         |
-| Settings                          | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> | `onOpenSettings`       |
+| Action                            | Shortcut                                      | Option                   |
+| --------------------------------- | --------------------------------------------- | ------------------------ |
+| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> | `onToggleCommandMenu`    |
+| Toggle the sidebar                | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> | `onToggleSidebar`        |
+| Toggle the context panel          | <Kbd>/</Kbd>                                  | `onToggleContextPanel`   |
+| Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> | `onCycleTheme`           |
+| Settings                          | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> | `onOpenSettings`         |
+| Meet with...                      | <Kbd>F</Kbd>                                  | `onMeetWith`             |
+| Show teammate calendar...         | <Kbd>P</Kbd>                                  | `onShowTeammateCalendar` |
 
 ```tsx
 useCalendarShortcuts({
@@ -62,8 +64,14 @@ useCalendarShortcuts({
   onToggleSidebar: toggleSidebar,
   onToggleContextPanel: toggleContextPanel,
   onCycleTheme: cycleTheme,
+  onMeetWith: () => openPeoplePicker("meet-with"),
+  onShowTeammateCalendar: () => openPeoplePicker("teammate"),
 });
 ```
+
+<Kbd>F</Kbd> and <Kbd>P</Kbd> open the [People
+Picker](/docs/components/people-picker), to meet with someone or show a
+teammate's calendar, as in Notion Calendar.
 
 On Windows and Linux, use <Kbd>Ctrl</Kbd> in place of <Kbd>⌘</Kbd>. The one exception is the sidebar toggle, which needs the <Kbd>⌘</Kbd> (Meta) key. <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> and <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> work from inside a text field too. The [Command Menu](/docs/components/command-menu) and the [Calendar Header](/docs/components/calendar-header) show these keys next to their commands and buttons.
 

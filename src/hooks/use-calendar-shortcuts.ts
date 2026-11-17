@@ -19,6 +19,10 @@ interface UseCalendarShortcutsOptions {
   onCycleTheme?: () => void;
   /** Cmd+, / Ctrl+,, even from inside a text field: opens the settings */
   onOpenSettings?: () => void;
+  /** F: opens "Meet with..." */
+  onMeetWith?: () => void;
+  /** P: opens "Show teammate calendar..." */
+  onShowTeammateCalendar?: () => void;
 }
 
 /** App actions some keys trigger. A key is claimed only when its action is given */
@@ -156,6 +160,11 @@ function handleAppShortcut(
   if (e.key === "M" && e.shiftKey && !isCommand) {
     return run(actions.onCycleTheme);
   }
+  if (isCommand || e.altKey) return false;
+  if (e.key === "f" || e.key === "F") return run(actions.onMeetWith);
+  if (e.key === "p" || e.key === "P") {
+    return run(actions.onShowTeammateCalendar);
+  }
   return false;
 }
 
@@ -263,7 +272,8 @@ function handleShortcut(
  *
  * The live demo's app keys come on with their actions: Cmd+K
  * (`onToggleCommandMenu`), Cmd+/ (`onToggleSidebar`), / (`onToggleContextPanel`),
- * Shift+M (`onCycleTheme`) and Cmd+, (`onOpenSettings`). They're checked
+ * Shift+M (`onCycleTheme`), Cmd+, (`onOpenSettings`), F (`onMeetWith`) and
+ * P (`onShowTeammateCalendar`). They're checked
  * first, and one that runs stops the event from reaching later listeners.
  *
  * Key presses in inputs, textareas, selects and editable content are ignored
@@ -280,6 +290,8 @@ export function useCalendarShortcuts({
   onToggleContextPanel,
   onCycleTheme,
   onOpenSettings,
+  onMeetWith,
+  onShowTeammateCalendar,
 }: UseCalendarShortcutsOptions = {}) {
   const {
     goToToday,
@@ -329,6 +341,8 @@ export function useCalendarShortcuts({
     onToggleContextPanel,
     onCycleTheme,
     onOpenSettings,
+    onMeetWith,
+    onShowTeammateCalendar,
   });
 
   React.useEffect(() => {
@@ -356,6 +370,8 @@ export function useCalendarShortcuts({
       onToggleContextPanel,
       onCycleTheme,
       onOpenSettings,
+      onMeetWith,
+      onShowTeammateCalendar,
     };
   }, [
     goToToday,
@@ -381,6 +397,8 @@ export function useCalendarShortcuts({
     onToggleContextPanel,
     onCycleTheme,
     onOpenSettings,
+    onMeetWith,
+    onShowTeammateCalendar,
   ]);
 
   React.useEffect(() => {
