@@ -23,6 +23,7 @@ The time grid lays out days as columns and hours as rows. [Day View](/docs/compo
 - Additional time zones' hours beside the time axis, from the provider's [`secondaryTimeZones`](/docs/components/calendar-core#additional-time-zones). Each zone's label opens Notion Calendar's menu for it (change, make primary or secondary, remove), and the "+" left of "All-day" adds one.
 - The calendar's own zone, [`timeZone`](/docs/components/calendar-core#time-zone), labels the time axis, and a zone travelled to is filled in the primary color with an x that travels back home.
 - The provider's [view settings](/docs/components/calendar-core#view-settings): with weekends hidden the columns are weekdays only, so scrolling, previous and next, and a drag from Friday to the next column all step over the weekend to Monday. Declined events are struck through on a dashed outline, or hidden.
+- Hours that fill the screen by default, or the provider's [`hourHeight`](/docs/components/calendar-core#hour-size), which zooming steps through while the middle of the screen stays put.
 
 ## Usage
 

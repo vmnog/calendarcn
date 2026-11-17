@@ -90,6 +90,21 @@ export const SHORTCUTS = {
     label: "Show / hide weekends",
     keys: ["⇧", "⌘", "E"],
   },
+  defaultHourSize: {
+    label: "Default hour size",
+    keys: ["⇧", "⌘", "0"],
+    keywords: ["zoom", "reset"],
+  },
+  zoomHoursIn: {
+    label: "Zoom hours in",
+    keys: ["⇧", "⌘", "."],
+    keywords: ["hour size", "taller"],
+  },
+  zoomHoursOut: {
+    label: "Zoom hours out",
+    keys: ["⇧", "⌘", ","],
+    keywords: ["hour size", "shorter"],
+  },
   goToDate: {
     label: "Go to date",
     keys: ["."],
@@ -183,6 +198,9 @@ export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
       SHORTCUTS.yearView,
       SHORTCUTS.agendaView,
       SHORTCUTS.toggleWeekends,
+      SHORTCUTS.defaultHourSize,
+      SHORTCUTS.zoomHoursIn,
+      SHORTCUTS.zoomHoursOut,
     ],
   },
   {

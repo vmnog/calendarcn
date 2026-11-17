@@ -100,3 +100,25 @@ test("the useful shortcuts mark the ones nothing handles", async ({ page }) => {
   await expect(row("Toggle sidebar")).toContainText("⌘");
   await expect(row("Toggle sidebar")).toContainText("/");
 });
+
+test("the week start, day count and hour size commands aren't marked Soon", async ({
+  page,
+}) => {
+  await page.keyboard.press("ControlOrMeta+k");
+  const menu = page.getByRole("dialog", { name: "Command Menu" });
+  for (const name of [
+    "Start week on...",
+    "Set number of displayed days...",
+    "Default hour size",
+    "Zoom hours in",
+    "Zoom hours out",
+  ]) {
+    await menu.getByPlaceholder("Type a command...").fill(name);
+    const option = menu.getByRole("option", {
+      name: new RegExp(`^${name.replace(/\./g, "\\.")}`),
+    });
+    await expect(option, name).toBeVisible();
+    await expect(option).not.toContainText("Soon");
+    await expect(option).not.toHaveAttribute("aria-disabled", "true");
+  }
+});
