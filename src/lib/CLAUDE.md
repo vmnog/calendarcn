@@ -10,6 +10,7 @@ Pure utility functions and data:
 - `time-zones.ts` — IANA zone list, offsets, zone days, wall-clock zone changes
 - `timezone-label.ts` — short time zone labels ("GMT-3 Sao Paulo")
 - `time-input.ts` — time menu options, typed times and durations, date parsing
+- `availability.ts` — scheduling: merging marked times, and the text Notion Calendar's scheduling snippet copies (`formatAvailabilityText`)
 - `date-query.ts` — Go to date's parser (`parseDateQuery`): "tomorrow", "next friday", "dec 25", "in 2 weeks", numeric dates in the locale's order; a date without a year is the next one
 - `keyboard-shortcuts.ts` — `SHORTCUTS` and `KEYBOARD_SHORTCUT_GROUPS`, the full shortcut list `?` shows; add a row when a key is added to `useCalendarShortcuts`
 - `ics.ts` — iCalendar import and export (`parseIcs`, `toIcs`)

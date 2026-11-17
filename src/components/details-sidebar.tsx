@@ -25,8 +25,10 @@ import type {
   KeyboardShortcut,
   KeyboardShortcutGroup,
 } from "@/components/calendar-types";
+import { AvailabilityPanel } from "@/components/availability-panel";
 import { EventDetailPanel } from "@/components/event-detail-panel";
 import { useEventTitleFocus } from "@/components/event-title-focus-context";
+import { useScheduling } from "@/components/scheduling-provider";
 import {
   CALENDAR_SIDEBAR_COLORS_CLASS,
   SidebarOverlay,
@@ -195,6 +197,8 @@ function groupEventsByDate(
 /**
  * Notion Calendar's context panel, on the right: the selected event's
  * details, event search, and useful shortcuts when nothing is selected.
+ * While open times are marked inside a `SchedulingProvider`, it shows the
+ * scheduling panel (`AvailabilityPanel`) instead.
  * Reads the events and the selection from the nearest `CalendarProvider`;
  * its open state is shadcn/ui's `SidebarProvider` (`useSidebar()`), with
  * `--sidebar-width` set to `CONTEXT_PANEL_WIDTH`.
@@ -234,6 +238,8 @@ export function DetailsSidebar({
   const panelOpen = isMobile ? openMobile : open;
   const setPanelOpen = isMobile ? setOpenMobile : setOpen;
   const { pendingEventId, clearPending } = useEventTitleFocus();
+  // While open times are marked, the panel is the scheduling panel
+  const scheduling = useScheduling();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [searchSelectedEvent, setSearchSelectedEvent] =
@@ -398,7 +404,9 @@ export function DetailsSidebar({
     },
   });
 
-  const panel = (
+  const panel = scheduling?.isPicking ? (
+    <AvailabilityPanel />
+  ) : (
     <>
       <SidebarHeader className="h-14 justify-center px-4">
         <div className="flex items-center gap-2">

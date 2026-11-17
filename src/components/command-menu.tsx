@@ -28,7 +28,10 @@ import {
   makeTimeZonePrimary,
   removeTimeZone,
 } from "@/lib/time-zones";
-import type { WeekStartsOn } from "@/components/calendar-types";
+import type {
+  SchedulingLinkKind,
+  WeekStartsOn,
+} from "@/components/calendar-types";
 import type {
   CommandMenuPage,
   TimeZoneCommand,
@@ -129,6 +132,13 @@ interface CommandMenuProps {
   onImportIcs?: () => void;
   /** Adds "Export .ics file" */
   onExportIcs?: () => void;
+  /** Adds "Share availability..." (S): marking open times to copy as text */
+  onShareAvailability?: () => void;
+  /**
+   * Adds "Create recurring scheduling link..." and "Create one-off
+   * scheduling link...", called with the kind of link
+   */
+  onCreateSchedulingLink?: (kind: SchedulingLinkKind) => void;
   /** Adds "Go to settings" (⌘ ,) */
   onOpenSettings?: () => void;
   /** Adds "Support & feedback", e.g. to open your issue tracker */
@@ -174,8 +184,8 @@ interface CommandMenuProps {
  * goes inside `CalendarProvider`. A time zone command lists the zones in the
  * menu's place, and "Start week on..." and "Set number of displayed days..."
  * their choices. Commands that belong to your app (panels, search, shortcuts,
- * theme, .ics files, people, settings, accounts, support and about) show only
- * when you pass their callback. Open it with
+ * theme, .ics files, people, scheduling, settings, accounts, support and
+ * about) show only when you pass their callback. Open it with
  * `useCalendarShortcuts({ onToggleCommandMenu })`.
  *
  * "Go to date..." turns the field into a date field, as in Notion Calendar:
@@ -192,6 +202,8 @@ export function CommandMenu({
   onCycleTheme,
   onImportIcs,
   onExportIcs,
+  onShareAvailability,
+  onCreateSchedulingLink,
   onOpenSettings,
   onSupport,
   onAddCalendarAccount,
@@ -373,8 +385,22 @@ export function CommandMenu({
           keys: ["P"],
           run: onShowTeammateCalendar,
         },
-        { label: "Create recurring scheduling link...", soon: true },
-        { label: "Create one-off scheduling link...", soon: true },
+        {
+          label: "Create recurring scheduling link...",
+          run:
+            onCreateSchedulingLink &&
+            (() => onCreateSchedulingLink("recurring")),
+        },
+        {
+          label: "Create one-off scheduling link...",
+          run:
+            onCreateSchedulingLink && (() => onCreateSchedulingLink("one-off")),
+        },
+        {
+          label: "Share availability...",
+          keys: ["S"],
+          run: onShareAvailability,
+        },
         { label: "Import .ics file...", run: onImportIcs },
         { label: "Export .ics file", run: onExportIcs },
       ],

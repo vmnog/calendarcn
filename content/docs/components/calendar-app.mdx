@@ -198,6 +198,7 @@ From 768px up, while the details sidebar is closed, a selected event shows its d
 | All keyboard shortcuts, in the details sidebar      | <Kbd>?</Kbd>                                  |
 | Meet with...                                        | <Kbd>F</Kbd>                                  |
 | Show teammate calendar...                           | <Kbd>P</Kbd>                                  |
+| Mark open times to share                            | <Kbd>S</Kbd>                                  |
 
 They listen on the whole page. Pass `shortcuts={false}` to turn them all off.
 
@@ -205,7 +206,7 @@ Press <Kbd>.</Kbd> to open the command menu on Go to date: type a date ("tomorro
 
 ## Not built yet
 
-The app draws one of Notion Calendar's controls that doesn't work yet: the sidebar's scheduling row, disabled and marked "Soon". The [roadmap](/docs/roadmap) lists it.
+The app draws a few of Notion Calendar's commands that don't work yet, disabled and marked "Soon". The [roadmap](/docs/roadmap) lists them all.
 
 ## Parts
 
@@ -220,6 +221,7 @@ The app draws one of Notion Calendar's controls that doesn't work yet: the sideb
 - [Calendar Settings](/docs/components/calendar-settings): the settings dialog.
 - [People Picker](/docs/components/people-picker): the <Kbd>F</Kbd> and <Kbd>P</Kbd> dialog, to meet with someone or show a teammate's calendar.
 - [Calendar Toaster](/docs/components/calendar-toaster): the toasts after a delete, cut or copy, with Undo.
+- [Scheduling](/docs/components/scheduling): marking open times and copying them as text, and scheduling links through `onCreateSchedulingLink`.
 - [Sidebar Overlay](/docs/components/sidebar-overlay): both sidebars as sheets on narrow screens, and their colors.
 - [Import and Export](/docs/import-export): `parseIcs()` and `toIcs()`.
 - [Sample Data](/docs/sample-data) and the [conference providers](/docs/components/event-details#conference-providers): the demo's data.
@@ -290,6 +292,12 @@ The app draws one of Notion Calendar's controls that doesn't work yet: the sideb
       type: "() => void",
       description:
         'Adds "About CalendarCN" to the command menu, e.g. to open your docs.',
+    },
+    {
+      name: "onCreateSchedulingLink",
+      type: "(request: SchedulingLinkRequest) => void",
+      description:
+        "Creates a scheduling link (a booking page) in your app. With it, the sidebar's Scheduling row and the command menu offer recurring and one-off links. See [Scheduling links](/docs/components/scheduling#scheduling-links).",
     },
     {
       name: "showComingSoon",

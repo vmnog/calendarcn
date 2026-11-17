@@ -4,8 +4,8 @@ import { openCalendar } from "./helpers";
 
 /**
  * Controls that are drawn but not built yet. Each is disabled or replaced by
- * a "Soon" badge: the sidebar's scheduling row, and the listed shortcuts
- * nothing handles. Shift+Cmd+D is left to the
+ * a "Soon" badge: the listed shortcuts nothing handles. Shift+Cmd+D is left
+ * to the
  * browser.
  */
 
@@ -58,12 +58,13 @@ test("Shift+Cmd+D is left to the browser, Shift+Cmd+E still toggles weekends", a
   expect(prevented).toEqual([false, true]);
 });
 
-test("the sidebar marks scheduling, not add calendar account or meet with", async ({
+test("the sidebar marks none of scheduling, add calendar account or meet with", async ({
   page,
 }) => {
+  // Scheduling is built: it shares availability (e2e/scheduling.spec.ts)
   await expect(
-    page.getByRole("button", { name: "Scheduling Soon", exact: true }),
-  ).toBeDisabled();
+    page.getByRole("button", { name: "Scheduling", exact: true }),
+  ).toBeEnabled();
   // Add calendar account works in the demo: no badge
   await expect(
     page.getByRole("button", { name: "Add calendar account", exact: true }),
@@ -78,10 +79,13 @@ test("the sidebar marks scheduling, not add calendar account or meet with", asyn
   // The row has a fixed height and clips, so compare the labels themselves:
   // a wrapped label is two lines tall
   const [schedulingLabelHeight, addAccountLabelHeight] = await Promise.all(
-    ["Scheduling Soon", "Add calendar account"].map((name) =>
+    [
+      ["Scheduling", "Scheduling"],
+      ["Add calendar account", "Add calendar account"],
+    ].map(([name, label]) =>
       page
         .getByRole("button", { name, exact: true })
-        .getByText(name.replace(" Soon", ""), { exact: true })
+        .getByText(label, { exact: true })
         .evaluate((span) => span.getBoundingClientRect().height),
     ),
   );

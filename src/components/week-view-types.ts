@@ -15,6 +15,7 @@ import type {
   NewEventRange,
   PersonCalendarEvent,
   PositionedEvent,
+  SchedulingLinkRequest,
   TimeGridView,
   TimeSpan,
   WeekDay,
@@ -80,6 +81,12 @@ export type {
   CalendarNotice,
   CalendarNoticeInput,
   CalendarNoticeValue,
+  AvailabilityRange,
+  SchedulingLinkKind,
+  SchedulingLinkRequest,
+  SchedulingPurpose,
+  AvailabilityTextOptions,
+  SchedulingContextValue,
   CalendarInfo,
   CalendarGroup,
   CalendarConfig,
@@ -306,6 +313,14 @@ export type CalendarAppProps = CalendarProviderProps<DetailedCalendarEvent> & {
    * your own. The key is left to the browser without it or `settingsDialog`
    */
   onOpenSettings?: () => void;
+  /**
+   * Creates a scheduling link (a booking page) in your app, which CalendarCN
+   * has no backend for. With it, the sidebar's Scheduling menu and the
+   * command menu offer "Create recurring scheduling link..." and "Create
+   * one-off scheduling link...". A recurring link calls it right away; a
+   * one-off link calls it with the times marked on the calendar
+   */
+  onCreateSchedulingLink?: (request: SchedulingLinkRequest) => void;
   /**
    * Turns on the built-in settings dialog (`CalendarSettingsDialog`): Cmd+,
    * (Ctrl+, elsewhere) and "Go to settings" open it, and "Manage calendar
@@ -773,6 +788,57 @@ export interface EventDetailRecurrenceProps<
    * series: the button is disabled then.
    */
   onNext?: () => void;
+}
+
+/**
+ * Props for SchedulingProvider. Goes inside CalendarProvider, around the
+ * views, sidebars and command menu that read `useScheduling()`.
+ */
+export interface SchedulingProviderProps {
+  /**
+   * Creates a scheduling link (a booking page) in your app. Without it the
+   * scheduling links aren't offered, and only the times are copied as text
+   */
+  onCreateSchedulingLink?: (request: SchedulingLinkRequest) => void;
+  /** Meeting length the scheduling panel starts with, in minutes. Defaults to 30 */
+  defaultDurationMinutes?: number;
+  children?: React.ReactNode;
+}
+
+/** Options of `useSchedulingShortcuts()` */
+export interface UseSchedulingShortcutsOptions {
+  /** Whether S, Escape and Delete are handled. Defaults to true */
+  enabled?: boolean;
+}
+
+/**
+ * Props for AvailabilityLayer, the time grid's layer for marking open times.
+ * Lies over the grid's day columns, inside its scrolling content.
+ */
+export interface AvailabilityLayerProps {
+  /** The grid's days, scroll buffer included, in column order */
+  days: WeekDay[];
+  /** Height of one hour row in pixels */
+  hourHeight: number;
+  /** Index in `days` of the first day on screen */
+  visibleStartIndex: number;
+  /** How many days are on screen */
+  visibleCount: number;
+  className?: string;
+}
+
+/**
+ * Props for AvailabilityHint, the "Mark available times on your calendar"
+ * pill at the bottom of the calendar while open times are marked
+ */
+export interface AvailabilityHintProps {
+  /**
+   * Adds Cancel and Copy (or Create) buttons, for when the scheduling panel
+   * isn't on screen (phones, or a closed context panel)
+   */
+  showActions?: boolean;
+  /** Classes for the pill's row; it sits `absolute` at the bottom of its positioned parent */
+  className?: string;
 }
 
 /** The pane the settings dialog opens on: General, or the first calendar account */

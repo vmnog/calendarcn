@@ -116,6 +116,7 @@ Pass a callback to add its command. These are the demo's:
 - `onShowShortcuts` adds "Show keyboard shortcuts" (<Kbd>?</Kbd>). The demo shows the details sidebar's full list.
 - `onMeetWith` and `onShowTeammateCalendar` add "Meet with..." (F) and "Show teammate calendar..." (P). The demo opens the [People Picker](/docs/components/people-picker) from both.
 - `onToggleSidebar` and `onToggleContextPanel` add the panel toggles, next to the [Calendar Header](/docs/components/calendar-header)'s buttons.
+- `onShareAvailability` adds "Share availability..." (<Kbd>S</Kbd>), and `onCreateSchedulingLink` adds "Create recurring scheduling link..." and "Create one-off scheduling link...", called with `"recurring"` or `"one-off"`. Calendar App passes them from [`useScheduling()`](/docs/components/scheduling#usescheduling); the link commands only when the app creates scheduling links.
 - `onOpenSettings` adds "Go to settings" (<KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup>). The demo opens the [Calendar Settings](/docs/components/calendar-settings) dialog.
 - `onAddCalendarAccount` and `onManageCalendarAccounts` add "Add calendar account" and "Manage calendar accounts". The demo adds an .ics file as a calendar, and opens the settings on the calendars.
 - `onSupport` adds "Support & feedback" and `onAbout` adds "About CalendarCN". The demo opens a new GitHub issue in a new tab, and the docs.
@@ -189,6 +190,17 @@ The dialog is translucent and blurred in dark mode. The CLI also adds a rule to 
       name: "onExportIcs",
       type: "() => void",
       description: 'Adds "Export .ics file".',
+    },
+    {
+      name: "onShareAvailability",
+      type: "() => void",
+      description: 'Adds "Share availability..." (S).',
+    },
+    {
+      name: "onCreateSchedulingLink",
+      type: '(kind: "recurring" | "one-off") => void',
+      description:
+        'Adds "Create recurring scheduling link..." and "Create one-off scheduling link...".',
     },
     {
       name: "onOpenSettings",

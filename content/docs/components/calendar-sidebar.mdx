@@ -7,7 +7,7 @@ description: The left sidebar of the demo, with the mini calendar, scheduling, "
 
 Calendar Sidebar is the left column of the [live demo](/), modeled on Notion Calendar's: the [Mini Calendar](/docs/components/mini-calendar), a scheduling row and a "Meet with..." field, the [Calendar List](/docs/components/calendar-list), "Add calendar account" when you pass `onAddCalendarAccount`, and a footer with the [Theme Toggle](/docs/components/theme-toggle). On wide screens it's a fixed column that pushes the page over; on phones it opens as a sheet from the left ([Sidebar Overlay](/docs/components/sidebar-overlay)).
 
-It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves, numbers its weeks while the provider's week numbers are on, and picking a day goes there (with weekends hidden, a Saturday or Sunday opens the Monday after it in day view). The "Meet with..." field meets with the provider's `contacts` (see [Meeting with people](#meeting-with-people)). The scheduling row isn't built yet: it's disabled and marked "Soon" (see the [roadmap](/docs/roadmap)). "Add calendar account" calls your `onAddCalendarAccount`, to connect an account your way; the live demo adds an .ics file as a calendar. The file is yours, so wire them up there.
+It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves, numbers its weeks while the provider's week numbers are on, and picking a day goes there (with weekends hidden, a Saturday or Sunday opens the Monday after it in day view). The "Meet with..." field meets with the provider's `contacts` (see [Meeting with people](#meeting-with-people)). Inside a [`SchedulingProvider`](/docs/components/scheduling), the Scheduling row starts marking open times to share, or opens a menu of scheduling links when your app creates them; without one, the row isn't there. "Add calendar account" calls your `onAddCalendarAccount`, to connect an account your way; the live demo adds an .ics file as a calendar. The file is yours, so wire them up there.
 
 ## Installation
 
@@ -108,6 +108,7 @@ The sidebars bring Notion Calendar's colors as their own tokens, added to your C
 
 - The mini calendar shows the month of the days on screen, highlights them, and marks today. Browse months with its arrows; the next navigation brings it back.
 - Picking a day goes to its period in the current view: the day in day view, its week in week view.
+- Scheduling starts marking the times you're free, like <Kbd>S</Kbd>, and leaves again on a second click. On phones the sheet closes so you can mark on the grid.
 - "Meet with..." adds people from your contacts; the ones you meet with and the teammates shown are listed under it, each removable.
 - Calendars are grouped by account, each account collapsible. Hover a calendar to show or hide it.
 - The theme toggle cycles system, light and dark.

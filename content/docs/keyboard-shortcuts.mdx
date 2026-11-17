@@ -66,6 +66,16 @@ These keys act only when they have something to act on (a selected event, someth
 
 In a field or menu of the event details, <Kbd>Esc</Kbd> only closes it and restores the value from before. Press it again to deselect the event.
 
+## Scheduling
+
+The live demo ([Calendar App](/docs/components/calendar-app)) also has Notion Calendar's scheduling key, from `useSchedulingShortcuts()` inside a `SchedulingProvider`. See [Scheduling](/docs/components/scheduling).
+
+| Action                                         | Shortcut                          |
+| ---------------------------------------------- | --------------------------------- |
+| Mark open times to share                       | <Kbd>S</Kbd>                      |
+| Leave without copying, while marking           | <Kbd>Esc</Kbd>                    |
+| Remove the selected marked time, while marking | <Kbd>Delete</Kbd> or <Kbd>⌫</Kbd> |
+
 ## App shortcuts
 
 The live demo ([Calendar App](/docs/components/calendar-app)) adds keys for the parts around the calendar. They come from the same hook, each one on only when you pass its action, so a calendar without a command menu or panels never claims them:
