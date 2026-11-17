@@ -728,6 +728,18 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       description:
         "Opens the week containing `date` and briefly highlights that day.",
     },
+    {
+      name: "navigateToDate",
+      type: "(date: Date) => void",
+      description:
+        "Shows the period that contains `date` in the current view, as Go to date in the [Command Menu](/docs/components/command-menu) does, and briefly highlights that day in the day and week views.",
+    },
+    {
+      name: "addEventAtNextSlot",
+      type: "() => void",
+      description:
+        "Creates an hour-long event at the next half hour, as Notion Calendar's <Kbd>C</Kbd> does: on today when it's on screen, else on the day Go to date just highlighted, else on the first day shown. Goes through `createEvent`, selects the event and focuses its title. Undoable.",
+    },
   ]}
 />
 
