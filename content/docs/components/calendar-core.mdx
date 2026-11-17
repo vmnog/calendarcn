@@ -1129,15 +1129,15 @@ Exported from `@/lib/recurrence`. The views and the provider use them, so a view
   rows={[
     {
       name: "expandRecurringEvents",
-      type: "(events, range: VisibleRange) => TEvent[]",
+      type: "(events, range: VisibleRange, timeZone?: string) => TEvent[]",
       description:
-        "What to draw for the dates in `range`: events that don't repeat as they are, and each repeating event's occurrences that overlap the range, its first date as the event itself. At most `MAX_OCCURRENCES_PER_RANGE` (1000) per series.",
+        "What to draw for the dates in `range`: events that don't repeat as they are, and each repeating event's occurrences that overlap the range, its first date as the event itself. At most `MAX_OCCURRENCES_PER_RANGE` (1000) per series. With the calendar's `timeZone` (`useCalendarConfig().timeZone`), `events`, `range` and the events returned read on that zone's clock, as `useCalendar()` hands them out; each series still repeats in its own zone.",
     },
     {
       name: "findEventOrOccurrence",
-      type: "(events, id) => TEvent | null",
+      type: "(events, id, timeZone?: string) => TEvent | null",
       description:
-        "The stored event with that id, else the generated occurrence it names (`launch-2026-06-20`), else `null`.",
+        "The stored event with that id, else the generated occurrence it names (`launch-2026-06-20`), else `null`. With the calendar's `timeZone`, `events` and the event returned read on that zone's clock.",
     },
     {
       name: "applyRecurringEdit",
