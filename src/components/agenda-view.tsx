@@ -163,11 +163,11 @@ export function AgendaView({
     goToDate,
     loading,
   } = useCalendar();
-  const { locale } = useCalendarConfig();
+  const { locale, timeZone } = useCalendarConfig();
   const { reportView, reportVisibleDays, closeEventPopover } =
     useCalendarViewSync();
   // `null` on the server and during hydration, so no day is marked as today
-  const today = useToday();
+  const today = useToday(timeZone);
   /**
    * Whether the provider navigates by the agenda's range. False for the
    * commit before it adopts this view (on mount, or right after a switch it
@@ -214,17 +214,26 @@ export function AgendaView({
 
   const listedDays = useMemo(() => {
     // A repeating event is listed under each of its dates in the range
-    const occurrences = expandRecurringEvents(events, {
-      start: rangeStart,
-      end: addDays(rangeEnd, 1),
-    });
+    const occurrences = expandRecurringEvents(
+      events,
+      { start: rangeStart, end: addDays(rangeEnd, 1) },
+      timeZone,
+    );
     const days = getAgendaDays(occurrences, currentDate, AGENDA_DAYS);
     return days.filter((day) => {
       if (!showWeekends && isWeekend(day.date)) return false;
       if (day.entries.length > 0) return true;
       return today !== null && isSameDay(day.date, today);
     });
-  }, [events, rangeStart, rangeEnd, currentDate, showWeekends, today]);
+  }, [
+    events,
+    rangeStart,
+    rangeEnd,
+    currentDate,
+    showWeekends,
+    today,
+    timeZone,
+  ]);
 
   const months = useMemo(() => groupByMonth(listedDays), [listedDays]);
   const hasEvents = listedDays.some((day) => day.entries.length > 0);
@@ -427,8 +436,9 @@ function AgendaDayGroup({ day, isToday, renderRow }: AgendaDayGroupProps) {
  * re-renders as the clock ticks.
  */
 function AgendaTodayRows({ day, renderRow }: AgendaTodayRowsProps) {
+  const { timeZone } = useCalendarConfig();
   // `null` on the server and during hydration: no line until then
-  const now = useNow();
+  const now = useNow(timeZone);
 
   if (day.entries.length === 0) {
     return (
@@ -479,11 +489,11 @@ function AgendaEventRow({
   onPopoverExpand,
 }: AgendaEventRowProps) {
   const { event } = entry;
-  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
-  const eventIsPast = useIsPast(event.end);
+  const eventIsPast = useIsPast(event.end, timeZone);
   // Every field is optional: plain events read as details without any
   const { location }: DetailedCalendarEvent = event;
   const timeLabel = formatAgendaTime(entry, hourCycle, locale);

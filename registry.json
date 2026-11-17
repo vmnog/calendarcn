@@ -322,10 +322,14 @@
       "type": "registry:component",
       "title": "Time Grid",
       "description": "The hour grid behind the day and week views: all-day row, time axis and current-time line, with drag, resize and create.",
-      "dependencies": ["date-fns"],
+      "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
-        "@calendarcn/event-details"
+        "@calendarcn/event-details",
+        "command",
+        "kbd",
+        "popover",
+        "tooltip"
       ],
       "files": [
         {
@@ -350,6 +354,14 @@
         },
         {
           "path": "src/components/week-view-time-indicator.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/time-zone-axis-label.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/time-zone-list.tsx",
           "type": "registry:component"
         },
         {
@@ -509,7 +521,7 @@
       "name": "command-menu",
       "type": "registry:component",
       "title": "Command Menu",
-      "description": "The live demo's ⌘K menu: today, previous/next and the views, plus your app's panel, theme and .ics commands.",
+      "description": "The live demo's ⌘K menu: today, previous/next, the views and the time zones, plus your app's panel, theme and .ics commands.",
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "command",
@@ -519,6 +531,10 @@
       "files": [
         {
           "path": "src/components/command-menu.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/time-zone-list.tsx",
           "type": "registry:component"
         }
       ],

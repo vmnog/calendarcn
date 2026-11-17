@@ -19,6 +19,8 @@ interface UseCalendarShortcutsOptions {
   onCycleTheme?: () => void;
   /** Cmd+, / Ctrl+,, even from inside a text field: opens the settings */
   onOpenSettings?: () => void;
+  /** Z: opens a picker to travel to a time zone ("Travel to time zone...") */
+  onTravelToTimeZone?: () => void;
 }
 
 /** App actions some keys trigger. A key is claimed only when its action is given */
@@ -34,6 +36,8 @@ type CalendarShortcutActions = Pick<
   | "setNumberOfDays"
   | "clearSelection"
   | "toggleWeekends"
+  | "travelTimeZone"
+  | "travelToTimeZone"
 >;
 
 /** Event actions the event keys run, and what says whether each has something to act on */
@@ -65,6 +69,10 @@ const NUMBER_OF_DAYS_KEY = /^[2-9]$/;
 
 /** Tags of the form fields that take key presses themselves */
 const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+
+/** Dialogs, menus and lists whose own Escape closes them */
+const ESCAPE_LAYER_SELECTOR =
+  '[role="dialog"], [role="menu"], [role="listbox"], [data-slot="popover-content"]';
 
 /** Whether a key press is typed into a field: an input, a textarea, a select or editable content (single-key shortcuts skip those) */
 export function isTypingTarget(target: EventTarget | null): boolean {
@@ -156,6 +164,9 @@ function handleAppShortcut(
   if (e.key === "M" && e.shiftKey && !isCommand) {
     return run(actions.onCycleTheme);
   }
+  if ((e.key === "z" || e.key === "Z") && !isCommand && !e.altKey) {
+    return run(actions.onTravelToTimeZone);
+  }
   return false;
 }
 
@@ -165,10 +176,19 @@ function handleAppShortcut(
  */
 function handleShortcut(
   e: KeyboardEvent,
-  actions: CalendarShortcutActions,
+  actions: CalendarShortcutActions &
+    Pick<EditShortcutActions, "selectedEventId">,
 ): void {
-  // Escape deselects, even from inside a text field
+  // Escape deselects, even from inside a text field. With nothing selected
+  // it travels back home, as in Notion Calendar, unless it closes a layer
   if (e.key === "Escape") {
+    const closesLayer =
+      e.target instanceof Element &&
+      e.target.closest(ESCAPE_LAYER_SELECTOR) !== null;
+    if (!actions.selectedEventId && actions.travelTimeZone && !closesLayer) {
+      actions.travelToTimeZone(null);
+      return;
+    }
     actions.clearSelection();
     return;
   }
@@ -251,7 +271,7 @@ function handleShortcut(
  * - J / ArrowLeft, K / ArrowRight: previous / next period
  * - D or 1: day view, W or 0: week view, M: month view, Y: year view, A: agenda
  * - 2-9: number of days
- * - Escape: clear the selection
+ * - Escape: clear the selection, or with nothing selected travel back home
  * - Delete / Backspace: delete the selected event
  * - Cmd+X, Cmd+C, Cmd+D: cut, copy, duplicate the selected event; Cmd+V:
  *   paste it at the slot under the mouse (Ctrl on Windows and Linux)
@@ -263,7 +283,8 @@ function handleShortcut(
  *
  * The live demo's app keys come on with their actions: Cmd+K
  * (`onToggleCommandMenu`), Cmd+/ (`onToggleSidebar`), / (`onToggleContextPanel`),
- * Shift+M (`onCycleTheme`) and Cmd+, (`onOpenSettings`). They're checked
+ * Shift+M (`onCycleTheme`), Cmd+, (`onOpenSettings`) and Z
+ * (`onTravelToTimeZone`). They're checked
  * first, and one that runs stops the event from reaching later listeners.
  *
  * Key presses in inputs, textareas, selects and editable content are ignored
@@ -280,6 +301,7 @@ export function useCalendarShortcuts({
   onToggleContextPanel,
   onCycleTheme,
   onOpenSettings,
+  onTravelToTimeZone,
 }: UseCalendarShortcutsOptions = {}) {
   const {
     goToToday,
@@ -299,6 +321,8 @@ export function useCalendarShortcuts({
     redo,
     canUndo,
     canRedo,
+    travelTimeZone,
+    travelToTimeZone,
   } = useCalendar();
   const eventActions = useCalendarEventActions();
   const selectedEventId = selectedEvent?.id ?? null;
@@ -329,6 +353,9 @@ export function useCalendarShortcuts({
     onToggleContextPanel,
     onCycleTheme,
     onOpenSettings,
+    onTravelToTimeZone,
+    travelTimeZone,
+    travelToTimeZone,
   });
 
   React.useEffect(() => {
@@ -356,6 +383,9 @@ export function useCalendarShortcuts({
       onToggleContextPanel,
       onCycleTheme,
       onOpenSettings,
+      onTravelToTimeZone,
+      travelTimeZone,
+      travelToTimeZone,
     };
   }, [
     goToToday,
@@ -381,6 +411,9 @@ export function useCalendarShortcuts({
     onToggleContextPanel,
     onCycleTheme,
     onOpenSettings,
+    onTravelToTimeZone,
+    travelTimeZone,
+    travelToTimeZone,
   ]);
 
   React.useEffect(() => {
