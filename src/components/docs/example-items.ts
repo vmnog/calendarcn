@@ -12,6 +12,7 @@ export const EXAMPLE_ITEMS = {
   "agenda-view-demo": "agenda-view",
   "calendar-demo": "calendar",
   "calendar-header-demo": "calendar-header",
+  "calendar-settings-demo": "calendar-settings",
   "calendar-toaster-demo": "calendar-toaster",
   "command-menu-demo": "command-menu",
   "config-demo": "calendar-core",
