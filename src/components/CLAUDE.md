@@ -27,6 +27,8 @@ All React components for CalendarCN. Split into:
 
 Every view reports what it draws with `useCalendarViewSync().reportView(...)` from a layout effect (TimeGrid: its `view` and fixed `numberOfDays`; MonthView: `"month"`; AgendaView: `"agenda"`). The provider adopts it while `view` is uncontrolled and undoes switches the mounted view doesn't follow (full rule in the `CalendarProvider` JSDoc). For the commit before the provider adopts a view, `isProviderInSync` is false: skip slide animations and `reportVisibleDays` / `reportDisplayMonth` then, since the date change is the adoption, not navigation. A new view must follow the same pattern.
 
+Every view also passes its expanded events through `useCalendarSeriesScope().previewEvents` and renders `<EventSeriesScopeDialog />` once, after its root element and inside `CalendarPopoverBoundaryProvider` (inside the root, the dialog's clicks would bubble through React to the view's handlers). Default event content puts `<SeriesChangeDot eventId={event.id} />` before the title.
+
 ### Event Color Styling
 
 Never hardcode color classes. Always use the `eventColorStyles[color]` map from `calendar-event-item.tsx`. The map returns `{ bg, bgHover, border, borderLine, text }` CSS class strings.

@@ -31,6 +31,7 @@ import type {
   CalendarGroup,
   CalendarInfo,
   DetailedCalendarEvent,
+  EventChangeSummaryRow,
   EventColor,
   EventReminder,
   HourCycle,
@@ -40,6 +41,11 @@ import type {
   WeekDay,
   WeekStartsOn,
 } from "@/components/week-view-types";
+import {
+  describeRecurrenceRule,
+  getEventRecurrenceRule,
+} from "@/lib/recurrence";
+import { getTimeZoneRowLabel, isKnownTimeZone } from "@/lib/time-zones";
 
 /** Every event color, in the order the color pickers list them */
 export const EVENT_COLORS: readonly EventColor[] = [
@@ -1686,4 +1692,136 @@ export function mergeShownEvents<TEvent extends DetailedCalendarEvent>(
     pending.delete(event.id);
   }
   return [...merged, ...pending.values()];
+}
+
+/** The summary's label of each field it shows without values, in the details' order */
+const EVENT_FIELD_LABELS: Record<string, string> = {
+  kind: "Type",
+  participants: "Participants",
+  rooms: "Rooms",
+  conference: "Conferencing",
+  aiMeetingNotes: "AI meeting notes",
+  links: "Links",
+  attachments: "Attachments",
+  reminders: "Reminders",
+  status: "Availability",
+  visibility: "Visibility",
+};
+
+/** What the summary shows for a field that is empty */
+const NO_VALUE_LABEL = "None";
+
+/** Options of `getEventChangeSummary` */
+interface EventChangeSummaryOptions {
+  hourCycle: HourCycle;
+  locale: Locale;
+  calendars: CalendarInfo[];
+}
+
+/** Whether two field values are equal: dates by time, the rest by their JSON */
+function isSameSummaryValue(a: unknown, b: unknown): boolean {
+  if (a instanceof Date && b instanceof Date) {
+    return a.getTime() === b.getTime();
+  }
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** An event's time for the summary: "2–3:30 PM", or "All day", after its date when asked */
+function formatSummaryTime(
+  event: DetailedCalendarEvent,
+  withDate: boolean,
+  { hourCycle, locale }: EventChangeSummaryOptions,
+): string {
+  const time = event.isAllDay
+    ? "All day"
+    : formatTimeRange(event.start, event.end, hourCycle, locale);
+  if (!withDate) return time;
+  return `${format(event.start, "EEE MMM d", { locale })}, ${time}`;
+}
+
+/** An event's repeat rule for the summary: "Every week on Thu", or "Does not repeat" */
+function formatSummaryRepeat(
+  event: DetailedCalendarEvent,
+  locale: Locale,
+): string {
+  const rule = getEventRecurrenceRule(event);
+  if (!rule) return "Does not repeat";
+  const { main, detail } = describeRecurrenceRule(rule, event.start, locale);
+  return `${main} ${detail}`.trim();
+}
+
+/** An event's time zone for the summary: "GMT−3 Sao Paulo", or "None" */
+function formatSummaryTimeZone(event: DetailedCalendarEvent): string {
+  if (!event.timeZone || !isKnownTimeZone(event.timeZone)) {
+    return NO_VALUE_LABEL;
+  }
+  const { offset, city } = getTimeZoneRowLabel(event.start, event.timeZone);
+  return `${offset} ${city}`;
+}
+
+/**
+ * What changed between two versions of an event, for the edit question of
+ * a repeating event: "Title", "Time", "Time zone", "Repeat", "Location",
+ * "Description", "Calendar" and "Color" with their new and old values,
+ * then the other changed fields by label alone. Empty when nothing
+ * changed.
+ */
+export function getEventChangeSummary(
+  before: DetailedCalendarEvent,
+  after: DetailedCalendarEvent,
+  options: EventChangeSummaryOptions,
+): EventChangeSummaryRow[] {
+  const rows: EventChangeSummaryRow[] = [];
+  const add = (label: string, next: string, previous: string) => {
+    if (next !== previous) rows.push({ label, after: next, before: previous });
+  };
+  const calendarName = (event: DetailedCalendarEvent) =>
+    options.calendars.find((calendar) => calendar.id === event.calendarId)
+      ?.name ??
+    event.calendarId ??
+    NO_VALUE_LABEL;
+  const colorName = (event: DetailedCalendarEvent) =>
+    event.color
+      ? `${event.color.charAt(0).toUpperCase()}${event.color.slice(1)}`
+      : "Default";
+
+  add("Title", after.title, before.title);
+  const timeChanged =
+    after.start.getTime() !== before.start.getTime() ||
+    after.end.getTime() !== before.end.getTime() ||
+    Boolean(after.isAllDay) !== Boolean(before.isAllDay);
+  if (timeChanged) {
+    const withDate = !isSameDay(after.start, before.start);
+    rows.push({
+      label: "Time",
+      after: formatSummaryTime(after, withDate, options),
+      before: formatSummaryTime(before, withDate, options),
+    });
+  }
+  add("Time zone", formatSummaryTimeZone(after), formatSummaryTimeZone(before));
+  add(
+    "Repeat",
+    formatSummaryRepeat(after, options.locale),
+    formatSummaryRepeat(before, options.locale),
+  );
+  add(
+    "Location",
+    after.location || NO_VALUE_LABEL,
+    before.location || NO_VALUE_LABEL,
+  );
+  add(
+    "Description",
+    after.description || NO_VALUE_LABEL,
+    before.description || NO_VALUE_LABEL,
+  );
+  add("Calendar", calendarName(after), calendarName(before));
+  add("Color", colorName(after), colorName(before));
+
+  const left = before as unknown as Record<string, unknown>;
+  const right = after as unknown as Record<string, unknown>;
+  for (const [key, label] of Object.entries(EVENT_FIELD_LABELS)) {
+    if (isSameSummaryValue(left[key], right[key])) continue;
+    rows.push({ label, after: null, before: null });
+  }
+  return rows;
 }

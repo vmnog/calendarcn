@@ -175,7 +175,7 @@ export function DetailsSidebar({
   const {
     events,
     selectedEvent,
-    updateEvent,
+    editEvent,
     previousInSeries,
     nextInSeries,
     showSeriesOccurrence,
@@ -368,7 +368,7 @@ export function DetailsSidebar({
         {selectedEvent ? (
           <EventDetailPanel
             event={selectedEvent}
-            onEventChange={updateEvent}
+            onEventChange={editEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             {...getEventActions(selectedEvent.id)}
@@ -378,7 +378,7 @@ export function DetailsSidebar({
         ) : resolvedSearchEvent ? (
           <EventDetailPanel
             event={resolvedSearchEvent}
-            onEventChange={updateEvent}
+            onEventChange={editEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             {...getEventActions(resolvedSearchEvent.id)}

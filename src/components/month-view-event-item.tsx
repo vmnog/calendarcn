@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
 import { isPrimaryPress } from "@/hooks/use-pointer-gesture";
 import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
+import { SeriesChangeDot } from "./event-series-scope-dialog";
 import { EVENT_FOCUS_RING_CLASS } from "./calendar-event-item";
 import {
   formatTime,
@@ -169,7 +170,10 @@ export function MonthViewEventItem({
         fallback={
           <span className="text-[0.6875rem] leading-tight truncate pl-1 pr-1">
             <span className={timeColor}>{startTimeLabel}</span>{" "}
-            <span className={cn("font-bold", titleColor)}>{event.title}</span>
+            <span className={cn("font-bold", titleColor)}>
+              <SeriesChangeDot eventId={event.id} />
+              {event.title}
+            </span>
           </span>
         }
       />

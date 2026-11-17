@@ -296,6 +296,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/event-series-scope-dialog.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/hooks/use-popover-dismiss.ts",
           "type": "registry:hook"
         },

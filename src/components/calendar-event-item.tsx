@@ -6,6 +6,7 @@ import { useIsPast } from "@/hooks/use-now";
 import { EventDetailPopover } from "./event-detail-popover";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
 import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
+import { SeriesChangeDot } from "./event-series-scope-dialog";
 import {
   formatTime,
   formatTimeRange,
@@ -417,6 +418,7 @@ export function CalendarEventItem({
                   "dark:text-white/80",
                 )}
               >
+                <SeriesChangeDot eventId={event.id} />
                 {event.title}
               </span>
               {!isCompact && (
@@ -516,6 +518,7 @@ export function CalendarEventItem({
               )}
             >
               <span className="font-medium text-[0.625rem] leading-tight break-words text-white dark:text-white flex items-center gap-0.5">
+                <SeriesChangeDot eventId={event.id} />
                 {event.title}
               </span>
               {heightPx >= 40 && (
@@ -684,6 +687,7 @@ export function CalendarEventItem({
                     ),
               )}
             >
+              <SeriesChangeDot eventId={event.id} />
               {event.title}
             </span>
             {!isCompact && (
@@ -910,6 +914,7 @@ export function AllDayEventItem({
                 "dark:text-white/80",
               )}
             >
+              <SeriesChangeDot eventId={event.id} />
               {event.title}
             </span>
           }
@@ -963,6 +968,7 @@ export function AllDayEventItem({
                 "dark:text-white/80",
               )}
             >
+              <SeriesChangeDot eventId={event.id} />
               {event.title}
             </span>
           }
@@ -1115,6 +1121,7 @@ export function AllDayEventItem({
                     ),
               )}
             >
+              <SeriesChangeDot eventId={event.id} />
               {event.title}
             </span>
             {hasStartTime && (
