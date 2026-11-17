@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
 import { isPrimaryPress } from "@/hooks/use-pointer-gesture";
 import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
+import { SeriesChangeDot } from "./event-series-scope-dialog";
 import { EVENT_FOCUS_RING_CLASS } from "./calendar-event-item";
 import { getEventLabel, resolveEventColor } from "@/lib/event-utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
@@ -257,6 +258,7 @@ export function MonthViewEventBar({
                 : cn(styles.text, "dark:text-white/80"),
             )}
           >
+            <SeriesChangeDot eventId={event.id} />
             {event.title}
           </span>
         }

@@ -42,8 +42,10 @@ import { CalendarLoadingBar } from "./calendar-loading-bar";
 import {
   useCalendar,
   useCalendarConfig,
+  useCalendarSeriesScope,
   useCalendarViewSync,
 } from "./calendar-provider";
+import { EventSeriesScopeDialog } from "./event-series-scope-dialog";
 import type { CalendarEvent } from "./calendar-types";
 import type { MonthViewProps } from "./week-view-types";
 import type { MonthWeekRow } from "@/lib/event-utils";
@@ -304,14 +306,18 @@ export function MonthView({
     ),
     1,
   ).getTime();
+  const { previewEvents } = useCalendarSeriesScope();
   const expandedEvents = useMemo(
     () =>
-      expandRecurringEvents(
-        events,
-        { start: new Date(rangeStartTime), end: new Date(rangeEndTime) },
-        timeZone,
+      // A change to a repeating event's date that waits shows on that date
+      previewEvents(
+        expandRecurringEvents(
+          events,
+          { start: new Date(rangeStartTime), end: new Date(rangeEndTime) },
+          timeZone,
+        ),
       ),
-    [events, rangeStartTime, rangeEndTime, timeZone],
+    [events, rangeStartTime, rangeEndTime, timeZone, previewEvents],
   );
 
   // Base offset hides the top buffer; scrollOffset + slideOffset shift within
@@ -479,6 +485,8 @@ export function MonthView({
             document.body,
           )}
       </div>
+      {/* Asks "This event / This and following / All events" for a change to a repeating event's date */}
+      <EventSeriesScopeDialog />
     </CalendarPopoverBoundaryProvider>
   );
 }

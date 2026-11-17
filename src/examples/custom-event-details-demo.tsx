@@ -72,7 +72,9 @@ function EventDetails({
   close,
   isNew,
 }: EventDetailsRenderProps<DetailedCalendarEvent>) {
-  const { updateEvent } = useCalendar<DetailedCalendarEvent>();
+  // `editEvent` changes events the way the built-in details do: a date of
+  // a repeating event waits until it is left, then asks once
+  const { editEvent } = useCalendar<DetailedCalendarEvent>();
   const { hourCycle, locale } = useCalendarConfig();
   const timeFormat = hourCycle === 24 ? "HH:mm" : "h:mm a";
 
@@ -85,7 +87,7 @@ function EventDetails({
           // A click-created event opens with its title ready to type
           autoFocus={isNew}
           onFocus={(e) => e.currentTarget.select()}
-          onChange={(e) => updateEvent({ ...event, title: e.target.value })}
+          onChange={(e) => editEvent({ ...event, title: e.target.value })}
           className="min-w-0 flex-1 rounded-sm bg-transparent px-1 py-0.5 text-sm font-semibold transition-colors duration-150 ease-out outline-none hover:bg-accent focus:bg-accent"
         />
         <Button
@@ -115,7 +117,7 @@ function EventDetails({
             role="radio"
             aria-checked={(event.color ?? "blue") === color}
             aria-label={color}
-            onClick={() => updateEvent({ ...event, color })}
+            onClick={() => editEvent({ ...event, color })}
             className={cn(
               "size-5 rounded-full ring-offset-2 ring-offset-popover transition-[box-shadow,scale] duration-150 ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96] motion-reduce:active:scale-100",
               SWATCH_CLASS[color],

@@ -6,6 +6,7 @@ import type { Page } from "@playwright/test";
 import {
   CURRENT_WEEK_LABEL,
   FROZEN_NOW,
+  answerThisEvent,
   calendarEvent,
   detailTitle,
 } from "../helpers";
@@ -199,6 +200,8 @@ test.describe("wide screens", () => {
   }) => {
     await calendarEvent(page, "Launch Review").click();
     await page.keyboard.press("Backspace");
+    // Launch Review repeats: its question's first option, This event
+    await answerThisEvent(page, "Delete event");
     await expect(calendarEvent(page, "Launch Review")).toHaveCount(0);
 
     const toaster = page.getByRole("region", { name: "Notifications" });
