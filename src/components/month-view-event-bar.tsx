@@ -4,8 +4,16 @@ import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
 import { isPrimaryPress } from "@/hooks/use-pointer-gesture";
 import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
-import { EVENT_FOCUS_RING_CLASS } from "./calendar-event-item";
-import { getEventLabel, resolveEventColor } from "@/lib/event-utils";
+import {
+  DECLINED_EVENT_OUTLINE_CLASS,
+  DECLINED_EVENT_TEXT_CLASS,
+  EVENT_FOCUS_RING_CLASS,
+} from "./calendar-event-item";
+import {
+  getEventLabel,
+  isDeclinedByViewer,
+  resolveEventColor,
+} from "@/lib/event-utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 import type { EventDetailsTriggerProps } from "./week-view-types";
 
@@ -112,6 +120,9 @@ export function MonthViewEventBar({
   const { calendars, hourCycle, locale } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = barColorStyles[color];
+  /** Declined by the viewer: an outline only, struck-through text */
+  const isDeclined = isDeclinedByViewer(event);
+  const showsDeclined = isDeclined && !isSelected;
   // `false` on the server and during hydration, so the markup matches
   const eventIsPast = useIsPast(event.end);
 
@@ -194,6 +205,9 @@ export function MonthViewEventBar({
         EVENT_FOCUS_RING_CLASS,
         roundedLeft && "rounded-l-sm",
         roundedRight && "rounded-r-sm",
+        showsDeclined && DECLINED_EVENT_OUTLINE_CLASS,
+        showsDeclined && !roundedLeft && "border-l-0",
+        showsDeclined && !roundedRight && "border-r-0",
         isSelected && "z-20",
         eventIsPast && !isGhost && "opacity-50",
         isGhost && "opacity-30 pointer-events-none",
@@ -209,18 +223,20 @@ export function MonthViewEventBar({
         )}
       />
 
-      {/* Colored background layer - uses border color when selected */}
-      <div
-        className={cn(
-          "absolute inset-0",
-          roundedLeft && "rounded-l-sm",
-          roundedRight && "rounded-r-sm",
-          isSelected ? styles.border : cn(styles.bg, styles.bgHover),
-        )}
-      />
+      {/* Colored background layer - uses border color when selected, none when declined */}
+      {!showsDeclined && (
+        <div
+          className={cn(
+            "absolute inset-0",
+            roundedLeft && "rounded-l-sm",
+            roundedRight && "rounded-r-sm",
+            isSelected ? styles.border : cn(styles.bg, styles.bgHover),
+          )}
+        />
+      )}
 
-      {/* Left border accent - only when roundedLeft and not selected */}
-      {roundedLeft && !isSelected && (
+      {/* Left border accent - only when roundedLeft, not selected or declined */}
+      {roundedLeft && !isSelected && !isDeclined && (
         <div
           className={cn(
             "absolute left-0 top-0 bottom-0 w-[3px] dark:bg-white dark:mix-blend-overlay",
@@ -255,6 +271,8 @@ export function MonthViewEventBar({
               isSelected
                 ? "text-white dark:text-white"
                 : cn(styles.text, "dark:text-white/80"),
+              isDeclined && "line-through",
+              showsDeclined && DECLINED_EVENT_TEXT_CLASS,
             )}
           >
             {event.title}

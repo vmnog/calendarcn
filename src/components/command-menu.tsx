@@ -78,8 +78,9 @@ interface CommandMenuProps {
 }
 
 /**
- * The live demo's ⌘K menu. Going to today, previous and next, and the views
- * come from `useCalendar()`, so it goes inside `CalendarProvider`. Commands
+ * The live demo's ⌘K menu. Going to today, previous and next, the views
+ * and the view settings come from `useCalendar()`, so it goes inside
+ * `CalendarProvider`. Commands
  * that belong to your app (panels, theme, .ics files) show only when you pass
  * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
  */
@@ -93,7 +94,16 @@ export function CommandMenu({
   onExportIcs,
   showComingSoon = false,
 }: CommandMenuProps) {
-  const { goToToday, goToPrev, goToNext, switchView } = useCalendar();
+  const {
+    goToToday,
+    goToPrev,
+    goToNext,
+    switchView,
+    viewSettings,
+    toggleWeekends,
+    toggleDeclinedEvents,
+    toggleWeekNumbers,
+  } = useCalendar();
 
   const runCommand = React.useCallback(
     (command: () => void) => {
@@ -174,9 +184,24 @@ export function CommandMenu({
         { label: "Default hour size", soon: true },
         { label: "Zoom hours in", soon: true },
         { label: "Zoom hours out", soon: true },
-        { label: "Hide weekends", soon: true },
-        { label: "Hide declined events", soon: true },
-        { label: "Hide week numbers", soon: true },
+        // Each says what it will do, as Notion Calendar's do
+        {
+          label: viewSettings.showWeekends ? "Hide weekends" : "Show weekends",
+          keys: ["shift", "⌘", "E"],
+          run: toggleWeekends,
+        },
+        {
+          label: viewSettings.showDeclinedEvents
+            ? "Hide declined events"
+            : "Show declined events",
+          run: toggleDeclinedEvents,
+        },
+        {
+          label: viewSettings.showWeekNumbers
+            ? "Hide week numbers"
+            : "Show week numbers",
+          run: toggleWeekNumbers,
+        },
       ],
     },
     {

@@ -69,7 +69,8 @@ function keepInView(element: HTMLElement, scroller: HTMLElement | null) {
  * Keyboard editing for a view's events, as a keydown handler for the view's
  * root. On a focused event (an element with `data-event-id`):
  *
- * - Alt+ArrowLeft/Right moves it a day; Alt+ArrowUp/Down moves it one
+ * - Alt+ArrowLeft/Right moves it a day (over a hidden weekend);
+ *   Alt+ArrowUp/Down moves it one
  *   `snapMinutes` step (a week in month view); Alt+Shift+ArrowUp/Down
  *   resizes its end (see `getKeyboardEventChange`)
  * - Enter, Space and Escape keep focus on it while its popover opens or closes
@@ -83,7 +84,8 @@ export function useEventKeyboard({
   isDayVisible,
   revealDay,
 }: UseEventKeyboardOptions): (e: React.KeyboardEvent<HTMLElement>) => void {
-  const { events, view, updateEvent } = useCalendar();
+  const { events, view, viewSettings, updateEvent } = useCalendar();
+  const { showWeekends } = viewSettings;
   const config = useCalendarConfig();
 
   /**
@@ -141,6 +143,7 @@ export function useEventKeyboard({
         e.shiftKey,
         view,
         config,
+        showWeekends,
       );
       if (!changed) return;
 
@@ -148,6 +151,15 @@ export function useEventKeyboard({
       if (!isDayVisible(changed.start)) revealDay(changed.start);
       restoreFocus(eventId);
     },
-    [events, view, config, updateEvent, isDayVisible, revealDay, restoreFocus],
+    [
+      events,
+      view,
+      config,
+      showWeekends,
+      updateEvent,
+      isDayVisible,
+      revealDay,
+      restoreFocus,
+    ],
   );
 }

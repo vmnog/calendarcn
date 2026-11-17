@@ -28,8 +28,22 @@ export type HourCycle = 12 | 24;
  * View settings for display preferences (toggleable from the view dropdown)
  */
 export interface ViewSettings {
+  /**
+   * Whether the views draw Saturday and Sunday. Off, day and week view show
+   * weekdays only and step over the weekend, a full week shows Monday to
+   * Friday, and month and year view drop their weekend columns
+   */
   showWeekends: boolean;
+  /**
+   * Whether the views draw events the viewer declined (see
+   * `EventParticipant.self`), struck through on a dashed outline
+   */
   showDeclinedEvents: boolean;
+  /**
+   * Whether week numbers show: beside the title in day and week view, at
+   * each week's start in the agenda, and beside the weeks of month and year
+   * view
+   */
   showWeekNumbers: boolean;
 }
 
@@ -227,6 +241,14 @@ export interface EventParticipant {
   organizer?: boolean;
   /** Whether their attendance is optional */
   optional?: boolean;
+  /**
+   * Whether this participant is the viewer, the person whose calendar shows
+   * the event (Google Calendar's `self`). Their `response` is the viewer's:
+   * a "declined" one marks the event declined (see `showDeclinedEvents`).
+   * Without it, the participant whose email is the event's `calendarEmail`
+   * is the viewer.
+   */
+  self?: boolean;
 }
 
 /**
@@ -1000,6 +1022,7 @@ interface CalendarProviderBaseProps<
    * Number of days the week view shows (controlled). Below 7, the columns
    * start on the current day and prev/next move by that many days; from 7
    * up they start on the week's first day and prev/next move by a week.
+   * With weekends hidden they count weekdays, and 7 shows the week's five.
    */
   numberOfDays?: number;
   /** Initial number of days when `numberOfDays` is not controlled. Defaults to 7 */
@@ -1147,8 +1170,9 @@ export interface CalendarContextValue<
   displayMonth: Date | null;
   /**
    * Dates the view draws (end exclusive): the visible days in day and week
-   * view, the whole six-week grid in month view, trimmed to the first and
-   * last weekday when month view hides weekends. Follows settled
+   * view (from the first weekday to the last while weekends are hidden), the
+   * whole six-week grid in month view, trimmed to the first and last weekday
+   * when it hides weekends. Follows settled
    * navigation, so a horizontal scroll moves it once it snaps. Year view
    * spans its year, January 1 to the next January 1.
    */
@@ -1255,11 +1279,17 @@ export interface CalendarContextValue<
   canUndo: boolean;
   /** Whether `redo` has a step to do again. Any new change clears them */
   canRedo: boolean;
-  /** Toggles weekend columns */
+  /**
+   * Shows or hides the weekend. Hiding it in day view, or in a week view
+   * shorter than a week, moves a Saturday or Sunday on screen to Monday
+   */
   toggleWeekends: () => void;
-  /** Flips `viewSettings.showDeclinedEvents`. No view filters by it yet */
+  /**
+   * Shows or hides the events the viewer declined. Hiding them clears the
+   * selection when the selected event is one
+   */
   toggleDeclinedEvents: () => void;
-  /** Toggles week numbers */
+  /** Shows or hides week numbers */
   toggleWeekNumbers: () => void;
   /** Opens the week containing `date` and briefly highlights that day */
   showDay: (date: Date) => void;

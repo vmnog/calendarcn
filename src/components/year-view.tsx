@@ -1,15 +1,23 @@
 "use client";
 
 import {
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
 } from "react";
-import type { ComponentProps } from "react";
-import { addDays, addYears, format, startOfYear } from "date-fns";
-import { DayPicker, type DayButton, type Modifiers } from "react-day-picker";
+import type { ComponentProps, KeyboardEvent } from "react";
+import { addDays, addYears, format, isWeekend, startOfYear } from "date-fns";
+import {
+  Day as DayPickerDay,
+  DayPicker,
+  Week as DayPickerWeek,
+  Weekday as DayPickerWeekday,
+  type DayButton,
+  type Modifiers,
+} from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { useToday } from "@/hooks/use-now";
@@ -21,6 +29,7 @@ import {
 } from "./calendar-provider";
 import {
   countEventsByDay,
+  filterDeclinedEvents,
   formatCellDate,
   formatFullDate,
 } from "@/lib/event-utils";
@@ -72,8 +81,26 @@ const TODAY_BUTTON_CLASS =
 const EVENT_DOT_CLASS =
   "pointer-events-none absolute bottom-0.5 left-1/2 size-1 -translate-x-1/2 rounded-full bg-muted-foreground";
 
+/** Saturday and Sunday, which DayPicker skips while weekends are hidden */
+const WEEKEND_MATCHER = { dayOfWeek: [0, 6] };
+
+/** A Saturday and a Sunday, to name the weekend's weekday headers */
+const WEEKEND_DAYS = [new Date(2026, 0, 3), new Date(2026, 0, 4)];
+
+/** Format of a weekday header's accessible name, the full day name */
+const WEEKDAY_LABEL_FORMAT = "cccc";
+
 /** Props DayPicker gives a day's button */
 type YearViewDayButtonProps = ComponentProps<typeof DayButton>;
+
+/** Props DayPicker gives a day's cell */
+type YearViewDayProps = ComponentProps<typeof DayPickerDay>;
+
+/** Props DayPicker gives a weekday header */
+type YearViewWeekdayProps = ComponentProps<typeof DayPickerWeekday>;
+
+/** Props DayPicker gives a week's row */
+type YearViewWeekProps = ComponentProps<typeof DayPickerWeek>;
 
 /**
  * A day of the year grid: its number, a dot when it has events, today in
@@ -127,6 +154,7 @@ function YearViewDayButton({
 export function YearView({ onDayClick, className }: YearViewProps) {
   const { currentDate, events, viewSettings, weekStartsOn, showDay, loading } =
     useCalendar();
+  const { showWeekends, showWeekNumbers, showDeclinedEvents } = viewSettings;
   const { locale } = useCalendarConfig();
   const { reportView } = useCalendarViewSync();
   // `null` on the server and during hydration, so no day is marked as today
@@ -149,9 +177,14 @@ export function YearView({ onDayClick, className }: YearViewProps) {
     const start = new Date(yearStartTime);
     const range = { start, end: addYears(start, 1) };
     // Repeating events count on each of their dates (ADR-007), generated
-    // for the year and never stored, as month view draws them
-    return countEventsByDay(expandRecurringEvents(events, range), range);
-  }, [events, yearStartTime]);
+    // for the year and never stored, as month view draws them. Declined
+    // events count only while they're shown.
+    const counted = filterDeclinedEvents(
+      expandRecurringEvents(events, range),
+      showDeclinedEvents,
+    );
+    return countEventsByDay(counted, range);
+  }, [events, yearStartTime, showDeclinedEvents]);
 
   const modifiers = useMemo(
     () => ({
@@ -165,6 +198,9 @@ export function YearView({ onDayClick, className }: YearViewProps) {
   // ("Thursday, June 4, today, 3 events")
   const labels = useMemo(
     () => ({
+      // Named here, so the weekend's headers can be told apart below
+      labelWeekday: (date: Date) =>
+        format(date, WEEKDAY_LABEL_FORMAT, { locale }),
       labelDayButton: (date: Date, dayModifiers: Modifiers) => {
         const parts = [formatFullDate(date, locale)];
         if (dayModifiers.today) parts.push("today");
@@ -184,6 +220,60 @@ export function YearView({ onDayClick, className }: YearViewProps) {
       formatWeekNumber: (weekNumber: number) => String(weekNumber),
     }),
     [locale],
+  );
+
+  // With weekends hidden, their columns go: no header, no cells, and no row
+  // for a week whose only days in the month are a Saturday or Sunday (May
+  // 31, August 1). DayPicker still lays out seven days a week, so they are
+  // left out here.
+  const components = useMemo(() => {
+    const weekendNames = new Set(
+      WEEKEND_DAYS.map((date) =>
+        format(date, WEEKDAY_LABEL_FORMAT, { locale }),
+      ),
+    );
+    return {
+      DayButton: YearViewDayButton,
+      Day: (cellProps: YearViewDayProps) => {
+        // DayPicker's components return an element: an empty one draws nothing
+        if (!showWeekends && isWeekend(cellProps.day.date)) return <Fragment />;
+        return <DayPickerDay {...cellProps} />;
+      },
+      Week: (rowProps: YearViewWeekProps) => {
+        const hasShownDay = rowProps.week.days.some(
+          (day) => !day.outside && (showWeekends || !isWeekend(day.date)),
+        );
+        if (!hasShownDay) return <Fragment />;
+        return <DayPickerWeek {...rowProps} />;
+      },
+      Weekday: (headerProps: YearViewWeekdayProps) => {
+        const name = headerProps["aria-label"];
+        if (!showWeekends && name && weekendNames.has(name)) {
+          return <Fragment />;
+        }
+        return <DayPickerWeekday {...headerProps} />;
+      },
+    };
+  }, [showWeekends, locale]);
+
+  /**
+   * Home and End go to the first and last weekday of the row while weekends
+   * are hidden: DayPicker would aim at the hidden Sunday or Saturday and
+   * stay put
+   */
+  const handleWeekEndsKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (showWeekends || (e.key !== "Home" && e.key !== "End")) return;
+      if (!(e.target instanceof HTMLElement)) return;
+      const days = e.target
+        .closest("tr")
+        ?.querySelectorAll<HTMLButtonElement>("button[data-date]");
+      if (!days || days.length === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      (e.key === "Home" ? days[0] : days[days.length - 1]).focus();
+    },
+    [showWeekends],
   );
 
   const handleDayClick = useCallback(
@@ -229,6 +319,7 @@ export function YearView({ onDayClick, className }: YearViewProps) {
       <div
         ref={monthsRef}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        onKeyDownCapture={handleWeekEndsKeyDown}
       >
         <DayPicker
           month={new Date(yearStartTime)}
@@ -238,12 +329,13 @@ export function YearView({ onDayClick, className }: YearViewProps) {
           today={today ?? UNKNOWN_TODAY}
           weekStartsOn={weekStartsOn}
           locale={locale}
-          showWeekNumber={viewSettings.showWeekNumbers}
+          showWeekNumber={showWeekNumbers}
+          hidden={showWeekends ? undefined : WEEKEND_MATCHER}
           modifiers={modifiers}
           labels={labels}
           formatters={formatters}
           classNames={YEAR_VIEW_CLASS_NAMES}
-          components={{ DayButton: YearViewDayButton }}
+          components={components}
           onDayClick={handleDayClick}
           onDayKeyDown={keepDayFocus}
         />

@@ -21,6 +21,7 @@ The time grid lays out days as columns and hours as rows. [Day View](/docs/compo
 - Click an empty slot to create an event.
 - Visible hours, snap step and clock come from [`CalendarProvider`](/docs/components/calendar-core#calendarprovider): `dayStartHour`, `dayEndHour`, `snapMinutes` and `hourCycle`.
 - A second time zone's hours beside the time axis, from the provider's [`secondaryTimeZone`](/docs/components/calendar-core#second-time-zone).
+- The provider's [view settings](/docs/components/calendar-core#view-settings): with weekends hidden the columns are weekdays only, so scrolling, previous and next, and a drag from Friday to the next column all step over the weekend to Monday. Declined events are struck through on a dashed outline, or hidden.
 
 ## Usage
 
