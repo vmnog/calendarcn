@@ -38,6 +38,26 @@ const RANGE_DELETED_MESSAGE = "Time range deleted";
 /** No marked times */
 const NO_RANGES: AvailabilityRange[] = [];
 
+/**
+ * Keys that, with Cmd or Ctrl, change or select events in the calendar's
+ * shortcuts: select all, cut, copy, paste, duplicate, undo and redo
+ */
+const EVENT_COMMAND_KEYS = new Set(["a", "x", "c", "v", "d", "z"]);
+
+/**
+ * Whether a key would change or select events through the calendar's
+ * shortcuts: Delete, Backspace, or Cmd/Ctrl with A, X, C, V, D or Z.
+ * While times are marked, events stay as they are, so these keys go no
+ * further than scheduling's listener.
+ */
+function isEventKey(e: KeyboardEvent): boolean {
+  if (e.altKey) return false;
+  if (e.metaKey || e.ctrlKey) {
+    return EVENT_COMMAND_KEYS.has(e.key.toLowerCase());
+  }
+  return e.key === "Delete" || e.key === "Backspace";
+}
+
 const SchedulingContext = React.createContext<SchedulingContextValue | null>(
   null,
 );
@@ -134,10 +154,13 @@ export function SchedulingProvider({
   );
 
   const cancelPicking = React.useCallback(() => {
+    // Leave no event selected, as starting does: one picked while marking
+    // (by a command, say) would come out selected for a later Delete
+    clearSelection();
     setIsPicking(false);
     setRanges(NO_RANGES);
     setSelectedRangeId(null);
-  }, []);
+  }, [clearSelection]);
 
   const addRange = React.useCallback(
     (range: Omit<AvailabilityRange, "id">) => {
@@ -283,9 +306,12 @@ export function useScheduling(): SchedulingContextValue | null {
  * Escape leaves without changes and Delete or Backspace removes the
  * selected time. Call it before `useCalendarShortcuts()`, in a component
  * inside `SchedulingProvider`: a key it handles doesn't reach the calendar's
- * (Escape then doesn't also clear the selection). S skips text fields and
- * presses with Cmd, Ctrl or Alt; a menu or dialog that closes on Escape keeps
- * the Escape.
+ * (Escape then doesn't also clear the selection). While times are marked,
+ * the calendar's keys that change or select events (Delete, Cmd+A, Cmd+X,
+ * Cmd+C, Cmd+V, Cmd+D, Cmd+Z) don't reach it either, so nothing changes
+ * under the hatch; Cmd+C and Cmd+X still copy and cut selected text. S
+ * skips text fields and presses with Cmd, Ctrl or Alt; a menu or dialog that
+ * closes on Escape keeps the Escape.
  */
 export function useSchedulingShortcuts({
   enabled = true,
@@ -313,15 +339,24 @@ export function useSchedulingShortcuts({
         run(current.cancelPicking);
         return;
       }
-      if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) {
+      if (isTypingTarget(e.target)) return;
+      if (current.isPicking && isEventKey(e)) {
+        const { selectedRangeId } = current;
+        const isCommand = e.metaKey || e.ctrlKey;
+        if (!isCommand && selectedRangeId) {
+          run(() => current.removeRange(selectedRangeId));
+          return;
+        }
+        // Copying or cutting text selected on the page still works
+        const key = e.key.toLowerCase();
+        if (isCommand && (key === "c" || key === "x")) {
+          e.stopImmediatePropagation();
+          return;
+        }
+        run(() => {});
         return;
       }
-      const { selectedRangeId } = current;
-      const isDeleteKey = e.key === "Delete" || e.key === "Backspace";
-      if (current.isPicking && selectedRangeId && isDeleteKey) {
-        run(() => current.removeRange(selectedRangeId));
-        return;
-      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (!current.isPicking && (e.key === "s" || e.key === "S")) {
         run(() => current.startPicking());
       }

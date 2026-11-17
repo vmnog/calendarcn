@@ -818,7 +818,10 @@ export interface SchedulingContextValue {
    * calendar is in month, year or agenda view. Clears the event selection
    */
   startPicking: (purpose?: SchedulingPurpose) => void;
-  /** Stops marking and drops the marked times, changing nothing */
+  /**
+   * Stops marking and drops the marked times, changing no event. No event
+   * is left selected, as when marking starts
+   */
   cancelPicking: () => void;
   /** Marks a time, merged with the marked times it overlaps or touches */
   addRange: (range: Omit<AvailabilityRange, "id">) => void;

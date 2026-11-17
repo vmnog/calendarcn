@@ -261,6 +261,49 @@ test.describe("marking open times", () => {
     await expect(event).toBeVisible();
   });
 
+  test("keys that change or select events do nothing while marking", async ({
+    page,
+  }) => {
+    // Copy an event first, so Cmd+V would have something to paste
+    await calendarEvent(page, "Architecture Review").click();
+    await page.keyboard.press("ControlOrMeta+c");
+    await expect(toast(page)).toContainText("Event copied to clipboard");
+    const events = page.getByRole("main").locator("[data-event-id]");
+    const eventCount = await events.count();
+
+    await page.keyboard.press("s");
+    // A listener added now runs after the calendar's: the keys must not get
+    // that far (another one's Cmd+A would select the events under the hatch)
+    await page.evaluate(() => {
+      const keys: string[] = [];
+      Object.assign(window, { keysPastScheduling: keys });
+      window.addEventListener("keydown", (e) => keys.push(e.key));
+    });
+    const friday = markingDay(page, "Friday, June 5");
+    const fridayBox = await boxOf(friday);
+    await page.mouse.move(
+      fridayBox.x + fridayBox.width / 2,
+      await yAt(page, friday, 15),
+    );
+    for (const key of ["a", "v", "d", "z", "x", "c"]) {
+      await page.keyboard.press(`ControlOrMeta+${key}`);
+    }
+    await page.keyboard.press("Delete");
+    await page.keyboard.press("Backspace");
+
+    const keysPastScheduling = await page.evaluate(
+      () =>
+        (window as unknown as { keysPastScheduling: string[] })
+          .keysPastScheduling,
+    );
+    const modifiers = ["Meta", "Control"];
+    expect(
+      keysPastScheduling.filter((key) => !modifiers.includes(key)),
+    ).toEqual([]);
+    await expect(schedulingPanel(page)).toBeVisible();
+    await expect(events).toHaveCount(eventCount);
+  });
+
   test("the duration sets the meeting the text asks for, and a click's length", async ({
     page,
   }) => {
