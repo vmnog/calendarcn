@@ -106,6 +106,16 @@ Pass a callback to add its command. These are the demo's:
 - `onToggleSidebar` and `onToggleContextPanel` add the panel toggles, next to the [Calendar Header](/docs/components/calendar-header)'s buttons.
 - `showComingSoon` also lists the Notion Calendar commands CalendarCN doesn't have yet, disabled with a "Soon" badge, as the demo does.
 
+### Time zones
+
+The "Time zones" commands come from `useCalendar()`, like going to today and the views, so they work in any calendar:
+
+- "Travel to time zone..." draws the calendar in another zone for now, with your home zone beside it. See [Travel to a time zone](/docs/components/calendar-core#travel-to-a-time-zone).
+- "Show additional time zones..." adds a zone's column beside the time axis.
+- With more than one zone, "Make time zone primary..." and "Hide time zone..." pick one of the zones shown.
+
+Each opens a list of zones in the menu's place, searched by city, zone name or offset ("Tokyo", "Japan", "+9"). <Kbd>⌫</Kbd> in an empty search goes back to the commands. Pass `timeZoneCommand="travel"` to open the menu on its list: the demo does that for <Kbd>Z</Kbd>, with [`useCalendarShortcuts({ onTravelToTimeZone })`](/docs/keyboard-shortcuts#app-shortcuts).
+
 ### Keyboard shortcuts
 
 The menu shows each command's shortcut. Pass the same callbacks to [`useCalendarShortcuts()`](/docs/keyboard-shortcuts#app-shortcuts) to turn the keys on:
@@ -189,6 +199,12 @@ The dialog is translucent and blurred in dark mode. The CLI also adds a rule to 
       default: "false",
       description:
         'Also lists the commands CalendarCN doesn\'t have yet, disabled with a "Soon" badge.',
+    },
+    {
+      name: "timeZoneCommand",
+      type: '"travel" | "add" | "primary" | "hide"',
+      description:
+        'Opens the menu on that time zone command\'s list instead of the commands, e.g. `"travel"` for the Z key.',
     },
   ]}
 />

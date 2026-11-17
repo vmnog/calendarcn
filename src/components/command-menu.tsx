@@ -19,8 +19,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { TimeZoneList } from "@/components/time-zone-list";
 import { formatDateQueryResult, parseDateQuery } from "@/lib/date-query";
-import type { CommandMenuPage } from "@/components/week-view-types";
+import {
+  addTimeZone,
+  getViewerTimeZone,
+  makeTimeZonePrimary,
+  removeTimeZone,
+} from "@/lib/time-zones";
+import type {
+  CommandMenuPage,
+  TimeZoneCommand,
+} from "@/components/week-view-types";
 
 /** Reusable "Soon" badge for unimplemented command items */
 const SOON_BADGE = (
@@ -44,6 +54,14 @@ const COMMAND_CLASS =
 /** Go to date's placeholder, as Notion Calendar's */
 const GO_TO_DATE_PLACEHOLDER = "e.g. nov 5, in 10 weeks";
 
+/** Each time zone command's label, which its list's input shows too */
+const TIME_ZONE_COMMAND_LABELS: Record<TimeZoneCommand, string> = {
+  travel: "Travel to time zone...",
+  add: "Show additional time zones...",
+  primary: "Make time zone primary...",
+  hide: "Hide time zone...",
+};
+
 /** One command of the menu */
 interface MenuCommand {
   label: string;
@@ -51,8 +69,6 @@ interface MenuCommand {
   keys?: string[];
   /** Runs the command once the menu has closed. Missing when the app doesn't offer it */
   run?: () => void;
-  /** Runs the command with the menu still open, e.g. to show one of its pages */
-  keepOpen?: boolean;
   /**
    * The command focuses something (a field, a new event's title): it runs
    * once the menu has closed and given focus back
@@ -60,6 +76,11 @@ interface MenuCommand {
   movesFocus?: boolean;
   /** Not built yet: listed disabled with a "Soon" badge, only with `showComingSoon` */
   soon?: boolean;
+  /**
+   * Runs with the menu still open: it shows what to type or pick next in
+   * its place (Go to date's field, a zone list)
+   */
+  keepsOpen?: boolean;
 }
 
 /** A titled group of commands */
@@ -100,19 +121,25 @@ interface CommandMenuProps {
    * disabled with a "Soon" badge, as the live demo does
    */
   showComingSoon?: boolean;
+  /**
+   * Opens the menu on a time zone command's list instead of the commands,
+   * e.g. `"travel"` for the Z key
+   */
+  timeZoneCommand?: TimeZoneCommand;
 }
 
 /**
  * The live demo's ⌘K menu. Creating an event, going to a date, today,
- * previous and next, and the views come from `useCalendar()`, so it goes
- * inside `CalendarProvider`. Commands that belong to your app (panels,
- * search, shortcuts, theme, .ics files) show only when you pass their
- * callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
+ * previous and next, the views and the time zones come from `useCalendar()`,
+ * so it goes inside `CalendarProvider`. Commands that belong to your app
+ * (panels, search, shortcuts, theme, .ics files) show only when you pass
+ * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
  *
  * "Go to date..." turns the field into a date field, as in Notion Calendar:
  * type a date ("tomorrow", "next friday", "dec 25", "in 2 weeks"), see which
- * day it reads, and press Enter to show it in the current view. Backspace
- * in the empty field goes back to the commands.
+ * day it reads, and press Enter to show it in the current view. A time zone
+ * command lists the zones in the menu's place. Backspace in the empty field
+ * goes back to the commands.
  */
 export function CommandMenu({
   open,
@@ -126,6 +153,7 @@ export function CommandMenu({
   onShowShortcuts,
   defaultPage = "commands",
   showComingSoon = false,
+  timeZoneCommand,
 }: CommandMenuProps) {
   const {
     goToToday,
@@ -134,19 +162,33 @@ export function CommandMenu({
     switchView,
     navigateToDate,
     addEventAtNextSlot,
+    timeZones,
+    changeTimeZones,
+    travelToTimeZone,
   } = useCalendar();
   /** The page shown: the commands, or Go to date's field */
   const [page, setPage] = React.useState<CommandMenuPage>(defaultPage);
-  /** Text typed in the field, on either page */
-  const [search, setSearch] = React.useState("");
-
-  // Each opening starts on `defaultPage` with an empty field
-  const [prevOpen, setPrevOpen] = React.useState(open);
-  if (open !== prevOpen) {
-    setPrevOpen(open);
-    setPage(defaultPage);
-    setSearch("");
+  /** The time zone command whose list shows in place of the commands */
+  const [zoneCommand, setZoneCommand] = React.useState<TimeZoneCommand | null>(
+    null,
+  );
+  /** Text typed in the input, for the commands, Go to date or a zone list */
+  const [query, setQuery] = React.useState("");
+  /** The input, focused again when a zone list or Go to date replaces the commands */
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  // Each opening starts on `defaultPage`, or on the list `timeZoneCommand`
+  // names, with an empty field. Adjusted while rendering, so the first frame
+  // is already right
+  const [wasOpen, setWasOpen] = React.useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setPage(defaultPage);
+      setZoneCommand(timeZoneCommand ?? null);
+      setQuery("");
+    }
   }
+  const hasOtherZones = timeZones.secondary.length > 0;
 
   const runCommand = React.useCallback(
     (command: () => void) => {
@@ -180,9 +222,9 @@ export function CommandMenu({
   );
 
   /** Runs a picked command: in place, then or once the menu has closed */
-  const selectCommand = ({ run, keepOpen, movesFocus }: MenuCommand) => {
+  const selectCommand = ({ run, keepsOpen, movesFocus }: MenuCommand) => {
     if (!run) return;
-    if (keepOpen) {
+    if (keepsOpen) {
       run();
       return;
     }
@@ -196,15 +238,52 @@ export function CommandMenu({
   /** Shows a page of the menu with an empty field */
   const showPage = React.useCallback((next: CommandMenuPage) => {
     setPage(next);
-    setSearch("");
+    setQuery("");
   }, []);
 
-  // Backspace in Go to date's empty field goes back to the commands
+  /** Lists a time zone command's zones in place of the commands */
+  const openZoneCommand = (command: TimeZoneCommand) => {
+    setZoneCommand(command);
+    setQuery("");
+  };
+
+  // A click on Go to date or a time zone command takes the focus: give it
+  // back to the input, so typing goes there
+  React.useEffect(() => {
+    if (zoneCommand || page !== "commands") inputRef.current?.focus();
+  }, [zoneCommand, page]);
+
+  // Backspace in an empty date or zone field goes back to the commands
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (page === "commands" || e.key !== "Backspace" || search !== "") return;
+    if (e.key !== "Backspace" || query !== "") return;
+    if (!zoneCommand && page === "commands") return;
     e.preventDefault();
+    setZoneCommand(null);
     showPage("commands");
   };
+
+  /** Runs the open time zone command on the zone picked */
+  const pickZone = (zone: string) => {
+    if (zoneCommand === "travel") {
+      runCommand(() => travelToTimeZone(zone));
+      return;
+    }
+    const change = {
+      add: addTimeZone,
+      primary: makeTimeZonePrimary,
+      hide: removeTimeZone,
+    }[zoneCommand ?? "add"];
+    runCommand(() => changeTimeZones((zones) => change(zones, zone)));
+  };
+
+  /** The zones "Hide time zone..." and "Make time zone primary..." list */
+  const listedZones = (() => {
+    if (zoneCommand === "primary") return [...timeZones.secondary].reverse();
+    if (zoneCommand !== "hide") return undefined;
+    // The primary zone first, then the others from the closest
+    const primary = timeZones.primary ?? getViewerTimeZone();
+    return [primary, ...[...timeZones.secondary].reverse()];
+  })();
 
   const groups: MenuGroup[] = [
     {
@@ -231,7 +310,7 @@ export function CommandMenu({
           label: "Go to date...",
           keys: ["."],
           run: () => showPage("go-to-date"),
-          keepOpen: true,
+          keepsOpen: true,
         },
         { label: "Go to today", keys: ["T"], run: goToToday },
         { label: "Go to next week", keys: ["K"], run: goToNext },
@@ -246,8 +325,28 @@ export function CommandMenu({
     {
       heading: "Time zones",
       commands: [
-        { label: "Travel to time zone...", soon: true },
-        { label: "Show additional time zones...", soon: true },
+        {
+          label: TIME_ZONE_COMMAND_LABELS.travel,
+          keys: ["Z"],
+          keepsOpen: true,
+          run: () => openZoneCommand("travel"),
+        },
+        {
+          label: TIME_ZONE_COMMAND_LABELS.add,
+          keepsOpen: true,
+          run: () => openZoneCommand("add"),
+        },
+        // Only with more than one zone, as in Notion Calendar
+        {
+          label: TIME_ZONE_COMMAND_LABELS.primary,
+          keepsOpen: true,
+          run: hasOtherZones ? () => openZoneCommand("primary") : undefined,
+        },
+        {
+          label: TIME_ZONE_COMMAND_LABELS.hide,
+          keepsOpen: true,
+          run: hasOtherZones ? () => openZoneCommand("hide") : undefined,
+        },
       ],
     },
     {
@@ -336,8 +435,8 @@ export function CommandMenu({
       ],
     },
   ];
-  // Go to date's page lists the typed date alone
-  const shownGroups = page === "commands" ? groups : [];
+  // Go to date's page lists the typed date alone, a zone list its zones
+  const shownGroups = page === "commands" && !zoneCommand ? groups : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -351,20 +450,33 @@ export function CommandMenu({
         <DialogDescription className="sr-only">
           Search for a command to run...
         </DialogDescription>
-        {/* Go to date's result is the typed date itself: no filtering */}
-        <Command className={COMMAND_CLASS} shouldFilter={page === "commands"}>
+        {/* Go to date's result and a zone list do their own filtering */}
+        <Command
+          className={COMMAND_CLASS}
+          shouldFilter={zoneCommand === null && page === "commands"}
+        >
           <CommandInput
+            ref={inputRef}
             placeholder={
-              page === "go-to-date"
-                ? GO_TO_DATE_PLACEHOLDER
-                : "Type a command..."
+              zoneCommand
+                ? TIME_ZONE_COMMAND_LABELS[zoneCommand]
+                : page === "go-to-date"
+                  ? GO_TO_DATE_PLACEHOLDER
+                  : "Type a command..."
             }
-            value={search}
-            onValueChange={setSearch}
+            value={query}
+            onValueChange={setQuery}
             onKeyDown={handleInputKeyDown}
           />
           <CommandList>
-            {(page === "commands" || search.trim() !== "") && (
+            {zoneCommand && (
+              <TimeZoneList
+                query={query}
+                onSelect={pickZone}
+                timeZones={listedZones}
+              />
+            )}
+            {!zoneCommand && (page === "commands" || query.trim() !== "") && (
               <CommandEmpty>No results found.</CommandEmpty>
             )}
             {shownGroups.map((group) => {
@@ -397,22 +509,24 @@ export function CommandMenu({
                 </CommandGroup>
               );
             })}
-            {page === "commands" && onSearchEvents && search.trim() !== "" && (
-              <CommandGroup heading="Search" forceMount>
-                <CommandItem
-                  forceMount
-                  value={`search-events-${search}`}
-                  onSelect={() =>
-                    runCommandAfterClose(() => onSearchEvents(search.trim()))
-                  }
-                >
-                  Search events for “{search.trim()}”
-                </CommandItem>
-              </CommandGroup>
-            )}
-            {page === "go-to-date" && (
+            {shownGroups.length > 0 &&
+              onSearchEvents &&
+              query.trim() !== "" && (
+                <CommandGroup heading="Search" forceMount>
+                  <CommandItem
+                    forceMount
+                    value={`search-events-${query}`}
+                    onSelect={() =>
+                      runCommandAfterClose(() => onSearchEvents(query.trim()))
+                    }
+                  >
+                    Search events for “{query.trim()}”
+                  </CommandItem>
+                </CommandGroup>
+              )}
+            {page === "go-to-date" && !zoneCommand && (
               <GoToDateResult
-                query={search}
+                query={query}
                 onSelect={(date) => runCommand(() => navigateToDate(date))}
               />
             )}
@@ -449,8 +563,8 @@ interface GoToDateResultProps {
  */
 function GoToDateResult({ query, onSelect }: GoToDateResultProps) {
   const { weekStartsOn } = useCalendar();
-  const { locale } = useCalendarConfig();
-  const today = useToday();
+  const { locale, timeZone } = useCalendarConfig();
+  const today = useToday(timeZone);
   if (!today) return null;
   const date = parseDateQuery(query, { today, locale, weekStartsOn });
   if (!date) return null;

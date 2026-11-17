@@ -9,7 +9,11 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { AgendaView } from "@/components/agenda-view";
 import { CalendarHeader } from "@/components/calendar-header";
-import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
+import {
+  CalendarProvider,
+  useCalendar,
+  useCalendarConfig,
+} from "@/components/calendar-provider";
 import { CalendarSidebar } from "@/components/calendar-sidebar";
 import { CalendarToaster } from "@/components/calendar-toaster";
 import { CommandMenu } from "@/components/command-menu";
@@ -36,12 +40,14 @@ import {
   SHORTCUTS,
   filterKeyboardShortcutGroups,
 } from "@/lib/keyboard-shortcuts";
+import { toDisplayEvent } from "@/lib/time-zones";
 import type { CalendarProviderProps } from "@/components/calendar-types";
 import type {
   CalendarAppProps,
   CommandMenuPage,
   DetailedCalendarEvent,
   DetailsSidebarActions,
+  TimeZoneCommand,
 } from "@/components/week-view-types";
 
 /** Hour the time grid opens on unless `scrollToHour` says otherwise */
@@ -280,6 +286,7 @@ function CalendarAppShell({
   } = useSidebar();
   const { view, weekStartsOn, numberOfDays, goToDate } =
     useCalendar<DetailedCalendarEvent>();
+  const { timeZone } = useCalendarConfig();
   // shadcn tracks the panel's phone state separately; read whichever is active
   const rightSidebarOpen = isMobile ? contextPanelOpenMobile : contextPanelOpen;
   /** Inline calendar sidebar state (tablet and desktop) */
@@ -298,6 +305,10 @@ function CalendarAppShell({
   /** Page the command menu opens on: its commands, or Go to date's field (.) */
   const [commandMenuPage, setCommandMenuPage] =
     React.useState<CommandMenuPage>("commands");
+  /** The time zone list the command menu opens on (Z), or none (Cmd+K) */
+  const [commandMenuZoneCommand, setCommandMenuZoneCommand] = React.useState<
+    TimeZoneCommand | undefined
+  >(undefined);
   /** Hidden file picker behind the command menu's "Import .ics file" */
   const icsInputRef = React.useRef<HTMLInputElement>(null);
   /** The details sidebar's event search and full shortcut list */
@@ -309,12 +320,21 @@ function CalendarAppShell({
 
   const toggleCommandMenu = React.useCallback(() => {
     setCommandMenuPage("commands");
+    setCommandMenuZoneCommand(undefined);
     setCommandMenuOpen((prev) => !prev);
   }, []);
 
   /** The . key: the command menu, on Go to date's field */
   const openGoToDate = React.useCallback(() => {
     setCommandMenuPage("go-to-date");
+    setCommandMenuZoneCommand(undefined);
+    setCommandMenuOpen(true);
+  }, []);
+
+  /** Z: the command menu, on "Travel to time zone..."'s list */
+  const openTravelPicker = React.useCallback(() => {
+    setCommandMenuPage("commands");
+    setCommandMenuZoneCommand("travel");
     setCommandMenuOpen(true);
   }, []);
 
@@ -361,11 +381,17 @@ function CalendarAppShell({
       const earliest = imported.reduce((first, event) =>
         event.start < first.start ? event : first,
       );
+      // The period of the day it falls on in the calendar's zone
       goToDate(
-        getPeriodStart(earliest.start, view, weekStartsOn, numberOfDays),
+        getPeriodStart(
+          toDisplayEvent(earliest, timeZone).start,
+          view,
+          weekStartsOn,
+          numberOfDays,
+        ),
       );
     },
-    [onImportEvents, goToDate, view, weekStartsOn, numberOfDays],
+    [onImportEvents, goToDate, view, weekStartsOn, numberOfDays, timeZone],
   );
 
   const exportIcs = React.useCallback(() => {
@@ -401,7 +427,7 @@ function CalendarAppShell({
   // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, C, Escape,
   // Shift+Cmd+E for weekends, and the event keys: Delete/Backspace, Cmd+X,
   // Cmd+C, Cmd+V, Cmd+D, Cmd+Z and Shift+Cmd+Z. Then the app's own, checked
-  // first: Cmd+K, Cmd+/, /, Shift+M, Cmd+, . and ?
+  // first: Cmd+K, Cmd+/, /, Shift+M, Cmd+, . ? and Z
   useCalendarShortcuts({
     enabled: shortcuts,
     onToggleCommandMenu: toggleCommandMenu,
@@ -411,6 +437,7 @@ function CalendarAppShell({
     onOpenSettings,
     onGoToDate: openGoToDate,
     onShowShortcuts: showAllShortcuts,
+    onTravelToTimeZone: openTravelPicker,
   });
 
   return (
@@ -427,6 +454,7 @@ function CalendarAppShell({
         onShowShortcuts={showAllShortcuts}
         defaultPage={commandMenuPage}
         showComingSoon={showComingSoon}
+        timeZoneCommand={commandMenuZoneCommand}
       />
       <input
         ref={icsInputRef}
