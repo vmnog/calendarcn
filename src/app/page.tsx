@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 
 import { CalendarApp } from "@/components/calendar-app";
 import type {
+  CalendarAccountHelpers,
   DetailedCalendarEvent,
   EventColor,
   NewEventRange,
@@ -17,6 +19,7 @@ import {
   DEMO_LOCATION_SUGGESTIONS,
   DEMO_PRIMARY_CALENDAR_ID,
   DEMO_ROOMS,
+  generateContactEvents,
   generateMockEvents,
 } from "@/lib/mock-events";
 import { DEMO_CONFERENCE_PROVIDERS } from "./demo-conference-providers";
@@ -38,8 +41,21 @@ const DEMO_VIEW_SETTINGS: ViewSettings = {
   showWeekNumbers: true,
 };
 
-/** Cmd+, placeholder: settings aren't built yet, but the key is claimed already */
-function openSettings() {}
+/** Where "Support & feedback" goes: a new issue on GitHub */
+const SUPPORT_URL = "https://github.com/vmnog/calendarcn/issues/new";
+
+/** Where "About CalendarCN" goes: the docs */
+const ABOUT_PATH = "/docs";
+
+/** "Support & feedback": a new GitHub issue, in a new tab */
+function openSupport() {
+  window.open(SUPPORT_URL, "_blank", "noopener,noreferrer");
+}
+
+/** "Add calendar account": the demo has no accounts, so it adds an .ics file as a calendar */
+function addCalendarAccount({ importIcsCalendar }: CalendarAccountHelpers) {
+  importIcsCalendar();
+}
 
 /**
  * The live demo: the Calendar App block with the sample data, the
@@ -47,10 +63,14 @@ function openSettings() {}
  * docs and GitHub links.
  */
 export default function Page() {
+  const router = useRouter();
   // The app reads its initial events once, so create them once. They're
   // dated from the viewer's today: the calendar renders nothing on the
   // server or during hydration, so the browser's copy is the one shown.
   const [initialEvents] = React.useState(() => generateMockEvents());
+  // The sample teammates' weeks, drawn by "Meet with..." and "Show teammate
+  // calendar..."; an app would load them (free/busy) when someone is added
+  const [contactEvents] = React.useState(() => generateContactEvents());
   /** Color given to the last click-created event, so the next one differs */
   const lastCreatedColorRef = React.useRef<EventColor | null>(null);
 
@@ -79,13 +99,17 @@ export default function Page() {
       defaultViewSettings={DEMO_VIEW_SETTINGS}
       calendars={DEMO_CALENDARS}
       contacts={DEMO_CONTACTS}
+      contactEvents={contactEvents}
       rooms={DEMO_ROOMS}
       conferenceProviders={DEMO_CONFERENCE_PROVIDERS}
       locationSuggestions={DEMO_LOCATION_SUGGESTIONS}
       createEvent={createDemoEvent}
       exportFileName={ICS_EXPORT_FILE_NAME}
       exportCalendarName={ICS_CALENDAR_NAME}
-      onOpenSettings={openSettings}
+      settingsDialog
+      onAddCalendarAccount={addCalendarAccount}
+      onSupport={openSupport}
+      onAbout={() => router.push(ABOUT_PATH)}
       showComingSoon
       sidebarFooterActions={<DemoSidebarLinks />}
       headerActions={

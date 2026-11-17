@@ -1,0 +1,125 @@
+---
+title: Calendar Settings
+description: Notion Calendar's settings dialog, with the calendar view, time format, theme and calendar accounts your app can change.
+---
+
+<ComponentPreview name="calendar-settings-demo" />
+
+Calendar Settings is the live demo's settings dialog, laid out as Notion Calendar's: on the left, General and each calendar account, then "Add calendar account"; on the right, the pane you picked. Open it in the [live demo](/) with <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> or "Go to settings" in the command menu.
+
+- **General**: the calendar view (weekends, declined events, week numbers, and the number of days in week view), the time format and the theme.
+- **A calendar account**: its calendars, each with its color and a button to show or hide it.
+
+Each setting shows only when something can change it, so the dialog fits what your app supports. The calendar view settings come from the surrounding [`CalendarProvider`](/docs/components/calendar-core); the time format, the theme, hiding calendars and "Add calendar account" show when you pass their handlers.
+
+## Installation
+
+<InstallTabs item="calendar-settings" />
+
+## Usage
+
+Render it inside your `CalendarProvider`, and open it from a button, a command or <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup>:
+
+```tsx
+import { useTheme } from "next-themes";
+
+import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";
+import { CalendarSettingsDialog } from "@/components/calendar-settings";
+
+function Settings({ hourCycle, onHourCycleChange }) {
+  const [open, setOpen] = React.useState(false);
+  const { theme, setTheme } = useTheme();
+
+  // ⌘, (Ctrl+, elsewhere) opens it, even from a text field
+  useCalendarShortcuts({ onOpenSettings: () => setOpen(true) });
+
+  return (
+    <CalendarSettingsDialog
+      open={open}
+      onOpenChange={setOpen}
+      theme={theme}
+      onThemeChange={setTheme}
+      onHourCycleChange={onHourCycleChange}
+    />
+  );
+}
+```
+
+The time format sets the provider's `hourCycle`, so keep it in state and pass it to `CalendarProvider`. The dialog reads the current one from the provider.
+
+### Calendar accounts
+
+The accounts are the provider's `calendars`, grouped by their `email` as in the [Calendar List](/docs/components/calendar-list). Pass the hidden calendars and their handler to show or hide each from its account's pane, and `onAddCalendarAccount` to list "Add calendar account":
+
+```tsx
+<CalendarSettingsDialog
+  open={open}
+  onOpenChange={setOpen}
+  defaultSection="calendars"
+  hiddenCalendarIds={hiddenCalendarIds}
+  onHiddenCalendarIdsChange={setHiddenCalendarIds}
+  onAddCalendarAccount={connectAccount}
+/>
+```
+
+`defaultSection="calendars"` opens it on the first account, as "Manage calendar accounts" does in the live demo. [Calendar App](/docs/components/calendar-app) renders the dialog for you with `settingsDialog`.
+
+## API Reference
+
+### CalendarSettingsDialog
+
+<PropsTable
+  rows={[
+    {
+      name: "open",
+      type: "boolean",
+      description: "Whether the dialog is open.",
+    },
+    {
+      name: "onOpenChange",
+      type: "(open: boolean) => void",
+      description:
+        "Called when the dialog opens or closes: Escape, a click outside or the close button.",
+    },
+    {
+      name: "defaultSection",
+      type: '"general" | "calendars"',
+      default: '"general"',
+      description:
+        "The pane the dialog opens on, each time it opens: General, or the first calendar account.",
+    },
+    {
+      name: "theme",
+      type: '"system" | "light" | "dark"',
+      default: '"system"',
+      description: "The current theme, checked in the Theme setting.",
+    },
+    {
+      name: "onThemeChange",
+      type: '(theme: "system" | "light" | "dark") => void',
+      description: "Adds the Theme setting: Auto, Light mode and Dark mode.",
+    },
+    {
+      name: "onHourCycleChange",
+      type: "(hourCycle: 12 | 24) => void",
+      description:
+        "Adds the Time format setting. The current clock is the provider's `hourCycle`.",
+    },
+    {
+      name: "hiddenCalendarIds",
+      type: "string[]",
+      description: "Ids of the hidden calendars.",
+    },
+    {
+      name: "onHiddenCalendarIdsChange",
+      type: "(hiddenCalendarIds: string[]) => void",
+      description:
+        "Adds a show or hide button to each calendar in an account's pane.",
+    },
+    {
+      name: "onAddCalendarAccount",
+      type: "() => void",
+      description: 'Adds "Add calendar account" under the accounts.',
+    },
+  ]}
+/>

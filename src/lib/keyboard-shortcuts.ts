@@ -52,6 +52,16 @@ export const SHORTCUTS = {
     keys: ["C"],
     keywords: ["new", "add", "compose"],
   },
+  meetWith: {
+    label: "Meet with...",
+    keys: ["F"],
+    keywords: ["people", "free time", "availability", "schedule"],
+  },
+  showTeammateCalendar: {
+    label: "Show teammate calendar",
+    keys: ["P"],
+    keywords: ["people", "team", "colleague"],
+  },
   moveEventDay: {
     label: "Move a day earlier / later",
     keys: ["alt", "←"],
@@ -86,6 +96,11 @@ export const SHORTCUTS = {
   monthView: { label: "Display month view", keys: ["M"] },
   yearView: { label: "Display year view", keys: ["Y"] },
   agendaView: { label: "Display agenda view", keys: ["A"], keywords: ["list"] },
+  selectAllVisible: {
+    label: "Select all visible",
+    keys: ["⌘", "A"],
+    keywords: ["several", "multiple", "events"],
+  },
   toggleWeekends: {
     label: "Show / hide weekends",
     keys: ["⇧", "⌘", "E"],
@@ -139,8 +154,9 @@ export const SHORTCUTS = {
  * The full shortcut list, grouped and ordered as Notion Calendar's (General,
  * Workflows, Editing, Calendar view, Calendar navigation, App navigation),
  * with only the keys CalendarCN handles. The app keys (command menu, panels,
- * theme, Go to date, this list, settings) work only where the app passes
- * their actions to `useCalendarShortcuts()`, as `CalendarApp` does.
+ * theme, Meet with, teammate calendars, Go to date, this list, settings) work
+ * only where the app passes their actions to `useCalendarShortcuts()`, as
+ * `CalendarApp` does.
  */
 export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
   {
@@ -172,7 +188,11 @@ export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
   },
   {
     heading: "Workflows",
-    shortcuts: [SHORTCUTS.createEvent],
+    shortcuts: [
+      SHORTCUTS.createEvent,
+      SHORTCUTS.meetWith,
+      SHORTCUTS.showTeammateCalendar,
+    ],
   },
   {
     heading: "Editing",
@@ -197,6 +217,7 @@ export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
       SHORTCUTS.monthView,
       SHORTCUTS.yearView,
       SHORTCUTS.agendaView,
+      SHORTCUTS.selectAllVisible,
       SHORTCUTS.toggleWeekends,
       SHORTCUTS.defaultHourSize,
       SHORTCUTS.zoomHoursIn,

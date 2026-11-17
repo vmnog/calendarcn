@@ -54,11 +54,14 @@ import { CalendarDayHeaders } from "./calendar-day-headers";
 import { WeekViewGrid } from "./week-view-grid";
 import { WeekViewTimeAxis } from "./week-view-time-axis";
 import { WeekViewTimeIndicator } from "./week-view-time-indicator";
+import { usePeopleInTimeGrid } from "./week-view-people";
 import {
   CalendarPopoverBoundaryProvider,
   isEventInsideCalendarPopover,
 } from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
+import { AvailabilityLayer } from "./availability-layer";
+import { useScheduling } from "./scheduling-provider";
 import { AddTimeZoneButton, TimeZoneAxisLabel } from "./time-zone-axis-label";
 
 /**
@@ -206,6 +209,7 @@ export function TimeGrid({
     events,
     viewSettings,
     selectedEvent,
+    selectedEventIds,
     highlightedDate,
     selectEvent,
     clearSelection,
@@ -235,6 +239,8 @@ export function TimeGrid({
     reportPasteTarget,
     reportHourHeight,
   } = useCalendarViewSync();
+  // Outside a SchedulingProvider, `null`: no open times to mark
+  const scheduling = useScheduling();
   const numberOfDays = numberOfDaysProp ?? providerNumberOfDays;
   const { showWeekends, showDeclinedEvents } = viewSettings;
   /** Day columns this grid pins the provider to (none in day view) */
@@ -626,6 +632,16 @@ export function TimeGrid({
     () => displayedEvents.filter((e) => !e.isAllDay && !isMultiDayEvent(e)),
     [displayedEvents],
   );
+  // Other people's events beside yours, and the free time you all share
+  const bufferRange = React.useMemo(
+    () => ({ start: new Date(bufferStartTime), end: new Date(bufferEndTime) }),
+    [bufferStartTime, bufferEndTime],
+  );
+  const { personEvents, freeTimes } = usePeopleInTimeGrid(
+    events,
+    bufferRange,
+    bufferedDayDates,
+  );
 
   const { allDayResizeState, handleAllDayResizePointerDown } = useAllDayResize({
     days: bufferedDayDates,
@@ -825,7 +841,11 @@ export function TimeGrid({
                   events={displayedTimedEvents}
                   onEventClick={handleEventClick}
                   selectedEventId={selectedEventId}
-                  onEventCreate={addEventFromRange}
+                  // With several events selected, a click on empty space
+                  // only clears the selection, as in Notion Calendar
+                  onEventCreate={
+                    selectedEventIds.length > 1 ? undefined : addEventFromRange
+                  }
                   onSlotHover={handleSlotHover}
                   dragState={dragState ?? undefined}
                   onEventDragPointerDown={handleEventPointerDown}
@@ -837,9 +857,20 @@ export function TimeGrid({
                   onEventPopoverExpand={onEventPopoverExpand}
                   onEventPopoverClose={closeEventPopover}
                   highlightedDate={highlightedDate}
+                  personEvents={personEvents}
+                  freeTimes={freeTimes}
                   visibleStartIndex={dynamicBuffer}
                   visibleCount={VISIBLE_DAYS}
                 />
+                {/* Marking open times while scheduling, over the events */}
+                {scheduling?.isPicking && (
+                  <AvailabilityLayer
+                    days={bufferedDays}
+                    hourHeight={hourHeight}
+                    visibleStartIndex={dynamicBuffer}
+                    visibleCount={VISIBLE_DAYS}
+                  />
+                )}
               </div>
             </div>
             <WeekViewTimeIndicator

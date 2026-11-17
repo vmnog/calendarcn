@@ -71,14 +71,63 @@ test.describe("wide screens", () => {
     const menu = page.getByRole("dialog", { name: "Command Menu" });
     await page.keyboard.press("ControlOrMeta+k");
     await expect(menu).toBeVisible();
-    // The demo lists Notion Calendar's commands that aren't built yet
-    await expect(menu.getByText("Soon").first()).toBeVisible();
+    // Every command the demo lists is built: none is marked Soon, even
+    // with `showComingSoon`
+    await expect(menu.getByText("Soon")).toHaveCount(0);
     await menu.getByRole("option", { name: /^Display month view/ }).click();
     await expect(menu).toBeHidden();
     await expect(title(page)).toHaveAccessibleName("June 2026");
 
     await page.keyboard.press("Shift+M");
     await expect(page.locator("html")).toHaveClass(/\blight\b/);
+  });
+
+  test("meets with people from the sidebar, F and P", async ({ page }) => {
+    // The sidebar's field: Priya's events show and the free time you share
+    const field = page.getByRole("combobox", { name: "Meet with" });
+    await field.click();
+    await page.keyboard.type("pri");
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Meeting participants")).toBeVisible();
+    await expect(
+      page.locator('[data-person-event][title^="Priya Shah: Lunch,"]').first(),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("main")
+        .getByRole("group", { name: "Thursday, June 4", exact: true })
+        .getByRole("note", { name: "Everyone free, 1:30–3 PM" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    // F opens the people picker, a Base UI dialog here
+    await page.keyboard.press("f");
+    const meetWith = page.getByRole("dialog", { name: "Meet with..." });
+    await expect(meetWith).toBeVisible();
+    await page.keyboard.type("sam");
+    await page.keyboard.press("Enter");
+    await expect(meetWith).toBeHidden();
+    await expect(
+      page.locator('[data-person-row="sam@example.com"]'),
+    ).toBeVisible();
+
+    // P shows a teammate's calendar
+    await page.keyboard.press("p");
+    const teammate = page.getByRole("dialog", {
+      name: "Show teammate calendar...",
+    });
+    await expect(teammate).toBeVisible();
+    await teammate.getByRole("option", { name: /Morgan Diaz/ }).click();
+    await expect(page.getByText("Team calendars")).toBeVisible();
+    await expect(
+      page
+        .locator('[data-person-event][title^="Morgan Diaz: Conference talk,"]')
+        .first(),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Clear", exact: true }).click();
+    await expect(page.getByText("Meeting participants")).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("note")).toHaveCount(0);
   });
 
   test("Go to date, Search events, Create event and the shortcut list work from their keys and commands", async ({

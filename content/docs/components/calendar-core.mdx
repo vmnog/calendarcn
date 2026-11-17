@@ -68,6 +68,12 @@ Undo and redo report what they change like any other change: the full list throu
 
 A step applies only while its events are the very objects the calendar left in `events`. Replace one from outside, by reloading your events from a server for example, and the steps that touch it can't be undone: `canUndo` turns false and the key goes back to the browser, so an undo never overwrites a newer version. Keep the objects you get in `onEventsChange`, as `useState` does, and undo keeps working. Changes your app makes to `events` itself, like an import, are not steps.
 
+### Selecting several events
+
+As in Notion Calendar, Shift-click or <Kbd>⌘</Kbd>-click (Ctrl-click on Windows and Linux) on an event adds it to the selection, and on a selected one takes it out. <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup> (`selectAllVisible`) selects every event on the dates on screen. <Kbd>Esc</Kbd>, a click on empty space or a plain click on one event clears the rest. Several selected events are drawn selected but show no details, as in Notion Calendar, and `selectedEventIds` lists them.
+
+On one of them, delete, cut, copy, duplicate and paste act on them all, from the keyboard, the right-click menu or `deleteEvent`, `cutEvent`, `copyEvent` and `duplicateEvent`, each as one undo step. The toasts read "2 events deleted" and "2 events cut" with Undo, and "2 events copied to clipboard". Pasted events keep their distance from the earliest of them, which lands where a single paste would. Dragging one of them, or moving it with <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>, moves them all by as much; resizing changes that event alone. A date of a repeating event among them changes alone, as its own event: an action on several events never asks which events of the series it applies to. With `timeZone` set, a moved group's events all move by the same time. Selecting other events while a change to a repeating date waits asks about that change first.
+
 ### Notices
 
 After a delete, a cut or a copy, the provider keeps a notice worded like Notion Calendar's toasts: "Event deleted" with the event's title and an undo, "Event cut" with an undo, "Event copied to clipboard" with the title. [Calendar Toaster](/docs/components/calendar-toaster) shows it; without one, nothing shows. `useCalendarNotice()` returns it, to show with a toast library of your own, and `showNotice` adds notices of yours. A notice's undo takes back that action and nothing else, so the notice closes as soon as another change is the latest, and its undo is there exactly while `canUndo` is.
@@ -188,6 +194,33 @@ Notion Calendar's "Travel to time zone" draws the calendar in another zone for a
 - In [Calendar App](/docs/components/calendar-app), <Kbd>Z</Kbd> or "Travel to time zone..." in the command menu lists the zones to travel to.
 - The x on the travel label, "Travel back home" in its menu, and <Kbd>Esc</Kbd> with no event selected (with `useCalendarShortcuts()`) travel back. "Add as primary time zone" and "Add as secondary time zone" keep the zone.
 - Travelling isn't saved: a reload starts at home.
+
+## Meeting with people
+
+`contacts` are also the people you can meet with, as in Notion Calendar's "Meet with...". `useCalendarPeople()` reads and changes who that is:
+
+- **Meeting with someone** (`meetWith`, `addMeetWith`): their events are drawn in the day and week views behind yours, hatched in their color with their initial, and the times when you and everyone you meet with are free are highlighted, inside `workingHours` (9 AM to 5 PM, Monday to Friday by default) and at least 30 minutes long. An event created by clicking an empty slot meanwhile invites them: they're added to its `participants`, waiting for an answer, with the event's calendar account (`calendarEmail`) as the organizer.
+- **Showing a teammate's calendar** (`teammates`, `addTeammate`): their events are drawn the same way, without a meeting: no free time, no invitations.
+
+Their events come from `contactEvents`, keyed by email. Load them when someone is added (`onMeetWithChange`, `onTeammatesChange`) and when the dates on screen change (`onVisibleRangeChange`). From Google Calendar's free/busy API, which gives busy times without titles, pass an event titled "Busy" for each one. Repeating events work as yours do, and with [`timeZone`](#time-zone) or while travelling, their events and the working hours read on the calendar's clock, as yours do. All-day and multi-day events aren't drawn (an all-day event marked `status: "busy"` still takes the day out of the free time), and month, year and agenda views leave other people's events out.
+
+```tsx
+const [meetWith, setMeetWith] = React.useState<string[]>([]);
+const contactEvents = useFreeBusy(meetWith, visibleRange); // your loader
+
+<CalendarProvider
+  defaultEvents={events}
+  contacts={contacts}
+  meetWith={meetWith}
+  onMeetWithChange={setMeetWith}
+  contactEvents={contactEvents}
+>
+  <CalendarSidebar />
+  <WeekView />
+</CalendarProvider>;
+```
+
+The [Calendar Sidebar](/docs/components/calendar-sidebar)'s "Meet with..." field and the [People Picker](/docs/components/people-picker) (F and P in [Calendar App](/docs/components/calendar-app)) add people; your own controls can call `addMeetWith`, `addTeammate` and the rest. `getSharedFreeTime(calendars, days, options)` in `lib/free-busy.ts` computes the highlighted free time, to list it elsewhere: it counts an event as busy unless it's marked `status: "free"`, the calendar's owner declined it, or it's all-day (unless marked busy).
 
 ## Custom event content
 
@@ -459,6 +492,58 @@ interface Meeting extends CalendarEvent {
         "Places the details' location field lists under the typed text while typing.",
     },
     {
+      name: "meetWith",
+      type: "string[]",
+      description:
+        "Emails of the people you're meeting with (controlled): their events are drawn beside yours, the free time you share is highlighted, and an event created meanwhile invites them. See [Meeting with people](#meeting-with-people).",
+    },
+    {
+      name: "defaultMeetWith",
+      type: "string[]",
+      default: "[]",
+      description:
+        "People met with at first when `meetWith` is not controlled.",
+    },
+    {
+      name: "onMeetWithChange",
+      type: "(meetWith: string[]) => void",
+      description:
+        "Called with the new emails when someone is added to or taken out of the meeting.",
+    },
+    {
+      name: "teammates",
+      type: "string[]",
+      description:
+        'Emails of the teammates whose calendars show beside yours (controlled), as "Show teammate calendar..." adds them.',
+    },
+    {
+      name: "defaultTeammates",
+      type: "string[]",
+      default: "[]",
+      description:
+        "Teammates shown at first when `teammates` is not controlled.",
+    },
+    {
+      name: "onTeammatesChange",
+      type: "(teammates: string[]) => void",
+      description:
+        "Called with the new emails when a teammate's calendar is shown or hidden.",
+    },
+    {
+      name: "contactEvents",
+      type: "Record<string, DetailedCalendarEvent[]>",
+      default: "{}",
+      description:
+        "Other people's events by email, drawn while you meet with them or show their calendar. Load them when someone is added or the dates on screen change.",
+    },
+    {
+      name: "workingHours",
+      type: "WorkingHours",
+      default: "9 AM to 5 PM, Monday to Friday",
+      description:
+        "Days and hours, on the calendar's clock (its `timeZone`, else the viewer's), the free time you share with the people you meet with is looked for in.",
+    },
+    {
       name: "createEvent",
       type: "(range: NewEventRange) => TEvent | null",
       description:
@@ -593,7 +678,14 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     {
       name: "selectedEventId",
       type: "string | null",
-      description: "ID of the selected event.",
+      description:
+        "ID of the selected event. `null` while several are selected: `selectedEventIds` lists them, and none shows its details.",
+    },
+    {
+      name: "selectedEventIds",
+      type: "string[]",
+      description:
+        "IDs of every selected event, in the order they were picked: the one `selectedEventId` names, or several. Empty when nothing is selected.",
     },
     {
       name: "selectedEvent",
@@ -729,6 +821,24 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "clearSelection",
       type: "() => void",
       description: "Clears the selection and closes the popover.",
+    },
+    {
+      name: "setSelectedEventIds",
+      type: "(eventIds: string[]) => void",
+      description:
+        "Selects these events: none clears the selection, one selects it as `selectEvent` does, several select them together.",
+    },
+    {
+      name: "toggleEventSelection",
+      type: "(eventId: string) => void",
+      description:
+        "Adds an event to the selection, or takes it out: what Shift- and Cmd-click do.",
+    },
+    {
+      name: "selectAllVisible",
+      type: "() => void",
+      description:
+        "Selects every event on the dates on screen, scrolled-out hours too (Notion Calendar's Select all visible, ⌘A). Does nothing in year view.",
     },
     {
       name: "addEventFromRange",
@@ -913,6 +1023,74 @@ Returns the resolved settings of the nearest provider. Outside a provider it ret
       name: "locationSuggestions",
       type: "LocationSuggestion[]",
       description: "Places the location field suggests.",
+    },
+  ]}
+/>
+
+### useCalendarPeople()
+
+Returns who you meet with and which teammates show, their events, and the actions that change them. Outside a provider nobody shows, and the actions do nothing. Emails are compared without case, and a list never holds one twice.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "contacts",
+      type: "EventContact[]",
+      description: "The provider's `contacts`: the people you can add.",
+    },
+    {
+      name: "meetWith",
+      type: "string[]",
+      description:
+        "Emails of the people you're meeting with, in the order added.",
+    },
+    {
+      name: "teammates",
+      type: "string[]",
+      description: "Emails of the teammates whose calendars show.",
+    },
+    {
+      name: "shownPeople",
+      type: "CalendarPerson[]",
+      description:
+        "Everyone whose events are drawn: the people you meet with, then the teammates not among them, each with the color their events take.",
+    },
+    {
+      name: "addMeetWith",
+      type: "(email: string) => void",
+      description: "Adds someone to the meeting.",
+    },
+    {
+      name: "removeMeetWith",
+      type: "(email: string) => void",
+      description: "Takes someone out of the meeting.",
+    },
+    {
+      name: "clearMeetWith",
+      type: "() => void",
+      description: "Ends the meeting: nobody is met with anymore.",
+    },
+    {
+      name: "addTeammate",
+      type: "(email: string) => void",
+      description: "Shows a teammate's calendar.",
+    },
+    {
+      name: "removeTeammate",
+      type: "(email: string) => void",
+      description: "Hides a teammate's calendar again.",
+    },
+    {
+      name: "getPersonEvents",
+      type: "(email: string) => DetailedCalendarEvent[]",
+      description:
+        "A person's events from `contactEvents`, or an empty list when it has none for them.",
+    },
+    {
+      name: "workingHours",
+      type: "WorkingHours",
+      description: "The provider's `workingHours`, or the default.",
     },
   ]}
 />
@@ -1299,8 +1477,47 @@ An entry of the `contacts` prop.
       description:
         "Listed on focus, before typing, with a history icon, as a recently invited contact.",
     },
+    {
+      name: "color",
+      type: "EventColor",
+      description:
+        "Color their events are drawn in while you meet with them or show their calendar. Defaults to one picked from their place in `contacts`.",
+    },
   ]}
 />
+
+### WorkingHours
+
+The `workingHours` prop: when the free time you share with the people you meet with is looked for, on the calendar's clock (its `timeZone`, else the viewer's).
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "days",
+      type: "(0 | 1 | 2 | 3 | 4 | 5 | 6)[]",
+      required: true,
+      description:
+        "Days of the week they apply to, 0 (Sunday) to 6 (Saturday).",
+    },
+    {
+      name: "startHour",
+      type: "number",
+      required: true,
+      description: "Hour (0-23) they start at.",
+    },
+    {
+      name: "endHour",
+      type: "number",
+      required: true,
+      description: "Hour (1-24) they end at, after `startHour`.",
+    },
+  ]}
+/>
+
+### CalendarPerson
+
+An entry of `useCalendarPeople().shownPeople`: an `EventContact` (a bare `{ email }` for an address not in `contacts`) whose `color` is always set, to the contact's own or the one picked for them.
 
 ### ConferenceProviderOption
 

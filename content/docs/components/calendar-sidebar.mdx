@@ -1,13 +1,13 @@
 ---
 title: Calendar Sidebar
-description: The left sidebar of the demo, with the mini calendar, scheduling and the calendar list.
+description: The left sidebar of the demo, with the mini calendar, scheduling, "Meet with..." and the calendar list.
 ---
 
 <ComponentPreview name="calendar-sidebar-demo" />
 
-Calendar Sidebar is the left column of the [live demo](/), modeled on Notion Calendar's: the [Mini Calendar](/docs/components/mini-calendar), a scheduling row and a "Meet with..." field, the [Calendar List](/docs/components/calendar-list), "Add calendar account", and a footer with the [Theme Toggle](/docs/components/theme-toggle). On wide screens it's a fixed column that pushes the page over; on phones it opens as a sheet from the left ([Sidebar Overlay](/docs/components/sidebar-overlay)).
+Calendar Sidebar is the left column of the [live demo](/), modeled on Notion Calendar's: the [Mini Calendar](/docs/components/mini-calendar), a scheduling row and a "Meet with..." field, the [Calendar List](/docs/components/calendar-list), "Add calendar account" when you pass `onAddCalendarAccount`, and a footer with the [Theme Toggle](/docs/components/theme-toggle). On wide screens it's a fixed column that pushes the page over; on phones it opens as a sheet from the left ([Sidebar Overlay](/docs/components/sidebar-overlay)).
 
-It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves, numbers its weeks while the provider's week numbers are on, and picking a day goes there (with weekends hidden, a Saturday or Sunday opens the Monday after it in day view). The scheduling row, the "Meet with..." field and "Add calendar account" aren't built yet: they're disabled and marked "Soon" (see the [roadmap](/docs/roadmap)). The file is yours, so wire them up there.
+It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves, numbers its weeks while the provider's week numbers are on, and picking a day goes there (with weekends hidden, a Saturday or Sunday opens the Monday after it in day view). The "Meet with..." field meets with the provider's `contacts` (see [Meeting with people](#meeting-with-people)). Inside a [`SchedulingProvider`](/docs/components/scheduling), the Scheduling row starts marking open times to share, or opens a menu of scheduling links when your app creates them; without one, the row isn't there. "Add calendar account" calls your `onAddCalendarAccount`, to connect an account your way; the live demo adds an .ics file as a calendar. The file is yours, so wire them up there.
 
 ## Installation
 
@@ -94,6 +94,12 @@ const [hiddenCalendarIds, setHiddenCalendarIds] = React.useState<string[]>([]);
 </CalendarProvider>;
 ```
 
+### Meeting with people
+
+The "Meet with..." field picks people from the provider's `contacts`, as Notion Calendar's does: focusing it lists the recent ones, typing lists the matches (or the typed address), the arrow keys move through them and <Kbd>Enter</Kbd> or a click picks one. <Kbd>Esc</Kbd> closes the list and clears the field. While you type, F, P and the calendar's other keys type into the field.
+
+Picking someone adds them to a "Meeting participants" section under the field: their events show beside yours in the day and week views and the times you're all free are highlighted ([Meeting with people](/docs/components/calendar-core#meeting-with-people)). Hover a row to stop meeting with that person, or press "Clear" to stop meeting with everyone. Teammates added with "Show teammate calendar..." ([People Picker](/docs/components/people-picker)) are listed under "Team calendars", each with a button to remove them. Both lists live in the provider, through [`useCalendarPeople()`](/docs/components/calendar-core#usecalendarpeople), so the sidebar takes no props for them.
+
 ### Colors
 
 The sidebars bring Notion Calendar's colors as their own tokens, added to your CSS file on install: `--calendar-sidebar`, `--calendar-sidebar-foreground`, `--calendar-sidebar-muted-foreground`, `--calendar-sidebar-primary` and the rest of shadcn/ui's sidebar set, each with a `calendar-` prefix. Inside the sidebar they replace your `--sidebar-*` tokens, so the rest of your app keeps its own sidebar theme. Change them in your CSS to restyle both sidebars.
@@ -102,6 +108,8 @@ The sidebars bring Notion Calendar's colors as their own tokens, added to your C
 
 - The mini calendar shows the month of the days on screen, highlights them, and marks today. Browse months with its arrows; the next navigation brings it back.
 - Picking a day goes to its period in the current view: the day in day view, its week in week view.
+- Scheduling starts marking the times you're free, like <Kbd>S</Kbd>, and leaves again on a second click. On phones the sheet closes so you can mark on the grid.
+- "Meet with..." adds people from your contacts; the ones you meet with and the teammates shown are listed under it, each removable.
 - Calendars are grouped by account, each account collapsible. Hover a calendar to show or hide it.
 - The theme toggle cycles system, light and dark.
 - On phones, the sheet closes on an outside tap, <Kbd>Esc</Kbd>, its close button (where the header's toggle sits) or a day pick.
@@ -152,6 +160,12 @@ The sidebars bring Notion Calendar's colors as their own tokens, added to your C
       type: "(hiddenCalendarIds: string[]) => void",
       description:
         "Called with the new hidden ids when a calendar is shown or hidden.",
+    },
+    {
+      name: "onAddCalendarAccount",
+      type: "() => void",
+      description:
+        'Adds "Add calendar account" below the calendars, which calls it. Without it, the row isn\'t drawn.',
     },
     {
       name: "className",

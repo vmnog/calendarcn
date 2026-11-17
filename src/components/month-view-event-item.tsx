@@ -3,7 +3,11 @@
 import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
 import { isPrimaryPress } from "@/hooks/use-pointer-gesture";
-import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
+import {
+  EventContentSlot,
+  useCalendarConfig,
+  useIsEventInSelection,
+} from "./calendar-provider";
 import { SeriesChangeDot } from "./event-series-scope-dialog";
 import {
   DECLINED_EVENT_TEXT_CLASS,
@@ -81,7 +85,7 @@ const MONTH_ITEM_SLOT_CLASS =
  */
 export function MonthViewEventItem({
   event,
-  isSelected = false,
+  isSelected: isSelectedProp = false,
   isGhost,
   detailsTriggerProps,
   isDragging = false,
@@ -90,6 +94,10 @@ export function MonthViewEventItem({
   onDragPointerDown,
   className,
 }: MonthViewEventItemProps) {
+  // One of several selected events looks selected too
+  const isInSelection =
+    useIsEventInSelection(event.id) && !isGhost && !isDragging;
+  const isSelected = isSelectedProp || isInSelection;
   const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const borderColor = borderColorStyles[color];

@@ -24,6 +24,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/scheduling-provider.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/calendar-popover-context.tsx",
           "type": "registry:component"
         },
@@ -33,6 +37,10 @@
         },
         {
           "path": "src/components/calendar-loading-bar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/calendar-people.tsx",
           "type": "registry:component"
         },
         {
@@ -80,7 +88,23 @@
           "type": "registry:lib"
         },
         {
+          "path": "src/lib/event-selection.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/free-busy.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/people.ts",
+          "type": "registry:lib"
+        },
+        {
           "path": "src/lib/keyboard-shortcuts.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/availability.ts",
           "type": "registry:lib"
         }
       ],
@@ -365,11 +389,19 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/week-view-people.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/time-zone-axis-label.tsx",
           "type": "registry:component"
         },
         {
           "path": "src/components/time-zone-list.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/availability-layer.tsx",
           "type": "registry:component"
         },
         {
@@ -557,6 +589,24 @@
       }
     },
     {
+      "name": "people-picker",
+      "type": "registry:component",
+      "title": "People Picker",
+      "description": "Notion Calendar's F and P dialog: search your contacts to meet with someone or show a teammate's calendar.",
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "command",
+        "dialog",
+        "kbd"
+      ],
+      "files": [
+        {
+          "path": "src/components/people-picker.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
       "name": "calendar-toaster",
       "type": "registry:component",
       "title": "Calendar Toaster",
@@ -566,6 +616,25 @@
       "files": [
         {
           "path": "src/components/calendar-toaster.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "calendar-settings",
+      "type": "registry:component",
+      "title": "Calendar Settings",
+      "description": "Notion Calendar's settings dialog: the calendar view, time format and theme, and each calendar account's calendars, with what your app can change.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "button",
+        "dialog",
+        "switch"
+      ],
+      "files": [
+        {
+          "path": "src/components/calendar-settings.tsx",
           "type": "registry:component"
         }
       ]
@@ -744,6 +813,7 @@
         "@calendarcn/sidebar-overlay",
         "@calendarcn/theme-toggle",
         "button",
+        "dropdown-menu",
         "kbd",
         "sidebar",
         "tooltip"
@@ -752,6 +822,10 @@
         {
           "path": "src/components/calendar-sidebar.tsx",
           "type": "registry:component"
+        },
+        {
+          "path": "src/components/calendar-sidebar-people.tsx",
+          "type": "registry:component"
         }
       ]
     },
@@ -759,13 +833,14 @@
       "name": "details-sidebar",
       "type": "registry:component",
       "title": "Details Sidebar",
-      "description": "The right context panel: the selected event's details, event search, useful shortcuts and the full keyboard shortcut list.",
+      "description": "The right context panel: the selected event's details, event search, useful shortcuts, the full keyboard shortcut list and the scheduling panel.",
       "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "@calendarcn/event-details",
         "@calendarcn/sidebar-overlay",
         "button",
+        "dropdown-menu",
         "kbd",
         "sidebar",
         "tooltip"
@@ -773,6 +848,10 @@
       "files": [
         {
           "path": "src/components/details-sidebar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/availability-panel.tsx",
           "type": "registry:component"
         }
       ]
@@ -791,7 +870,9 @@
         "@calendarcn/year-view",
         "@calendarcn/calendar-header",
         "@calendarcn/command-menu",
+        "@calendarcn/people-picker",
         "@calendarcn/calendar-toaster",
+        "@calendarcn/calendar-settings",
         "@calendarcn/calendar-sidebar",
         "@calendarcn/details-sidebar",
         "@calendarcn/theme-toggle",

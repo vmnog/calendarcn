@@ -28,7 +28,10 @@ import {
   makeTimeZonePrimary,
   removeTimeZone,
 } from "@/lib/time-zones";
-import type { WeekStartsOn } from "@/components/calendar-types";
+import type {
+  SchedulingLinkKind,
+  WeekStartsOn,
+} from "@/components/calendar-types";
 import type {
   CommandMenuPage,
   TimeZoneCommand,
@@ -129,6 +132,27 @@ interface CommandMenuProps {
   onImportIcs?: () => void;
   /** Adds "Export .ics file" */
   onExportIcs?: () => void;
+  /** Adds "Share availability..." (S): marking open times to copy as text */
+  onShareAvailability?: () => void;
+  /**
+   * Adds "Create recurring scheduling link..." and "Create one-off
+   * scheduling link...", called with the kind of link
+   */
+  onCreateSchedulingLink?: (kind: SchedulingLinkKind) => void;
+  /** Adds "Go to settings" (⌘ ,) */
+  onOpenSettings?: () => void;
+  /** Adds "Support & feedback", e.g. to open your issue tracker */
+  onSupport?: () => void;
+  /** Adds "Add calendar account" */
+  onAddCalendarAccount?: () => void;
+  /** Adds "Manage calendar accounts" */
+  onManageCalendarAccounts?: () => void;
+  /** Adds "About CalendarCN", e.g. to open your docs */
+  onAbout?: () => void;
+  /** Adds "Meet with..." (F): open a people picker that meets with who you pick */
+  onMeetWith?: () => void;
+  /** Adds "Show teammate calendar..." (P): open a people picker that shows their calendar */
+  onShowTeammateCalendar?: () => void;
   /**
    * Adds "Search events", and "Search events for “…”" once text is typed:
    * opens your event search with that text (empty for the first)
@@ -159,9 +183,10 @@ interface CommandMenuProps {
  * count, the hour size and the time zones come from `useCalendar()`, so it
  * goes inside `CalendarProvider`. A time zone command lists the zones in the
  * menu's place, and "Start week on..." and "Set number of displayed days..."
- * their choices. Commands that belong to your
- * app (panels, search, shortcuts, theme, .ics files) show only when you pass
- * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
+ * their choices. Commands that belong to your app (panels, search, shortcuts,
+ * theme, .ics files, people, scheduling, settings, accounts, support and
+ * about) show only when you pass their callback. Open it with
+ * `useCalendarShortcuts({ onToggleCommandMenu })`.
  *
  * "Go to date..." turns the field into a date field, as in Notion Calendar:
  * type a date ("tomorrow", "next friday", "dec 25", "in 2 weeks"), see which
@@ -177,6 +202,15 @@ export function CommandMenu({
   onCycleTheme,
   onImportIcs,
   onExportIcs,
+  onShareAvailability,
+  onCreateSchedulingLink,
+  onOpenSettings,
+  onSupport,
+  onAddCalendarAccount,
+  onManageCalendarAccounts,
+  onAbout,
+  onMeetWith,
+  onShowTeammateCalendar,
   onSearchEvents,
   onShowShortcuts,
   defaultPage = "commands",
@@ -188,6 +222,7 @@ export function CommandMenu({
     goToPrev,
     goToNext,
     switchView,
+    selectAllVisible,
     viewSettings,
     toggleWeekends,
     toggleDeclinedEvents,
@@ -345,10 +380,28 @@ export function CommandMenu({
           run: addEventAtNextSlot,
           movesFocus: true,
         },
-        { label: "Meet with...", soon: true },
-        { label: "Show teammate calendar...", soon: true },
-        { label: "Create recurring scheduling link...", soon: true },
-        { label: "Create one-off scheduling link...", soon: true },
+        { label: "Meet with...", keys: ["F"], run: onMeetWith },
+        {
+          label: "Show teammate calendar...",
+          keys: ["P"],
+          run: onShowTeammateCalendar,
+        },
+        {
+          label: "Create recurring scheduling link...",
+          run:
+            onCreateSchedulingLink &&
+            (() => onCreateSchedulingLink("recurring")),
+        },
+        {
+          label: "Create one-off scheduling link...",
+          run:
+            onCreateSchedulingLink && (() => onCreateSchedulingLink("one-off")),
+        },
+        {
+          label: "Share availability...",
+          keys: ["S"],
+          run: onShareAvailability,
+        },
         { label: "Import .ics file...", run: onImportIcs },
         { label: "Export .ics file", run: onExportIcs },
       ],
@@ -444,7 +497,11 @@ export function CommandMenu({
           keepsOpen: true,
           run: () => openChoiceList("number-of-days"),
         },
-        { label: "Select all visible", soon: true },
+        {
+          label: "Select all visible",
+          keys: ["⌘", "A"],
+          run: selectAllVisible,
+        },
         {
           label: "Default hour size",
           keys: ["shift", "⌘", "0"],
@@ -483,31 +540,26 @@ export function CommandMenu({
     {
       heading: "Settings & help",
       commands: [
-        { label: "Get CalendarCN mobile app", soon: true },
         {
           label: "Show keyboard shortcuts",
           keys: ["?"],
           run: onShowShortcuts,
           movesFocus: true,
         },
-        { label: "Go to settings", soon: true },
-        { label: "Support & feedback", soon: true },
+        { label: "Go to settings", keys: ["⌘", ","], run: onOpenSettings },
+        { label: "Support & feedback", run: onSupport },
       ],
     },
     {
       heading: "Accounts",
       commands: [
-        { label: "Add Google Calendar account", soon: true },
-        { label: "Manage calendar accounts", soon: true },
-        { label: "Log out", soon: true },
+        { label: "Add calendar account", run: onAddCalendarAccount },
+        { label: "Manage calendar accounts", run: onManageCalendarAccounts },
       ],
     },
     {
       heading: "CalendarCN",
-      commands: [
-        { label: "Check for update", soon: true },
-        { label: "About CalendarCN", soon: true },
-      ],
+      commands: [{ label: "About CalendarCN", run: onAbout }],
     },
     {
       heading: "Panels",
