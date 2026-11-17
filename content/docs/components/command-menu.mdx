@@ -5,7 +5,7 @@ description: The live demo's ⌘K menu, for creating an event, going to a typed 
 
 <ComponentPreview name="command-menu-demo" />
 
-`CommandMenu` is the [live demo](/)'s <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu, built on shadcn/ui's [Command](https://ui.shadcn.com/docs/components/command) in a Dialog. Creating an event, going to a date, today, previous and next, the day, week, month, year and agenda views, and the view settings ("Hide weekends", "Hide declined events" and "Hide week numbers", which read "Show …" while the setting is off, as in Notion Calendar) come from [`useCalendar()`](/docs/components/calendar-core#usecalendar), so it goes inside `CalendarProvider`. Commands that belong to your app, such as its panels, event search, the shortcut list, its theme and .ics files, show only when you pass their callback.
+`CommandMenu` is the [live demo](/)'s <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu, built on shadcn/ui's [Command](https://ui.shadcn.com/docs/components/command) in a Dialog. Creating an event, going to a date, today, previous and next, the day, week, month, year and agenda views, the view settings ("Hide weekends", "Hide declined events" and "Hide week numbers", which read "Show …" while the setting is off, as in Notion Calendar), the week start ("Start week on..."), the number of days ("Set number of displayed days...") and the hour size ("Default hour size", "Zoom hours in", "Zoom hours out") come from [`useCalendar()`](/docs/components/calendar-core#usecalendar), so it goes inside `CalendarProvider`. Commands that belong to your app, such as its panels, event search, the shortcut list, its theme and .ics files, show only when you pass their callback.
 
 ## Installation
 
@@ -79,6 +79,10 @@ useCalendarShortcuts({
 ### Create event
 
 "Create event..." (<Kbd>C</Kbd> outside the menu) starts a new event at the next half hour, as Notion Calendar does: on today when it's on screen, else on the first day shown (`addEventAtNextSlot`), all-day in month view. It goes through your `createEvent` and is a [draft](/docs/components/calendar-core#creating-events) with its title focused: its first edit saves it, and undo and the details then work as for any new event.
+
+### Second lists
+
+"Start week on..." and "Set number of displayed days..." open a second list in the same menu, as Notion Calendar's do: the days of the week other than the one the week starts on now ("Mondays", "Tuesdays", ...), or the day counts 2 to 9. Type to filter them, <Kbd>↵</Kbd> picks one, <Kbd>⌫</Kbd> in the empty search goes back to the commands, and <Kbd>Esc</Kbd> closes the menu.
 
 ### Your app's commands
 

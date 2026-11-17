@@ -1156,8 +1156,25 @@ interface CalendarProviderBaseProps<
   defaultDate?: Date;
   /** Called when the displayed date changes (navigation or scroll) */
   onDateChange?: (date: Date) => void;
-  /** Day the week starts on. Defaults to 0 (Sunday) */
+  /**
+   * Day the week starts on, 0 (Sunday) to 6 (controlled). Every view and the
+   * mini calendar follow it
+   */
   weekStartsOn?: WeekStartsOn;
+  /** Initial week start when `weekStartsOn` is not controlled. Defaults to 0 (Sunday) */
+  defaultWeekStartsOn?: WeekStartsOn;
+  /** Called when the week start changes ("Start week on..." in the command menu) */
+  onWeekStartsOnChange?: (weekStartsOn: WeekStartsOn) => void;
+  /**
+   * Height of an hour in the day and week views, in pixels (controlled).
+   * `null` fills the screen with the visible hours, at least 48px an hour.
+   * Zooming steps through `HOUR_HEIGHT_STEPS`
+   */
+  hourHeight?: number | null;
+  /** Initial hour height when `hourHeight` is not controlled. Defaults to `null` (fill the screen) */
+  defaultHourHeight?: number | null;
+  /** Called when the hour height changes (zooming in or out, or back to the default) */
+  onHourHeightChange?: (hourHeight: number | null) => void;
   /**
    * Number of days the week view shows (controlled). Below 7, the columns
    * start on the current day and prev/next move by that many days; from 7
@@ -1340,6 +1357,11 @@ export interface CalendarContextValue<
   weekStartsOn: WeekStartsOn;
   /** Number of days the week view shows */
   numberOfDays: number;
+  /**
+   * Height of an hour in the day and week views, in pixels, or `null` while
+   * the hours fill the screen (the default size)
+   */
+  hourHeight: number | null;
   /** Display preferences toggled from the view menu */
   viewSettings: ViewSettings;
   /**
@@ -1523,6 +1545,17 @@ export interface CalendarContextValue<
   canUndo: boolean;
   /** Whether `redo` has a step to do again. Any new change clears them */
   canRedo: boolean;
+  /**
+   * Starts the week on another day. A full week or month on screen moves to
+   * the week that starts on it, around the same dates
+   */
+  setWeekStartsOn: (weekStartsOn: WeekStartsOn) => void;
+  /** Makes the hours taller by one step of `HOUR_HEIGHT_STEPS`, up to the largest */
+  zoomHoursIn: () => void;
+  /** Makes the hours shorter by one step of `HOUR_HEIGHT_STEPS`, down to the smallest */
+  zoomHoursOut: () => void;
+  /** Goes back to the default hour height, which fills the screen */
+  resetHourHeight: () => void;
   /**
    * Shows or hides the weekend. Hiding it in day view, or in a week view
    * shorter than a week, moves a Saturday or Sunday on screen to Monday
