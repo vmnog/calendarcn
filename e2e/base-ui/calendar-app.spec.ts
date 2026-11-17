@@ -71,8 +71,9 @@ test.describe("wide screens", () => {
     const menu = page.getByRole("dialog", { name: "Command Menu" });
     await page.keyboard.press("ControlOrMeta+k");
     await expect(menu).toBeVisible();
-    // The demo lists Notion Calendar's commands that aren't built yet
-    await expect(menu.getByText("Soon").first()).toBeVisible();
+    // Every command the demo lists is built: none is marked Soon, even
+    // with `showComingSoon`
+    await expect(menu.getByText("Soon")).toHaveCount(0);
     await menu.getByRole("option", { name: /^Display month view/ }).click();
     await expect(menu).toBeHidden();
     await expect(title(page)).toHaveAccessibleName("June 2026");

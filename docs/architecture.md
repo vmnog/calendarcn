@@ -90,6 +90,8 @@ Double-click or drag on empty space → use-double-click / use-event-draw / use-
 4. `EventDetailPanel` gets `onTitlePreview` for a draft: title keystrokes go to `updateEventDraft()`, and `onEventChange` (the provider's `editEvent`) saves it on Enter, on blur of a changed title, or on any other field's first edit. Escape restores the title and saves nothing.
 5. With the details in a popover, `EventDraftPopover` hosts them at view level, beside the draft's range, and keeps hosting them after the save while the event stays selected (`useCalendarEventDraft()`), so the popover never remounts under a field that is being typed into.
 6. While you meet with people ("Meet with..."), the draft is built with them in its `participants` (`withMeetingParticipants()` in the provider). They are there from the start, so they don't count as an edit: an untouched draft is still dropped. The shared free time is worked out from the stored events, so a draft takes none until it is saved.
+7. The selection can hold several events (`setSelectedEventIds`). The draft is settled before any change of selection, and one that is thrown away is left out of the new selection, so Shift-clicking an event with an untouched draft open selects that event alone. A new draft is always selected alone.
+8. While scheduling marks open times (`useScheduling()?.isPicking`), `TimeGrid` passes no create handlers to the grid or the all-day row: presses on empty space mark times. Starting and leaving that mode call `clearSelection()`, which settles the draft.
 
 ### Repeating Events
 
@@ -99,9 +101,17 @@ A repeating event (`recurrenceRule`, or an RRULE in `recurrence`) is one event i
 
 The provider records each change it makes itself (a saved draft, every `updateEvent`, delete, cut, duplicate, paste) as a step of `{ before, after, index }` changes, one per event (`src/lib/event-history.ts`). `undo()` applies a step's inverse to the current events and `redo()` the step again, both through `onEventsChange` and one `onEventCreate`, `onEventUpdate` or `onEventDelete` per event. A step applies only while each event it touches is the very object it left (`canApplyEventChanges`), so events the app replaced from outside (a reload) are never overwritten by an old undo. Edits to one event less than a second apart merge into one step; 100 steps are kept. Copy, the series arrows' occurrence copies and changes the app makes itself are not steps.
 
+### Selecting several events
+
+The provider keeps one selected event in `selectedEventId`, and two or more in a group (`selectedEventIds`, with `selectedEventId` then `null`, so no details open). Shift- and Cmd-click reach it without touching the views: a capture `pointerdown` listener remembers a press on a `[data-event-id]` element with a modifier, or on a group member, and `selectEvent` (which every view calls on press and click) toggles the event or keeps the group for a drag; the press's click, unless it dragged, selects that event alone. Event items draw group members selected through `useIsEventInSelection()`, and only `selectedEventId` opens a popover. `deleteEvent`, `cutEvent`, `copyEvent` and `duplicateEvent` on a group member act on the whole group, and `updateEvent` on a group member that only moved moves the group, each as one undo step whose changes `mergeEventChanges()` keeps to one per event (`src/lib/event-selection.ts`). Group actions run before the single-event paths and never ask the series question (ADR-009): a repeating event's generated date is stored by its first edit or excluded on delete (ADR-007), the series' own event still taking the series along. A group move gets the moved event on the calendar's clock, stores it through `toStoredEvent`, and moves the others by the same duration on their stored instants (whole days on the calendar's clock when an all-day event is involved). `setSelectedEventIds`, like `selectEvent` and `clearSelection`, lets a waiting series change settle through `afterSeriesChange` first, unless it selects the waiting date alone.
+
 ### Notices
 
 After a delete, a cut or a copy the provider keeps one notice (`CalendarNotice`: a message, an optional title and an optional undo), read with `useCalendarNotice()` and drawn by `CalendarToaster`. A delete's or cut's notice holds the undo step it came from and closes, during render, as soon as that step is no longer the latest, so its Undo only ever takes back its own action. The notice is not announced by the toaster: the provider's live region reads every action.
+
+### Scheduling
+
+`SchedulingProvider` (`src/components/scheduling-provider.tsx`), inside `CalendarProvider`, holds the open times marked while scheduling: whether they're being marked, the marked ranges (merged and sorted by `mergeAvailabilityRanges()`), the meeting length, and the text Copy copies (`formatAvailabilityText()` in `src/lib/availability.ts`, Notion Calendar's wording). It changes no events. `useScheduling()` returns it, or `null` outside a provider, and every part that reads it leaves scheduling out then: `TimeGrid` draws `AvailabilityLayer` over its events while times are marked (it takes the pointer, so events can't be dragged or opened), `DetailsSidebar` swaps its content for `AvailabilityPanel`, `CalendarSidebar` shows its Scheduling row. Scheduling links have no backend: `onCreateSchedulingLink` hands a `SchedulingLinkRequest` to the app. `useSchedulingShortcuts()` handles S, and Escape and Delete while marking, from a `window` listener added before `useCalendarShortcuts()`'s.
 
 ### Event Positioning Pipeline
 
@@ -218,6 +228,7 @@ Components access event colors via the `eventColorStyles` map (`calendar-event-i
 | Grid background  | 0       | Base grid lines                  |
 | Events           | 0–2     | Column index determines stacking |
 | Selected event   | 20      | Elevated above peers             |
+| Scheduling layer | 22      | Marking open times, over events  |
 | Drag placeholder | 25      | Shows drop target                |
 | Dragging copy    | 30      | Follows cursor                   |
 | Toast            | 40      | Calendar Toaster, over the view  |

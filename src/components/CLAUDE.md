@@ -14,6 +14,8 @@ All React components for CalendarCN. Split into:
 - `event-draft.tsx` — the event being created (the provider's `eventDraft`): `TimeGridEventDraft` and `AllDayEventDraft` tint its range, and `EventDraftPopover` hosts its details when they open in a popover
 - `calendar-app.tsx` — `CalendarApp`, the live demo as one block: both sidebars, header, views, command menu, theme, .ics import/export and shortcuts. `src/app/page.tsx` only passes it data
 - `calendar-toaster.tsx` — `CalendarToaster`, Notion Calendar's toasts after a delete, cut or copy, drawn from the provider's notice (`useCalendarNotice()`)
+- `scheduling-provider.tsx` — `SchedulingProvider` / `useScheduling()` / `useSchedulingShortcuts()`: marking open times and scheduling links. `availability-layer.tsx` draws the marked times in `TimeGrid`; `availability-panel.tsx` is the context panel's scheduling panel and the hint pill. Everything reading `useScheduling()` leaves scheduling out when it returns `null`
+- `calendar-settings.tsx` — `CalendarSettingsDialog`, Notion Calendar's settings dialog: General (view settings, time format, theme) and each calendar account; each setting shows only when something can change it
 - `calendar-sidebar.tsx` — the left sidebar (`CalendarSidebar`): `mini-calendar.tsx`, `calendar-list.tsx`, `theme-toggle.tsx`
 - `details-sidebar.tsx` — the right context panel (`DetailsSidebar`): details, search, shortcuts
 - `sidebar-overlay.tsx` — both sidebars as a sheet on narrow screens, and `CALENDAR_SIDEBAR_COLORS_CLASS`, which maps `--sidebar-*` to the `--calendar-sidebar-*` tokens
@@ -51,6 +53,7 @@ Follow the strict z-index scale. If you add a new layer, check it doesn't confli
 
 - Events: `0–2` (column index)
 - Selected: `20`
+- Scheduling's marking layer (`AvailabilityLayer`): `22`
 - Placeholder: `25`
 - Dragging: `30`
 - Toast (`CalendarToaster`): `40`

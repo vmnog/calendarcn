@@ -37,6 +37,18 @@ async function importFile(file: File) {
 
 Each event keeps the file's `UID` as its `id`. The preview uses that to replace events it already has, so importing the same file twice doesn't duplicate them.
 
+To add a file as a calendar of its own, as the live demo's "Add calendar account" does, pass its events to `toIcsCalendar()` with the file's name and your calendars. It returns a calendar named after the file and the events on it; the same file again returns the same calendar:
+
+```ts
+import { parseIcs, toIcsCalendar } from "@/lib/ics";
+
+const { calendar, events } = toIcsCalendar(
+  file.name,
+  parseIcs(await file.text()),
+  calendars,
+);
+```
+
 ### What gets imported
 
 | iCalendar                        | Event field                                                                                                  |
@@ -315,6 +327,18 @@ function parseIcs(text: string): DetailedCalendarEvent[];
 ```
 
 Reads every `VEVENT` in the text, in file order, and turns a cancelled occurrence of a recurring event into an excluded date of its series, skips other cancelled events, events without a start, and other components. An event without a `UID` gets `ics-event-N`, and a repeated id gets `-2`, `-3`, ….
+
+### toIcsCalendar
+
+```ts
+function toIcsCalendar<TEvent extends DetailedCalendarEvent>(
+  fileName: string,
+  events: TEvent[],
+  calendars: CalendarInfo[],
+): { calendar: CalendarInfo; events: TEvent[] };
+```
+
+Names the calendar after the file without `.ics` ("Imported calendar" when nothing is left) and gives it the id `ics:<name>`, so the same file returns the calendar already in `calendars`. A new one takes the first color none of `calendars` has. Each event gets the calendar's id as its `calendarId`; a `COLOR` of its own stays.
 
 ### toIcs
 

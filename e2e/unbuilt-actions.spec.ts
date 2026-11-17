@@ -4,8 +4,8 @@ import { openCalendar } from "./helpers";
 
 /**
  * Controls that are drawn but not built yet. Each is disabled or replaced by
- * a "Soon" badge: the sidebar's scheduling row and "Add calendar account",
- * and the listed shortcuts nothing handles. Shift+Cmd+D is left to the
+ * a "Soon" badge: the listed shortcuts nothing handles. Shift+Cmd+D is left
+ * to the
  * browser.
  */
 
@@ -58,14 +58,17 @@ test("Shift+Cmd+D is left to the browser, Shift+Cmd+E still toggles weekends", a
   expect(prevented).toEqual([false, true]);
 });
 
-test("the sidebar marks scheduling and add calendar account, not meet with", async ({
+test("the sidebar marks none of scheduling, add calendar account or meet with", async ({
   page,
 }) => {
-  for (const name of ["Scheduling", "Add calendar account"]) {
-    await expect(
-      page.getByRole("button", { name: `${name} Soon`, exact: true }),
-    ).toBeDisabled();
-  }
+  // Scheduling is built: it shares availability (e2e/scheduling.spec.ts)
+  await expect(
+    page.getByRole("button", { name: "Scheduling", exact: true }),
+  ).toBeEnabled();
+  // Add calendar account works in the demo: no badge
+  await expect(
+    page.getByRole("button", { name: "Add calendar account", exact: true }),
+  ).toBeEnabled();
 
   const meetWith = page.getByPlaceholder("Meet with...");
   await expect(meetWith).toBeEnabled();
@@ -76,9 +79,12 @@ test("the sidebar marks scheduling and add calendar account, not meet with", asy
   // The row has a fixed height and clips, so compare the labels themselves:
   // a wrapped label is two lines tall
   const [schedulingLabelHeight, addAccountLabelHeight] = await Promise.all(
-    ["Scheduling", "Add calendar account"].map((label) =>
+    [
+      ["Scheduling", "Scheduling"],
+      ["Add calendar account", "Add calendar account"],
+    ].map(([name, label]) =>
       page
-        .getByRole("button", { name: `${label} Soon`, exact: true })
+        .getByRole("button", { name, exact: true })
         .getByText(label, { exact: true })
         .evaluate((span) => span.getBoundingClientRect().height),
     ),
@@ -90,9 +96,8 @@ test("the useful shortcuts mark the ones nothing handles", async ({ page }) => {
   const row = (label: string) =>
     page.getByText(label, { exact: true }).locator("xpath=..");
 
-  await expect(
-    row("Menu bar calendar").getByText("Soon", { exact: true }),
-  ).toBeVisible();
+  // The menu bar calendar is gone: a browser has no menu bar
+  await expect(page.getByText("Menu bar calendar")).toHaveCount(0);
   await expect(row("Command menu").getByText("Soon")).toHaveCount(0);
   for (const label of [
     "Show teammate calendar",
@@ -106,7 +111,7 @@ test("the useful shortcuts mark the ones nothing handles", async ({ page }) => {
   await expect(row("Toggle sidebar")).toContainText("/");
 });
 
-test("the week start, day count and hour size commands aren't marked Soon", async ({
+test("the week start, day count, hour size and Select all visible commands aren't marked Soon", async ({
   page,
 }) => {
   await page.keyboard.press("ControlOrMeta+k");
@@ -117,6 +122,7 @@ test("the week start, day count and hour size commands aren't marked Soon", asyn
     "Default hour size",
     "Zoom hours in",
     "Zoom hours out",
+    "Select all visible",
   ]) {
     await menu.getByPlaceholder("Type a command...").fill(name);
     const option = menu.getByRole("option", {

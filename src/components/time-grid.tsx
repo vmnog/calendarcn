@@ -63,6 +63,8 @@ import {
 } from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
 import { EventDraftPopover } from "./event-draft";
+import { AvailabilityLayer } from "./availability-layer";
+import { useScheduling } from "./scheduling-provider";
 import { AddTimeZoneButton, TimeZoneAxisLabel } from "./time-zone-axis-label";
 
 /**
@@ -241,6 +243,11 @@ export function TimeGrid({
     drawnEvents,
     reportHourHeight,
   } = useCalendarViewSync();
+  // Outside a SchedulingProvider, `null`: no open times to mark
+  const scheduling = useScheduling();
+  // While open times are marked, a press on empty space marks one: no
+  // event is drawn, in the all-day row either
+  const isMarkingTimes = scheduling?.isPicking ?? false;
   const numberOfDays = numberOfDaysProp ?? providerNumberOfDays;
   const { showWeekends, showDeclinedEvents } = viewSettings;
   /** Day columns this grid pins the provider to (none in day view) */
@@ -834,8 +841,10 @@ export function TimeGrid({
               allDayEvents={displayedAllDayEvents}
               onEventClick={handleEventClick}
               selectedEventId={selectedEventId}
-              onEventCreate={handleEventCreate}
-              onEventDrawPointerDown={handleAllDayDrawPointerDown}
+              onEventCreate={isMarkingTimes ? undefined : handleEventCreate}
+              onEventDrawPointerDown={
+                isMarkingTimes ? undefined : handleAllDayDrawPointerDown
+              }
               scrollStyle={scrollStyle}
               allDayResizeState={allDayResizeState ?? undefined}
               onAllDayResizePointerDown={handleAllDayResizePointerDown}
@@ -898,8 +907,10 @@ export function TimeGrid({
                   events={displayedTimedEvents}
                   onEventClick={handleEventClick}
                   selectedEventId={selectedEventId}
-                  onEventCreate={handleEventCreate}
-                  onEventDrawPointerDown={handleDrawPointerDown}
+                  onEventCreate={isMarkingTimes ? undefined : handleEventCreate}
+                  onEventDrawPointerDown={
+                    isMarkingTimes ? undefined : handleDrawPointerDown
+                  }
                   onSlotHover={handleSlotHover}
                   dragState={dragState ?? undefined}
                   onEventDragPointerDown={handleEventPointerDown}
@@ -916,6 +927,15 @@ export function TimeGrid({
                   visibleStartIndex={dynamicBuffer}
                   visibleCount={VISIBLE_DAYS}
                 />
+                {/* Marking open times while scheduling, over the events */}
+                {isMarkingTimes && (
+                  <AvailabilityLayer
+                    days={bufferedDays}
+                    hourHeight={hourHeight}
+                    visibleStartIndex={dynamicBuffer}
+                    visibleCount={VISIBLE_DAYS}
+                  />
+                )}
               </div>
             </div>
             <WeekViewTimeIndicator

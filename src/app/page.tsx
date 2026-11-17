@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 
 import { CalendarApp } from "@/components/calendar-app";
 import type {
+  CalendarAccountHelpers,
   DetailedCalendarEvent,
   NewEventRange,
   ViewSettings,
@@ -34,8 +36,21 @@ const DEMO_VIEW_SETTINGS: ViewSettings = {
   showWeekNumbers: true,
 };
 
-/** Cmd+, placeholder: settings aren't built yet, but the key is claimed already */
-function openSettings() {}
+/** Where "Support & feedback" goes: a new issue on GitHub */
+const SUPPORT_URL = "https://github.com/vmnog/calendarcn/issues/new";
+
+/** Where "About CalendarCN" goes: the docs */
+const ABOUT_PATH = "/docs";
+
+/** "Support & feedback": a new GitHub issue, in a new tab */
+function openSupport() {
+  window.open(SUPPORT_URL, "_blank", "noopener,noreferrer");
+}
+
+/** "Add calendar account": the demo has no accounts, so it adds an .ics file as a calendar */
+function addCalendarAccount({ importIcsCalendar }: CalendarAccountHelpers) {
+  importIcsCalendar();
+}
 
 /** Reminders of a new timed event: the primary calendar's own */
 const NEW_EVENT_REMINDERS = DEMO_CALENDARS.find(
@@ -67,6 +82,7 @@ function createDemoEvent(range: NewEventRange): DetailedCalendarEvent {
  * docs and GitHub links.
  */
 export default function Page() {
+  const router = useRouter();
   // The app reads its initial events once, so create them once. They're
   // dated from the viewer's today: the calendar renders nothing on the
   // server or during hydration, so the browser's copy is the one shown.
@@ -88,7 +104,10 @@ export default function Page() {
       createEvent={createDemoEvent}
       exportFileName={ICS_EXPORT_FILE_NAME}
       exportCalendarName={ICS_CALENDAR_NAME}
-      onOpenSettings={openSettings}
+      settingsDialog
+      onAddCalendarAccount={addCalendarAccount}
+      onSupport={openSupport}
+      onAbout={() => router.push(ABOUT_PATH)}
       showComingSoon
       sidebarFooterActions={<DemoSidebarLinks />}
       headerActions={

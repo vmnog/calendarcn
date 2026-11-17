@@ -5,6 +5,7 @@ import { Link2, PanelLeftIcon, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useCalendar } from "@/components/calendar-provider";
+import { useScheduling } from "@/components/scheduling-provider";
 import { CalendarList } from "@/components/calendar-list";
 import { CalendarSidebarPeople } from "@/components/calendar-sidebar-people";
 import { MiniCalendar } from "@/components/mini-calendar";
@@ -14,6 +15,13 @@ import {
 } from "@/components/sidebar-overlay";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Kbd } from "@/components/ui/kbd";
 import {
   SidebarContent,
@@ -31,6 +39,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getPeriodStart } from "@/lib/event-utils";
+import type { SchedulingLinkKind } from "@/components/calendar-types";
 
 /** Width of the calendar sidebar, inline and as an overlay */
 export const CALENDAR_SIDEBAR_WIDTH = "15rem";
@@ -38,9 +47,9 @@ export const CALENDAR_SIDEBAR_WIDTH = "15rem";
 /** No days to highlight: month view and the agenda */
 const NO_VISIBLE_DAYS: Date[] = [];
 
-/** "Soon" badge of a sidebar control that isn't built yet, as in the command menu */
-const CALENDAR_SIDEBAR_SOON_CLASS =
-  "bg-sidebar-foreground/10 text-sidebar-foreground/60 ml-auto shrink-0 rounded px-1 py-0.5 text-[10px] leading-none font-medium";
+/** Shortcut hint inside a menu item: the key without its cap, as the view menu shows them */
+const MENU_KBD_CLASS =
+  "ml-auto h-auto min-w-0 rounded-none bg-transparent px-0";
 
 interface CalendarSidebarProps {
   /** Whether the sidebar shows. Defaults to true */
@@ -57,6 +66,8 @@ interface CalendarSidebarProps {
   defaultHiddenCalendarIds?: string[];
   /** Called with the new hidden ids when a calendar is shown or hidden */
   onHiddenCalendarIdsChange?: (hiddenCalendarIds: string[]) => void;
+  /** Adds "Add calendar account" below the calendars, which calls it */
+  onAddCalendarAccount?: () => void;
   /** Classes for the inline sidebar's fixed column */
   className?: string;
 }
@@ -67,8 +78,9 @@ interface CalendarSidebarProps {
  * shown, the calendar list and a theme toggle. Inline it's a fixed column that pushes
  * the page over; with `overlay` it's a sheet from the left. Reads the
  * calendar's date and view from the nearest `CalendarProvider`, and needs
- * shadcn/ui's `SidebarProvider` around it. The scheduling row and "Add
- * calendar account" aren't built: they are disabled and marked "Soon".
+ * shadcn/ui's `SidebarProvider` around it. The Scheduling row shows inside
+ * a `SchedulingProvider`. "Add calendar account" shows when you pass
+ * `onAddCalendarAccount`.
  */
 export function CalendarSidebar({
   open = true,
@@ -78,6 +90,7 @@ export function CalendarSidebar({
   hiddenCalendarIds,
   defaultHiddenCalendarIds,
   onHiddenCalendarIdsChange,
+  onAddCalendarAccount,
   className,
 }: CalendarSidebarProps) {
   const {
@@ -90,6 +103,7 @@ export function CalendarSidebar({
     viewSettings,
     goToDate,
   } = useCalendar();
+  const scheduling = useScheduling();
 
   const sidebarStyle = {
     "--sidebar-width": CALENDAR_SIDEBAR_WIDTH,
@@ -122,26 +136,22 @@ export function CalendarSidebar({
             />
           </SidebarGroupContent>
         </SidebarGroup>
-        {/* Scheduling Section */}
-        <SidebarGroup className="py-0">
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              <SidebarMenuItem>
-                {/* Not built yet */}
-                <SidebarMenuButton
-                  disabled
-                  className="text-sidebar-foreground rounded-sm disabled:opacity-100"
-                >
-                  <Link2 className="size-4 text-calendar-sidebar-muted-foreground" />
-                  <span className="min-w-0 flex-1 truncate text-sm opacity-50">
-                    Scheduling
-                  </span>
-                  <span className={CALENDAR_SIDEBAR_SOON_CLASS}>Soon</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Scheduling Section: only inside a SchedulingProvider */}
+        {scheduling && (
+          <SidebarGroup className="py-0">
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                <SidebarMenuItem>
+                  <CalendarSidebarScheduling
+                    onStart={() => {
+                      if (overlay) onOpenChange?.(false);
+                    }}
+                  />
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
         {/* "Meet with...", meeting participants and team calendars */}
         <CalendarSidebarPeople />
         <CalendarList
@@ -149,26 +159,28 @@ export function CalendarSidebar({
           defaultHiddenCalendarIds={defaultHiddenCalendarIds}
           onHiddenCalendarIdsChange={onHiddenCalendarIdsChange}
         />
-        <SidebarSeparator className="mx-0" />
-        <SidebarGroup className="py-0">
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              <SidebarMenuItem>
-                {/* Not built yet */}
-                <SidebarMenuButton
-                  disabled
-                  className="text-sidebar-foreground gap-1.5 text-sm rounded-sm disabled:opacity-100"
-                >
-                  <Plus className="size-4 opacity-50" />
-                  <span className="min-w-0 flex-1 truncate opacity-50">
-                    Add calendar account
-                  </span>
-                  <span className={CALENDAR_SIDEBAR_SOON_CLASS}>Soon</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {onAddCalendarAccount && (
+          <>
+            <SidebarSeparator className="mx-0" />
+            <SidebarGroup className="py-0">
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className="text-calendar-sidebar-muted-foreground hover:text-sidebar-foreground gap-1.5 text-sm rounded-sm"
+                      onClick={onAddCalendarAccount}
+                    >
+                      <Plus className="size-4" />
+                      <span className="min-w-0 flex-1 truncate">
+                        Add calendar account
+                      </span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
         <div className="flex items-center justify-start gap-1 px-2 py-2">
@@ -240,5 +252,93 @@ export function CalendarSidebar({
         {content}
       </div>
     </div>
+  );
+}
+
+/** Props of the Scheduling row (only used in this file) */
+interface CalendarSidebarSchedulingProps {
+  /** Called once marking open times starts, e.g. to close the overlay */
+  onStart: () => void;
+}
+
+/**
+ * The sidebar's Scheduling row. It starts marking open times to share
+ * (the S key does too), and leaves again while they're being marked. When
+ * the app creates scheduling links, it opens a menu instead: share
+ * availability, or create a recurring or one-off link.
+ */
+function CalendarSidebarScheduling({
+  onStart,
+}: CalendarSidebarSchedulingProps) {
+  const scheduling = useScheduling();
+  if (!scheduling) return null;
+  const { isPicking, canCreateLinks, startPicking, cancelPicking } = scheduling;
+
+  const shareAvailability = () => {
+    startPicking();
+    onStart();
+  };
+
+  const createLink = (kind: SchedulingLinkKind) => {
+    scheduling.createSchedulingLink(kind);
+    onStart();
+  };
+
+  const rowContent = (
+    <>
+      <Link2 className="size-4 text-calendar-sidebar-muted-foreground" />
+      <span className="min-w-0 flex-1 truncate text-sm">Scheduling</span>
+    </>
+  );
+
+  if (isPicking || !canCreateLinks) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <SidebarMenuButton
+            isActive={isPicking}
+            aria-pressed={isPicking}
+            className="text-sidebar-foreground rounded-sm"
+            onClick={isPicking ? cancelPicking : shareAvailability}
+          >
+            {rowContent}
+          </SidebarMenuButton>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          {isPicking ? (
+            <>
+              Stop sharing availability <Kbd className="ml-1">esc</Kbd>
+            </>
+          ) : (
+            <>
+              Share availability <Kbd className="ml-1">S</Kbd>
+            </>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <SidebarMenuButton className="text-sidebar-foreground rounded-sm">
+          {rowContent}
+        </SidebarMenuButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="right" align="start" className="w-56">
+        <DropdownMenuItem onClick={shareAvailability}>
+          Share availability
+          <Kbd className={MENU_KBD_CLASS}>S</Kbd>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => createLink("recurring")}>
+          Create recurring link
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => createLink("one-off")}>
+          Create one-off link
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

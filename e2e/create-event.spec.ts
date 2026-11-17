@@ -189,6 +189,8 @@ test.describe("the time grid", () => {
   }) => {
     const slot = await slotPoint(page, 5, "2 PM");
     await page.mouse.dblclick(slot.x, slot.y);
+    // Keys typed before the title has focus would be shortcuts
+    await expect(detailTitle(page)).toBeFocused();
     await page.keyboard.type("Never mind");
     await expect(calendarEvent(page, "Never mind")).toBeVisible();
 
@@ -232,6 +234,8 @@ test.describe("the time grid", () => {
   test("a click elsewhere saves a draft that was named", async ({ page }) => {
     const slot = await slotPoint(page, 5, "2 PM");
     await page.mouse.dblclick(slot.x, slot.y);
+    // Keys typed before the title has focus would be shortcuts
+    await expect(detailTitle(page)).toBeFocused();
     await page.keyboard.type("Vet appointment");
 
     const elsewhere = await slotPoint(page, 31, "11 AM");
@@ -400,6 +404,8 @@ test.describe("the time grid", () => {
   }) => {
     const slot = await slotPoint(page, 5, "2 PM");
     await page.mouse.dblclick(slot.x, slot.y);
+    // Keys typed before the title has focus would be shortcuts
+    await expect(detailTitle(page)).toBeFocused();
     await page.keyboard.type("Budget sync");
     await page.keyboard.press("Enter");
     const created = calendarEvent(page, "Budget sync");
@@ -702,5 +708,122 @@ test.describe("with the context panel closed", () => {
     await page.mouse.up();
     await expect(popover).toBeVisible();
     await expect(popover.getByPlaceholder("Title")).toBeFocused();
+  });
+});
+
+test.describe("with several events selected", () => {
+  /** The events drawn selected on screen */
+  function selectedEvents(page: Page): Locator {
+    return page
+      .getByRole("main")
+      .locator('[data-event-id][aria-pressed="true"]');
+  }
+
+  test("Shift-clicking an event throws an untouched draft away and selects that event alone", async ({
+    page,
+  }) => {
+    const slot = await slotPoint(page, 5, "1 PM");
+    await page.mouse.dblclick(slot.x, slot.y);
+    await expect(draftTint(page)).toHaveCount(1);
+
+    await calendarEvent(page, "Quick Sync").click({ modifiers: ["Shift"] });
+
+    await expect(draftTint(page)).toHaveCount(0);
+    await expect(untitledEvent(page)).toHaveCount(0);
+    await expect(selectedEvents(page)).toHaveCount(1);
+    await expect(detailTitle(page)).toHaveValue("Quick Sync");
+  });
+
+  test("Shift-clicking an event saves a draft that was named and selects both", async ({
+    page,
+  }) => {
+    const slot = await slotPoint(page, 5, "1 PM");
+    await page.mouse.dblclick(slot.x, slot.y);
+    // Keys typed before the title has focus would be shortcuts
+    await expect(detailTitle(page)).toBeFocused();
+    await page.keyboard.type("Roadmap chat");
+
+    await calendarEvent(page, "Quick Sync").click({ modifiers: ["Shift"] });
+
+    await expect(calendarEvent(page, "Roadmap chat")).toHaveAccessibleName(
+      "Roadmap chat, 1:00 PM to 1:30 PM, Friday, June 5",
+    );
+    await expect(selectedEvents(page)).toHaveCount(2);
+    await expect(calendarEvent(page, "Roadmap chat")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  test("a double-click clears them and starts a draft, selected alone", async ({
+    page,
+  }) => {
+    await calendarEvent(page, "Launch Review").click();
+    await calendarEvent(page, "Quick Sync").click({ modifiers: ["Shift"] });
+    await expect(selectedEvents(page)).toHaveCount(2);
+
+    const slot = await slotPoint(page, 5, "1 PM");
+    await page.mouse.dblclick(slot.x, slot.y);
+
+    await expect(draftTint(page)).toHaveCount(1);
+    await expect(selectedEvents(page)).toHaveCount(0);
+    await expect(detailTitle(page)).toBeFocused();
+    await expect(detailFields(page).startTime).toHaveValue("1 PM");
+  });
+
+  test("a drag on empty space draws a draft in their place", async ({
+    page,
+  }) => {
+    await calendarEvent(page, "Launch Review").click();
+    await calendarEvent(page, "Quick Sync").click({ modifiers: ["Shift"] });
+    await expect(selectedEvents(page)).toHaveCount(2);
+
+    const from = await slotPoint(page, 5, "1 PM");
+    const to = await slotPoint(page, 5, "2 PM");
+    await pressAndMove(page, from, to);
+    await page.mouse.up();
+
+    await expect(draftTint(page)).toHaveCount(1);
+    await expect(selectedEvents(page)).toHaveCount(0);
+    await expect(detailFields(page).startTime).toHaveValue("1 PM");
+    await expect(detailFields(page).endTime).toHaveValue("2 PM");
+  });
+});
+
+test.describe("while open times are marked", () => {
+  test("starting to mark throws an untouched draft away", async ({ page }) => {
+    const slot = await slotPoint(page, 5, "1 PM");
+    await page.mouse.dblclick(slot.x, slot.y);
+    await expect(draftTint(page)).toHaveCount(1);
+
+    // Escape leaves the title, so S is a shortcut again
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("s");
+
+    await expect(page.getByTestId("availability-panel")).toBeVisible();
+    await expect(draftTint(page)).toHaveCount(0);
+    await expect(untitledEvent(page)).toHaveCount(0);
+  });
+
+  test("the all-day row draws no draft, and draws one again afterwards", async ({
+    page,
+  }) => {
+    await page.keyboard.press("s");
+    await expect(page.getByTestId("availability-layer")).toBeVisible();
+
+    const day = await allDayPoint(page, 2);
+    await page.mouse.dblclick(day.x, day.y);
+    await expect(draftTint(page)).toHaveCount(0);
+    await expect(page.getByTestId("availability-panel")).toBeVisible();
+
+    const to = await allDayPoint(page, 3);
+    await pressAndMove(page, day, to);
+    await page.mouse.up();
+    await expect(draftTint(page)).toHaveCount(0);
+
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("availability-layer")).toHaveCount(0);
+    await page.mouse.dblclick(day.x, day.y);
+    await expect(draftTint(page)).toHaveCount(1);
   });
 });

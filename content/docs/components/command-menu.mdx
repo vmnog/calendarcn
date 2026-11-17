@@ -5,7 +5,7 @@ description: The live demo's ⌘K menu, for creating an event, going to a typed 
 
 <ComponentPreview name="command-menu-demo" />
 
-`CommandMenu` is the [live demo](/)'s <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu, built on shadcn/ui's [Command](https://ui.shadcn.com/docs/components/command) in a Dialog. Creating an event, going to a date, today, previous and next, the day, week, month, year and agenda views, the view settings ("Hide weekends", "Hide declined events" and "Hide week numbers", which read "Show …" while the setting is off, as in Notion Calendar), the week start ("Start week on..."), the number of days ("Set number of displayed days...") and the hour size ("Default hour size", "Zoom hours in", "Zoom hours out") come from [`useCalendar()`](/docs/components/calendar-core#usecalendar), so it goes inside `CalendarProvider`. Commands that belong to your app, such as its panels, event search, the shortcut list, its theme and .ics files, show only when you pass their callback.
+`CommandMenu` is the [live demo](/)'s <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu, built on shadcn/ui's [Command](https://ui.shadcn.com/docs/components/command) in a Dialog. Creating an event, going to a date, today, previous and next, the day, week, month, year and agenda views, "Select all visible" (<KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup>), the view settings ("Hide weekends", "Hide declined events" and "Hide week numbers", which read "Show …" while the setting is off, as in Notion Calendar), the week start ("Start week on..."), the number of days ("Set number of displayed days...") and the hour size ("Default hour size", "Zoom hours in", "Zoom hours out") come from [`useCalendar()`](/docs/components/calendar-core#usecalendar), so it goes inside `CalendarProvider`. Commands that belong to your app, such as its panels, event search, the shortcut list, its theme and .ics files, show only when you pass their callback.
 
 ## Installation
 
@@ -97,6 +97,11 @@ Pass a callback to add its command. These are the demo's:
   onCycleTheme={cycleTheme}
   onImportIcs={() => fileInputRef.current?.click()}
   onExportIcs={exportIcs}
+  onOpenSettings={openSettings}
+  onAddCalendarAccount={addCalendarAccount}
+  onManageCalendarAccounts={manageCalendarAccounts}
+  onSupport={() => window.open(ISSUES_URL, "_blank")}
+  onAbout={() => router.push("/docs")}
   onSearchEvents={(query) => detailsActions.current?.searchEvents(query)}
   onShowShortcuts={() => detailsActions.current?.showAllShortcuts()}
   onMeetWith={() => openPeoplePicker("meet-with")}
@@ -111,6 +116,10 @@ Pass a callback to add its command. These are the demo's:
 - `onShowShortcuts` adds "Show keyboard shortcuts" (<Kbd>?</Kbd>). The demo shows the details sidebar's full list.
 - `onMeetWith` and `onShowTeammateCalendar` add "Meet with..." (F) and "Show teammate calendar..." (P). The demo opens the [People Picker](/docs/components/people-picker) from both.
 - `onToggleSidebar` and `onToggleContextPanel` add the panel toggles, next to the [Calendar Header](/docs/components/calendar-header)'s buttons.
+- `onShareAvailability` adds "Share availability..." (<Kbd>S</Kbd>), and `onCreateSchedulingLink` adds "Create recurring scheduling link..." and "Create one-off scheduling link...", called with `"recurring"` or `"one-off"`. Calendar App passes them from [`useScheduling()`](/docs/components/scheduling#usescheduling); the link commands only when the app creates scheduling links.
+- `onOpenSettings` adds "Go to settings" (<KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup>). The demo opens the [Calendar Settings](/docs/components/calendar-settings) dialog.
+- `onAddCalendarAccount` and `onManageCalendarAccounts` add "Add calendar account" and "Manage calendar accounts". The demo adds an .ics file as a calendar, and opens the settings on the calendars.
+- `onSupport` adds "Support & feedback" and `onAbout` adds "About CalendarCN". The demo opens a new GitHub issue in a new tab, and the docs.
 - `showComingSoon` also lists the Notion Calendar commands CalendarCN doesn't have yet, disabled with a "Soon" badge, as the demo does.
 
 ### Time zones
@@ -181,6 +190,42 @@ The dialog is translucent and blurred in dark mode. The CLI also adds a rule to 
       name: "onExportIcs",
       type: "() => void",
       description: 'Adds "Export .ics file".',
+    },
+    {
+      name: "onShareAvailability",
+      type: "() => void",
+      description: 'Adds "Share availability..." (S).',
+    },
+    {
+      name: "onCreateSchedulingLink",
+      type: '(kind: "recurring" | "one-off") => void',
+      description:
+        'Adds "Create recurring scheduling link..." and "Create one-off scheduling link...".',
+    },
+    {
+      name: "onOpenSettings",
+      type: "() => void",
+      description: 'Adds "Go to settings" (⌘ ,).',
+    },
+    {
+      name: "onAddCalendarAccount",
+      type: "() => void",
+      description: 'Adds "Add calendar account".',
+    },
+    {
+      name: "onManageCalendarAccounts",
+      type: "() => void",
+      description: 'Adds "Manage calendar accounts".',
+    },
+    {
+      name: "onSupport",
+      type: "() => void",
+      description: 'Adds "Support & feedback".',
+    },
+    {
+      name: "onAbout",
+      type: "() => void",
+      description: 'Adds "About CalendarCN".',
     },
     {
       name: "onMeetWith",

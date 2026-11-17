@@ -980,6 +980,104 @@ export interface CalendarNoticeValue {
 }
 
 /**
+ * A stretch of time marked as open while scheduling: one block on the time
+ * grid and one time in the text that gets copied. It starts and ends on the
+ * same day (an end at midnight is the end of that day).
+ */
+export interface AvailabilityRange {
+  /** Stays the same while the range is moved or resized */
+  id: string;
+  start: Date;
+  end: Date;
+}
+
+/** Notion Calendar's two kinds of scheduling link */
+export type SchedulingLinkKind = "recurring" | "one-off";
+
+/**
+ * What a scheduling link is asked for with: the app creates the booking page
+ * (CalendarCN has no backend for it) from these.
+ */
+export interface SchedulingLinkRequest {
+  kind: SchedulingLinkKind;
+  /** Length of the meeting people book, in minutes: the scheduling panel's duration */
+  durationMinutes: number;
+  /**
+   * The open times marked on the calendar, merged and in order, for a
+   * one-off link. Empty for a recurring link, whose weekly hours your app
+   * asks for
+   */
+  ranges: AvailabilityRange[];
+  /** IANA zone the times were picked in: the viewer's */
+  timeZone: string;
+}
+
+/** What scheduling is picking open times for */
+export type SchedulingPurpose = "share" | "one-off-link";
+
+/** Options of `formatAvailabilityText()` */
+export interface AvailabilityTextOptions {
+  /** Length of the meeting asked for, in minutes ("Would 30 min ...") */
+  durationMinutes: number;
+  hourCycle: HourCycle;
+  /** Day, month and AM/PM names */
+  locale: Locale;
+  /** Now: times on its day and the next read "today" and "tomorrow". Defaults to the current time */
+  now?: Date;
+  /** A booking page, added after the times ("You can just let me know or confirm here: ...") */
+  link?: string;
+}
+
+/** What `useScheduling()` returns inside a `SchedulingProvider` */
+export interface SchedulingContextValue {
+  /** Whether open times are being marked on the day and week views */
+  isPicking: boolean;
+  /** What the times are for: copying them as text, or a one-off scheduling link */
+  purpose: SchedulingPurpose;
+  /** The marked times, merged and in order */
+  ranges: AvailabilityRange[];
+  /** Id of the marked time selected on the grid (Delete removes it), or `null` */
+  selectedRangeId: string | null;
+  /** Length of the meeting asked for, in minutes. 30 at first */
+  durationMinutes: number;
+  /** The text "Copy" puts on the clipboard; empty while no time is marked */
+  text: string;
+  /** Whether the app creates scheduling links (it passed `onCreateSchedulingLink`) */
+  canCreateLinks: boolean;
+  /**
+   * Starts marking open times, from none, in the week view when the
+   * calendar is in month, year or agenda view. Clears the event selection
+   */
+  startPicking: (purpose?: SchedulingPurpose) => void;
+  /**
+   * Stops marking and drops the marked times, changing no event. No event
+   * is left selected, as when marking starts
+   */
+  cancelPicking: () => void;
+  /** Marks a time, merged with the marked times it overlaps or touches */
+  addRange: (range: Omit<AvailabilityRange, "id">) => void;
+  /** Moves or resizes a marked time */
+  updateRange: (range: AvailabilityRange) => void;
+  /** Removes a marked time, with an Undo toast */
+  removeRange: (id: string) => void;
+  /** Selects a marked time, or none with `null` */
+  selectRange: (id: string | null) => void;
+  setDurationMinutes: (minutes: number) => void;
+  /** Copies `text` to the clipboard and confirms it with a toast. Resolves to whether it was copied */
+  copyText: () => Promise<boolean>;
+  /** "Copy" in the panel: copies `text`, then stops marking once it's copied */
+  copyAndFinish: () => Promise<void>;
+  /**
+   * Starts a scheduling link: a recurring one goes straight to the app's
+   * `onCreateSchedulingLink`, a one-off one marks times first. Does nothing
+   * without `onCreateSchedulingLink`
+   */
+  createSchedulingLink: (kind: SchedulingLinkKind) => void;
+  /** "Create" of a one-off link: hands the marked times to the app and stops marking */
+  finishSchedulingLink: () => void;
+}
+
+/**
  * A calendar events can belong to (e.g. "Work"), listed by the details
  * panel's calendar picker and the event context menu's "Block on calendar"
  * submenu
@@ -1506,8 +1604,18 @@ export interface CalendarContextValue<
   visibleRange: VisibleRange;
   /** Whether the provider's `loading` prop is set */
   loading: boolean;
-  /** ID of the selected event, or `null` */
+  /**
+   * ID of the selected event, or `null`. Also `null` while several events
+   * are selected: then `selectedEventIds` lists them, and no event shows
+   * its details
+   */
   selectedEventId: string | null;
+  /**
+   * IDs of every selected event, in the order they were selected: the one
+   * `selectedEventId` names, or the several picked with Shift- or Cmd-click
+   * and "Select all visible". Empty when nothing is selected
+   */
+  selectedEventIds: string[];
   /**
    * The selected event: a stored one, or the generated occurrence its id
    * names. `null` when nothing (or a missing event) is selected
@@ -1577,7 +1685,7 @@ export interface CalendarContextValue<
   switchView: (view: ViewType) => void;
   /** Sets how many days the week view shows */
   setNumberOfDays: (numberOfDays: number) => void;
-  /** Selects an event */
+  /** Selects an event, alone */
   selectEvent: (eventId: string) => void;
   /**
    * Clears the selection (closes the event popover). Throws an unsaved
@@ -1603,6 +1711,21 @@ export interface CalendarContextValue<
    */
   updateEventDraft: (event: TEvent) => void;
   /**
+   * Selects these events: none clears the selection, one selects it as
+   * `selectEvent` does, several select them together
+   */
+  setSelectedEventIds: (eventIds: string[]) => void;
+  /**
+   * Adds an event to the selection, or takes it out when it is in it: what
+   * Shift- and Cmd-click on an event do
+   */
+  toggleEventSelection: (eventId: string) => void;
+  /**
+   * Selects every event on the dates on screen (Notion Calendar's "Select
+   * all visible", Cmd+A). Does nothing in year view, which draws no events
+   */
+  selectAllVisible: () => void;
+  /**
    * Adds an event for a range via `createEvent` at once, selects it and
    * focuses its title. `startEventDraft` waits for a first edit instead
    */
@@ -1612,9 +1735,10 @@ export interface CalendarContextValue<
    * mounted view first asks which events the change applies to ("This
    * event", "This and following events" or "All events"); pass `scope` to
    * apply it without asking. A scope the change doesn't allow (like "this"
-   * for a repeat rule change) applies as the first one it does. The
-   * `eventDraft` is saved instead: added, reported once through
-   * `onEventCreate` and undoable
+   * for a repeat rule change) applies as the first one it does. Moving one
+   * of several selected events moves them all by as much, as one undo step,
+   * without asking. The `eventDraft` is saved instead: added, reported once
+   * through `onEventCreate` and undoable
    */
   updateEvent: (event: TEvent, scope?: SeriesEditScope) => void;
   /**
@@ -1628,7 +1752,10 @@ export interface CalendarContextValue<
    * Deletes the event through `onEventsChange` and `onEventDelete`, and
    * clears the selection when it was selected. Undoable. For a date of a
    * repeating event, a mounted view first asks which events to delete;
-   * pass `scope` to delete without asking.
+   * pass `scope` to delete without asking. On one of several selected
+   * events, deleting, duplicating, copying and cutting act on all of them,
+   * as one undo step, and a repeating event's date among them goes alone,
+   * without asking
    */
   deleteEvent: (eventId: string, scope?: SeriesEditScope) => void;
   /**
@@ -1730,3 +1857,6 @@ export interface KeyboardShortcutGroup {
   shortcuts: KeyboardShortcut[];
   sections?: KeyboardShortcutGroup[];
 }
+
+/** A color theme: the system's, or light or dark */
+export type CalendarTheme = "system" | "light" | "dark";
