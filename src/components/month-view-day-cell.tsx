@@ -11,18 +11,25 @@ import {
 } from "date-fns";
 import type { Locale } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useDoubleClick } from "@/hooks/use-double-click";
 import { useToday } from "@/hooks/use-now";
 import type { CalendarEvent, EventColor } from "./calendar-types";
 import type { MonthCellSlot } from "@/lib/event-utils";
 import {
   formatCellDate,
   formatFullDate,
+  getEventDayRange,
   isMultiDayEvent,
   resolveEventColor,
 } from "@/lib/event-utils";
 import { EventDetailPopover } from "./event-detail-popover";
 import { getEventDetailsTriggerProps } from "./calendar-event-item";
-import { useCalendarConfig } from "./calendar-provider";
+import { useCalendarConfig, useCalendarEventDraft } from "./calendar-provider";
+import {
+  EVENT_DRAFT_ANCHOR_PROPS,
+  EVENT_DRAFT_SLOT,
+  EVENT_DRAFT_TINT_CLASS,
+} from "./event-draft";
 import { MonthViewEventItem } from "./month-view-event-item";
 import { MonthViewEventBar } from "./month-view-event-bar";
 
@@ -37,6 +44,19 @@ export interface MonthViewDayCellProps {
   onMoreClick?: (date: Date) => void;
   onDayNumberClick?: (date: Date) => void;
   onBackgroundClick?: () => void;
+  /**
+   * Called when the cell's empty space is double-clicked: creates an
+   * all-day event on its day
+   */
+  onDayCreate?: (date: Date) => void;
+  /**
+   * Pointerdown handler for the cell's empty space: starts drawing an
+   * all-day event by dragging across days
+   */
+  onDayDrawPointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
+    date: Date,
+  ) => void;
   onDragPointerDown?: (
     e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
@@ -89,6 +109,8 @@ export function MonthViewDayCell({
   onMoreClick,
   onDayNumberClick,
   onBackgroundClick,
+  onDayCreate,
+  onDayDrawPointerDown,
   onDragPointerDown,
   onResizePointerDown,
   selectedEventId,
@@ -104,6 +126,17 @@ export function MonthViewDayCell({
 }: MonthViewDayCellProps) {
   const dayNumber = date.getDate();
   const { calendars, locale } = useCalendarConfig();
+  // The event being created: its days are tinted while it is a draft nothing
+  // was typed into, and its details popover (EventDraftPopover) opens
+  // beside the first of them
+  const { event: createdEvent, isTinted: isDraftTinted } =
+    useCalendarEventDraft();
+  const createdDays = createdEvent ? getEventDayRange(createdEvent) : null;
+  const isCreatedDay =
+    createdDays !== null &&
+    date >= createdDays.first &&
+    date <= createdDays.last;
+  const isDoubleClick = useDoubleClick();
   /** The cell: the selected event's details popover opens beside it */
   const cellRef = useRef<HTMLDivElement>(null);
   /** The selected event's details popover, for its event's `aria-controls` */
@@ -119,7 +152,11 @@ export function MonthViewDayCell({
   // For multi-day bars that span across week rows, only show the popover
   // on the cell matching the event's true start date to avoid duplicates.
   const selectedCellEvent =
-    selectedEventId && showEventPopover && !dragEventId && !resizeEventId
+    selectedEventId &&
+    selectedEventId !== createdEvent?.id &&
+    showEventPopover &&
+    !dragEventId &&
+    !resizeEventId
       ? (() => {
           for (const slot of barSlots) {
             if (
@@ -170,13 +207,34 @@ export function MonthViewDayCell({
       : 1
     : 1;
 
+  /** Whether a press or click landed on the cell's empty space, not on an event or a button */
+  function isOnEmptySpace(e: React.MouseEvent) {
+    return (
+      e.target instanceof Element &&
+      !e.target.closest("[role=button]") &&
+      !e.target.closest("button")
+    );
+  }
+
+  /**
+   * A double-click on empty space creates an all-day event on this day, as
+   * in Notion Calendar. A single click clears the selection.
+   */
   function handleBackgroundClick(e: React.MouseEvent) {
-    if (
-      (e.target as HTMLElement).closest("[role=button]") ||
-      (e.target as HTMLElement).closest("button")
-    )
+    if (!isOnEmptySpace(e)) return;
+    if (isDoubleClick(e) && onDayCreate) {
+      // It has just selected the new event: the view must not clear that
+      e.stopPropagation();
+      onDayCreate(date);
       return;
+    }
     onBackgroundClick?.();
+  }
+
+  /** A press on empty space may become a drag that draws an all-day event */
+  function handleBackgroundPointerDown(e: React.PointerEvent<HTMLElement>) {
+    if (!isOnEmptySpace(e)) return;
+    onDayDrawPointerDown?.(e, date);
   }
 
   /** The cell's day in full ("Tuesday, October 31"), its accessible name */
@@ -189,12 +247,25 @@ export function MonthViewDayCell({
       role="group"
       aria-label={fullDate}
       onClick={handleBackgroundClick}
+      onPointerDown={handleBackgroundPointerDown}
+      {...(isCreatedDay ? EVENT_DRAFT_ANCHOR_PROPS : null)}
       className={cn(
-        "flex flex-col border-b border-r border-border min-w-0",
+        "relative flex flex-col border-b border-r border-border min-w-0 select-none",
         isWeekend && "bg-calendar-weekend",
         className,
       )}
     >
+      {/* The event being created covers this day: the whole cell is tinted */}
+      {isCreatedDay && isDraftTinted && createdEvent && (
+        <div
+          aria-hidden
+          data-slot={EVENT_DRAFT_SLOT}
+          className={cn(
+            "pointer-events-none absolute inset-0",
+            EVENT_DRAFT_TINT_CLASS[resolveEventColor(createdEvent, calendars)],
+          )}
+        />
+      )}
       {/* Day number — right-aligned like Notion Calendar */}
       <div className="flex justify-end items-center px-2 pt-0.5 pb-0.5">
         <button

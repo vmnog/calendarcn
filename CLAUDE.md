@@ -22,6 +22,7 @@ src/
 │   ├── month-view*.tsx   # MonthView and its parts
 │   ├── agenda-view.tsx   # AgendaView — the coming days' events as a list
 │   ├── calendar-event-*   # Event rendering & interactions
+│   ├── event-draft.tsx    # The event being created: its tinted range in each view, and its details popover
 │   ├── event-*            # Context menu, detail panel, detail popover
 │   ├── calendar-toaster.tsx # CalendarToaster — toasts after delete, cut and copy
 │   ├── event-detail-<section>.tsx # One file per details panel section (time, timezone, recurrence, participants…)
@@ -31,6 +32,9 @@ src/
 │   ├── sidebar-overlay.tsx  # Sidebars as a sheet on narrow screens; sidebar color tokens
 │   └── theme-*            # Dark mode provider & toggle
 ├── hooks/                # Custom hooks (drag, resize, all-day-resize, scroll)
+│   ├── use-event-draw.ts  # Draws a new event on the time grid: press empty space and drag
+│   ├── use-day-range-draw.ts # The same over whole days: all-day row and month view
+│   ├── use-double-click.ts # Double-click on empty space (creates an event) vs two clicks
 │   ├── use-inline-edit.ts # Inline text field: Enter commits, Escape restores
 │   ├── use-hover-tooltip.ts # Open state of a tooltip shown on hover
 │   └── use-field-popover.ts # Focus, blur and Escape for the details' time and date fields
@@ -55,6 +59,7 @@ Key files:
 - `src/lib/event-utils.ts` — positioning math (column assignment, positions as percentages)
 - `src/hooks/use-event-drag.ts` — drag interaction (snapping, cross-day, auto-scroll)
 - `src/hooks/use-event-resize.ts` — resize interaction (anchor model, edge flipping)
+- `src/components/event-draft.tsx` — the draft layer: new events start as an unsaved draft (`eventDraft`), saved by their first edit (flow in `docs/architecture.md`, "Creating Events")
 
 ## Rules
 

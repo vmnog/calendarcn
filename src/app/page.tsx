@@ -5,12 +5,10 @@ import * as React from "react";
 import { CalendarApp } from "@/components/calendar-app";
 import type {
   DetailedCalendarEvent,
-  EventColor,
   NewEventRange,
   ViewSettings,
 } from "@/components/week-view-types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { pickRandomEventColor } from "@/lib/event-utils";
 import {
   DEMO_CALENDARS,
   DEMO_CONTACTS,
@@ -21,9 +19,6 @@ import {
 } from "@/lib/mock-events";
 import { DEMO_CONFERENCE_PROVIDERS } from "./demo-conference-providers";
 import { DemoSidebarLinks } from "./demo-sidebar-links";
-
-/** Title given to an event created by clicking an empty time slot */
-const NEW_EVENT_TITLE = "New event";
 
 /** Name of the file the command menu's .ics export downloads */
 const ICS_EXPORT_FILE_NAME = "calendarcn.ics";
@@ -41,6 +36,30 @@ const DEMO_VIEW_SETTINGS: ViewSettings = {
 /** Cmd+, placeholder: settings aren't built yet, but the key is claimed already */
 function openSettings() {}
 
+/** Reminders of a new timed event: the primary calendar's own */
+const NEW_EVENT_REMINDERS = DEMO_CALENDARS.find(
+  (calendar) => calendar.id === DEMO_PRIMARY_CALENDAR_ID,
+)?.defaultReminders;
+
+/**
+ * A new event, as Notion Calendar starts one: untitled, on the primary
+ * calendar and in its color. A timed one is busy, with the calendar's
+ * reminders; an all-day one is free, with none.
+ */
+function createDemoEvent(range: NewEventRange): DetailedCalendarEvent {
+  return {
+    id: crypto.randomUUID(),
+    title: "",
+    start: range.start,
+    end: range.end,
+    calendarId: DEMO_PRIMARY_CALENDAR_ID,
+    calendarEmail: DEMO_PRIMARY_CALENDAR_ID,
+    ...(range.isAllDay
+      ? { isAllDay: true, status: "free" }
+      : { reminders: NEW_EVENT_REMINDERS }),
+  };
+}
+
 /**
  * The live demo: the Calendar App block with the sample data, the
  * conferencing services with their logos, and the demo's own avatar and
@@ -51,27 +70,6 @@ export default function Page() {
   // dated from the viewer's today: the calendar renders nothing on the
   // server or during hydration, so the browser's copy is the one shown.
   const [initialEvents] = React.useState(() => generateMockEvents());
-  /** Color given to the last click-created event, so the next one differs */
-  const lastCreatedColorRef = React.useRef<EventColor | null>(null);
-
-  const createDemoEvent = React.useCallback(
-    (range: NewEventRange): DetailedCalendarEvent => {
-      // Demo choice: a random color per created event makes each click visibly
-      // new. A real app would use the target calendar's color instead.
-      const color = pickRandomEventColor(lastCreatedColorRef.current);
-      lastCreatedColorRef.current = color;
-      return {
-        id: crypto.randomUUID(),
-        title: NEW_EVENT_TITLE,
-        start: range.start,
-        end: range.end,
-        color,
-        calendarId: DEMO_PRIMARY_CALENDAR_ID,
-        calendarEmail: DEMO_PRIMARY_CALENDAR_ID,
-      };
-    },
-    [],
-  );
 
   return (
     <CalendarApp

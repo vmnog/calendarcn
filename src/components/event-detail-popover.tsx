@@ -107,6 +107,13 @@ interface EventDetailPopoverProps {
    */
   triggerRef?: React.RefObject<Element | null>;
   onEventChange?: (event: CalendarEvent) => void;
+  /**
+   * Set while `event` is a draft that isn't stored yet: previews its title
+   * as it is typed (see EventDetailPanel). The first Escape in the title
+   * then takes the typed text back and keeps the popover open, as in Notion
+   * Calendar; the next one closes it.
+   */
+  onTitlePreview?: (event: CalendarEvent) => void;
   onClose: () => void;
   /** Callback for the expand button (e.g. dock to a side panel). Hidden when absent. */
   onExpand?: () => void;
@@ -134,6 +141,7 @@ export function EventDetailPopover({
   anchor,
   triggerRef,
   onEventChange,
+  onTitlePreview,
   onClose,
   onExpand,
   side = "right",
@@ -223,11 +231,25 @@ export function EventDetailPopover({
     });
   }, [boundary, event.id]);
 
+  /** A draft's title takes its first Escape: it clears what was typed */
+  const isDraft = onTitlePreview !== undefined;
+  const isEscapeHandledInside = React.useCallback(() => {
+    if (!isDraft) return false;
+    const active = document.activeElement;
+    return (
+      active instanceof HTMLElement &&
+      active.dataset.eventTitle !== undefined &&
+      panelRef.current !== null &&
+      panelRef.current.contains(active)
+    );
+  }, [isDraft]);
+
   const dismissHandlers = usePopoverDismiss({
     panelRef,
     triggerRef,
     onEscape: handleEscapeKeyDown,
     onDismiss: onClose,
+    isEscapeHandledInside,
   });
 
   // Custom details get `isNew` for one render; the default panel clears the
@@ -343,6 +365,7 @@ export function EventDetailPopover({
             eventActions ? () => eventActions.deleteEvent(event.id) : undefined
           }
           headerActions={popoverHeaderActions}
+          onTitlePreview={onTitlePreview}
           autoFocusTitle={isNew}
           onTitleAutoFocused={clearPending}
         />

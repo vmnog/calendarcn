@@ -22,6 +22,13 @@ export interface MonthViewGridProps {
   onMoreClick?: (date: Date) => void;
   onDayNumberClick?: (date: Date) => void;
   onBackgroundClick?: () => void;
+  /** Called when a day's empty space is double-clicked: creates an all-day event there */
+  onDayCreate?: (date: Date) => void;
+  /** Pointerdown handler for a day's empty space: starts drawing an all-day event across days */
+  onDayDrawPointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
+    date: Date,
+  ) => void;
   onDragPointerDown?: (
     e: React.PointerEvent<HTMLElement>,
     event: CalendarEvent,
@@ -70,6 +77,8 @@ export function MonthViewGrid({
   onMoreClick,
   onDayNumberClick,
   onBackgroundClick,
+  onDayCreate,
+  onDayDrawPointerDown,
   onDragPointerDown,
   onResizePointerDown,
   selectedEventId,
@@ -179,6 +188,8 @@ export function MonthViewGrid({
                       onMoreClick={onMoreClick}
                       onDayNumberClick={onDayNumberClick}
                       onBackgroundClick={onBackgroundClick}
+                      onDayCreate={onDayCreate}
+                      onDayDrawPointerDown={onDayDrawPointerDown}
                       onDragPointerDown={onDragPointerDown}
                       onResizePointerDown={onResizePointerDown}
                       selectedEventId={selectedEventId}

@@ -631,17 +631,33 @@ export interface PointerGestureStart {
 }
 
 /**
- * Start and end of a new event created by clicking an empty time slot
+ * Start and end of a new event: the slot that was double-clicked, the range
+ * that was dragged over, or the days picked in the all-day row or month view
  */
 export interface NewEventRange {
-  /** Start of the clicked `snapMinutes` slot */
+  /**
+   * Start, snapped to `snapMinutes`. For whole days, midnight that starts
+   * the first day
+   */
   start: Date;
   /**
-   * End time (start + NEW_EVENT_DURATION_MINUTES, kept inside the visible
-   * hours and the clicked day)
+   * End: start + `defaultEventDuration` for a double-clicked slot (kept
+   * inside the visible hours and that day), the other end of a dragged
+   * range, or, for whole days, midnight that starts the last day
    */
   end: Date;
+  /**
+   * Whether the range covers whole days: it comes from the all-day row or
+   * the month view, and the new event is all-day
+   */
+  isAllDay?: boolean;
 }
+
+/**
+ * Where a press-and-drag that draws a new event is: its first report
+ * ("start"), a later one ("move"), or the release ("end")
+ */
+export type EventDrawPhase = "start" | "move" | "end";
 
 /**
  * Dates a view draws, passed to `onVisibleRangeChange` and returned as
@@ -795,8 +811,10 @@ export interface CalendarGroup {
  * provider prop.
  */
 export interface CalendarConfig {
-  /** Minute step that timed-event drag, resize and click-to-create snap to */
+  /** Minute step that timed-event drag, resize and new events snap to */
   snapMinutes: number;
+  /** Length in minutes of an event created by double-clicking an empty slot */
+  defaultEventDuration: number;
   /** First hour (0-23) the time grid shows */
   dayStartHour: number;
   /** Hour (1-24) the time grid ends at; the last row is `dayEndHour - 1` */
@@ -945,16 +963,18 @@ type CalendarCreateEventProps<TEvent extends CalendarEvent> =
   CalendarEvent extends TEvent
     ? {
         /**
-         * Builds the event created by clicking an empty time slot. Return
-         * `null` to create nothing. Defaults to a "New event" with a random UUID.
+         * Builds a new event for a range: the draft drawn on the calendar,
+         * or the event `addEventFromRange` adds. Return `null` to create
+         * nothing. Defaults to an untitled event with a random UUID.
          */
         createEvent?: (range: NewEventRange) => TEvent | null;
       }
     : {
         /**
-         * Builds the event created by clicking an empty time slot. Return
-         * `null` to create nothing. Required because `TEvent` has required
-         * fields the default "New event" can't fill.
+         * Builds a new event for a range: the draft drawn on the calendar,
+         * or the event `addEventFromRange` adds. Return `null` to create
+         * nothing. Required because `TEvent` has required fields the
+         * default untitled event can't fill.
          */
         createEvent: (range: NewEventRange) => TEvent | null;
       };
@@ -1011,8 +1031,13 @@ interface CalendarProviderBaseProps<
    * and declined events, and hiding week numbers.
    */
   defaultViewSettings?: Partial<ViewSettings>;
-  /** Minute step that timed-event drag, resize and click-to-create snap to. Defaults to 15 */
+  /** Minute step that timed-event drag, resize and new events snap to. Defaults to 15 */
   snapMinutes?: number;
+  /**
+   * Length in minutes of an event created by double-clicking an empty time
+   * slot. Defaults to 30, as in Notion Calendar
+   */
+  defaultEventDuration?: number;
   /**
    * First hour (0-23) the day and week views show. Events before it are
    * clipped at the top edge (hidden when they end before it), and drag,
@@ -1070,10 +1095,11 @@ interface CalendarProviderBaseProps<
    */
   locationSuggestions?: LocationSuggestion[];
   /**
-   * Called after an event is added: one created by clicking an empty slot,
-   * a duplicate or a paste, an occurrence of a repeating event stored on its
-   * first edit (with `seriesId` and `originalStart`), or one `undo` or `redo`
-   * brings back
+   * Called after an event is added: a draft saved by its first edit, one
+   * `addEventFromRange` adds, a duplicate or a paste, an occurrence of a
+   * repeating event stored on its first edit (with `seriesId` and
+   * `originalStart`), or one `undo` or `redo` brings back. A draft that is
+   * thrown away is never reported
    */
   onEventCreate?: (event: TEvent) => void;
   /**
@@ -1086,7 +1112,10 @@ interface CalendarProviderBaseProps<
    * `undo` or `redo` (an undone create, duplicate or paste)
    */
   onEventDelete?: (event: TEvent) => void;
-  /** Called whenever an event is selected (clicked, or just created) */
+  /**
+   * Called whenever an event is selected: clicked, just added, or a draft
+   * that was just drawn (with the id it keeps once it is saved)
+   */
   onEventSelect?: (eventId: string) => void;
   /**
    * Called with the dates the view draws: once after it mounts, then each
@@ -1203,17 +1232,39 @@ export interface CalendarContextValue<
   setNumberOfDays: (numberOfDays: number) => void;
   /** Selects an event */
   selectEvent: (eventId: string) => void;
-  /** Clears the selection (closes the event popover) */
+  /**
+   * Clears the selection (closes the event popover). Throws an unsaved
+   * `eventDraft` away
+   */
   clearSelection: () => void;
   /**
-   * Creates an event for a clicked slot via `createEvent`, selects it and
-   * focuses its title
+   * The event being created, drawn and selected but not stored yet, or
+   * `null`. It isn't in `events`. `updateEvent` with it saves it, and
+   * selecting anything else (or nothing) throws it away
+   */
+  eventDraft: TEvent | null;
+  /**
+   * Starts a draft for a range via `createEvent`, selects it and focuses its
+   * title. Nothing is stored and `onEventCreate` doesn't run until the
+   * draft is saved: by naming it (Enter, or leaving the title) or by
+   * changing any other field. A draft that is open already is replaced
+   */
+  startEventDraft: (range: NewEventRange) => void;
+  /**
+   * Changes the draft without saving it, to preview what is being typed or
+   * dragged. Ignored unless `event` has the draft's id
+   */
+  updateEventDraft: (event: TEvent) => void;
+  /**
+   * Adds an event for a range via `createEvent` at once, selects it and
+   * focuses its title. `startEventDraft` waits for a first edit instead
    */
   addEventFromRange: (range: NewEventRange) => void;
   /**
    * Replaces the event with the same id. A generated occurrence of a
    * repeating event (not in `events`) is added instead, as the stored event
-   * for its date, through `onEventsChange` and `onEventCreate`
+   * for its date, through `onEventsChange` and `onEventCreate`. The
+   * `eventDraft` is saved the same way: added, reported once and undoable
    */
   updateEvent: (event: TEvent) => void;
   /**

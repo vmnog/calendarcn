@@ -5,7 +5,11 @@ import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
 import { EventDetailPopover } from "./event-detail-popover";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
-import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
+import {
+  EventContentSlot,
+  useCalendarConfig,
+  useCalendarEventDraft,
+} from "./calendar-provider";
 import {
   formatTime,
   formatTimeRange,
@@ -259,6 +263,11 @@ export function CalendarEventItem({
   } | null>(null);
 
   const showPopover = isSelected && showEventPopover;
+  // The event being created keeps its details in the view's own popover
+  // (EventDraftPopover), which stays open while the draft is saved. This
+  // element still toggles them.
+  const { event: createdEvent } = useCalendarEventDraft();
+  const rendersPopover = showPopover && createdEvent?.id !== event.id;
   const detailsToggle = useEventDetailsToggle({
     showPopover: showPopover ?? false,
     showEventPopover: showEventPopover ?? false,
@@ -356,6 +365,7 @@ export function CalendarEventItem({
    * day's segment), not an event the user can focus
    */
   const isPreview = isResizing || Boolean(overrideStart && overrideEnd);
+  const hasTitle = event.title.trim() !== "";
   const timeRangeLabel = formatTimeRange(
     displayEvent.start,
     displayEvent.end,
@@ -684,7 +694,12 @@ export function CalendarEventItem({
                     ),
               )}
             >
-              {event.title}
+              {/* An untitled event shows its time in the title's place, as
+                  in Notion Calendar: the start alone on a short block */}
+              {hasTitle
+                ? event.title
+                : isCompact &&
+                  formatTime(displayEvent.start, hourCycle, locale)}
             </span>
             {!isCompact && (
               <span
@@ -711,7 +726,7 @@ export function CalendarEventItem({
   return (
     <>
       {eventElement}
-      {showPopover && (
+      {rendersPopover && (
         <EventDetailPopover
           event={event}
           id={detailsToggle.detailsId}
@@ -810,6 +825,11 @@ export function AllDayEventItem({
   /** The event element: anchors and toggles its details popover */
   const eventRef = React.useRef<HTMLDivElement>(null);
   const showPopover = isSelected && showEventPopover;
+  // The event being created keeps its details in the view's own popover
+  // (EventDraftPopover), which stays open while the draft is saved. This
+  // element still toggles them.
+  const { event: createdEvent } = useCalendarEventDraft();
+  const rendersPopover = showPopover && createdEvent?.id !== event.id;
   const detailsToggle = useEventDetailsToggle({
     showPopover: showPopover ?? false,
     showEventPopover: showEventPopover ?? false,
@@ -1142,7 +1162,7 @@ export function AllDayEventItem({
   return (
     <>
       {eventElement}
-      {showPopover && (
+      {rendersPopover && (
         <EventDetailPopover
           event={event}
           id={detailsToggle.detailsId}

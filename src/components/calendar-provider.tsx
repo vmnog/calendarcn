@@ -19,8 +19,10 @@ import { useToday } from "@/hooks/use-now";
 import { EventTitleFocusProvider } from "./event-title-focus-context";
 import {
   AGENDA_DAYS,
+  DEFAULT_EVENT_DURATION_MINUTES,
   describeEventChange,
   describeEventCreated,
+  describeEventDraft,
   describeEventTime,
   getCalendarHeaderInfo,
   getPeriodStart,
@@ -62,6 +64,7 @@ import type {
   ConferenceProviderOption,
   EventContact,
   EventContentProps,
+  EventDrawPhase,
   EventHistory,
   EventHistoryAction,
   EventHistoryChange,
@@ -86,8 +89,12 @@ import type {
  */
 declare const process: { env: { NODE_ENV?: string } };
 
-/** Title of a click-created event when no `createEvent` factory is given */
-const DEFAULT_NEW_EVENT_TITLE = "New event";
+/**
+ * Title of a new event when no `createEvent` factory is given: none, as in
+ * Notion Calendar. The details show their "Title" placeholder and the
+ * calendar draws the event's time alone.
+ */
+const DEFAULT_NEW_EVENT_TITLE = "";
 
 /** How long the day opened by `showDay` stays highlighted, in milliseconds */
 const HIGHLIGHT_DURATION_MS = 2000;
@@ -95,7 +102,7 @@ const HIGHLIGHT_DURATION_MS = 2000;
 /** Days the week view shows when `numberOfDays` is not set */
 const DEFAULT_NUMBER_OF_DAYS = 7;
 
-/** Minute step drag, resize and click-to-create snap to when `snapMinutes` is not set */
+/** Minute step drag, resize and new events snap to when `snapMinutes` is not set */
 const DEFAULT_SNAP_MINUTES = 15;
 
 /** First hour the time grid shows when `dayStartHour` is not set (midnight) */
@@ -125,6 +132,7 @@ const NO_LOCATION_SUGGESTIONS: LocationSuggestion[] = [];
 /** Config used outside a provider, and for every provider prop left unset */
 const DEFAULT_CALENDAR_CONFIG: CalendarConfig = {
   snapMinutes: DEFAULT_SNAP_MINUTES,
+  defaultEventDuration: DEFAULT_EVENT_DURATION_MINUTES,
   dayStartHour: DEFAULT_DAY_START_HOUR,
   dayEndHour: DEFAULT_DAY_END_HOUR,
   hourCycle: DEFAULT_HOUR_CYCLE,
@@ -217,6 +225,48 @@ interface CalendarViewSyncValue {
    * `pasteEvent` puts the next paste
    */
   reportPasteTarget: (target: EventPasteTarget) => void;
+  /**
+   * Time grid, all-day row and month view: the range a press-and-drag on
+   * empty space covers so far. "start" opens a new draft, "move" changes its
+   * range and "end" also focuses its title. Cancelling is `clearSelection()`.
+   */
+  drawEventDraft: (range: NewEventRange, phase: EventDrawPhase) => void;
+  /**
+   * What the views draw: `events`, plus the draft once it is drawn as an
+   * event (see `CalendarEventDraftValue.isTinted`)
+   */
+  drawnEvents: CalendarEvent[];
+}
+
+/**
+ * The event being created, for the views' draft layers (`event-draft.tsx`):
+ * what they tint, and the details popover they keep open across its save.
+ * Kept apart from `useCalendar()` so the views' parts, which also render
+ * outside a provider, can read it.
+ */
+interface CalendarEventDraftValue {
+  /**
+   * The selected event while it is being created: the draft, or the event
+   * it was saved as, for as long as it stays selected. `null` otherwise
+   */
+  event: CalendarEvent | null;
+  /** Whether `event` is still an unsaved draft */
+  isDraft: boolean;
+  /**
+   * Whether the draft is drawn as a tinted range rather than as an event:
+   * one drawn on the calendar that nothing was typed into yet. As in Notion
+   * Calendar, its first title keystroke turns it into a selected event, and
+   * a draft from `startEventDraft` is one from the start.
+   */
+  isTinted: boolean;
+  /** Whether a drag is still drawing the draft: its details popover waits for the release */
+  isDrawing: boolean;
+  /** Saves the draft, or changes the event it was saved as: `updateEvent` */
+  updateEvent: (event: CalendarEvent) => void;
+  /** Previews a change to the draft without saving it: `updateEventDraft` */
+  updateEventDraft: (event: CalendarEvent) => void;
+  /** Closes the event's details popover: `closeEventPopover` */
+  closePopover: (eventId: string) => void;
 }
 
 /**
@@ -255,6 +305,22 @@ interface EventContentSlotProps extends EventContentProps {
   className: string;
   /** Default content, drawn as-is when no `renderEventContent` is set */
   fallback: React.ReactNode;
+}
+
+/** The event being created, and how it got here */
+interface EventDraftState {
+  /** The draft as it stands: what the details show, and what a save stores */
+  event: CalendarEvent;
+  /** The draft as it was last drawn, before anything was typed into it */
+  base: CalendarEvent;
+  /**
+   * Whether the views draw it as an event from the start (started by
+   * `startEventDraft`) rather than as a tinted range until its first edit
+   * (drawn on the calendar)
+   */
+  isEvent: boolean;
+  /** Whether a drag is still drawing it */
+  isDrawing: boolean;
 }
 
 /** A message for the live region; `id` changes so a repeated text is read again */
@@ -308,6 +374,20 @@ const CalendarSeriesContext =
 const CalendarEventActionsContext =
   React.createContext<CalendarEventActionsValue | null>(null);
 
+/** Outside a provider: nothing is being created */
+const NO_EVENT_DRAFT: CalendarEventDraftValue = {
+  event: null,
+  isDraft: false,
+  isTinted: false,
+  isDrawing: false,
+  updateEvent: () => {},
+  updateEventDraft: () => {},
+  closePopover: () => {},
+};
+
+const CalendarEventDraftContext =
+  React.createContext<CalendarEventDraftValue>(NO_EVENT_DRAFT);
+
 /** Outside a provider: no notice, and nothing to show or close */
 const NO_NOTICE: CalendarNoticeValue = {
   notice: null,
@@ -318,14 +398,46 @@ const NO_NOTICE: CalendarNoticeValue = {
 const CalendarNoticeContext =
   React.createContext<CalendarNoticeValue>(NO_NOTICE);
 
-/** Default `createEvent`: a "New event" covering the clicked slot */
+/** Default `createEvent`: an untitled event covering the range */
 function createDefaultEvent(range: NewEventRange): CalendarEvent {
   return {
     id: crypto.randomUUID(),
     title: DEFAULT_NEW_EVENT_TITLE,
     start: range.start,
     end: range.end,
+    ...(range.isAllDay ? { isAllDay: true } : null),
   };
+}
+
+/** Whether two values of an event field are the same (dates by their time) */
+function isSameFieldValue(a: unknown, b: unknown): boolean {
+  if (a instanceof Date && b instanceof Date)
+    return a.getTime() === b.getTime();
+  if (typeof a === "string" && typeof b === "string") {
+    return a.trim() === b.trim();
+  }
+  return Object.is(a, b);
+}
+
+/**
+ * Whether a draft was edited since it was drawn: a field differs from
+ * `base`, the draft as it was last drawn. Typing a title and taking it back
+ * (Escape) leaves it unchanged.
+ */
+function isEventDraftEdited(
+  draft: CalendarEvent,
+  base: CalendarEvent,
+): boolean {
+  const draftFields: Record<string, unknown> = { ...draft };
+  const baseFields: Record<string, unknown> = { ...base };
+  const keys = new Set([
+    ...Object.keys(draftFields),
+    ...Object.keys(baseFields),
+  ]);
+  for (const key of keys) {
+    if (!isSameFieldValue(draftFields[key], baseFields[key])) return true;
+  }
+  return false;
 }
 
 /**
@@ -536,6 +648,7 @@ function CalendarStateProvider({
   onNumberOfDaysChange,
   defaultViewSettings,
   snapMinutes = DEFAULT_SNAP_MINUTES,
+  defaultEventDuration = DEFAULT_EVENT_DURATION_MINUTES,
   dayStartHour = DEFAULT_DAY_START_HOUR,
   dayEndHour = DEFAULT_DAY_END_HOUR,
   hourCycle = DEFAULT_HOUR_CYCLE,
@@ -598,6 +711,24 @@ function CalendarStateProvider({
   const [titleFocusEventId, setTitleFocusEventId] = React.useState<
     string | null
   >(null);
+  /**
+   * The event being created, not stored yet. It only counts while it is the
+   * selected event (`activeDraft`): selecting anything else leaves it behind.
+   */
+  const [draftState, setDraftState] = React.useState<EventDraftState | null>(
+    null,
+  );
+  /**
+   * ID of the latest draft, kept after it is saved. While that event stays
+   * selected the views' draft layer keeps hosting its details popover, so
+   * saving it (its first edit) doesn't close and reopen them mid-typing.
+   */
+  const [draftOriginId, setDraftOriginId] = React.useState<string | null>(null);
+  // Adjusted while rendering, like the notice below: once the selection
+  // leaves that event it is an event like any other
+  if (draftOriginId !== null && draftOriginId !== selectedEventId) {
+    setDraftOriginId(null);
+  }
   /** Latest change or action, read out by the live region */
   const [announcement, setAnnouncement] = React.useState<Announcement | null>(
     null,
@@ -621,8 +752,25 @@ function CalendarStateProvider({
   if (shownNotice?.step && shownNotice.step !== latestStep) {
     setShownNotice(null);
   }
+  /** The draft while it is the selected event: the one being created */
+  const activeDraftState =
+    draftState !== null && draftState.event.id === selectedEventId
+      ? draftState
+      : null;
+  const activeDraft = activeDraftState?.event ?? null;
+  /** Whether the views draw the draft as an event rather than a tinted range */
+  const isDraftAnEvent =
+    activeDraftState !== null &&
+    (activeDraftState.isEvent ||
+      isEventDraftEdited(activeDraftState.event, activeDraftState.base));
   /** Latest events, so `updateEvent` can compare without depending on them */
   const eventsRef = React.useRef(events);
+  /**
+   * Latest active draft, so `updateEvent` can tell a draft's first edit
+   * from an edit to a stored event. The draft actions also set it
+   * themselves, so two calls in one handler see each other.
+   */
+  const draftStateRef = React.useRef<EventDraftState | null>(activeDraftState);
   /** The slot or day a view last had the mouse over: where a paste goes */
   const pasteTargetRef = React.useRef<EventPasteTarget | null>(null);
   /** Id of the latest notice; each new one counts up */
@@ -649,6 +797,10 @@ function CalendarStateProvider({
   }, [events]);
 
   React.useEffect(() => {
+    draftStateRef.current = activeDraftState;
+  }, [activeDraftState]);
+
+  React.useEffect(() => {
     onVisibleRangeChangeRef.current = onVisibleRangeChange;
   }, [onVisibleRangeChange]);
 
@@ -669,11 +821,13 @@ function CalendarStateProvider({
     setVisibleDays([]);
   }, [view]);
 
-  // A generated occurrence of a repeating event is selected by its id too
+  // A generated occurrence of a repeating event is selected by its id too,
+  // and so is the draft, which isn't stored
   const selectedEvent = React.useMemo(() => {
     if (selectedEventId === null) return null;
+    if (activeDraft) return activeDraft;
     return findEventOrOccurrence(events, selectedEventId);
-  }, [events, selectedEventId]);
+  }, [events, selectedEventId, activeDraft]);
 
   // Only honor the focus request while that event is still the selected one
   const pendingTitleFocusId =
@@ -681,18 +835,6 @@ function CalendarStateProvider({
 
   const clearTitleFocus = React.useCallback(() => {
     setTitleFocusEventId(null);
-  }, []);
-
-  const selectEvent = React.useCallback(
-    (eventId: string) => {
-      setSelectedEventId(eventId);
-      onEventSelect?.(eventId);
-    },
-    [onEventSelect],
-  );
-
-  const clearSelection = React.useCallback(() => {
-    setSelectedEventId(null);
   }, []);
 
   const announce = React.useCallback((text: string) => {
@@ -761,8 +903,72 @@ function CalendarStateProvider({
     [setEvents, onEventCreate, onEventUpdate, onEventDelete],
   );
 
+  /** Leaves the draft behind without storing it */
+  const closeEventDraft = React.useCallback(() => {
+    draftStateRef.current = null;
+    setDraftState(null);
+  }, []);
+
+  /**
+   * Stores the draft as `event`: its first edit. Reported once through
+   * `onEventCreate` and undoable as one "create" step; it stays selected.
+   */
+  const saveEventDraft = React.useCallback(
+    (event: CalendarEvent) => {
+      closeEventDraft();
+      setEvents((prev) => [...prev, event]);
+      onEventCreate?.(event);
+      recordHistory("create", [
+        { before: null, after: event, index: eventsRef.current.length },
+      ]);
+      announce(describeEventCreated(event, hourCycle, locale));
+    },
+    [
+      closeEventDraft,
+      setEvents,
+      onEventCreate,
+      recordHistory,
+      announce,
+      hourCycle,
+      locale,
+    ],
+  );
+
+  /**
+   * Run before the selection leaves the draft. One that was edited (a title
+   * typed into it) is saved, as in Notion Calendar; an untouched one is
+   * thrown away.
+   */
+  const settleEventDraft = React.useCallback(() => {
+    const draft = draftStateRef.current;
+    if (!draft) return;
+    if (isEventDraftEdited(draft.event, draft.base)) {
+      saveEventDraft({ ...draft.event, title: draft.event.title.trim() });
+      return;
+    }
+    closeEventDraft();
+  }, [saveEventDraft, closeEventDraft]);
+
+  const selectEvent = React.useCallback(
+    (eventId: string) => {
+      if (draftStateRef.current?.event.id !== eventId) settleEventDraft();
+      setSelectedEventId(eventId);
+      onEventSelect?.(eventId);
+    },
+    [onEventSelect, settleEventDraft],
+  );
+
+  const clearSelection = React.useCallback(() => {
+    settleEventDraft();
+    setSelectedEventId(null);
+  }, [settleEventDraft]);
+
   const updateEvent = React.useCallback(
     (updatedEvent: CalendarEvent) => {
+      if (draftStateRef.current?.event.id === updatedEvent.id) {
+        saveEventDraft(updatedEvent);
+        return;
+      }
       const current = eventsRef.current;
       const index = current.findIndex((e) => e.id === updatedEvent.id);
       const stored = index === -1 ? undefined : current[index];
@@ -800,6 +1006,7 @@ function CalendarStateProvider({
       if (message) announce(message);
     },
     [
+      saveEventDraft,
       setEvents,
       commitChanges,
       onEventUpdate,
@@ -808,6 +1015,88 @@ function CalendarStateProvider({
       announce,
       recordHistory,
     ],
+  );
+
+  /** Builds a draft for a range with the app's factory, or `null` when it declines */
+  const buildEventDraft = React.useCallback(
+    (range: NewEventRange): CalendarEvent | null => {
+      const draft = (createEvent ?? createDefaultEvent)(range);
+      if (!draft) return null;
+      // A factory written for timed slots still gets a whole-day event
+      if (range.isAllDay && !draft.isAllDay)
+        return { ...draft, isAllDay: true };
+      return draft;
+    },
+    [createEvent],
+  );
+
+  /**
+   * Makes `draft` the event being created: drawn and selected, not stored.
+   * A draft that was open is settled first. `isEvent`: drawn as an event
+   * from the start instead of as a tinted range.
+   */
+  const openEventDraft = React.useCallback(
+    (draft: CalendarEvent | null, isEvent: boolean, isDrawing: boolean) => {
+      settleEventDraft();
+      const next = draft
+        ? { event: draft, base: draft, isEvent, isDrawing }
+        : null;
+      draftStateRef.current = next;
+      setDraftState(next);
+      setDraftOriginId(draft ? draft.id : null);
+      setSelectedEventId(draft ? draft.id : null);
+    },
+    [settleEventDraft],
+  );
+
+  /** Asks for the draft's title to be focused, and reports it as selected */
+  const presentEventDraft = React.useCallback(
+    (draft: CalendarEvent) => {
+      setTitleFocusEventId(draft.id);
+      onEventSelect?.(draft.id);
+      announce(describeEventDraft(draft, hourCycle, locale));
+    },
+    [onEventSelect, announce, hourCycle, locale],
+  );
+
+  const startEventDraft = React.useCallback(
+    (range: NewEventRange) => {
+      const draft = buildEventDraft(range);
+      openEventDraft(draft, true, false);
+      if (draft) presentEventDraft(draft);
+    },
+    [buildEventDraft, openEventDraft, presentEventDraft],
+  );
+
+  const updateEventDraft = React.useCallback((draft: CalendarEvent) => {
+    const current = draftStateRef.current;
+    if (current?.event.id !== draft.id) return;
+    const next = { ...current, event: draft };
+    draftStateRef.current = next;
+    setDraftState(next);
+  }, []);
+
+  const drawEventDraft = React.useCallback(
+    (range: NewEventRange, phase: EventDrawPhase) => {
+      if (phase === "start") {
+        openEventDraft(buildEventDraft(range), false, true);
+        return;
+      }
+      const current = draftStateRef.current;
+      if (!current) return;
+      const draft = { ...current.event, start: range.start, end: range.end };
+      // Drawing isn't an edit: the draft is still untouched
+      const next = {
+        ...current,
+        event: draft,
+        base: draft,
+        isDrawing: phase !== "end",
+      };
+      draftStateRef.current = next;
+      setDraftState(next);
+      if (phase === "end") presentEventDraft(draft);
+    },
+    [buildEventDraft, openEventDraft, presentEventDraft],
   );
 
   const addEventFromRange = React.useCallback(
@@ -841,6 +1130,12 @@ function CalendarStateProvider({
    */
   const removeEvent = React.useCallback(
     (eventId: string, action: "delete" | "cut") => {
+      // The draft isn't stored: deleting or cutting it throws it away
+      if (draftStateRef.current?.event.id === eventId) {
+        closeEventDraft();
+        setSelectedEventId(null);
+        return null;
+      }
       const current = eventsRef.current;
       const index = current.findIndex((e) => e.id === eventId);
       // A generated date of a repeating event isn't stored
@@ -867,7 +1162,7 @@ function CalendarStateProvider({
       setSelectedEventId((prev) => (prev === eventId ? null : prev));
       return { event, step };
     },
-    [commitChanges, recordHistory],
+    [commitChanges, recordHistory, closeEventDraft],
   );
 
   const deleteEvent = React.useCallback(
@@ -1323,6 +1618,9 @@ function CalendarStateProvider({
       setNumberOfDays: changeNumberOfDays,
       selectEvent,
       clearSelection,
+      eventDraft: activeDraft,
+      startEventDraft,
+      updateEventDraft,
       addEventFromRange,
       updateEvent,
       toggleWeekends,
@@ -1367,6 +1665,9 @@ function CalendarStateProvider({
       changeNumberOfDays,
       selectEvent,
       clearSelection,
+      activeDraft,
+      startEventDraft,
+      updateEventDraft,
       addEventFromRange,
       updateEvent,
       toggleWeekends,
@@ -1385,9 +1686,19 @@ function CalendarStateProvider({
     ],
   );
 
-  const closeEventPopover = React.useCallback((eventId: string) => {
-    setSelectedEventId((prev) => (prev === eventId ? null : prev));
-  }, []);
+  // The draft joins the events the views draw once it is one itself
+  const drawnEvents = React.useMemo(
+    () => (activeDraft && isDraftAnEvent ? [...events, activeDraft] : events),
+    [events, activeDraft, isDraftAnEvent],
+  );
+
+  const closeEventPopover = React.useCallback(
+    (eventId: string) => {
+      if (draftStateRef.current?.event.id === eventId) settleEventDraft();
+      setSelectedEventId((prev) => (prev === eventId ? null : prev));
+    },
+    [settleEventDraft],
+  );
 
   const reportPasteTarget = React.useCallback((target: EventPasteTarget) => {
     pasteTargetRef.current = target;
@@ -1400,8 +1711,44 @@ function CalendarStateProvider({
       reportDisplayMonth: setDisplayMonth,
       closeEventPopover,
       reportPasteTarget,
+      drawEventDraft,
+      drawnEvents,
     }),
-    [reportView, closeEventPopover, reportPasteTarget],
+    [
+      reportView,
+      closeEventPopover,
+      reportPasteTarget,
+      drawEventDraft,
+      drawnEvents,
+    ],
+  );
+
+  // The event the draft layers stand for: the draft, then the event it was
+  // saved as until the selection moves on
+  const createdEvent =
+    draftOriginId !== null && draftOriginId === selectedEventId
+      ? selectedEvent
+      : null;
+  const isDrawingDraft = activeDraftState?.isDrawing ?? false;
+  const eventDraftValue = React.useMemo<CalendarEventDraftValue>(
+    () => ({
+      event: createdEvent,
+      isDraft: activeDraft !== null,
+      isTinted: activeDraft !== null && !isDraftAnEvent,
+      isDrawing: isDrawingDraft,
+      updateEvent,
+      updateEventDraft,
+      closePopover: closeEventPopover,
+    }),
+    [
+      createdEvent,
+      activeDraft,
+      isDraftAnEvent,
+      isDrawingDraft,
+      updateEvent,
+      updateEventDraft,
+      closeEventPopover,
+    ],
   );
 
   const series = React.useMemo<CalendarSeriesValue>(
@@ -1438,6 +1785,7 @@ function CalendarStateProvider({
   const config = React.useMemo<CalendarConfig>(
     () => ({
       snapMinutes: Math.max(1, Math.round(snapMinutes)),
+      defaultEventDuration: Math.max(1, Math.round(defaultEventDuration)),
       ...resolveDayHours(dayStartHour, dayEndHour),
       hourCycle,
       locale,
@@ -1455,6 +1803,7 @@ function CalendarStateProvider({
     }),
     [
       snapMinutes,
+      defaultEventDuration,
       dayStartHour,
       dayEndHour,
       hourCycle,
@@ -1476,20 +1825,22 @@ function CalendarStateProvider({
           <CalendarConfigContext.Provider value={config}>
             <CalendarSeriesContext.Provider value={series}>
               <CalendarEventActionsContext.Provider value={eventActions}>
-                <CalendarNoticeContext.Provider value={noticeValue}>
-                  <EventTitleFocusProvider
-                    pendingEventId={pendingTitleFocusId}
-                    clearPending={clearTitleFocus}
-                  >
-                    {children}
-                    {/* Announces changes, the event actions, undo and redo to screen readers */}
-                    <div role="status" aria-live="polite" className="sr-only">
-                      {announcement && (
-                        <span key={announcement.id}>{announcement.text}</span>
-                      )}
-                    </div>
-                  </EventTitleFocusProvider>
-                </CalendarNoticeContext.Provider>
+                <CalendarEventDraftContext.Provider value={eventDraftValue}>
+                  <CalendarNoticeContext.Provider value={noticeValue}>
+                    <EventTitleFocusProvider
+                      pendingEventId={pendingTitleFocusId}
+                      clearPending={clearTitleFocus}
+                    >
+                      {children}
+                      {/* Announces changes, the event actions, undo and redo to screen readers */}
+                      <div role="status" aria-live="polite" className="sr-only">
+                        {announcement && (
+                          <span key={announcement.id}>{announcement.text}</span>
+                        )}
+                      </div>
+                    </EventTitleFocusProvider>
+                  </CalendarNoticeContext.Provider>
+                </CalendarEventDraftContext.Provider>
               </CalendarEventActionsContext.Provider>
             </CalendarSeriesContext.Provider>
           </CalendarConfigContext.Provider>
@@ -1555,6 +1906,15 @@ export function useCalendarSeries(): CalendarSeriesValue {
  */
 export function useCalendarEventActions(): CalendarEventActionsValue | null {
   return React.useContext(CalendarEventActionsContext);
+}
+
+/**
+ * The event being created, for the views' draft layers (`event-draft.tsx`):
+ * the draft, or the event it was saved as while it stays selected. Outside
+ * a provider nothing is being created.
+ */
+export function useCalendarEventDraft(): CalendarEventDraftValue {
+  return React.useContext(CalendarEventDraftContext);
 }
 
 /**

@@ -29,8 +29,10 @@ import { expandRecurringEvents } from "@/lib/recurrence";
 import { useHorizontalScroll } from "@/hooks/use-horizontal-scroll";
 import { useEventKeyboard } from "@/hooks/use-event-keyboard";
 import { useEventDrag } from "@/hooks/use-event-drag";
+import { useEventDraw } from "@/hooks/use-event-draw";
 import { useEventResize } from "@/hooks/use-event-resize";
 import { useAllDayResize } from "@/hooks/use-all-day-resize";
+import { useDayRangeDraw } from "@/hooks/use-day-range-draw";
 import { useToday } from "@/hooks/use-now";
 import { useTimeZoneLabel } from "@/hooks/use-timezone-label";
 import type {
@@ -57,6 +59,7 @@ import {
   isEventInsideCalendarPopover,
 } from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
+import { EventDraftPopover } from "./event-draft";
 
 /** Minimum height of each hour row in pixels */
 const MIN_HOUR_HEIGHT = 48;
@@ -183,12 +186,10 @@ export function TimeGrid({
   const {
     view: providerView,
     currentDate,
-    events,
     selectedEvent,
     highlightedDate,
     selectEvent,
     clearSelection,
-    addEventFromRange,
     updateEvent,
     goToDate,
     numberOfDays: providerNumberOfDays,
@@ -197,6 +198,7 @@ export function TimeGrid({
   } = useCalendar();
   const {
     snapMinutes,
+    defaultEventDuration,
     dayStartHour,
     dayEndHour,
     hourCycle,
@@ -208,6 +210,8 @@ export function TimeGrid({
     reportVisibleDays,
     closeEventPopover,
     reportPasteTarget,
+    drawEventDraft,
+    drawnEvents,
   } = useCalendarViewSync();
   const numberOfDays = numberOfDaysProp ?? providerNumberOfDays;
   /** Day columns this grid pins the provider to (none in day view) */
@@ -279,15 +283,16 @@ export function TimeGrid({
     };
   }, [secondaryTimeZone, today, baseDays, hours, hourCycle, locale]);
 
-  // The stored events, for the drag and resize hooks to commit from
+  // The stored events, for the drag and resize hooks to commit from, and
+  // the draft once it is drawn as an event: moving or resizing it saves it
   const allDayEvents = React.useMemo(
-    () => events.filter((e) => e.isAllDay || isMultiDayEvent(e)),
-    [events],
+    () => drawnEvents.filter((e) => e.isAllDay || isMultiDayEvent(e)),
+    [drawnEvents],
   );
 
   const timedEvents = React.useMemo(
-    () => events.filter((e) => !e.isAllDay && !isMultiDayEvent(e)),
-    [events],
+    () => drawnEvents.filter((e) => !e.isAllDay && !isMultiDayEvent(e)),
+    [drawnEvents],
   );
 
   // Compute day column width and dynamic hour height from container
@@ -414,6 +419,57 @@ export function TimeGrid({
     onDragNavigate: handleDragNavigate,
   });
 
+  // A press on empty grid space that drags draws a new event, as in Notion
+  // Calendar. Escape mid-drag drops it.
+  const { isDrawing, handleDrawPointerDown } = useEventDraw({
+    hourHeight,
+    scrollContainerRef,
+    days: visibleDayDates,
+    dayColumnWidth,
+    timeAxisWidth,
+    snapMinutes,
+    defaultEventDuration,
+    dayStartHour,
+    dayEndHour,
+    onDraw: drawEventDraft,
+    onCancel: clearSelection,
+  });
+
+  /** The on-screen day of the all-day row under a viewport X position */
+  const getAllDayAtPoint = React.useCallback(
+    (clientX: number) => {
+      const container = allDayScrollRef.current;
+      if (!container || dayColumnWidth <= 0) return null;
+      const index = Math.floor(
+        (clientX - container.getBoundingClientRect().left - timeAxisWidth) /
+          dayColumnWidth,
+      );
+      const clamped = Math.min(Math.max(index, 0), visibleDayDates.length - 1);
+      return visibleDayDates[clamped] ?? null;
+    },
+    [dayColumnWidth, timeAxisWidth, visibleDayDates],
+  );
+
+  // The same in the all-day row, over whole days
+  const {
+    isDrawing: isDrawingAllDay,
+    handleDrawPointerDown: handleAllDayDrawPointerDown,
+  } = useDayRangeDraw({
+    containerRef: allDayScrollRef,
+    getDayAtPoint: getAllDayAtPoint,
+    onDraw: drawEventDraft,
+    onCancel: clearSelection,
+  });
+
+  /** A double-click on empty space: a draft for that slot or day, its title focused */
+  const handleEventCreate = React.useCallback(
+    (range: NewEventRange) => {
+      drawEventDraft(range, "start");
+      drawEventDraft(range, "end");
+    },
+    [drawEventDraft],
+  );
+
   const { scrollOffset, slideOffset, isAnimating, triggerSlideAnimation } =
     useHorizontalScroll({
       containerRef: scrollContainerRef,
@@ -423,6 +479,8 @@ export function TimeGrid({
         dragState?.isDragging ||
         resizeState?.isResizing ||
         isAllDayResizing ||
+        isDrawing ||
+        isDrawingAllDay ||
         contextMenuOpen,
     });
 
@@ -478,11 +536,11 @@ export function TimeGrid({
   ).getTime();
   const displayedEvents = React.useMemo(
     () =>
-      expandRecurringEvents(events, {
+      expandRecurringEvents(drawnEvents, {
         start: new Date(bufferStartTime),
         end: new Date(bufferEndTime),
       }),
-    [events, bufferStartTime, bufferEndTime],
+    [drawnEvents, bufferStartTime, bufferEndTime],
   );
   const displayedAllDayEvents = React.useMemo(
     () => displayedEvents.filter((e) => e.isAllDay || isMultiDayEvent(e)),
@@ -625,6 +683,8 @@ export function TimeGrid({
               allDayEvents={displayedAllDayEvents}
               onEventClick={handleEventClick}
               selectedEventId={selectedEventId}
+              onEventCreate={handleEventCreate}
+              onEventDrawPointerDown={handleAllDayDrawPointerDown}
               scrollStyle={scrollStyle}
               allDayResizeState={allDayResizeState ?? undefined}
               onAllDayResizePointerDown={handleAllDayResizePointerDown}
@@ -679,7 +739,8 @@ export function TimeGrid({
                   events={displayedTimedEvents}
                   onEventClick={handleEventClick}
                   selectedEventId={selectedEventId}
-                  onEventCreate={addEventFromRange}
+                  onEventCreate={handleEventCreate}
+                  onEventDrawPointerDown={handleDrawPointerDown}
                   onSlotHover={handleSlotHover}
                   dragState={dragState ?? undefined}
                   onEventDragPointerDown={handleEventPointerDown}
@@ -706,6 +767,10 @@ export function TimeGrid({
             />
           </div>
         </div>
+        {/* The details of the event being created, when they open in a popover */}
+        {showEventPopover && (
+          <EventDraftPopover onExpand={onEventPopoverExpand} />
+        )}
       </div>
     </CalendarPopoverBoundaryProvider>
   );

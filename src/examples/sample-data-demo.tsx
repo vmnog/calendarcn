@@ -17,14 +17,13 @@ import {
   generateMockEvents,
 } from "@/lib/mock-events";
 
-/** New events go on the primary calendar, in its color */
+/** New events go on the primary calendar, in its color, untitled until they are named */
 function createEvent(range: NewEventRange): DetailedCalendarEvent {
   return {
     id: crypto.randomUUID(),
-    title: "New event",
+    title: "",
     start: range.start,
     end: range.end,
-    color: "red",
     calendarId: DEMO_PRIMARY_CALENDAR_ID,
     calendarEmail: DEMO_PRIMARY_CALENDAR_ID,
   };

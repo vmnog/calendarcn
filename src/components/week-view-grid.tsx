@@ -4,15 +4,17 @@ import React from "react";
 import { createPortal } from "react-dom";
 import { isSameDay, startOfDay, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import { isPrimaryPress, usePointerGesture } from "@/hooks/use-pointer-gesture";
+import { useDoubleClick } from "@/hooks/use-double-click";
 import {
   calculatePositionedEvents,
   formatFullDate,
+  getClickedEventRange,
   getNewEventRange,
 } from "@/lib/event-utils";
 import { CalendarEventItem } from "./calendar-event-item";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
 import { useCalendarConfig } from "./calendar-provider";
+import { TimeGridEventDraft } from "./event-draft";
 import type {
   CalendarEvent,
   EventDragState,
@@ -23,22 +25,11 @@ import type {
 } from "./week-view-types";
 
 /**
- * Max pointer travel (px) between pointerdown and click for a click on an
- * empty slot to create an event. Matches the drag threshold in
- * use-event-drag so a press that moves far enough to count as a drag never
- * also creates an event.
- */
-const CREATE_CLICK_TOLERANCE_PX = 4;
-
-/** Pointer position recorded when a mouse or pen press lands on an empty day column */
-interface PendingCreateClick {
-  clientX: number;
-  clientY: number;
-}
-
-/**
  * Main grid displaying hour/day intersection cells with events
- * Each cell represents one hour in one day
+ * Each cell represents one hour in one day. Empty space creates events the
+ * way Notion Calendar does: a double-click starts one at that slot
+ * (`onEventCreate`), a press that drags draws one (`onEventDrawPointerDown`),
+ * and a single click is left to the view, which clears the selection.
  */
 export function WeekViewGrid({
   days,
@@ -48,6 +39,7 @@ export function WeekViewGrid({
   onEventClick,
   selectedEventId,
   onEventCreate,
+  onEventDrawPointerDown,
   onSlotHover,
   dragState,
   onEventDragPointerDown,
@@ -67,10 +59,8 @@ export function WeekViewGrid({
   const config = useCalendarConfig();
   const isDayView = view === "day";
   const gridRef = React.useRef<HTMLDivElement>(null);
-  /** Set only by a mouse or pen press directly on empty column space */
-  const pendingCreateRef = React.useRef<PendingCreateClick | null>(null);
   const [gridWidth, setGridWidth] = React.useState(0);
-  const { startGesture } = usePointerGesture({ containerRef: gridRef });
+  const isDoubleClick = useDoubleClick();
 
   React.useEffect(() => {
     const el = gridRef.current;
@@ -85,25 +75,23 @@ export function WeekViewGrid({
     return () => observer.disconnect();
   }, []);
 
-  /** The new-event range of the slot at a viewport Y position in a column */
-  const getSlotRange = React.useCallback(
-    (column: HTMLElement, columnDate: Date, clientY: number) => {
+  /** Minutes since midnight, by the clock, at a viewport Y position in a column */
+  const getMinutesAt = React.useCallback(
+    (column: HTMLElement, clientY: number) => {
       // The column's top edge is `dayStartHour`, not midnight
       const columnTop = column.getBoundingClientRect().top;
-      const minutesFromMidnight =
-        config.dayStartHour * 60 + ((clientY - columnTop) / hourHeight) * 60;
-      return getNewEventRange(columnDate, minutesFromMidnight, config);
+      return (
+        config.dayStartHour * 60 + ((clientY - columnTop) / hourHeight) * 60
+      );
     },
-    [hourHeight, config],
+    [hourHeight, config.dayStartHour],
   );
 
-  /** Creates an event in a column at a viewport Y position */
-  const createEventAt = React.useCallback(
-    (column: HTMLElement, columnDate: Date, clientY: number) => {
-      if (!onEventCreate) return;
-      onEventCreate(getSlotRange(column, columnDate, clientY));
-    },
-    [onEventCreate, getSlotRange],
+  /** The slot at a viewport Y position in a column: where a paste lands */
+  const getSlotRange = React.useCallback(
+    (column: HTMLElement, columnDate: Date, clientY: number) =>
+      getNewEventRange(columnDate, getMinutesAt(column, clientY), config),
+    [getMinutesAt, config],
   );
 
   /**
@@ -122,62 +110,43 @@ export function WeekViewGrid({
   );
 
   /**
-   * Capture phase runs before event items stop pointerdown propagation, so
-   * a press that starts on an event (drag, resize, select) always clears any
-   * pending create left over from an earlier press.
+   * A press on empty column space may become a drag that draws an event.
+   * Mouse and pen draw once the pointer moves; touch draws after a long
+   * press, so a swipe over empty space still scrolls.
    */
-  const handleColumnPointerDownCapture = React.useCallback(() => {
-    pendingCreateRef.current = null;
-  }, []);
-
   const handleColumnPointerDown = React.useCallback(
     (e: React.PointerEvent<HTMLDivElement>, columnDate: Date) => {
       if (e.target !== e.currentTarget) return;
-      // Touch creates with a long press, so a swipe over empty space still
-      // scrolls and a tap only clears the selection
-      if (e.pointerType === "touch") {
-        startGesture(e, ({ clientY, element }) =>
-          createEventAt(element, columnDate, clientY),
-        );
-        return;
-      }
-      if (!isPrimaryPress(e)) return;
-      pendingCreateRef.current = { clientX: e.clientX, clientY: e.clientY };
+      onEventDrawPointerDown?.(e, columnDate);
     },
-    [startGesture, createEventAt],
+    [onEventDrawPointerDown],
   );
 
   /**
-   * Creates an event when a press started and ended on empty space in the
-   * same column without moving. With an event selected the click is left to
-   * bubble so WeekView's background click deselects instead.
+   * A double-click on empty column space creates an event at that slot. A
+   * single click is left to bubble, so the view's background click clears
+   * the selection; the double-click's second click stops there instead,
+   * since it has just selected the new event.
    */
   const handleColumnClick = React.useCallback(
     (e: React.MouseEvent<HTMLDivElement>, columnDate: Date) => {
-      const pending = pendingCreateRef.current;
-      pendingCreateRef.current = null;
-
-      if (!pending || !onEventCreate) return;
       if (e.target !== e.currentTarget) return;
-      if (selectedEventId) return;
-
-      const movedX = Math.abs(e.clientX - pending.clientX);
-      const movedY = Math.abs(e.clientY - pending.clientY);
-      if (
-        movedX > CREATE_CLICK_TOLERANCE_PX ||
-        movedY > CREATE_CLICK_TOLERANCE_PX
-      ) {
-        return;
-      }
+      if (!isDoubleClick(e) || !onEventCreate) return;
 
       e.stopPropagation();
-      createEventAt(e.currentTarget, columnDate, e.clientY);
+      onEventCreate(
+        getClickedEventRange(
+          columnDate,
+          getMinutesAt(e.currentTarget, e.clientY),
+          config,
+        ),
+      );
     },
-    [onEventCreate, selectedEventId, createEventAt],
+    [isDoubleClick, onEventCreate, getMinutesAt, config],
   );
 
   return (
-    <div ref={gridRef} className={cn("relative", className)}>
+    <div ref={gridRef} className={cn("relative select-none", className)}>
       {/* Background grid */}
       <div
         aria-hidden
@@ -222,6 +191,13 @@ export function WeekViewGrid({
         </div>
       )}
 
+      {/* The event being created, under the events: its range, tinted */}
+      <TimeGridEventDraft
+        days={days}
+        visibleStartIndex={visibleStartIndex}
+        visibleCount={visibleCount}
+      />
+
       {/* Events layer */}
       <div
         className="absolute inset-0 grid pointer-events-none"
@@ -263,7 +239,6 @@ export function WeekViewGrid({
               showEventPopover={showEventPopover}
               onEventPopoverExpand={onEventPopoverExpand}
               onEventPopoverClose={onEventPopoverClose}
-              onColumnPointerDownCapture={handleColumnPointerDownCapture}
               onColumnPointerDown={handleColumnPointerDown}
               onColumnPointerMove={handleColumnPointerMove}
               onColumnClick={handleColumnClick}
@@ -604,7 +579,6 @@ interface DayEventsColumnProps extends EventItemPopoverProps {
   onEventResizePointerDown?: WeekViewGridProps["onEventResizePointerDown"];
   onEventChange?: (event: CalendarEvent) => void;
   onContextMenuOpenChange?: (open: boolean) => void;
-  onColumnPointerDownCapture?: () => void;
   onColumnPointerDown?: (
     e: React.PointerEvent<HTMLDivElement>,
     columnDate: Date,
@@ -650,7 +624,6 @@ function DayEventsColumn({
   showEventPopover,
   onEventPopoverExpand,
   onEventPopoverClose,
-  onColumnPointerDownCapture,
   onColumnPointerDown,
   onColumnPointerMove,
   onColumnClick,
@@ -661,7 +634,6 @@ function DayEventsColumn({
       aria-label={label}
       inert={!isOnScreen}
       className="relative h-full pointer-events-auto"
-      onPointerDownCapture={onColumnPointerDownCapture}
       onPointerDown={(e) => onColumnPointerDown?.(e, columnDate)}
       onPointerMove={(e) => onColumnPointerMove?.(e, columnDate)}
       onClick={(e) => onColumnClick?.(e, columnDate)}

@@ -11,6 +11,7 @@ All React components for CalendarCN. Split into:
 - `month-view*.tsx` — `MonthView` and its parts
 - `agenda-view.tsx` — `AgendaView`, a list of the next `AGENDA_DAYS` days' events grouped by day
 - `calendar-event-*` / `event-*` — event interactions
+- `event-draft.tsx` — the event being created (the provider's `eventDraft`): `TimeGridEventDraft` and `AllDayEventDraft` tint its range, and `EventDraftPopover` hosts its details when they open in a popover
 - `calendar-app.tsx` — `CalendarApp`, the live demo as one block: both sidebars, header, views, command menu, theme, .ics import/export and shortcuts. `src/app/page.tsx` only passes it data
 - `calendar-toaster.tsx` — `CalendarToaster`, Notion Calendar's toasts after a delete, cut or copy, drawn from the provider's notice (`useCalendarNotice()`)
 - `calendar-sidebar.tsx` — the left sidebar (`CalendarSidebar`): `mini-calendar.tsx`, `calendar-list.tsx`, `theme-toggle.tsx`

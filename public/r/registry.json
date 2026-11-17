@@ -44,6 +44,14 @@
           "type": "registry:hook"
         },
         {
+          "path": "src/hooks/use-day-range-draw.ts",
+          "type": "registry:hook"
+        },
+        {
+          "path": "src/hooks/use-double-click.ts",
+          "type": "registry:hook"
+        },
+        {
           "path": "src/hooks/use-event-keyboard.ts",
           "type": "registry:hook"
         },
@@ -296,6 +304,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/event-draft.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/hooks/use-popover-dismiss.ts",
           "type": "registry:hook"
         },
@@ -361,6 +373,10 @@
           "type": "registry:hook"
         },
         {
+          "path": "src/hooks/use-event-draw.ts",
+          "type": "registry:hook"
+        },
+        {
           "path": "src/hooks/use-event-resize.ts",
           "type": "registry:hook"
         },
@@ -404,7 +420,7 @@
       "name": "month-view",
       "type": "registry:component",
       "title": "Month View",
-      "description": "The month grid, with drag and resize.",
+      "description": "The month grid, with drag, resize and create.",
       "dependencies": ["date-fns"],
       "registryDependencies": [
         "@calendarcn/calendar-core",

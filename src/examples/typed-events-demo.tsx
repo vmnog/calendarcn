@@ -41,14 +41,15 @@ function createSampleMeetings(): Meeting[] {
 }
 
 /**
- * Builds the meeting created by clicking an empty slot. Required here: the
- * calendar's default "New event" has no `room` or `attendees`, so
- * TypeScript asks for this factory as soon as `Meeting` adds required fields.
+ * Builds the meeting a double-click or a drag on empty space starts.
+ * Required here: the calendar's default untitled event has no `room` or
+ * `attendees`, so TypeScript asks for this factory as soon as `Meeting`
+ * adds required fields.
  */
 function createMeeting(range: NewEventRange): Meeting {
   return {
     id: crypto.randomUUID(),
-    title: "New meeting",
+    title: "",
     start: range.start,
     end: range.end,
     color: "blue",

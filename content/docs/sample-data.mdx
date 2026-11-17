@@ -83,16 +83,15 @@ They fill in the fields the [details panel](/docs/components/event-details) show
 | `you@work.example.com` (primary) | gray   | `you@work.example.com` |
 | Work                             | blue   | `you@work.example.com` |
 
-The two primary calendars give new events default reminders: 10 minutes before on the personal one, 30 minutes on the work one. `DEMO_PRIMARY_CALENDAR_ID` is the personal primary calendar's id. The demo puts events created by clicking an empty slot there:
+The two primary calendars give new events default reminders: 10 minutes before on the personal one, 30 minutes on the work one. `DEMO_PRIMARY_CALENDAR_ID` is the personal primary calendar's id. The demo puts new events there, untitled and in the calendar's color, as Notion Calendar does:
 
 ```tsx
 <Calendar
   createEvent={(range) => ({
     id: crypto.randomUUID(),
-    title: "New event",
+    title: "",
     start: range.start,
     end: range.end,
-    color: "red",
     calendarId: DEMO_PRIMARY_CALENDAR_ID,
     calendarEmail: DEMO_PRIMARY_CALENDAR_ID,
   })}

@@ -76,6 +76,42 @@ After a delete, a cut or a copy, the provider keeps a notice worded like Notion 
 
 Without `date` or `defaultDate`, the calendar starts on today's period. The server doesn't know the viewer's today or time zone, so in that case the provider renders nothing until hydration finishes, and server and client markup always match. Pass `defaultDate` to render on the server.
 
+## Creating events
+
+New events start the way they do in Notion Calendar, as a draft:
+
+- **Double-click** an empty slot in the day or week view for a 30-minute draft there, or **press and drag** to draw one of any length: down, up, or across day columns. Both ends snap to `snapMinutes`.
+- Do the same in the all-day row or in the month view for an all-day draft over one day or several.
+- On touch, a long press starts the draft, and dragging on draws it.
+- A single click on empty space creates nothing. It clears the selection.
+
+A draft is drawn and selected, with its title focused in the details, but it isn't in `events` yet. It is saved by its first edit: a title (on <Kbd>Enter</Kbd>, or when focus leaves the title) or a change to any other field. Saving adds it to `events`, calls `onEventCreate` once and is one step for [undo](#undo-and-redo). A draft that nothing was typed into is thrown away when the selection moves on: <Kbd>Esc</Kbd> (once to leave the title, once more for the draft), a click elsewhere, or another event. <Kbd>Esc</Kbd> in the middle of a drag drops it too.
+
+While nothing is typed into it, a draft is a tinted range in its calendar's color. Its first title keystroke turns it into an event block that shows the title as you type.
+
+- `createEvent` builds the draft from its range. Return an untitled event, as the default does, for Notion Calendar's flow, or `null` to create nothing there. The range's `isAllDay` is set for whole days.
+- `defaultEventDuration` sets the length of a double-clicked event, in minutes.
+- `useCalendar()` returns the draft as `eventDraft` and starts one from your own button or command with `startEventDraft(range)`, drawn as an event block from the start, as Notion Calendar's <Kbd>C</Kbd> key does. `updateEvent(draft)` saves it, `updateEventDraft(draft)` changes it without saving, and `clearSelection()` throws it away.
+- `addEventFromRange(range)` still adds an event at once, with no draft.
+
+```tsx
+function NewEventButton() {
+  const { startEventDraft } = useCalendar();
+  const start = new Date();
+  start.setMinutes(Math.ceil(start.getMinutes() / 30) * 30, 0, 0);
+
+  return (
+    <Button
+      onClick={() =>
+        startEventDraft({ start, end: new Date(start.getTime() + 30 * 60_000) })
+      }
+    >
+      New event
+    </Button>
+  );
+}
+```
+
 ## Repeating events
 
 An event with a `recurrenceRule` (or an RRULE in `recurrence`) is one event in `events`, and every view draws it on each date its rule gives, as does the details sidebar's search. The views generate those occurrences for the dates on screen with `expandRecurringEvents()`; they are never added to `events`, so `useCalendar().events`, `onEventsChange` and the .ics export hold each series once.
@@ -95,7 +131,7 @@ When you load events by range ([Loading Events](/docs/loading-events)), include 
 
 <ComponentPreview name="config-demo" />
 
-Display and interaction settings are plain props: a 24-hour clock, a [date-fns locale](https://date-fns.org/docs/I18n) for day and month names, the first day of the week, the visible hours of the time grid, and the minute step that drag, resize and click-to-create snap to. Events outside the visible hours are clipped at the edge, and hidden when they lie fully outside. Read the resolved settings anywhere with `useCalendarConfig()`, for example to format times in a custom renderer the way the calendar does.
+Display and interaction settings are plain props: a 24-hour clock, a [date-fns locale](https://date-fns.org/docs/I18n) for day and month names, the first day of the week, the visible hours of the time grid, the minute step that drag, resize and new events snap to, and the length of a double-clicked event. Events outside the visible hours are clipped at the edge, and hidden when they lie fully outside. Read the resolved settings anywhere with `useCalendarConfig()`, for example to format times in a custom renderer the way the calendar does.
 
 ### Second time zone
 
@@ -129,7 +165,7 @@ To replace the details popover instead, see [Event Details](/docs/components/eve
 
 Extend `CalendarEvent` with your own fields and pass your events in. The provider infers your type, and every callback and renderer gets it back. Read it in your own components with `useCalendar<Meeting>()`.
 
-Once your type has required fields, `createEvent` becomes required: the calendar can't fill `room` or `attendees` for an event created by clicking an empty slot, so TypeScript asks you to.
+Once your type has required fields, `createEvent` becomes required: the calendar can't fill `room` or `attendees` for a [new event](#creating-events), so TypeScript asks you to.
 
 ```tsx
 interface Meeting extends CalendarEvent {
@@ -141,7 +177,7 @@ interface Meeting extends CalendarEvent {
   defaultEvents={meetings}
   createEvent={(range) => ({
     id: crypto.randomUUID(),
-    title: "New meeting",
+    title: "",
     ...range,
     room: "Atlas",
     attendees: [],
@@ -247,7 +283,14 @@ interface Meeting extends CalendarEvent {
       type: "number",
       default: "15",
       description:
-        "Minute step that timed-event drag, resize and click-to-create snap to. Also the shortest length a resize allows.",
+        "Minute step that timed-event drag, resize and new events snap to. Also the shortest length a resize or a drawn event allows.",
+    },
+    {
+      name: "defaultEventDuration",
+      type: "number",
+      default: "30",
+      description:
+        "Length in minutes of an event created by double-clicking an empty time slot, as in Notion Calendar.",
     },
     {
       name: "dayStartHour",
@@ -321,13 +364,13 @@ interface Meeting extends CalendarEvent {
       name: "createEvent",
       type: "(range: NewEventRange) => TEvent | null",
       description:
-        'Builds the event created by clicking an empty slot. Return `null` to create nothing. Defaults to an event titled "New event" with a random UUID. Required when `TEvent` has required fields of its own.',
+        "Builds a new event for a range: the draft drawn on the calendar, or the event `addEventFromRange` adds. Return `null` to create nothing. Defaults to an untitled event with a random UUID. Required when `TEvent` has required fields of its own.",
     },
     {
       name: "onEventCreate",
       type: "(event: TEvent) => void",
       description:
-        "Called after an event is added: one created by clicking an empty slot, a duplicate or a paste, an occurrence of a repeating event stored on its first edit (with `seriesId` and `originalStart`), or one `undo` or `redo` brings back.",
+        "Called after an event is added: a draft saved by its first edit, one `addEventFromRange` adds, a duplicate or a paste, an occurrence of a repeating event stored on its first edit (with `seriesId` and `originalStart`), or one `undo` or `redo` brings back. A draft that is thrown away is never reported.",
     },
     {
       name: "onEventUpdate",
@@ -345,7 +388,7 @@ interface Meeting extends CalendarEvent {
       name: "onEventSelect",
       type: "(eventId: string) => void",
       description:
-        "Called whenever an event is selected, clicked or just created.",
+        "Called whenever an event is selected: clicked, just added, or a draft that was just drawn (with the id it keeps once it is saved).",
     },
     {
       name: "onVisibleRangeChange",
@@ -534,19 +577,38 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     {
       name: "clearSelection",
       type: "() => void",
-      description: "Clears the selection and closes the popover.",
+      description:
+        "Clears the selection and closes the popover. Throws an unsaved `eventDraft` away, or saves it when a title was typed into it.",
+    },
+    {
+      name: "eventDraft",
+      type: "TEvent | null",
+      description:
+        "The event being created: drawn and selected, but not in `events` yet. See [Creating events](#creating-events).",
+    },
+    {
+      name: "startEventDraft",
+      type: "(range: NewEventRange) => void",
+      description:
+        "Starts a draft for a range through `createEvent`, selects it and focuses its title. Nothing is stored, and `onEventCreate` isn't called, until its first edit saves it.",
+    },
+    {
+      name: "updateEventDraft",
+      type: "(event: TEvent) => void",
+      description:
+        "Changes the draft without saving it, to preview what is being typed. Ignored unless the event has the draft's id.",
     },
     {
       name: "addEventFromRange",
       type: "(range: NewEventRange) => void",
       description:
-        "Creates an event for a time range through `createEvent`, selects it and focuses its title.",
+        "Adds an event for a range through `createEvent` at once, selects it and focuses its title. `startEventDraft` waits for a first edit instead.",
     },
     {
       name: "updateEvent",
       type: "(event: TEvent) => void",
       description:
-        "Replaces the event with the same id. A generated occurrence of a repeating event is added instead, through `onEventCreate`: see [Repeating events](#repeating-events).",
+        "Replaces the event with the same id. A generated occurrence of a repeating event is added instead, through `onEventCreate`: see [Repeating events](#repeating-events). The `eventDraft` is saved the same way.",
     },
     {
       name: "deleteEvent",
@@ -637,6 +699,11 @@ Returns the resolved settings of the nearest provider. Outside a provider it ret
       name: "snapMinutes",
       type: "number",
       description: "Snap step in minutes.",
+    },
+    {
+      name: "defaultEventDuration",
+      type: "number",
+      description: "Length in minutes of a double-clicked event.",
     },
     {
       name: "dayStartHour",
@@ -860,7 +927,7 @@ Passed to `renderEventContent`.
 
 ### NewEventRange
 
-Passed to `createEvent` and `addEventFromRange`.
+Passed to `createEvent`, `startEventDraft` and `addEventFromRange`: the slot that was double-clicked, the range that was dragged over, or the days picked in the all-day row or the month view.
 
 <PropsTable
   nameHeader="Field"
@@ -868,13 +935,20 @@ Passed to `createEvent` and `addEventFromRange`.
     {
       name: "start",
       type: "Date",
-      description: "Start of the clicked `snapMinutes` slot.",
+      description:
+        "Start, snapped to `snapMinutes`. For whole days, midnight that starts the first day.",
     },
     {
       name: "end",
       type: "Date",
       description:
-        "An hour after start, kept inside the visible hours and the clicked day.",
+        "End: `defaultEventDuration` after the start for a double-clicked slot (kept inside the visible hours and that day), the other end of a dragged range, or, for whole days, midnight that starts the last day.",
+    },
+    {
+      name: "isAllDay",
+      type: "boolean",
+      description:
+        "Set when the range covers whole days: it comes from the all-day row or the month view, and the new event is all-day.",
     },
   ]}
 />

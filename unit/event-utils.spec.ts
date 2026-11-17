@@ -17,6 +17,10 @@ import {
   describeEventTime,
   filterShownEvents,
   generateWeekRow,
+  getAllDayEventRange,
+  getClickedEventRange,
+  getDaySegmentPosition,
+  getDrawnEventRange,
   getEventsForDay,
   getKeyboardEventChange,
   getNewEventRange,
@@ -534,5 +538,168 @@ test.describe("countEventsByDay", () => {
 
   test("no events counts nothing", () => {
     expect(countEventsByDay([], range).size).toBe(0);
+  });
+});
+
+/**
+ * The ranges new events get, as Notion Calendar draws them: a double-clicked
+ * slot, a drag over the time grid, and whole days from the all-day row or
+ * the month view
+ */
+test.describe("new event ranges", () => {
+  const monday = new Date(2026, 5, 1);
+  const wednesday = new Date(2026, 5, 3);
+  /** Notion Calendar's defaults: quarter-hour steps, half-hour events */
+  const NOTION = { ...FULL_DAY, defaultEventDuration: 30 };
+  const stamp = (date: Date) => format(date, "yyyy-MM-dd HH:mm");
+
+  test("a double-click snaps to the nearest step and lasts the default length", () => {
+    // 9:07 is nearer 9:00, 9:08 nearer 9:15
+    const early = getClickedEventRange(monday, 9 * 60 + 7, NOTION);
+    expect(stamp(early.start)).toBe("2026-06-01 09:00");
+    expect(stamp(early.end)).toBe("2026-06-01 09:30");
+
+    const late = getClickedEventRange(monday, 9 * 60 + 8, NOTION);
+    expect(stamp(late.start)).toBe("2026-06-01 09:15");
+    expect(stamp(late.end)).toBe("2026-06-01 09:45");
+    expect(late.isAllDay).toBeUndefined();
+  });
+
+  test("a double-click follows defaultEventDuration", () => {
+    const hour = getClickedEventRange(monday, 9 * 60, {
+      ...FULL_DAY,
+      defaultEventDuration: 60,
+    });
+    expect(stamp(hour.end)).toBe("2026-06-01 10:00");
+  });
+
+  test("a double-click near the end of the visible hours still fits", () => {
+    const lastSlot = getClickedEventRange(monday, 23 * 60 + 55, NOTION);
+    expect(stamp(lastSlot.start)).toBe("2026-06-01 23:30");
+    expect(stamp(lastSlot.end)).toBe("2026-06-02 00:00");
+
+    const workDay = { ...WORK_DAY, defaultEventDuration: 30 };
+    const evening = getClickedEventRange(monday, 17 * 60 + 50, workDay);
+    expect(stamp(evening.start)).toBe("2026-06-01 17:30");
+    expect(stamp(evening.end)).toBe("2026-06-01 18:00");
+    const morning = getClickedEventRange(monday, 7 * 60, workDay);
+    expect(stamp(morning.start)).toBe("2026-06-01 08:00");
+  });
+
+  test("a double-click in the hour the clocks skip still has its length", () => {
+    const { start, end } = getClickedEventRange(SPRING_FORWARD, 2 * 60, NOTION);
+    expect(differenceInMinutes(end, start)).toBe(30);
+  });
+
+  test("dragging down runs from the pressed time to the pointer", () => {
+    const { start, end } = getDrawnEventRange(
+      { day: monday, minutes: 13 * 60 + 2 },
+      { day: monday, minutes: 14 * 60 + 40 },
+      FULL_DAY,
+    );
+    expect(stamp(start)).toBe("2026-06-01 13:00");
+    expect(stamp(end)).toBe("2026-06-01 14:45");
+  });
+
+  test("dragging up keeps the pressed time as the end", () => {
+    const { start, end } = getDrawnEventRange(
+      { day: monday, minutes: 14 * 60 + 30 },
+      { day: monday, minutes: 13 * 60 + 10 },
+      FULL_DAY,
+    );
+    expect(stamp(start)).toBe("2026-06-01 13:15");
+    expect(stamp(end)).toBe("2026-06-01 14:30");
+  });
+
+  test("a short drag keeps one step, on the side the pointer is on", () => {
+    const down = getDrawnEventRange(
+      { day: monday, minutes: 13 * 60 },
+      { day: monday, minutes: 13 * 60 + 5 },
+      FULL_DAY,
+    );
+    expect(stamp(down.start)).toBe("2026-06-01 13:00");
+    expect(stamp(down.end)).toBe("2026-06-01 13:15");
+
+    const up = getDrawnEventRange(
+      { day: monday, minutes: 13 * 60 },
+      { day: monday, minutes: 13 * 60 - 5 },
+      FULL_DAY,
+    );
+    expect(stamp(up.start)).toBe("2026-06-01 12:45");
+    expect(stamp(up.end)).toBe("2026-06-01 13:00");
+  });
+
+  test("dragging to the bottom of the day ends at the next midnight", () => {
+    const { start, end } = getDrawnEventRange(
+      { day: monday, minutes: 22 * 60 + 30 },
+      { day: monday, minutes: 24 * 60 + 40 },
+      FULL_DAY,
+    );
+    expect(stamp(start)).toBe("2026-06-01 22:30");
+    expect(stamp(end)).toBe("2026-06-02 00:00");
+  });
+
+  test("a drag stays inside the visible hours", () => {
+    const { start, end } = getDrawnEventRange(
+      { day: monday, minutes: 17 * 60 + 58 },
+      { day: monday, minutes: 19 * 60 },
+      WORK_DAY,
+    );
+    expect(stamp(start)).toBe("2026-06-01 17:45");
+    expect(stamp(end)).toBe("2026-06-01 18:00");
+  });
+
+  test("dragging onto a later day spans the days between", () => {
+    const { start, end } = getDrawnEventRange(
+      { day: monday, minutes: 9 * 60 },
+      { day: wednesday, minutes: 10 * 60 + 28 },
+      FULL_DAY,
+    );
+    expect(stamp(start)).toBe("2026-06-01 09:00");
+    expect(stamp(end)).toBe("2026-06-03 10:30");
+  });
+
+  test("dragging onto an earlier day starts there and ends at the pressed time", () => {
+    const { start, end } = getDrawnEventRange(
+      { day: wednesday, minutes: 9 * 60 },
+      { day: monday, minutes: 10 * 60 },
+      FULL_DAY,
+    );
+    expect(stamp(start)).toBe("2026-06-01 10:00");
+    expect(stamp(end)).toBe("2026-06-03 09:00");
+  });
+
+  test("whole days run from the first day to the last, either way round", () => {
+    const one = getAllDayEventRange(at(monday, 15));
+    expect(stamp(one.start)).toBe("2026-06-01 00:00");
+    expect(stamp(one.end)).toBe("2026-06-01 00:00");
+    expect(one.isAllDay).toBe(true);
+
+    const forwards = getAllDayEventRange(monday, wednesday);
+    const backwards = getAllDayEventRange(wednesday, monday);
+    expect(stamp(forwards.start)).toBe("2026-06-01 00:00");
+    expect(stamp(forwards.end)).toBe("2026-06-03 00:00");
+    expect(backwards).toEqual(forwards);
+  });
+
+  test("a range is placed in each day column it crosses", () => {
+    const range = { start: at(monday, 18), end: at(wednesday, 6) };
+    // Monday from 6 PM, all of Tuesday, Wednesday until 6 AM
+    expect(getDaySegmentPosition(range, monday, FULL_DAY)).toEqual({
+      top: 75,
+      height: 25,
+    });
+    expect(
+      getDaySegmentPosition(range, new Date(2026, 5, 2), FULL_DAY),
+    ).toEqual({ top: 0, height: 100 });
+    expect(getDaySegmentPosition(range, wednesday, FULL_DAY)).toEqual({
+      top: 0,
+      height: 25,
+    });
+    // Not on the days around it, nor in hours the grid doesn't show
+    expect(
+      getDaySegmentPosition(range, new Date(2026, 5, 4), FULL_DAY),
+    ).toBeNull();
+    expect(getDaySegmentPosition(range, wednesday, WORK_DAY)).toBeNull();
   });
 });

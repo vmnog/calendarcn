@@ -18,6 +18,7 @@ import {
 } from "date-fns";
 
 import { cn } from "@/lib/utils";
+import { useDayRangeDraw } from "@/hooks/use-day-range-draw";
 import { useMonthEventDrag } from "@/hooks/use-month-event-drag";
 import { useMonthEventResize } from "@/hooks/use-month-event-resize";
 import { useVerticalScroll } from "@/hooks/use-vertical-scroll";
@@ -26,6 +27,7 @@ import {
   MONTH_VIEW_ROWS,
   generateConsecutiveWeeks,
   generateWeekRow,
+  getAllDayEventRange,
   parseCellDate,
 } from "@/lib/event-utils";
 import { isMultiDayEvent } from "@/lib/event-utils";
@@ -39,6 +41,7 @@ import {
   isEventInsideCalendarPopover,
 } from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
+import { EventDraftPopover } from "./event-draft";
 import {
   useCalendar,
   useCalendarConfig,
@@ -57,9 +60,20 @@ interface ContextMenuState {
   event: CalendarEvent;
 }
 
+/** The day of the month cell under a viewport position, or `null` off the cells */
+function getCellDateAtPoint(clientX: number, clientY: number): Date | null {
+  const cell = document
+    .elementFromPoint(clientX, clientY)
+    ?.closest<HTMLElement>("[data-date]");
+  const value = cell?.dataset.date;
+  return value ? parseCellDate(value) : null;
+}
+
 /**
  * Month grid calendar. Date, events, selection and view settings come from
- * the surrounding CalendarProvider.
+ * the surrounding CalendarProvider. A day's empty space creates all-day
+ * events the way Notion Calendar does: a double-click starts one on that
+ * day, and a press that drags across days draws one over them.
  */
 export function MonthView({
   showEventPopover = true,
@@ -69,7 +83,6 @@ export function MonthView({
   const {
     view,
     currentDate,
-    events,
     viewSettings,
     weekStartsOn,
     selectedEvent,
@@ -86,6 +99,9 @@ export function MonthView({
     reportDisplayMonth,
     closeEventPopover,
     reportPasteTarget,
+    drawEventDraft,
+    // The stored events, and the draft once it is drawn as an event
+    drawnEvents: events,
   } = useCalendarViewSync();
   /**
    * Whether the provider navigates by month. False for the commit before it
@@ -169,6 +185,25 @@ export function MonthView({
     onEventChange: updateEvent,
   });
 
+  // A press on a day's empty space that drags draws an all-day event over
+  // the days it crosses. Escape mid-drag drops it.
+  const { isDrawing, handleDrawPointerDown } = useDayRangeDraw({
+    containerRef: gridRef,
+    getDayAtPoint: getCellDateAtPoint,
+    onDraw: drawEventDraft,
+    onCancel: clearSelection,
+  });
+
+  /** A double-click on a day's empty space: an all-day draft, its title focused */
+  const handleDayCreate = useCallback(
+    (date: Date) => {
+      const range = getAllDayEventRange(date);
+      drawEventDraft(range, "start");
+      drawEventDraft(range, "end");
+    },
+    [drawEventDraft],
+  );
+
   const isDragging = dragState?.isDragging ?? false;
   const dragEventId = isDragging ? dragState?.eventId : undefined;
   const isResizing = resizeState?.isResizing ?? false;
@@ -206,7 +241,7 @@ export function MonthView({
       containerRef: scrollContainerRef,
       rowHeight,
       onNavigate: handleScrollNavigate,
-      disabled: isDragging || isResizing,
+      disabled: isDragging || isResizing || isDrawing,
     });
 
   // Detect external currentDate changes (button/keyboard nav) and trigger slide animation
@@ -423,6 +458,8 @@ export function MonthView({
             onMoreClick={showDay}
             onDayNumberClick={showDay}
             onBackgroundClick={clearSelection}
+            onDayCreate={handleDayCreate}
+            onDayDrawPointerDown={handleDrawPointerDown}
             onDragPointerDown={handleDragPointerDown}
             onResizePointerDown={handleResizePointerDown}
             selectedEventId={selectedEventId}
@@ -440,6 +477,11 @@ export function MonthView({
             gridRef={gridRef}
           />
         </div>
+
+        {/* The details of the event being created, when they open in a popover */}
+        {showEventPopover && (
+          <EventDraftPopover onExpand={onEventPopoverExpand} />
+        )}
 
         {/* Context menu */}
         {contextMenu && (
