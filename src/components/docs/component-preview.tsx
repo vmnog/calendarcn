@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { HTMLAttributes, ReactNode } from "react";
 import Link from "next/link";
 import { CalendarDaysIcon } from "lucide-react";
@@ -9,12 +10,19 @@ import { cn } from "@/lib/utils";
 import { CODE_THEMES } from "@/components/docs/code-themes";
 import { DocsCodeBlock } from "@/components/docs/docs-code-block";
 import { PreviewTab } from "@/components/docs/preview-tab";
+import { EXAMPLE_ITEMS } from "@/components/docs/example-items";
 import {
   getExamplePath,
   isExampleName,
   readExampleSource,
   renderExample,
 } from "@/components/docs/examples";
+import {
+  buildExamplePrompt,
+  indexDocsPages,
+  readSkillRules,
+} from "@/components/docs/prompt";
+import { source as docsSource } from "@/lib/source";
 
 /**
  * Starting height of the preview frame, in px. Drag its corner to resize.
@@ -24,6 +32,35 @@ const DEFAULT_PREVIEW_HEIGHT = 640;
 
 /** Height of the code block's file name bar (Fumadocs `h-9.5`), in px. */
 const CODE_TITLE_BAR_HEIGHT = 38;
+
+/** The tabs of every example, in order. */
+const PREVIEW_TABS = ["Preview", "Code", "Prompt"];
+
+/** Title of the Prompt tab's block, where the Code tab shows the file's path. */
+const PROMPT_TITLE = "Prompt";
+
+/**
+ * Makes a code block read as prose: long lines wrap instead of scrolling
+ * sideways. Blank lines get a line's height here, because Fumadocs only sizes
+ * `.line:empty` and a plain-text line always holds an empty span.
+ */
+const WRAPPED_PRE_CLASS =
+  "w-full break-words whitespace-pre-wrap [&_.line]:min-h-[1lh]";
+
+/**
+ * Where the docs render each example and each item's install tabs, read from
+ * the pages' MDX once per render: a prompt links both pages.
+ */
+const getDocsPageIndex = cache(async () => {
+  const pages = await Promise.all(
+    docsSource.getPages().map(async (page) => ({
+      title: page.data.title,
+      url: page.url,
+      text: await page.data.getText("raw"),
+    })),
+  );
+  return indexDocsPages(pages);
+});
 
 interface ComponentPreviewProps {
   /** Example file in `src/examples/`, without `.tsx`, e.g. `week-view-demo`. */
@@ -39,10 +76,12 @@ interface ComponentPreviewProps {
 }
 
 /**
- * Preview / Code tabs for an example, in the style of ui.shadcn.com. The
- * Preview tab renders the example component itself (fully interactive);
+ * Preview / Code / Prompt tabs for an example, in the style of ui.shadcn.com.
+ * The Preview tab renders the example component itself (fully interactive);
  * the Code tab shows that component's file, read from disk at build time,
- * so the two can't drift apart.
+ * so the two can't drift apart. The Prompt tab holds a prompt to paste into a
+ * coding agent, built from that same file, `registry.json` and the skill in
+ * `skills/calendarcn/SKILL.md` (see `buildExamplePrompt()`).
  */
 export async function ComponentPreview({
   name,
@@ -63,6 +102,11 @@ export async function ComponentPreview({
             The <code>{name}</code> example lands with the component.
           </p>
         </Tab>
+        <Tab value="Prompt">
+          <p className="text-sm text-fd-muted-foreground">
+            The prompt for <code>{name}</code> lands with the component.
+          </p>
+        </Tab>
       </PreviewTabs>
     );
   }
@@ -75,7 +119,30 @@ export async function ComponentPreview({
   }
 
   const filePath = getExamplePath(name);
-  const source = await readExampleSource(name);
+  const item = EXAMPLE_ITEMS[name];
+  const [source, rules, pages] = await Promise.all([
+    readExampleSource(name),
+    readSkillRules(),
+    getDocsPageIndex(),
+  ]);
+
+  const page = pages.examplePages.get(name);
+  const installPage = pages.installPages.get(item);
+  // The prompt links both pages, so a missing one fails the build too
+  if (!page || !installPage) {
+    throw new Error(
+      `ComponentPreview: the "${name}" prompt needs a docs page with <ComponentPreview name="${name}" /> and one with <InstallTabs item="${item}" />.`,
+    );
+  }
+
+  const prompt = buildExamplePrompt({
+    item,
+    examplePath: filePath,
+    source,
+    rules,
+    page,
+    installPage,
+  });
 
   return (
     <PreviewTabs className={className}>
@@ -90,27 +157,68 @@ export async function ComponentPreview({
         </div>
       </PreviewTab>
       <Tab value="Code">
-        <ServerCodeBlock
+        <PanelCodeBlock
           lang="tsx"
           code={source}
-          themes={CODE_THEMES}
-          components={{
-            pre: (props: HTMLAttributes<HTMLPreElement>) => (
-              <DocsCodeBlock
-                {...props}
-                title={filePath}
-                // Same total height as the preview, so switching tabs doesn't jump
-                viewportProps={{
-                  style: { maxHeight: height - CODE_TITLE_BAR_HEIGHT },
-                }}
-              >
-                <Pre>{props.children}</Pre>
-              </DocsCodeBlock>
-            ),
-          }}
+          title={filePath}
+          height={height}
+        />
+      </Tab>
+      <Tab value="Prompt">
+        <PanelCodeBlock
+          lang="text"
+          code={prompt}
+          title={PROMPT_TITLE}
+          height={height}
+          wrap
         />
       </Tab>
     </PreviewTabs>
+  );
+}
+
+interface PanelCodeBlockProps {
+  /** Shiki language of the code, e.g. `tsx`, or `text` for none. */
+  lang: string;
+  code: string;
+  /** Shown in the bar above the code, beside the copy button. */
+  title: string;
+  /** The preview frame's height in px, which the block matches. */
+  height: number;
+  /** Wraps long lines instead of scrolling sideways, for prose. */
+  wrap?: boolean;
+}
+
+/** A tab's code block: a title bar with a copy button over the code. */
+function PanelCodeBlock({
+  lang,
+  code,
+  title,
+  height,
+  wrap = false,
+}: PanelCodeBlockProps) {
+  return (
+    <ServerCodeBlock
+      lang={lang}
+      code={code}
+      themes={CODE_THEMES}
+      components={{
+        pre: (props: HTMLAttributes<HTMLPreElement>) => (
+          <DocsCodeBlock
+            {...props}
+            title={title}
+            // Same total height as the preview, so switching tabs doesn't jump
+            viewportProps={{
+              style: { maxHeight: height - CODE_TITLE_BAR_HEIGHT },
+            }}
+          >
+            <Pre className={cn(wrap && WRAPPED_PRE_CLASS)}>
+              {props.children}
+            </Pre>
+          </DocsCodeBlock>
+        ),
+      }}
+    />
   );
 }
 
@@ -122,7 +230,7 @@ interface PreviewTabsProps {
 function PreviewTabs({ className, children }: PreviewTabsProps) {
   return (
     <Tabs
-      items={["Preview", "Code"]}
+      items={PREVIEW_TABS}
       className={cn("docs-surface not-prose", className)}
     >
       {children}

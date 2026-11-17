@@ -1,0 +1,156 @@
+---
+title: Use with AI
+description: Copy a prompt for any example, connect the shadcn MCP server and install the CalendarCN skill for coding agents.
+---
+
+Coding agents such as Claude Code, Cursor, Codex and GitHub Copilot can add CalendarCN to your project and wire it to your data. This page lists what to give them, from one paste to a setup that stays.
+
+## Copy a prompt
+
+Every live example in these docs has three tabs: **Preview**, **Code** and **Prompt**. The Prompt tab holds a prompt written for that example. Copy it with the button in its corner and paste it into your agent as it is: it has no blanks to fill, and it works in an assistant that can't open a link.
+
+Each prompt holds:
+
+- The install command, first, for the component and for whatever else the example imports.
+- Two checks before it runs: `components.json` exists, and the project uses Tailwind CSS 4.
+- The example's source, the same file the Code tab shows.
+- The rules agents get wrong most: a parent with a height, events with `Date` objects, one way to hold the events, and props before edits to the installed files.
+- What to check before it reports back: types, the browser console, a drag, light and dark mode.
+- Where to read more.
+
+A prompt never holds the components' own source: the shadcn CLI installs that. Start with the prompt on [Calendar](/docs/components/calendar) for the full calendar, or on one view such as [Week View](/docs/components/week-view). A guide's prompt does that guide's task: the one on [Loading Events](/docs/loading-events) fetches events for the dates on screen, and the one on [Import and Export](/docs/import-export) reads and writes .ics files.
+
+The Installation section of each page has a **Prompt** tab too, beside **CLI** and **Manual**. That one is a few lines: it installs the component and tells the agent to read the page. Use it when you want the component without the example.
+
+## shadcn MCP server
+
+The [shadcn MCP server](https://ui.shadcn.com/docs/mcp) lets an agent list, search and install registry items by itself, CalendarCN's included. Run the command for your client in your project:
+
+<Tabs items={["Claude Code", "Cursor", "VS Code", "Codex", "OpenCode"]} className="docs-surface">
+<Tab value="Claude Code">
+
+```bash
+npx shadcn@latest mcp init --client claude
+```
+
+Restart Claude Code. `/mcp` lists the server and whether it is connected.
+
+</Tab>
+<Tab value="Cursor">
+
+```bash
+npx shadcn@latest mcp init --client cursor
+```
+
+Open Cursor Settings and enable the MCP server for shadcn.
+
+</Tab>
+<Tab value="VS Code">
+
+```bash
+npx shadcn@latest mcp init --client vscode
+```
+
+Open `.vscode/mcp.json` and click **Start** next to the shadcn server. The prompts below then go to GitHub Copilot.
+
+</Tab>
+<Tab value="Codex">
+
+```bash
+npx shadcn@latest mcp init --client codex
+```
+
+The CLI can't edit Codex's own config, so add this to `~/.codex/config.toml` yourself, then restart Codex:
+
+```toml title="~/.codex/config.toml"
+[mcp_servers.shadcn]
+command = "npx"
+args = ["shadcn@latest", "mcp"]
+```
+
+</Tab>
+<Tab value="OpenCode">
+
+```bash
+npx shadcn@latest mcp init --client opencode
+```
+
+Restart OpenCode.
+
+</Tab>
+</Tabs>
+
+The server reads the registries in your `components.json`. The first `shadcn add @calendarcn/…` writes CalendarCN's there. Before that, add it yourself:
+
+```json title="components.json"
+{
+  "registries": {
+    "@calendarcn": "https://calendarcn.xyz/r/{name}.json"
+  }
+}
+```
+
+Then ask your agent:
+
+```md title="Prompt"
+Show me the components in the calendarcn registry
+```
+
+```md title="Prompt"
+Add the calendarcn week view to this page
+```
+
+## Skill
+
+A skill is a file of instructions an agent loads by itself when a task calls for it. CalendarCN's teaches an agent how to install and update the calendar, what to use instead of editing the installed files, and the rules every Prompt tab carries:
+
+```bash
+npx skills add vmnog/calendarcn
+```
+
+The [skills CLI](https://skills.sh) installs it for Claude Code, Cursor, Codex and other agents. It is one file, [`skills/calendarcn/SKILL.md`](https://github.com/vmnog/calendarcn/blob/main/skills/calendarcn/SKILL.md), so you can also read it or paste it into an agent that has no skills.
+
+## Update with your agent
+
+CalendarCN is source in your project, so an update overwrites the copied files and you put your own edits back: see [Updating](/docs/installation#updating). This prompt walks an agent through those steps and has it stop before it changes anything.
+
+```md title="Prompt"
+Update CalendarCN in this project to the latest code in its registry.
+
+CalendarCN isn't an npm package. The shadcn CLI copied its source into this
+project, so an update runs `add` again and overwrites those files, and any edit
+I made to them has to be put back by hand. Work in this order.
+
+1. Check that `git status` is clean. If it isn't, stop and ask me to commit
+   first, so the update lands as a diff I can review and undo.
+2. Find the CalendarCN items I installed. An item is installed when its file is
+   in my components folder: `calendar.tsx` is `@calendarcn/calendar`,
+   `calendar-app.tsx` is `@calendarcn/calendar-app`, `week-view.tsx` is
+   `@calendarcn/week-view`. https://calendarcn.xyz/docs/installation lists
+   every item. An item updates the items it builds on, so keep only the ones
+   that no other installed item brings. If you can't tell, ask me.
+3. Preview each of those items with
+   `npx shadcn@latest add @calendarcn/<item> --dry-run`
+   It writes nothing. It lists the files it would create, the files that
+   changed and would be overwritten, and the identical ones it skips. If it
+   would create and overwrite nothing, tell me CalendarCN is up to date and
+   stop.
+4. Read https://calendarcn.xyz/docs/changelog from the day these files were
+   last installed or updated (the git log of one of them tells you) up to
+   today. List every line marked "Breaking" that names an item I have.
+5. For each file the preview would overwrite, look at the change with
+   `npx shadcn@latest add @calendarcn/<item> --diff <path>`
+   where the path is as the preview shows it. The lines it removes that came
+   from my own commits, not from an install or an update, are my edits.
+6. Tell me what you found: the files that change, the breaking changes, and
+   the edits of mine the update removes. Wait for my go-ahead.
+7. Update each item with
+   `npx shadcn@latest add @calendarcn/<item> --overwrite`
+8. Run `git diff`. My edits to the copied files show up as removed lines. Put
+   each one back by hand, on top of the new code.
+9. Apply each breaking change to my code, as its changelog line says.
+10. Type-check and run the tests, and fix what the update broke.
+
+Don't commit. End with a summary: what changed, the breaking changes you
+applied, the edits you put back, and anything you couldn't merge.
+```
