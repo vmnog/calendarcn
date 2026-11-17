@@ -80,6 +80,51 @@ test.describe("wide screens", () => {
     await expect(page.locator("html")).toHaveClass(/\blight\b/);
   });
 
+  test("Go to date, Search events, Create event and the shortcut list work from their keys and commands", async ({
+    page,
+  }) => {
+    const menu = page.getByRole("dialog", { name: "Command Menu" });
+
+    // . opens Go to date; Enter shows the typed day in the current view
+    await page.keyboard.press(".");
+    const dateField = menu.getByPlaceholder("e.g. nov 5, in 10 weeks");
+    await expect(dateField).toBeFocused();
+    await page.keyboard.type("dec 25");
+    await expect(menu.getByRole("option")).toHaveText("Friday, December 25");
+    await page.keyboard.press("Enter");
+    await expect(menu).toBeHidden();
+    await expect(title(page)).toHaveAccessibleName("December 2026 Week 52");
+
+    // ? shows the full list in the context panel, its find field focused
+    await page.keyboard.press("?");
+    const findField = page.getByRole("textbox", {
+      name: "Find keyboard shortcuts",
+    });
+    await expect(findField).toBeFocused();
+    await expect(
+      page.getByRole("heading", { name: "Calendar navigation" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(findField).toHaveCount(0);
+
+    // Search events keeps the focus it gives the search after the menu closes
+    await page.keyboard.press("ControlOrMeta+k");
+    await menu.getByPlaceholder("Type a command...").fill("launch");
+    await menu
+      .getByRole("option", { name: "Search events for “launch”" })
+      .click();
+    const search = page.getByPlaceholder("Search events");
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue("launch");
+
+    // Create event... focuses the new event's title
+    await page.keyboard.press("ControlOrMeta+k");
+    await menu.getByPlaceholder("Type a command...").fill("create event");
+    await page.keyboard.press("Enter");
+    await expect(detailTitle(page)).toBeFocused();
+    await expect(detailTitle(page)).toHaveValue("New event");
+  });
+
   test("imports and exports .ics files from the command menu", async ({
     page,
   }) => {

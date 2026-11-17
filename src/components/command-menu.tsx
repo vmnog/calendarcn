@@ -2,7 +2,8 @@
 
 import * as React from "react";
 
-import { useCalendar } from "@/components/calendar-provider";
+import { useToday } from "@/hooks/use-now";
+import { useCalendar, useCalendarConfig } from "@/components/calendar-provider";
 import {
   Command,
   CommandEmpty,
@@ -18,6 +19,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { formatDateQueryResult, parseDateQuery } from "@/lib/date-query";
+import type { CommandMenuPage } from "@/components/week-view-types";
 
 /** Reusable "Soon" badge for unimplemented command items */
 const SOON_BADGE = (
@@ -38,6 +41,9 @@ const DIALOG_CLASS =
 const COMMAND_CLASS =
   "**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5";
 
+/** Go to date's placeholder, as Notion Calendar's */
+const GO_TO_DATE_PLACEHOLDER = "e.g. nov 5, in 10 weeks";
+
 /** One command of the menu */
 interface MenuCommand {
   label: string;
@@ -45,6 +51,13 @@ interface MenuCommand {
   keys?: string[];
   /** Runs the command once the menu has closed. Missing when the app doesn't offer it */
   run?: () => void;
+  /** Runs the command with the menu still open, e.g. to show one of its pages */
+  keepOpen?: boolean;
+  /**
+   * The command focuses something (a field, a new event's title): it runs
+   * once the menu has closed and given focus back
+   */
+  movesFocus?: boolean;
   /** Not built yet: listed disabled with a "Soon" badge, only with `showComingSoon` */
   soon?: boolean;
 }
@@ -71,6 +84,18 @@ interface CommandMenuProps {
   /** Adds "Export .ics file" */
   onExportIcs?: () => void;
   /**
+   * Adds "Search events", and "Search events for “…”" once text is typed:
+   * opens your event search with that text (empty for the first)
+   */
+  onSearchEvents?: (query: string) => void;
+  /** Adds "Show keyboard shortcuts" (?) */
+  onShowShortcuts?: () => void;
+  /**
+   * Page the menu opens on, each time it opens: its commands, or Go to
+   * date's field (as the . key does). Defaults to "commands"
+   */
+  defaultPage?: CommandMenuPage;
+  /**
    * Also lists the Notion Calendar commands CalendarCN doesn't have yet,
    * disabled with a "Soon" badge, as the live demo does
    */
@@ -78,10 +103,16 @@ interface CommandMenuProps {
 }
 
 /**
- * The live demo's ⌘K menu. Going to today, previous and next, and the views
- * come from `useCalendar()`, so it goes inside `CalendarProvider`. Commands
- * that belong to your app (panels, theme, .ics files) show only when you pass
- * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
+ * The live demo's ⌘K menu. Creating an event, going to a date, today,
+ * previous and next, and the views come from `useCalendar()`, so it goes
+ * inside `CalendarProvider`. Commands that belong to your app (panels,
+ * search, shortcuts, theme, .ics files) show only when you pass their
+ * callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
+ *
+ * "Go to date..." turns the field into a date field, as in Notion Calendar:
+ * type a date ("tomorrow", "next friday", "dec 25", "in 2 weeks"), see which
+ * day it reads, and press Enter to show it in the current view. Backspace
+ * in the empty field goes back to the commands.
  */
 export function CommandMenu({
   open,
@@ -91,9 +122,31 @@ export function CommandMenu({
   onCycleTheme,
   onImportIcs,
   onExportIcs,
+  onSearchEvents,
+  onShowShortcuts,
+  defaultPage = "commands",
   showComingSoon = false,
 }: CommandMenuProps) {
-  const { goToToday, goToPrev, goToNext, switchView } = useCalendar();
+  const {
+    goToToday,
+    goToPrev,
+    goToNext,
+    switchView,
+    navigateToDate,
+    addEventAtNextSlot,
+  } = useCalendar();
+  /** The page shown: the commands, or Go to date's field */
+  const [page, setPage] = React.useState<CommandMenuPage>(defaultPage);
+  /** Text typed in the field, on either page */
+  const [search, setSearch] = React.useState("");
+
+  // Each opening starts on `defaultPage` with an empty field
+  const [prevOpen, setPrevOpen] = React.useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    setPage(defaultPage);
+    setSearch("");
+  }
 
   const runCommand = React.useCallback(
     (command: () => void) => {
@@ -103,11 +156,66 @@ export function CommandMenu({
     [onOpenChange],
   );
 
+  /** The dialog's content, while it's in the page */
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  /**
+   * Closes the menu, then runs `command` once the dialog has left the page
+   * and handed focus back to where it was, so the focus `command` moves
+   * stays
+   */
+  const runCommandAfterClose = React.useCallback(
+    (command: () => void) => {
+      onOpenChange(false);
+      const runOnceClosed = () => {
+        if (contentRef.current?.isConnected) {
+          requestAnimationFrame(runOnceClosed);
+          return;
+        }
+        setTimeout(command, 0);
+      };
+      requestAnimationFrame(runOnceClosed);
+    },
+    [onOpenChange],
+  );
+
+  /** Runs a picked command: in place, then or once the menu has closed */
+  const selectCommand = ({ run, keepOpen, movesFocus }: MenuCommand) => {
+    if (!run) return;
+    if (keepOpen) {
+      run();
+      return;
+    }
+    if (movesFocus) {
+      runCommandAfterClose(run);
+      return;
+    }
+    runCommand(run);
+  };
+
+  /** Shows a page of the menu with an empty field */
+  const showPage = React.useCallback((next: CommandMenuPage) => {
+    setPage(next);
+    setSearch("");
+  }, []);
+
+  // Backspace in Go to date's empty field goes back to the commands
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (page === "commands" || e.key !== "Backspace" || search !== "") return;
+    e.preventDefault();
+    showPage("commands");
+  };
+
   const groups: MenuGroup[] = [
     {
       heading: "Calendar",
       commands: [
-        { label: "Create event...", soon: true },
+        {
+          label: "Create event...",
+          keys: ["C"],
+          run: addEventAtNextSlot,
+          movesFocus: true,
+        },
         { label: "Meet with...", soon: true },
         { label: "Show teammate calendar...", soon: true },
         { label: "Create recurring scheduling link...", soon: true },
@@ -119,11 +227,20 @@ export function CommandMenu({
     {
       heading: "Navigation",
       commands: [
-        { label: "Go to date...", soon: true },
+        {
+          label: "Go to date...",
+          keys: ["."],
+          run: () => showPage("go-to-date"),
+          keepOpen: true,
+        },
         { label: "Go to today", keys: ["T"], run: goToToday },
         { label: "Go to next week", keys: ["K"], run: goToNext },
         { label: "Go to previous week", keys: ["J"], run: goToPrev },
-        { label: "Search events", soon: true },
+        {
+          label: "Search events",
+          run: onSearchEvents ? () => onSearchEvents("") : undefined,
+          movesFocus: true,
+        },
       ],
     },
     {
@@ -183,7 +300,12 @@ export function CommandMenu({
       heading: "Settings & help",
       commands: [
         { label: "Get CalendarCN mobile app", soon: true },
-        { label: "Show keyboard shortcuts", soon: true },
+        {
+          label: "Show keyboard shortcuts",
+          keys: ["?"],
+          run: onShowShortcuts,
+          movesFocus: true,
+        },
         { label: "Go to settings", soon: true },
         { label: "Support & feedback", soon: true },
       ],
@@ -214,10 +336,13 @@ export function CommandMenu({
       ],
     },
   ];
+  // Go to date's page lists the typed date alone
+  const shownGroups = page === "commands" ? groups : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        ref={contentRef}
         showCloseButton={false}
         data-command-menu=""
         className={DIALOG_CLASS}
@@ -226,11 +351,23 @@ export function CommandMenu({
         <DialogDescription className="sr-only">
           Search for a command to run...
         </DialogDescription>
-        <Command className={COMMAND_CLASS}>
-          <CommandInput placeholder="Type a command..." />
+        {/* Go to date's result is the typed date itself: no filtering */}
+        <Command className={COMMAND_CLASS} shouldFilter={page === "commands"}>
+          <CommandInput
+            placeholder={
+              page === "go-to-date"
+                ? GO_TO_DATE_PLACEHOLDER
+                : "Type a command..."
+            }
+            value={search}
+            onValueChange={setSearch}
+            onKeyDown={handleInputKeyDown}
+          />
           <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            {groups.map((group) => {
+            {(page === "commands" || search.trim() !== "") && (
+              <CommandEmpty>No results found.</CommandEmpty>
+            )}
+            {shownGroups.map((group) => {
               const commands = group.commands.filter((command) =>
                 command.soon ? showComingSoon : command.run !== undefined,
               );
@@ -238,17 +375,19 @@ export function CommandMenu({
 
               return (
                 <CommandGroup key={group.heading} heading={group.heading}>
-                  {commands.map(({ label, keys, run, soon }) => (
+                  {commands.map((command) => (
                     <CommandItem
-                      key={label}
-                      disabled={soon}
-                      onSelect={run ? () => runCommand(run) : undefined}
+                      key={command.label}
+                      disabled={command.soon}
+                      onSelect={
+                        command.run ? () => selectCommand(command) : undefined
+                      }
                     >
-                      {label}
-                      {soon && SOON_BADGE}
-                      {keys && (
+                      {command.label}
+                      {command.soon && SOON_BADGE}
+                      {command.keys && (
                         <KbdGroup className="ml-auto">
-                          {keys.map((key) => (
+                          {command.keys.map((key) => (
                             <Kbd key={key}>{key}</Kbd>
                           ))}
                         </KbdGroup>
@@ -258,6 +397,25 @@ export function CommandMenu({
                 </CommandGroup>
               );
             })}
+            {page === "commands" && onSearchEvents && search.trim() !== "" && (
+              <CommandGroup heading="Search" forceMount>
+                <CommandItem
+                  forceMount
+                  value={`search-events-${search}`}
+                  onSelect={() =>
+                    runCommandAfterClose(() => onSearchEvents(search.trim()))
+                  }
+                >
+                  Search events for “{search.trim()}”
+                </CommandItem>
+              </CommandGroup>
+            )}
+            {page === "go-to-date" && (
+              <GoToDateResult
+                query={search}
+                onSelect={(date) => runCommand(() => navigateToDate(date))}
+              />
+            )}
           </CommandList>
 
           <div className="border-t px-3 py-2 flex items-center gap-4 text-xs text-muted-foreground">
@@ -274,5 +432,34 @@ export function CommandMenu({
         </Command>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface GoToDateResultProps {
+  /** Text typed in Go to date's field */
+  query: string;
+  /** Called with the day the text reads when it's picked */
+  onSelect: (date: Date) => void;
+}
+
+/**
+ * Go to date's one result: the day the typed text reads, with its weekday
+ * so "next friday" can be checked before going there. Nothing while the text
+ * reads as no date.
+ */
+function GoToDateResult({ query, onSelect }: GoToDateResultProps) {
+  const { weekStartsOn } = useCalendar();
+  const { locale } = useCalendarConfig();
+  const today = useToday();
+  if (!today) return null;
+  const date = parseDateQuery(query, { today, locale, weekStartsOn });
+  if (!date) return null;
+
+  return (
+    <CommandGroup heading="Go to date">
+      <CommandItem value={query} onSelect={() => onSelect(date)}>
+        {formatDateQueryResult(date, today, locale)}
+      </CommandItem>
+    </CommandGroup>
   );
 }

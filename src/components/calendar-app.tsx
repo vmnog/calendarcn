@@ -31,10 +31,17 @@ import {
   mergeShownEvents,
 } from "@/lib/event-utils";
 import { parseIcs, toIcs } from "@/lib/ics";
+import {
+  KEYBOARD_SHORTCUT_GROUPS,
+  SHORTCUTS,
+  filterKeyboardShortcutGroups,
+} from "@/lib/keyboard-shortcuts";
 import type { CalendarProviderProps } from "@/components/calendar-types";
 import type {
   CalendarAppProps,
+  CommandMenuPage,
   DetailedCalendarEvent,
+  DetailsSidebarActions,
 } from "@/components/week-view-types";
 
 /** Hour the time grid opens on unless `scrollToHour` says otherwise */
@@ -288,16 +295,50 @@ function CalendarAppShell({
   }
   const leftSidebarVisible = isMobile ? leftOverlayOpen : leftSidebarOpen;
   const [commandMenuOpen, setCommandMenuOpen] = React.useState(false);
+  /** Page the command menu opens on: its commands, or Go to date's field (.) */
+  const [commandMenuPage, setCommandMenuPage] =
+    React.useState<CommandMenuPage>("commands");
   /** Hidden file picker behind the command menu's "Import .ics file" */
   const icsInputRef = React.useRef<HTMLInputElement>(null);
+  /** The details sidebar's event search and full shortcut list */
+  const detailsActionsRef = React.useRef<DetailsSidebarActions>(null);
 
   // Phones show event details in the context panel sheet: the 320px popover
   // doesn't fit beside an event on a ~390px screen
   const showDetailsInPanel = isMobile || rightSidebarOpen;
 
   const toggleCommandMenu = React.useCallback(() => {
+    setCommandMenuPage("commands");
     setCommandMenuOpen((prev) => !prev);
   }, []);
+
+  /** The . key: the command menu, on Go to date's field */
+  const openGoToDate = React.useCallback(() => {
+    setCommandMenuPage("go-to-date");
+    setCommandMenuOpen(true);
+  }, []);
+
+  const searchEvents = React.useCallback((query: string) => {
+    detailsActionsRef.current?.searchEvents(query);
+  }, []);
+
+  /** The ? key and "Show keyboard shortcuts": the full list, in the context panel */
+  const showAllShortcuts = React.useCallback(() => {
+    detailsActionsRef.current?.showAllShortcuts();
+  }, []);
+
+  // The full list names only the keys this app handles: Cmd+, needs a
+  // settings action
+  const shortcutGroups = React.useMemo(
+    () =>
+      onOpenSettings
+        ? KEYBOARD_SHORTCUT_GROUPS
+        : filterKeyboardShortcutGroups(
+            KEYBOARD_SHORTCUT_GROUPS,
+            (shortcut) => shortcut !== SHORTCUTS.openSettings,
+          ),
+    [onOpenSettings],
+  );
 
   const toggleLeftSidebar = React.useCallback(() => {
     if (isMobile) {
@@ -357,10 +398,10 @@ function CalendarAppShell({
     setTheme("system");
   }, [theme, setTheme]);
 
-  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape,
+  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, C, Escape,
   // Shift+Cmd+E for weekends, and the event keys: Delete/Backspace, Cmd+X,
   // Cmd+C, Cmd+V, Cmd+D, Cmd+Z and Shift+Cmd+Z. Then the app's own, checked
-  // first: Cmd+K, Cmd+/, /, Shift+M and Cmd+,
+  // first: Cmd+K, Cmd+/, /, Shift+M, Cmd+, . and ?
   useCalendarShortcuts({
     enabled: shortcuts,
     onToggleCommandMenu: toggleCommandMenu,
@@ -368,6 +409,8 @@ function CalendarAppShell({
     onToggleContextPanel: toggleSidebar,
     onCycleTheme: cycleTheme,
     onOpenSettings,
+    onGoToDate: openGoToDate,
+    onShowShortcuts: showAllShortcuts,
   });
 
   return (
@@ -380,6 +423,9 @@ function CalendarAppShell({
         onCycleTheme={cycleTheme}
         onImportIcs={() => icsInputRef.current?.click()}
         onExportIcs={exportIcs}
+        onSearchEvents={searchEvents}
+        onShowShortcuts={showAllShortcuts}
+        defaultPage={commandMenuPage}
         showComingSoon={showComingSoon}
       />
       <input
@@ -435,7 +481,11 @@ function CalendarAppShell({
           <CalendarToaster />
         </div>
       </SidebarInset>
-      <DetailsSidebar overlay={!isWideLayout} />
+      <DetailsSidebar
+        overlay={!isWideLayout}
+        actionsRef={detailsActionsRef}
+        shortcutGroups={shortcutGroups}
+      />
     </>
   );
 }

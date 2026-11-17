@@ -78,6 +78,10 @@
         {
           "path": "src/lib/event-history.ts",
           "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/keyboard-shortcuts.ts",
+          "type": "registry:lib"
         }
       ],
       "cssVars": {
@@ -509,7 +513,7 @@
       "name": "command-menu",
       "type": "registry:component",
       "title": "Command Menu",
-      "description": "The live demo's ⌘K menu: today, previous/next and the views, plus your app's panel, theme and .ics commands.",
+      "description": "The live demo's ⌘K menu: create an event, go to a typed date, today, previous/next and the views, plus your app's panel, search, shortcut, theme and .ics commands.",
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "command",
@@ -520,6 +524,10 @@
         {
           "path": "src/components/command-menu.tsx",
           "type": "registry:component"
+        },
+        {
+          "path": "src/lib/date-query.ts",
+          "type": "registry:lib"
         }
       ],
       "css": {
@@ -731,7 +739,7 @@
       "name": "details-sidebar",
       "type": "registry:component",
       "title": "Details Sidebar",
-      "description": "The right context panel: the selected event's details, event search and useful shortcuts.",
+      "description": "The right context panel: the selected event's details, event search, useful shortcuts and the full keyboard shortcut list.",
       "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",

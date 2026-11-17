@@ -19,6 +19,10 @@ interface UseCalendarShortcutsOptions {
   onCycleTheme?: () => void;
   /** Cmd+, / Ctrl+,, even from inside a text field: opens the settings */
   onOpenSettings?: () => void;
+  /** .: opens Go to date (the demo's command menu, on its date field) */
+  onGoToDate?: () => void;
+  /** ?: shows the full keyboard shortcut list */
+  onShowShortcuts?: () => void;
 }
 
 /** App actions some keys trigger. A key is claimed only when its action is given */
@@ -34,6 +38,7 @@ type CalendarShortcutActions = Pick<
   | "setNumberOfDays"
   | "clearSelection"
   | "toggleWeekends"
+  | "addEventAtNextSlot"
 >;
 
 /** Event actions the event keys run, and what says whether each has something to act on */
@@ -156,6 +161,12 @@ function handleAppShortcut(
   if (e.key === "M" && e.shiftKey && !isCommand) {
     return run(actions.onCycleTheme);
   }
+  if (e.key === "." && !isCommand && !e.altKey) {
+    return run(actions.onGoToDate);
+  }
+  if (e.key === "?" && !isCommand && !e.altKey) {
+    return run(actions.onShowShortcuts);
+  }
   return false;
 }
 
@@ -237,6 +248,12 @@ function handleShortcut(
     return;
   }
 
+  if (e.key === "c" || e.key === "C") {
+    e.preventDefault();
+    actions.addEventAtNextSlot();
+    return;
+  }
+
   // Cmd+A / Ctrl+A never get here, so they still select all
   if (e.key === "a" || e.key === "A") {
     e.preventDefault();
@@ -251,6 +268,7 @@ function handleShortcut(
  * - J / ArrowLeft, K / ArrowRight: previous / next period
  * - D or 1: day view, W or 0: week view, M: month view, Y: year view, A: agenda
  * - 2-9: number of days
+ * - C: create an event at the next half hour (`addEventAtNextSlot`)
  * - Escape: clear the selection
  * - Delete / Backspace: delete the selected event
  * - Cmd+X, Cmd+C, Cmd+D: cut, copy, duplicate the selected event; Cmd+V:
@@ -263,7 +281,8 @@ function handleShortcut(
  *
  * The live demo's app keys come on with their actions: Cmd+K
  * (`onToggleCommandMenu`), Cmd+/ (`onToggleSidebar`), / (`onToggleContextPanel`),
- * Shift+M (`onCycleTheme`) and Cmd+, (`onOpenSettings`). They're checked
+ * Shift+M (`onCycleTheme`), Cmd+, (`onOpenSettings`), . (`onGoToDate`) and ?
+ * (`onShowShortcuts`). They're checked
  * first, and one that runs stops the event from reaching later listeners.
  *
  * Key presses in inputs, textareas, selects and editable content are ignored
@@ -280,6 +299,8 @@ export function useCalendarShortcuts({
   onToggleContextPanel,
   onCycleTheme,
   onOpenSettings,
+  onGoToDate,
+  onShowShortcuts,
 }: UseCalendarShortcutsOptions = {}) {
   const {
     goToToday,
@@ -289,6 +310,7 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    addEventAtNextSlot,
     selectedEvent,
     deleteEvent,
     duplicateEvent,
@@ -313,6 +335,7 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    addEventAtNextSlot,
     selectedEventId,
     hasCopiedEvent,
     deleteEvent,
@@ -329,6 +352,8 @@ export function useCalendarShortcuts({
     onToggleContextPanel,
     onCycleTheme,
     onOpenSettings,
+    onGoToDate,
+    onShowShortcuts,
   });
 
   React.useEffect(() => {
@@ -340,6 +365,7 @@ export function useCalendarShortcuts({
       setNumberOfDays,
       clearSelection,
       toggleWeekends,
+      addEventAtNextSlot,
       selectedEventId,
       hasCopiedEvent,
       deleteEvent,
@@ -356,6 +382,8 @@ export function useCalendarShortcuts({
       onToggleContextPanel,
       onCycleTheme,
       onOpenSettings,
+      onGoToDate,
+      onShowShortcuts,
     };
   }, [
     goToToday,
@@ -365,6 +393,7 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    addEventAtNextSlot,
     selectedEventId,
     hasCopiedEvent,
     deleteEvent,
@@ -381,6 +410,8 @@ export function useCalendarShortcuts({
     onToggleContextPanel,
     onCycleTheme,
     onOpenSettings,
+    onGoToDate,
+    onShowShortcuts,
   ]);
 
   React.useEffect(() => {
