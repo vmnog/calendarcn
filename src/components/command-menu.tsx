@@ -129,6 +129,16 @@ interface CommandMenuProps {
   onImportIcs?: () => void;
   /** Adds "Export .ics file" */
   onExportIcs?: () => void;
+  /** Adds "Go to settings" (⌘ ,) */
+  onOpenSettings?: () => void;
+  /** Adds "Support & feedback", e.g. to open your issue tracker */
+  onSupport?: () => void;
+  /** Adds "Add calendar account" */
+  onAddCalendarAccount?: () => void;
+  /** Adds "Manage calendar accounts" */
+  onManageCalendarAccounts?: () => void;
+  /** Adds "About CalendarCN", e.g. to open your docs */
+  onAbout?: () => void;
   /** Adds "Meet with..." (F): open a people picker that meets with who you pick */
   onMeetWith?: () => void;
   /** Adds "Show teammate calendar..." (P): open a people picker that shows their calendar */
@@ -163,9 +173,10 @@ interface CommandMenuProps {
  * count, the hour size and the time zones come from `useCalendar()`, so it
  * goes inside `CalendarProvider`. A time zone command lists the zones in the
  * menu's place, and "Start week on..." and "Set number of displayed days..."
- * their choices. Commands that belong to your
- * app (panels, search, shortcuts, theme, .ics files) show only when you pass
- * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
+ * their choices. Commands that belong to your app (panels, search, shortcuts,
+ * theme, .ics files, people, settings, accounts, support and about) show only
+ * when you pass their callback. Open it with
+ * `useCalendarShortcuts({ onToggleCommandMenu })`.
  *
  * "Go to date..." turns the field into a date field, as in Notion Calendar:
  * type a date ("tomorrow", "next friday", "dec 25", "in 2 weeks"), see which
@@ -181,6 +192,11 @@ export function CommandMenu({
   onCycleTheme,
   onImportIcs,
   onExportIcs,
+  onOpenSettings,
+  onSupport,
+  onAddCalendarAccount,
+  onManageCalendarAccounts,
+  onAbout,
   onMeetWith,
   onShowTeammateCalendar,
   onSearchEvents,
@@ -493,31 +509,26 @@ export function CommandMenu({
     {
       heading: "Settings & help",
       commands: [
-        { label: "Get CalendarCN mobile app", soon: true },
         {
           label: "Show keyboard shortcuts",
           keys: ["?"],
           run: onShowShortcuts,
           movesFocus: true,
         },
-        { label: "Go to settings", soon: true },
-        { label: "Support & feedback", soon: true },
+        { label: "Go to settings", keys: ["⌘", ","], run: onOpenSettings },
+        { label: "Support & feedback", run: onSupport },
       ],
     },
     {
       heading: "Accounts",
       commands: [
-        { label: "Add Google Calendar account", soon: true },
-        { label: "Manage calendar accounts", soon: true },
-        { label: "Log out", soon: true },
+        { label: "Add calendar account", run: onAddCalendarAccount },
+        { label: "Manage calendar accounts", run: onManageCalendarAccounts },
       ],
     },
     {
       heading: "CalendarCN",
-      commands: [
-        { label: "Check for update", soon: true },
-        { label: "About CalendarCN", soon: true },
-      ],
+      commands: [{ label: "About CalendarCN", run: onAbout }],
     },
     {
       heading: "Panels",

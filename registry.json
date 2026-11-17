@@ -605,6 +605,25 @@
       ]
     },
     {
+      "name": "calendar-settings",
+      "type": "registry:component",
+      "title": "Calendar Settings",
+      "description": "Notion Calendar's settings dialog: the calendar view, time format and theme, and each calendar account's calendars, with what your app can change.",
+      "dependencies": ["lucide-react"],
+      "registryDependencies": [
+        "@calendarcn/calendar-core",
+        "button",
+        "dialog",
+        "switch"
+      ],
+      "files": [
+        {
+          "path": "src/components/calendar-settings.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
       "name": "calendar",
       "type": "registry:block",
       "title": "Calendar",
@@ -831,6 +850,7 @@
         "@calendarcn/command-menu",
         "@calendarcn/people-picker",
         "@calendarcn/calendar-toaster",
+        "@calendarcn/calendar-settings",
         "@calendarcn/calendar-sidebar",
         "@calendarcn/details-sidebar",
         "@calendarcn/theme-toggle",

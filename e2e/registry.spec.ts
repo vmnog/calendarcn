@@ -21,6 +21,7 @@ const ITEM_NAMES = [
   "command-menu",
   "people-picker",
   "calendar-toaster",
+  "calendar-settings",
   // The demo's sidebars
   "sidebar-overlay",
   "theme-toggle",

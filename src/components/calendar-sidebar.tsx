@@ -57,6 +57,8 @@ interface CalendarSidebarProps {
   defaultHiddenCalendarIds?: string[];
   /** Called with the new hidden ids when a calendar is shown or hidden */
   onHiddenCalendarIdsChange?: (hiddenCalendarIds: string[]) => void;
+  /** Adds "Add calendar account" below the calendars, which calls it */
+  onAddCalendarAccount?: () => void;
   /** Classes for the inline sidebar's fixed column */
   className?: string;
 }
@@ -67,8 +69,9 @@ interface CalendarSidebarProps {
  * shown, the calendar list and a theme toggle. Inline it's a fixed column that pushes
  * the page over; with `overlay` it's a sheet from the left. Reads the
  * calendar's date and view from the nearest `CalendarProvider`, and needs
- * shadcn/ui's `SidebarProvider` around it. The scheduling row and "Add
- * calendar account" aren't built: they are disabled and marked "Soon".
+ * shadcn/ui's `SidebarProvider` around it. "Add calendar account" shows
+ * when you pass `onAddCalendarAccount`. The scheduling row isn't built: it
+ * is disabled and marked "Soon".
  */
 export function CalendarSidebar({
   open = true,
@@ -78,6 +81,7 @@ export function CalendarSidebar({
   hiddenCalendarIds,
   defaultHiddenCalendarIds,
   onHiddenCalendarIdsChange,
+  onAddCalendarAccount,
   className,
 }: CalendarSidebarProps) {
   const {
@@ -149,26 +153,28 @@ export function CalendarSidebar({
           defaultHiddenCalendarIds={defaultHiddenCalendarIds}
           onHiddenCalendarIdsChange={onHiddenCalendarIdsChange}
         />
-        <SidebarSeparator className="mx-0" />
-        <SidebarGroup className="py-0">
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
-              <SidebarMenuItem>
-                {/* Not built yet */}
-                <SidebarMenuButton
-                  disabled
-                  className="text-sidebar-foreground gap-1.5 text-sm rounded-sm disabled:opacity-100"
-                >
-                  <Plus className="size-4 opacity-50" />
-                  <span className="min-w-0 flex-1 truncate opacity-50">
-                    Add calendar account
-                  </span>
-                  <span className={CALENDAR_SIDEBAR_SOON_CLASS}>Soon</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {onAddCalendarAccount && (
+          <>
+            <SidebarSeparator className="mx-0" />
+            <SidebarGroup className="py-0">
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      className="text-calendar-sidebar-muted-foreground hover:text-sidebar-foreground gap-1.5 text-sm rounded-sm"
+                      onClick={onAddCalendarAccount}
+                    >
+                      <Plus className="size-4" />
+                      <span className="min-w-0 flex-1 truncate">
+                        Add calendar account
+                      </span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
         <div className="flex items-center justify-start gap-1 px-2 py-2">

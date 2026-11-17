@@ -3,6 +3,8 @@ import type React from "react";
 import type {
   AllDayResizeState,
   CalendarEvent,
+  CalendarTheme,
+  HourCycle,
   CalendarProviderProps,
   DetailedCalendarEvent,
   EventDetailSectionProps,
@@ -87,6 +89,7 @@ export type {
   CalendarRenderSlots,
   CalendarProviderProps,
   CalendarContextValue,
+  CalendarTheme,
   TimeSpan,
   WorkingHours,
   CalendarPerson,
@@ -298,8 +301,28 @@ export type CalendarAppProps = CalendarProviderProps<DetailedCalendarEvent> & {
   exportFileName?: string;
   /** Calendar name written into the exported .ics (Google and Apple show it) */
   exportCalendarName?: string;
-  /** Called on Cmd+, (Ctrl+, elsewhere). The key is left to the browser without it */
+  /**
+   * Called on Cmd+, (Ctrl+, elsewhere) and "Go to settings", for settings of
+   * your own. The key is left to the browser without it or `settingsDialog`
+   */
   onOpenSettings?: () => void;
+  /**
+   * Turns on the built-in settings dialog (`CalendarSettingsDialog`): Cmd+,
+   * (Ctrl+, elsewhere) and "Go to settings" open it, and "Manage calendar
+   * accounts" opens it on the calendars. It wins over `onOpenSettings`.
+   * Defaults to false
+   */
+  settingsDialog?: boolean;
+  /**
+   * Adds "Add calendar account" to the sidebar, the command menu and the
+   * settings dialog. Called with helpers: `importIcsCalendar()` adds an .ics
+   * file as a new calendar, as the live demo does
+   */
+  onAddCalendarAccount?: (helpers: CalendarAccountHelpers) => void;
+  /** Adds "Support & feedback" to the command menu, e.g. to open your issue tracker */
+  onSupport?: () => void;
+  /** Adds "About CalendarCN" to the command menu, e.g. to open your docs */
+  onAbout?: () => void;
   /**
    * Also lists the Notion Calendar commands CalendarCN doesn't have yet in
    * the command menu, disabled with a "Soon" badge. Defaults to false
@@ -750,4 +773,43 @@ export interface EventDetailRecurrenceProps<
    * series: the button is disabled then.
    */
   onNext?: () => void;
+}
+
+/** The pane the settings dialog opens on: General, or the first calendar account */
+export type CalendarSettingsSection = "general" | "calendars";
+
+/**
+ * Props for CalendarSettingsDialog. Each setting shows only when something
+ * can change it: the calendar view settings come from the surrounding
+ * CalendarProvider, the rest from these handlers.
+ */
+export interface CalendarSettingsDialogProps {
+  /** Whether the dialog is open */
+  open: boolean;
+  /** Called when the dialog opens or closes (Escape, a click outside, the close button) */
+  onOpenChange: (open: boolean) => void;
+  /** Pane the dialog opens on, each time it opens. Defaults to "general" */
+  defaultSection?: CalendarSettingsSection;
+  /** The current theme, for the Theme setting. Defaults to "system" */
+  theme?: CalendarTheme;
+  /** Adds the Theme setting (Auto, Light mode, Dark mode) */
+  onThemeChange?: (theme: CalendarTheme) => void;
+  /** Adds the Time format setting; the current clock is the provider's `hourCycle` */
+  onHourCycleChange?: (hourCycle: HourCycle) => void;
+  /** Ids of the hidden calendars, for each calendar's show or hide button */
+  hiddenCalendarIds?: string[];
+  /** Adds a show or hide button to each calendar in an account's pane */
+  onHiddenCalendarIdsChange?: (hiddenCalendarIds: string[]) => void;
+  /** Adds "Add calendar account" under the accounts */
+  onAddCalendarAccount?: () => void;
+}
+
+/** What `CalendarApp` hands its `onAddCalendarAccount` */
+export interface CalendarAccountHelpers {
+  /**
+   * Opens a file picker and adds the picked .ics file's events as a new
+   * calendar named after the file (the same file again updates it), then
+   * shows its first event's period: what the live demo does
+   */
+  importIcsCalendar: () => void;
 }

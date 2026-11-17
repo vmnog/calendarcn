@@ -1677,3 +1677,6 @@ export interface KeyboardShortcutGroup {
   shortcuts: KeyboardShortcut[];
   sections?: KeyboardShortcutGroup[];
 }
+
+/** A color theme: the system's, or light or dark */
+export type CalendarTheme = "system" | "light" | "dark";

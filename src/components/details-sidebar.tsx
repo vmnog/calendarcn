@@ -88,7 +88,6 @@ export interface DetailsSidebarShortcut {
  */
 export const USEFUL_SHORTCUTS: DetailsSidebarShortcut[] = [
   { label: "Command menu", keys: ["⌘", "K"] },
-  { label: "Menu bar calendar", keys: ["control", "⌘", "K"], soon: true },
   { label: "Toggle sidebar", keys: ["⌘", "/"] },
   SHORTCUTS.showTeammateCalendar,
   SHORTCUTS.goToDate,

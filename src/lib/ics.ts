@@ -12,6 +12,7 @@ import {
   getZonedDay,
 } from "@/lib/time-zones";
 import type {
+  CalendarInfo,
   DetailedCalendarEvent,
   EventColor,
   EventParticipant,
@@ -28,6 +29,12 @@ const MAX_LINE_OCTETS = 75;
 
 /** Line break between content lines (RFC 5545 requires CRLF) */
 const CRLF = "\r\n";
+
+/** Start of the ids `toIcsCalendar` gives the calendars it makes */
+const ICS_CALENDAR_ID_PREFIX = "ics:";
+
+/** Name of a calendar made from a file whose name is only ".ics" */
+const UNNAMED_ICS_CALENDAR = "Imported calendar";
 
 /** PRODID written by `toIcs` when the caller doesn't pass one */
 const DEFAULT_PROD_ID = "-//CalendarCN//CalendarCN//EN";
@@ -1299,4 +1306,33 @@ function utf8Length(codePoint: number): number {
   if (codePoint < 0x800) return 2;
   if (codePoint < 0x10000) return 3;
   return 4;
+}
+
+/**
+ * Makes the events read from an .ics file a calendar of their own, named
+ * after the file ("Team holidays.ics" → "Team holidays"), as the live demo's
+ * "Add calendar account" does. The calendar's id comes from its name, so
+ * the same file again returns the calendar already in `calendars`; a new
+ * one takes the first color no calendar has. Each event gets the calendar's
+ * id, and keeps a `COLOR` of its own.
+ */
+export function toIcsCalendar<TEvent extends DetailedCalendarEvent>(
+  fileName: string,
+  events: TEvent[],
+  calendars: CalendarInfo[],
+): { calendar: CalendarInfo; events: TEvent[] } {
+  const name = fileName.replace(/\.ics$/i, "").trim() || UNNAMED_ICS_CALENDAR;
+  const id = `${ICS_CALENDAR_ID_PREFIX}${name}`;
+  const usedColors = new Set(calendars.map((calendar) => calendar.color));
+  const calendar = calendars.find((existing) => existing.id === id) ?? {
+    id,
+    name,
+    color:
+      EVENT_COLORS.find((color) => !usedColors.has(color)) ??
+      EVENT_COLORS[calendars.length % EVENT_COLORS.length],
+  };
+  return {
+    calendar,
+    events: events.map((event) => ({ ...event, calendarId: calendar.id })),
+  };
 }
