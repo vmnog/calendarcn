@@ -675,7 +675,7 @@ test.describe("with the context panel closed", () => {
 
   test("in day view the popover opens at the grid's edge", async ({ page }) => {
     await page.keyboard.press("d");
-    await expectHeader(page, "June 2026 Thursday, Jun 4");
+    await expectHeader(page, "June 2026 Thursday, Jun 4 Week 23");
     // The grid slides to its one day: wait until that column has stopped
     await waitUntilStill(
       page.getByRole("main").getByRole("group", { name: "Thursday, June 4" }),

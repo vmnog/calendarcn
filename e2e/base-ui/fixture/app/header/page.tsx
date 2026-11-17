@@ -30,7 +30,10 @@ const EVENTS: CalendarEvent[] = [
  */
 export default function HeaderPage() {
   return (
-    <CalendarProvider defaultEvents={EVENTS}>
+    <CalendarProvider
+      defaultEvents={EVENTS}
+      defaultViewSettings={{ showWeekNumbers: true }}
+    >
       <AppShell />
     </CalendarProvider>
   )

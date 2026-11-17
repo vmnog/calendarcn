@@ -213,7 +213,7 @@ export function DetailsSidebar({
     selectedEvent,
     eventDraft,
     clearSelection,
-    updateEvent,
+    editEvent,
     updateEventDraft,
     previousInSeries,
     nextInSeries,
@@ -505,7 +505,7 @@ export function DetailsSidebar({
         {selectedEvent ? (
           <EventDetailPanel
             event={selectedEvent}
-            onEventChange={updateEvent}
+            onEventChange={editEvent}
             // An event being created: typing its title previews it, and
             // its first edit saves it
             onTitlePreview={
@@ -520,7 +520,7 @@ export function DetailsSidebar({
         ) : resolvedSearchEvent ? (
           <EventDetailPanel
             event={resolvedSearchEvent}
-            onEventChange={updateEvent}
+            onEventChange={editEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             {...getEventActions(resolvedSearchEvent.id)}

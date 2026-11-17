@@ -28,8 +28,22 @@ export type HourCycle = 12 | 24;
  * View settings for display preferences (toggleable from the view dropdown)
  */
 export interface ViewSettings {
+  /**
+   * Whether the views draw Saturday and Sunday. Off, day and week view show
+   * weekdays only and step over the weekend, a full week shows Monday to
+   * Friday, and month and year view drop their weekend columns
+   */
   showWeekends: boolean;
+  /**
+   * Whether the views draw events the viewer declined (see
+   * `EventParticipant.self`), struck through on a dashed outline
+   */
   showDeclinedEvents: boolean;
+  /**
+   * Whether week numbers show: beside the title in day and week view, at
+   * each week's start in the agenda, and beside the weeks of month and year
+   * view
+   */
   showWeekNumbers: boolean;
 }
 
@@ -241,6 +255,14 @@ export interface EventParticipant {
   organizer?: boolean;
   /** Whether their attendance is optional */
   optional?: boolean;
+  /**
+   * Whether this participant is the viewer, the person whose calendar shows
+   * the event (Google Calendar's `self`). Their `response` is the viewer's:
+   * a "declined" one marks the event declined (see `showDeclinedEvents`).
+   * Without it, the participant whose email is the event's `calendarEmail`
+   * is the viewer.
+   */
+  self?: boolean;
 }
 
 /**
@@ -744,6 +766,97 @@ export interface EventHistory<TEvent extends CalendarEvent = CalendarEvent> {
 }
 
 /**
+ * Which events of a repeating series a change to one of its dates applies
+ * to: "this" date, the "following" ones (it and every one after it, which
+ * splits the series) or "all" of them
+ */
+export type SeriesEditScope = "this" | "following" | "all";
+
+/**
+ * Options of `getSeriesEditChanges`
+ */
+export interface SeriesEditOptions<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> {
+  /** The stored events: series, their exceptions and one-off events */
+  events: TEvent[];
+  /** The date as the views drew it, before the change */
+  before: TEvent;
+  /** The date with the change applied */
+  after: TEvent;
+  /** Which events of the series the change applies to */
+  scope: SeriesEditScope;
+  /** Id of the series "following" starts */
+  newSeriesId: string;
+}
+
+/**
+ * What `getSeriesEditChanges` returns
+ */
+export interface SeriesEditResult<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> {
+  /** The changes to apply and record as one undo step, in report order */
+  changes: EventHistoryChange<TEvent>[];
+  /**
+   * Id the views draw the changed date under afterwards, so it stays
+   * selected, or `null` when the change leaves no date on its day
+   */
+  occurrenceId: string | null;
+}
+
+/**
+ * Options of `getSeriesDeleteChanges`
+ */
+export interface SeriesDeleteOptions<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> {
+  /** The stored events: series, their exceptions and one-off events */
+  events: TEvent[];
+  /** The date to delete, as the views drew it */
+  event: TEvent;
+  /** Which events of the series to delete */
+  scope: SeriesEditScope;
+}
+
+/**
+ * One line of the edit question's summary: a field, its new value and its
+ * old one. A field the summary can't show as text (participants, links,
+ * ...) has `null` values and shows its label alone.
+ */
+export interface EventChangeSummaryRow {
+  /** "Time", "Title", "Repeat", ... */
+  label: string;
+  /** The new value, or `null` */
+  after: string | null;
+  /** The old value, struck through, or `null` */
+  before: string | null;
+}
+
+/**
+ * The question `EventSeriesScopeDialog` asks while a change to a repeating
+ * event's date waits for its answer
+ */
+export interface SeriesScopeQuestion {
+  /** Whether a change ("update") or a delete waits */
+  action: "update" | "delete";
+  /** The event's title before the change, quoted in the question */
+  title: string;
+  /** The options, in order, the first selected. See `getSeriesEditScopes` */
+  scopes: SeriesEditScope[];
+  /** What changed, for the edit question. Empty for a delete */
+  summary: EventChangeSummaryRow[];
+}
+
+/**
+ * An answer to the series scope question: save or delete with the chosen
+ * option, or one of the other buttons
+ */
+export type SeriesScopeAnswer =
+  | { action: "save" | "delete"; scope: SeriesEditScope }
+  | { action: "discard" | "continue" | "cancel" };
+
+/**
  * A short message the calendar shows after an action, as Notion Calendar's
  * toasts do: "Event deleted", "Event cut", "Event copied to clipboard".
  * `CalendarToaster` draws it; `useCalendarNotice()` returns it.
@@ -1019,9 +1132,10 @@ interface CalendarProviderBaseProps<
   defaultEvents?: TEvent[];
   /**
    * Called with the full next list whenever events change (drag, resize,
-   * create, edit, delete, duplicate, cut, paste, undo, redo). A repeating
-   * event stays one event in it; an edited occurrence is added as an event of
-   * its own
+   * create, edit, delete, duplicate, cut, paste, undo, redo, or the events
+   * an answer to the series scope question changes). A repeating event
+   * stays one event in it; an edited occurrence is added as an event of its
+   * own
    */
   onEventsChange?: (events: TEvent[]) => void;
   /** Active view (controlled) */
@@ -1048,6 +1162,7 @@ interface CalendarProviderBaseProps<
    * Number of days the week view shows (controlled). Below 7, the columns
    * start on the current day and prev/next move by that many days; from 7
    * up they start on the week's first day and prev/next move by a week.
+   * With weekends hidden they count weekdays, and 7 shows the week's five.
    */
   numberOfDays?: number;
   /** Initial number of days when `numberOfDays` is not controlled. Defaults to 7 */
@@ -1160,13 +1275,15 @@ interface CalendarProviderBaseProps<
    * Called after an event is added: a draft saved by its first edit, one
    * `addEventFromRange` adds, a duplicate or a paste, an occurrence of a
    * repeating event stored on its first edit (with `seriesId` and
-   * `originalStart`), or one `undo` or `redo` brings back. A draft that is
-   * thrown away is never reported
+   * `originalStart`), a new series that "This and following events" starts
+   * and the dates it takes over, or one `undo` or `redo` brings back. A
+   * draft that is thrown away is never reported
    */
   onEventCreate?: (event: TEvent) => void;
   /**
    * Called after an event is changed (drag, resize, an edit in the details,
-   * or `undo` or `redo` changing it back)
+   * a series an answer to the scope question changes, or `undo` or `redo`
+   * changing it back)
    */
   onEventUpdate?: (event: TEvent) => void;
   /**
@@ -1238,8 +1355,9 @@ export interface CalendarContextValue<
   displayMonth: Date | null;
   /**
    * Dates the view draws (end exclusive): the visible days in day and week
-   * view, the whole six-week grid in month view, trimmed to the first and
-   * last weekday when month view hides weekends. Follows settled
+   * view (from the first weekday to the last while weekends are hidden), the
+   * whole six-week grid in month view, trimmed to the first and last weekday
+   * when it hides weekends. Follows settled
    * navigation, so a horizontal scroll moves it once it snaps. Year view
    * spans its year, January 1 to the next January 1.
    */
@@ -1348,17 +1466,29 @@ export interface CalendarContextValue<
    */
   addEventFromRange: (range: NewEventRange) => void;
   /**
-   * Replaces the event with the same id. A generated occurrence of a
-   * repeating event (not in `events`) is added instead, as the stored event
-   * for its date, through `onEventsChange` and `onEventCreate`. The
-   * `eventDraft` is saved the same way: added, reported once and undoable
+   * Replaces the event with the same id. For a date of a repeating event, a
+   * mounted view first asks which events the change applies to ("This
+   * event", "This and following events" or "All events"); pass `scope` to
+   * apply it without asking. A scope the change doesn't allow (like "this"
+   * for a repeat rule change) applies as the first one it does. The
+   * `eventDraft` is saved instead: added, reported once through
+   * `onEventCreate` and undoable
    */
-  updateEvent: (event: TEvent) => void;
+  updateEvent: (event: TEvent, scope?: SeriesEditScope) => void;
+  /**
+   * Changes the event the way a field of the event details does. A date of
+   * a repeating event, while selected, keeps the change pending: drawn with
+   * a dot before its title, and asked about once the event is left. Any
+   * other event changes at once, as with `updateEvent`.
+   */
+  editEvent: (event: TEvent) => void;
   /**
    * Deletes the event through `onEventsChange` and `onEventDelete`, and
-   * clears the selection when it was selected. Undoable
+   * clears the selection when it was selected. Undoable. For a date of a
+   * repeating event, a mounted view first asks which events to delete;
+   * pass `scope` to delete without asking.
    */
-  deleteEvent: (eventId: string) => void;
+  deleteEvent: (eventId: string, scope?: SeriesEditScope) => void;
   /**
    * Adds a copy of the event at the same time, with a new id from
    * `crypto.randomUUID()`, through `onEventsChange` and `onEventCreate`, and
@@ -1393,11 +1523,17 @@ export interface CalendarContextValue<
   canUndo: boolean;
   /** Whether `redo` has a step to do again. Any new change clears them */
   canRedo: boolean;
-  /** Toggles weekend columns */
+  /**
+   * Shows or hides the weekend. Hiding it in day view, or in a week view
+   * shorter than a week, moves a Saturday or Sunday on screen to Monday
+   */
   toggleWeekends: () => void;
-  /** Flips `viewSettings.showDeclinedEvents`. No view filters by it yet */
+  /**
+   * Shows or hides the events the viewer declined. Hiding them clears the
+   * selection when the selected event is one
+   */
   toggleDeclinedEvents: () => void;
-  /** Toggles week numbers */
+  /** Shows or hides week numbers */
   toggleWeekNumbers: () => void;
   /** Opens the week containing `date` and briefly highlights that day */
   showDay: (date: Date) => void;

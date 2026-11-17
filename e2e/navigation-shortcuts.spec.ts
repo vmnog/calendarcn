@@ -95,7 +95,8 @@ test("Escape closes Go to date and changes nothing", async ({ page }) => {
 
 test("Go to date keeps the current view", async ({ page }) => {
   await page.keyboard.press("d");
-  await expectHeader(page, "June 2026 Thursday, Jun 4");
+  // The demo has week numbers on, and day view names the week too
+  await expectHeader(page, "June 2026 Thursday, Jun 4 Week 23");
 
   await page.keyboard.press(".");
   await page.keyboard.type("aug 10");
@@ -103,7 +104,7 @@ test("Go to date keeps the current view", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Day", exact: true }),
   ).toBeVisible();
-  await expectHeader(page, "August 2026 Monday, Aug 10");
+  await expectHeader(page, "August 2026 Monday, Aug 10 Week 33");
 });
 
 test("Go to date... in the command menu opens the date field, and Backspace leaves it", async ({

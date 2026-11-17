@@ -152,3 +152,18 @@ export async function dragBy(
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+/**
+ * Answers the question a change to a date of a repeating event asks with its
+ * first option, "This event": "Save event" for an edit, "Delete event" for a
+ * delete. Waits for the question to close.
+ */
+export async function answerThisEvent(
+  page: Page,
+  button: "Save event" | "Delete event",
+): Promise<void> {
+  const dialog = page.getByRole("dialog", { name: /repeat event/ });
+  await expect(dialog.getByRole("radio", { name: "This event" })).toBeChecked();
+  await dialog.getByRole("button", { name: button }).click();
+  await expect(dialog).toHaveCount(0);
+}

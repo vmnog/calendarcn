@@ -72,6 +72,8 @@ User interaction → Hook (drag/resize) → onEventChange callback → CalendarP
 2. User pointermove → hook computes snapped position, updates `dragState` / `resizeState`
 3. User pointerup → hook calls `onEventChange(updatedEvent)` → the provider's `updateEvent` merges it into `events`
 
+For a date of a repeating event, `updateEvent` and `deleteEvent` first ask which events the change applies to (`EventSeriesScopeDialog`, which every view renders); the details' `editEvent` holds the change, drawn on that date only, until the event is left. The answer becomes one set of changes (`getSeriesEditChanges` / `getSeriesDeleteChanges` in `recurrence.ts`), applied, reported and undone together. [ADR-009](decisions/009-series-edit-scopes.md) has the rules.
+
 ### Creating Events
 
 New events start as a draft, the way Notion Calendar starts them. The provider holds it apart from `events` (`eventDraft` in `useCalendar()`): it only counts while it is the selected event, so every path that moves the selection settles it. A draft that was edited (a title typed into it) is saved; an untouched one is dropped.
@@ -85,7 +87,7 @@ Double-click or drag on empty space → use-double-click / use-event-draw / use-
 1. A double-click on empty space (two clicks within 350 ms and 5 px, `use-double-click.ts`) starts a draft `defaultEventDuration` long at the nearest `snapMinutes` step (`getClickedEventRange()`), or an all-day one in the all-day row and month view.
 2. A press that moves 4 px draws one instead: `use-event-draw.ts` on the time grid (`getDrawnEventRange()`: anchor to pointer, up or down, across day columns), `use-day-range-draw.ts` over whole days in the all-day row and month view. Touch draws from a long press. Escape or `pointercancel` mid-drag calls `clearSelection()`.
 3. The views draw the draft through `event-draft.tsx`. While nothing is typed into it, it is a tinted range (`TimeGridEventDraft`, `AllDayEventDraft`, the month cells). Its first title keystroke, or `startEventDraft()` from code, makes it an event among `drawnEvents`, which the views draw and their drag hooks commit from in place of `events`.
-4. `EventDetailPanel` gets `onTitlePreview` for a draft: title keystrokes go to `updateEventDraft()`, and `onEventChange` (the provider's `updateEvent`) saves it on Enter, on blur of a changed title, or on any other field's first edit. Escape restores the title and saves nothing.
+4. `EventDetailPanel` gets `onTitlePreview` for a draft: title keystrokes go to `updateEventDraft()`, and `onEventChange` (the provider's `editEvent`) saves it on Enter, on blur of a changed title, or on any other field's first edit. Escape restores the title and saves nothing.
 5. With the details in a popover, `EventDraftPopover` hosts them at view level, beside the draft's range, and keeps hosting them after the save while the event stays selected (`useCalendarEventDraft()`), so the popover never remounts under a field that is being typed into.
 
 ### Repeating Events
