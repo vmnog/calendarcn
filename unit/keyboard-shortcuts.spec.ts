@@ -43,6 +43,24 @@ test("every shortcut is listed once", () => {
   );
 });
 
+test("Workflows lists Create event, Meet with... and Show teammate calendar", () => {
+  const workflows = KEYBOARD_SHORTCUT_GROUPS.find(
+    (group) => group.heading === "Workflows",
+  );
+  expect(workflows?.shortcuts).toEqual([
+    SHORTCUTS.createEvent,
+    SHORTCUTS.meetWith,
+    SHORTCUTS.showTeammateCalendar,
+  ]);
+  expect(matchesKeyboardShortcut(SHORTCUTS.meetWith, "f")).toBe(true);
+  expect(matchesKeyboardShortcut(SHORTCUTS.showTeammateCalendar, "p")).toBe(
+    true,
+  );
+  expect(matchesKeyboardShortcut(SHORTCUTS.meetWith, "availability")).toBe(
+    true,
+  );
+});
+
 test("the find field matches words of the label or keywords, in any case", () => {
   expect(matchesKeyboardShortcut(SHORTCUTS.goToDate, "date")).toBe(true);
   expect(matchesKeyboardShortcut(SHORTCUTS.goToDate, "Go DATE")).toBe(true);

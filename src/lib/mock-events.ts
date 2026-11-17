@@ -8,6 +8,7 @@ import type {
   EventContact,
   EventRoom,
   LocationSuggestion,
+  RecurrenceWeekday,
 } from "@/components/week-view-types";
 
 /** Weekday the demo weeks start on (Sunday), matching the calendar views. */
@@ -2211,6 +2212,256 @@ export const DEMO_CONTACTS: EventContact[] = [
   { name: "Casey Brooks", email: "casey@example.com" },
   { name: "Riley Park", email: "riley.park@example.com" },
 ];
+
+/**
+ * Weeks before the current one the demo teammates' repeating events start,
+ * so navigating back still shows their weeks
+ */
+const TEAMMATE_WEEKS_BEFORE = 20;
+
+/** Monday to Friday, for the teammates' daily routines */
+const WORKDAYS: RecurrenceWeekday[] = [1, 2, 3, 4, 5];
+
+/** One of a teammate's events: weekly on `weekdays`, or once this week */
+interface TeammateEvent {
+  key: string;
+  title: string;
+  /** Repeats every week on these days; without it, happens once on `day` */
+  weekdays?: RecurrenceWeekday[];
+  /** Day of this week (0 = Sunday) of a one-off event */
+  day?: number;
+  hour: number;
+  minute?: number;
+  durationMinutes: number;
+  opts?: EventOpts;
+}
+
+/**
+ * The made-up weeks of four of the demo's contacts: what "Meet with..."
+ * and "Show teammate calendar..." draw beside your events. Busy most
+ * mornings, so the free time everyone shares falls in the afternoons.
+ */
+const TEAMMATE_WEEKS: Readonly<Record<string, readonly TeammateEvent[]>> = {
+  "priya@example.com": [
+    {
+      key: "standup",
+      title: "Team Standup",
+      weekdays: [1],
+      hour: 9,
+      durationMinutes: 30,
+    },
+    {
+      key: "critique",
+      title: "Design critique",
+      weekdays: [2, 4],
+      hour: 10,
+      durationMinutes: 90,
+    },
+    {
+      key: "lunch",
+      title: "Lunch",
+      weekdays: WORKDAYS,
+      hour: 12,
+      durationMinutes: 60,
+    },
+    {
+      key: "focus",
+      title: "Focus: onboarding flows",
+      weekdays: [3],
+      hour: 13,
+      durationMinutes: 180,
+      opts: { kind: "focus-time" },
+    },
+    {
+      key: "interviews",
+      title: "User interviews",
+      weekdays: [5],
+      hour: 14,
+      durationMinutes: 60,
+    },
+    {
+      key: "review",
+      title: "Design review with Alex",
+      day: 4,
+      hour: 15,
+      durationMinutes: 60,
+    },
+  ],
+  "alex@example.com": [
+    {
+      key: "standup",
+      title: "Team Standup",
+      weekdays: [1],
+      hour: 9,
+      durationMinutes: 30,
+    },
+    {
+      key: "deep-work",
+      title: "Deep work",
+      weekdays: [2, 3, 4, 5],
+      hour: 9,
+      minute: 30,
+      durationMinutes: 90,
+      opts: { kind: "focus-time" },
+    },
+    {
+      key: "lunch",
+      title: "Lunch",
+      weekdays: WORKDAYS,
+      hour: 12,
+      minute: 30,
+      durationMinutes: 60,
+    },
+    {
+      key: "architecture",
+      title: "Architecture sync",
+      weekdays: [3],
+      hour: 11,
+      durationMinutes: 60,
+    },
+    {
+      key: "sprint-planning",
+      title: "Sprint planning",
+      weekdays: [5],
+      hour: 13,
+      minute: 30,
+      durationMinutes: 60,
+    },
+    {
+      key: "review",
+      title: "Design review with Priya",
+      day: 4,
+      hour: 15,
+      durationMinutes: 60,
+    },
+  ],
+  "sam@example.com": [
+    {
+      key: "roadmap",
+      title: "Roadmap review",
+      weekdays: [1],
+      hour: 10,
+      durationMinutes: 60,
+    },
+    {
+      key: "product-sync",
+      title: "Product sync",
+      weekdays: [3],
+      hour: 9,
+      durationMinutes: 60,
+    },
+    {
+      key: "customer-calls",
+      title: "Customer calls",
+      weekdays: [2],
+      hour: 14,
+      durationMinutes: 90,
+    },
+    {
+      key: "stakeholders",
+      title: "Stakeholder update",
+      weekdays: [4],
+      hour: 13,
+      durationMinutes: 60,
+    },
+    {
+      key: "inbox",
+      title: "Inbox zero",
+      weekdays: WORKDAYS,
+      hour: 16,
+      minute: 30,
+      durationMinutes: 30,
+    },
+    {
+      key: "dentist",
+      title: "Dentist",
+      day: 5,
+      hour: 10,
+      durationMinutes: 60,
+      opts: { visibility: "private" },
+    },
+  ],
+  "morgan.diaz@example.com": [
+    {
+      key: "pipeline",
+      title: "Pipeline review",
+      weekdays: WORKDAYS,
+      hour: 8,
+      minute: 30,
+      durationMinutes: 60,
+    },
+    {
+      key: "client-lunch",
+      title: "Client lunch",
+      weekdays: [2],
+      hour: 12,
+      durationMinutes: 90,
+      opts: { location: "Atlas, 3rd floor" },
+    },
+    {
+      key: "workshop",
+      title: "Sales workshop",
+      weekdays: [3],
+      hour: 15,
+      durationMinutes: 120,
+    },
+    {
+      key: "one-on-one",
+      title: "1:1 with Sam",
+      weekdays: [5],
+      hour: 11,
+      durationMinutes: 60,
+    },
+    {
+      key: "conference",
+      title: "Conference talk",
+      day: 4,
+      hour: 10,
+      durationMinutes: 240,
+      opts: { location: "Moscone Center" },
+    },
+  ],
+};
+
+/**
+ * The demo teammates' events by email, relative to `today` like the rest of
+ * the demo: weekly routines from 20 weeks back (repeating events, drawn on
+ * each of their dates) and a few one-offs this week. Pass them as
+ * `contactEvents`.
+ */
+export function generateContactEvents(
+  today: Date = new Date(),
+): Record<string, DetailedCalendarEvent[]> {
+  const rel = createRelativeDate(today);
+  const firstWeek = -TEAMMATE_WEEKS_BEFORE * 7;
+  const result: Record<string, DetailedCalendarEvent[]> = {};
+  for (const [email, week] of Object.entries(TEAMMATE_WEEKS)) {
+    const handle = email.split("@")[0];
+    result[email] = week.map((item) => {
+      const firstDay = item.weekdays
+        ? firstWeek + Math.min(...item.weekdays)
+        : (item.day ?? 1);
+      const start = rel(firstDay, item.hour, item.minute ?? 0);
+      return {
+        id: `${handle}-${item.key}`,
+        title: item.title,
+        start,
+        end: addMinutes(start, item.durationMinutes),
+        calendarEmail: email,
+        ...(item.weekdays
+          ? {
+              recurrenceRule: {
+                frequency: "weekly" as const,
+                weekdays: item.weekdays,
+              },
+            }
+          : {}),
+        ...item.opts,
+      };
+    });
+  }
+  return result;
+}
 
 /** Made-up meeting rooms the demo's participants field offers */
 export const DEMO_ROOMS: EventRoom[] = [

@@ -18,6 +18,10 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useToday } from "@/hooks/use-now";
 import { EventTitleFocusProvider } from "./event-title-focus-context";
 import {
+  CalendarPeopleProvider,
+  useCalendarPeopleState,
+} from "./calendar-people";
+import {
   AGENDA_DAYS,
   addShownDays,
   describeEventChange,
@@ -72,6 +76,7 @@ import {
   toDisplayEvent,
   toZonedWallClock,
 } from "@/lib/time-zones";
+import { addMeetingParticipants, findContact } from "@/lib/people";
 import type {
   CalendarConfig,
   CalendarContextValue,
@@ -434,6 +439,29 @@ function createDefaultEvent(range: NewEventRange): CalendarEvent {
 }
 
 /**
+ * A just-created event with the people met with ("Meet with...") invited:
+ * as the details' participants field adds them, the calendar's account
+ * organizing. Returned as it is when nobody is met with.
+ */
+function withMeetingParticipants(
+  event: CalendarEvent,
+  meetWith: string[],
+  contacts: EventContact[],
+): CalendarEvent {
+  if (meetWith.length === 0) return event;
+  const detailed: DetailedCalendarEvent = event;
+  const invited: DetailedCalendarEvent = {
+    ...detailed,
+    participants: addMeetingParticipants(
+      detailed.participants ?? [],
+      meetWith.map((email) => findContact(contacts, email)),
+      detailed.calendarEmail,
+    ),
+  };
+  return invited;
+}
+
+/**
  * The option a series change applies with right away: the caller's (one
  * the change doesn't offer falls back to the first it does), the first
  * offered when no dialog can ask, or `null` to ask
@@ -726,6 +754,14 @@ function CalendarStateProvider({
   rooms = NO_ROOMS,
   conferenceProviders = NO_CONFERENCE_PROVIDERS,
   locationSuggestions = NO_LOCATION_SUGGESTIONS,
+  meetWith,
+  defaultMeetWith,
+  onMeetWithChange,
+  teammates,
+  defaultTeammates,
+  onTeammatesChange,
+  contactEvents,
+  workingHours,
   createEvent,
   onEventCreate,
   onEventUpdate,
@@ -808,6 +844,18 @@ function CalendarStateProvider({
     () => ({ primary: primaryTimeZone, secondary: knownSecondaryTimeZones }),
     [primaryTimeZone, knownSecondaryTimeZones],
   );
+  /** Who you meet with and which teammates show, for `useCalendarPeople()` */
+  const people = useCalendarPeopleState({
+    contacts,
+    meetWith,
+    defaultMeetWith,
+    onMeetWithChange,
+    teammates,
+    defaultTeammates,
+    onTeammatesChange,
+    contactEvents,
+    workingHours,
+  });
   const [viewSettings, setViewSettings] = React.useState<ViewSettings>(() => ({
     ...DEFAULT_VIEW_SETTINGS,
     ...defaultViewSettings,
@@ -1350,10 +1398,15 @@ function CalendarStateProvider({
       // Creating an event leaves the one a change waits for
       afterSeriesChange(() => {
         // `createEvent` and the app get instants, like the events they store
-        const newEvent = (createEvent ?? createDefaultEvent)(
+        const created = (createEvent ?? createDefaultEvent)(
           fromDisplayRange(range, displayTimeZone),
         );
-        if (!newEvent) return;
+        if (!created) return;
+        const newEvent = withMeetingParticipants(
+          created,
+          people.meetWith,
+          people.contacts,
+        );
         setEvents((prev) => [...prev, newEvent]);
         onEventCreate?.(newEvent);
         recordHistory("create", [
@@ -1374,6 +1427,8 @@ function CalendarStateProvider({
       afterSeriesChange,
       displayTimeZone,
       createEvent,
+      people.meetWith,
+      people.contacts,
       setEvents,
       onEventCreate,
       selectEvent,
@@ -2477,7 +2532,9 @@ function CalendarStateProvider({
                       pendingEventId={pendingTitleFocusId}
                       clearPending={clearTitleFocus}
                     >
-                      {children}
+                      <CalendarPeopleProvider value={people}>
+                        {children}
+                      </CalendarPeopleProvider>
                       {/* Announces changes, the event actions, undo and redo to screen readers */}
                       <div role="status" aria-live="polite" className="sr-only">
                         {announcement && (

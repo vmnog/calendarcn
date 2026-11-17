@@ -22,6 +22,7 @@ import {
   DetailsSidebar,
 } from "@/components/details-sidebar";
 import { MonthView } from "@/components/month-view";
+import { PeoplePicker } from "@/components/people-picker";
 import { TimeGrid } from "@/components/time-grid";
 import { YearView } from "@/components/year-view";
 import {
@@ -41,7 +42,10 @@ import {
   filterKeyboardShortcutGroups,
 } from "@/lib/keyboard-shortcuts";
 import { toDisplayEvent } from "@/lib/time-zones";
-import type { CalendarProviderProps } from "@/components/calendar-types";
+import type {
+  CalendarProviderProps,
+  PeoplePickerMode,
+} from "@/components/calendar-types";
 import type {
   CalendarAppProps,
   CommandMenuPage,
@@ -309,6 +313,11 @@ function CalendarAppShell({
   const [commandMenuZoneCommand, setCommandMenuZoneCommand] = React.useState<
     TimeZoneCommand | undefined
   >(undefined);
+  /** Whether the people picker F and P open is open */
+  const [peoplePickerOpen, setPeoplePickerOpen] = React.useState(false);
+  /** What picking someone does; kept while the picker closes, so its text stays */
+  const [peoplePickerMode, setPeoplePickerMode] =
+    React.useState<PeoplePickerMode>("meet-with");
   /** Hidden file picker behind the command menu's "Import .ics file" */
   const icsInputRef = React.useRef<HTMLInputElement>(null);
   /** The details sidebar's event search and full shortcut list */
@@ -336,6 +345,16 @@ function CalendarAppShell({
     setCommandMenuPage("commands");
     setCommandMenuZoneCommand("travel");
     setCommandMenuOpen(true);
+  }, []);
+
+  const openMeetWith = React.useCallback(() => {
+    setPeoplePickerMode("meet-with");
+    setPeoplePickerOpen(true);
+  }, []);
+
+  const openTeammatePicker = React.useCallback(() => {
+    setPeoplePickerMode("teammate");
+    setPeoplePickerOpen(true);
   }, []);
 
   const searchEvents = React.useCallback((query: string) => {
@@ -427,7 +446,7 @@ function CalendarAppShell({
   // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, C, Escape,
   // Shift+Cmd+E for weekends, and the event keys: Delete/Backspace, Cmd+X,
   // Cmd+C, Cmd+V, Cmd+D, Cmd+Z and Shift+Cmd+Z. Then the app's own, checked
-  // first: Cmd+K, Cmd+/, /, Shift+M, Cmd+, . ? and Z
+  // first: Cmd+K, Cmd+/, /, Shift+M, Cmd+, . ? Z, F and P
   useCalendarShortcuts({
     enabled: shortcuts,
     onToggleCommandMenu: toggleCommandMenu,
@@ -438,6 +457,8 @@ function CalendarAppShell({
     onGoToDate: openGoToDate,
     onShowShortcuts: showAllShortcuts,
     onTravelToTimeZone: openTravelPicker,
+    onMeetWith: openMeetWith,
+    onShowTeammateCalendar: openTeammatePicker,
   });
 
   return (
@@ -450,11 +471,18 @@ function CalendarAppShell({
         onCycleTheme={cycleTheme}
         onImportIcs={() => icsInputRef.current?.click()}
         onExportIcs={exportIcs}
+        onMeetWith={openMeetWith}
+        onShowTeammateCalendar={openTeammatePicker}
         onSearchEvents={searchEvents}
         onShowShortcuts={showAllShortcuts}
         defaultPage={commandMenuPage}
         showComingSoon={showComingSoon}
         timeZoneCommand={commandMenuZoneCommand}
+      />
+      <PeoplePicker
+        open={peoplePickerOpen}
+        onOpenChange={setPeoplePickerOpen}
+        mode={peoplePickerMode}
       />
       <input
         ref={icsInputRef}

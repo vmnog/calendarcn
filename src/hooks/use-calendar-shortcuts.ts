@@ -25,6 +25,10 @@ interface UseCalendarShortcutsOptions {
   onShowShortcuts?: () => void;
   /** Z: opens a picker to travel to a time zone ("Travel to time zone...") */
   onTravelToTimeZone?: () => void;
+  /** F: opens "Meet with..." */
+  onMeetWith?: () => void;
+  /** P: opens "Show teammate calendar..." */
+  onShowTeammateCalendar?: () => void;
 }
 
 /** App actions some keys trigger. A key is claimed only when its action is given */
@@ -184,14 +188,13 @@ function handleAppShortcut(
   if (e.key === "M" && e.shiftKey && !isCommand) {
     return run(actions.onCycleTheme);
   }
-  if (e.key === "." && !isCommand && !e.altKey) {
-    return run(actions.onGoToDate);
-  }
-  if (e.key === "?" && !isCommand && !e.altKey) {
-    return run(actions.onShowShortcuts);
-  }
-  if ((e.key === "z" || e.key === "Z") && !isCommand && !e.altKey) {
-    return run(actions.onTravelToTimeZone);
+  if (isCommand || e.altKey) return false;
+  if (e.key === ".") return run(actions.onGoToDate);
+  if (e.key === "?") return run(actions.onShowShortcuts);
+  if (e.key === "z" || e.key === "Z") return run(actions.onTravelToTimeZone);
+  if (e.key === "f" || e.key === "F") return run(actions.onMeetWith);
+  if (e.key === "p" || e.key === "P") {
+    return run(actions.onShowTeammateCalendar);
   }
   return false;
 }
@@ -333,8 +336,9 @@ function handleShortcut(
  * The live demo's app keys come on with their actions: Cmd+K
  * (`onToggleCommandMenu`), Cmd+/ (`onToggleSidebar`), / (`onToggleContextPanel`),
  * Shift+M (`onCycleTheme`), Cmd+, (`onOpenSettings`), . (`onGoToDate`), ?
- * (`onShowShortcuts`) and Z (`onTravelToTimeZone`). They're checked
- * first, and one that runs stops the event from reaching later listeners.
+ * (`onShowShortcuts`), Z (`onTravelToTimeZone`), F (`onMeetWith`) and P
+ * (`onShowTeammateCalendar`). They're checked first, and one that runs stops
+ * the event from reaching later listeners.
  *
  * Key presses in inputs, textareas, selects and editable content are ignored
  * (except Escape, Cmd+K and Cmd+,), and the event keys also during an IME
@@ -353,6 +357,8 @@ export function useCalendarShortcuts({
   onGoToDate,
   onShowShortcuts,
   onTravelToTimeZone,
+  onMeetWith,
+  onShowTeammateCalendar,
 }: UseCalendarShortcutsOptions = {}) {
   const {
     goToToday,
@@ -417,6 +423,8 @@ export function useCalendarShortcuts({
     onTravelToTimeZone,
     travelTimeZone,
     travelToTimeZone,
+    onMeetWith,
+    onShowTeammateCalendar,
   });
 
   React.useEffect(() => {
@@ -453,6 +461,8 @@ export function useCalendarShortcuts({
       onTravelToTimeZone,
       travelTimeZone,
       travelToTimeZone,
+      onMeetWith,
+      onShowTeammateCalendar,
     };
   }, [
     goToToday,
@@ -487,6 +497,8 @@ export function useCalendarShortcuts({
     onTravelToTimeZone,
     travelTimeZone,
     travelToTimeZone,
+    onMeetWith,
+    onShowTeammateCalendar,
   ]);
 
   React.useEffect(() => {

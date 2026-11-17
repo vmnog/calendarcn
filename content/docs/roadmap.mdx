@@ -25,14 +25,15 @@ Not scheduled yet, roughly in priority order.
 
 Some controls are drawn the way Notion Calendar has them and aren't built yet. Each is disabled and carries a "Soon" badge, in the [live demo](/) and in the code you install, so nobody clicks a control that does nothing. They still need implementing:
 
-- **Calendar sidebar**: the scheduling row, the "Meet with..." field and "Add calendar account". See [Calendar Sidebar](/docs/components/calendar-sidebar).
-- **Shortcuts**: the menu bar calendar and a teammate's calendar, in the "Useful shortcuts" of the [Details Sidebar](/docs/components/details-sidebar).
+- **Calendar sidebar**: the scheduling row and "Add calendar account". See [Calendar Sidebar](/docs/components/calendar-sidebar).
+- **Shortcuts**: the menu bar calendar, in the "Useful shortcuts" of the [Details Sidebar](/docs/components/details-sidebar).
 - **Commands**: with `showComingSoon`, the [Command Menu](/docs/components/command-menu) lists the Notion Calendar commands that aren't built.
 
 ## Recently shipped
 
 The highlights. The [Changelog](/docs/changelog) lists every change item by item, with breaking changes called out.
 
+- **Meet with people**: type a name in the sidebar's "Meet with..." field, or press <Kbd>F</Kbd>, and that person's events show beside yours, with the times you're all free highlighted. An event you create meanwhile invites them. <Kbd>P</Kbd> shows a teammate's calendar the same way, without the meeting. Their events come from your app, from Google Calendar's free/busy for example. See [Meeting with people](/docs/components/calendar-core#meeting-with-people).
 - **Week start and hour size**: start the week on any day and set the number of days from the command menu, and zoom the day and week views' hours in and out with Notion Calendar's keys. See [Calendar Core](/docs/components/calendar-core#hour-size).
 - **View settings in every view**: hide weekends, show week numbers and hide the events you declined from the view switcher or the command menu, in every view. Day and week view step over a hidden weekend, and declined events are struck through on a dashed outline, as in Notion Calendar. See [Calendar Header](/docs/components/calendar-header#calendarviewswitcher).
 - **Go to date, search and every shortcut**: press <Kbd>.</Kbd> and type a date ("next friday", "dec 25", "in 2 weeks") to go there, <Kbd>C</Kbd> to create an event at the next half hour, and <Kbd>?</Kbd> to see every keyboard shortcut, grouped as Notion Calendar groups them. The command menu also searches events. See [Keyboard shortcuts](/docs/keyboard-shortcuts) and the [Command Menu](/docs/components/command-menu).

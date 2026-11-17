@@ -99,6 +99,8 @@ Pass a callback to add its command. These are the demo's:
   onExportIcs={exportIcs}
   onSearchEvents={(query) => detailsActions.current?.searchEvents(query)}
   onShowShortcuts={() => detailsActions.current?.showAllShortcuts()}
+  onMeetWith={() => openPeoplePicker("meet-with")}
+  onShowTeammateCalendar={() => openPeoplePicker("teammate")}
   showComingSoon
 />
 ```
@@ -107,6 +109,7 @@ Pass a callback to add its command. These are the demo's:
 - `onCycleTheme` adds "Set theme...". The demo goes from system to light to dark with `useTheme()` from next-themes.
 - `onSearchEvents` adds "Search events", and once you type, "Search events for “…”" with your text. The demo opens the [Details Sidebar](/docs/components/details-sidebar)'s event search with the field focused.
 - `onShowShortcuts` adds "Show keyboard shortcuts" (<Kbd>?</Kbd>). The demo shows the details sidebar's full list.
+- `onMeetWith` and `onShowTeammateCalendar` add "Meet with..." (F) and "Show teammate calendar..." (P). The demo opens the [People Picker](/docs/components/people-picker) from both.
 - `onToggleSidebar` and `onToggleContextPanel` add the panel toggles, next to the [Calendar Header](/docs/components/calendar-header)'s buttons.
 - `showComingSoon` also lists the Notion Calendar commands CalendarCN doesn't have yet, disabled with a "Soon" badge, as the demo does.
 
@@ -178,6 +181,16 @@ The dialog is translucent and blurred in dark mode. The CLI also adds a rule to 
       name: "onExportIcs",
       type: "() => void",
       description: 'Adds "Export .ics file".',
+    },
+    {
+      name: "onMeetWith",
+      type: "() => void",
+      description: 'Adds "Meet with..." (F).',
+    },
+    {
+      name: "onShowTeammateCalendar",
+      type: "() => void",
+      description: 'Adds "Show teammate calendar..." (P).',
     },
     {
       name: "onSearchEvents",

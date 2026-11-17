@@ -129,6 +129,10 @@ interface CommandMenuProps {
   onImportIcs?: () => void;
   /** Adds "Export .ics file" */
   onExportIcs?: () => void;
+  /** Adds "Meet with..." (F): open a people picker that meets with who you pick */
+  onMeetWith?: () => void;
+  /** Adds "Show teammate calendar..." (P): open a people picker that shows their calendar */
+  onShowTeammateCalendar?: () => void;
   /**
    * Adds "Search events", and "Search events for “…”" once text is typed:
    * opens your event search with that text (empty for the first)
@@ -177,6 +181,8 @@ export function CommandMenu({
   onCycleTheme,
   onImportIcs,
   onExportIcs,
+  onMeetWith,
+  onShowTeammateCalendar,
   onSearchEvents,
   onShowShortcuts,
   defaultPage = "commands",
@@ -345,8 +351,12 @@ export function CommandMenu({
           run: addEventAtNextSlot,
           movesFocus: true,
         },
-        { label: "Meet with...", soon: true },
-        { label: "Show teammate calendar...", soon: true },
+        { label: "Meet with...", keys: ["F"], run: onMeetWith },
+        {
+          label: "Show teammate calendar...",
+          keys: ["P"],
+          run: onShowTeammateCalendar,
+        },
         { label: "Create recurring scheduling link...", soon: true },
         { label: "Create one-off scheduling link...", soon: true },
         { label: "Import .ics file...", run: onImportIcs },
