@@ -24,7 +24,10 @@ import {
   describeEventCreated,
   describeEventDraft,
   describeEventTime,
+  getAllDayEventRange,
   getCalendarHeaderInfo,
+  getNextSlotDay,
+  getNextSlotEventRange,
   getPeriodStart,
   getVisibleDays,
   getVisibleRange,
@@ -50,7 +53,15 @@ import {
   findSeriesOccurrence,
   getOccurrenceRemoval,
 } from "@/lib/recurrence";
-import { isKnownTimeZone } from "@/lib/time-zones";
+import {
+  fromDisplayEvent,
+  fromDisplayRange,
+  getViewerTimeZone,
+  getZonedNow,
+  isKnownTimeZone,
+  toDisplayEvent,
+  toZonedWallClock,
+} from "@/lib/time-zones";
 import type {
   CalendarConfig,
   CalendarContextValue,
@@ -61,6 +72,7 @@ import type {
   CalendarNoticeValue,
   CalendarProviderProps,
   CalendarRenderSlots,
+  CalendarTimeZones,
   ConferenceProviderOption,
   EventContact,
   EventContentProps,
@@ -129,6 +141,9 @@ const NO_CONFERENCE_PROVIDERS: ConferenceProviderOption[] = [];
 /** Places suggested when `locationSuggestions` is not set (stable identity) */
 const NO_LOCATION_SUGGESTIONS: LocationSuggestion[] = [];
 
+/** No additional time zones (stable identity) */
+const NO_TIME_ZONES: string[] = [];
+
 /** Config used outside a provider, and for every provider prop left unset */
 const DEFAULT_CALENDAR_CONFIG: CalendarConfig = {
   snapMinutes: DEFAULT_SNAP_MINUTES,
@@ -137,6 +152,7 @@ const DEFAULT_CALENDAR_CONFIG: CalendarConfig = {
   dayEndHour: DEFAULT_DAY_END_HOUR,
   hourCycle: DEFAULT_HOUR_CYCLE,
   locale: enUS,
+  secondaryTimeZones: NO_TIME_ZONES,
   calendars: NO_CALENDARS,
   contacts: NO_CONTACTS,
   rooms: NO_ROOMS,
@@ -188,6 +204,8 @@ interface AdoptedViewDateOptions {
   pendingSwitch: ViewSwitchSnapshot | null;
   /** Whether the provider still shows its untouched starting date (today's period) */
   isOnStartingToday: boolean;
+  /** Now, on the calendar's clock */
+  now: Date;
 }
 
 /** Days the header's month, year and week number are read from */
@@ -538,6 +556,7 @@ function getAdoptedViewDate({
   weekStartsOn,
   pendingSwitch,
   isOnStartingToday,
+  now,
 }: AdoptedViewDateOptions): Date {
   // The mounted view didn't follow the latest switch: undo it, date included
   if (
@@ -549,10 +568,10 @@ function getAdoptedViewDate({
   // Still on the starting date picked before any view mounted: today's
   // period of the mounted view instead (today for a day view)
   if (isOnStartingToday) {
-    return getPeriodStart(new Date(), view, weekStartsOn, numberOfDays);
+    return getPeriodStart(now, view, weekStartsOn, numberOfDays);
   }
   // The app swapped in a view of another type: land like switchView
-  if (view === "day") return startOfDay(new Date());
+  if (view === "day") return startOfDay(now);
   return getPeriodStart(currentDate, view, weekStartsOn, numberOfDays);
 }
 
@@ -567,6 +586,34 @@ function resolveDayHours(
   const start = Math.min(Math.max(Math.floor(dayStartHour), 0), 23);
   const end = Math.min(Math.max(Math.ceil(dayEndHour), start + 1), 24);
   return { dayStartHour: start, dayEndHour: end };
+}
+
+/**
+ * The zone the views draw in: `timeZone` when the runtime knows it, else
+ * `undefined`, the viewer's own zone, where nothing is mapped
+ */
+function resolveTimeZone(timeZone: string | undefined): string | undefined {
+  if (!timeZone || !isKnownTimeZone(timeZone)) return undefined;
+  return timeZone;
+}
+
+/**
+ * A series occurrence as `useCalendar()` hands it out: its start, and its
+ * event when it has one, on the calendar's clock
+ */
+function toDisplayOccurrence(
+  occurrence: SeriesOccurrence | null,
+  isAllDay: boolean,
+  timeZone: string | undefined,
+): SeriesOccurrence | null {
+  if (!occurrence || !timeZone) return occurrence;
+  return {
+    ...occurrence,
+    start: isAllDay
+      ? occurrence.start
+      : toZonedWallClock(occurrence.start, timeZone),
+    event: occurrence.event && toDisplayEvent(occurrence.event, timeZone),
+  };
 }
 
 /**
@@ -606,8 +653,10 @@ function resolveDayHours(
 export function CalendarProvider<TEvent extends CalendarEvent = CalendarEvent>(
   props: CalendarProviderProps<TEvent>,
 ) {
-  // `null` on the server and during hydration
-  const today = useToday();
+  // `null` on the server and during hydration. Today on the calendar's clock
+  const today = useToday(
+    resolveTimeZone(props.timeZone ?? props.defaultTimeZone),
+  );
   const todayPeriodStart = today
     ? getPeriodStart(
         today,
@@ -654,6 +703,12 @@ function CalendarStateProvider({
   hourCycle = DEFAULT_HOUR_CYCLE,
   locale = enUS,
   secondaryTimeZone,
+  timeZone: timeZoneProp,
+  defaultTimeZone,
+  onTimeZoneChange,
+  secondaryTimeZones: secondaryTimeZonesProp,
+  defaultSecondaryTimeZones = NO_TIME_ZONES,
+  onSecondaryTimeZonesChange,
   calendars = NO_CALENDARS,
   contacts = NO_CONTACTS,
   rooms = NO_ROOMS,
@@ -690,6 +745,47 @@ function CalendarStateProvider({
     defaultProp: defaultNumberOfDays,
     onChange: onNumberOfDaysChange,
   });
+  /** The primary zone, `undefined` for the viewer's */
+  const [primaryTimeZone, setPrimaryTimeZone] = useControllableState<
+    string | undefined
+  >({
+    prop: timeZoneProp,
+    defaultProp: defaultTimeZone,
+    onChange: (zone) => {
+      if (zone) onTimeZoneChange?.(zone);
+    },
+  });
+  // `secondaryTimeZone` is the one-zone form of `secondaryTimeZones`
+  const legacySecondaryTimeZones = React.useMemo(
+    () => (secondaryTimeZone ? [secondaryTimeZone] : undefined),
+    [secondaryTimeZone],
+  );
+  const [secondaryTimeZoneList, setSecondaryTimeZoneList] =
+    useControllableState({
+      prop: secondaryTimeZonesProp ?? legacySecondaryTimeZones,
+      defaultProp: defaultSecondaryTimeZones,
+      onChange: onSecondaryTimeZonesChange,
+    });
+  /** The zone travelled to ("Travel to time zone"), or `null` at home */
+  const [travelTimeZone, setTravelTimeZone] = React.useState<string | null>(
+    null,
+  );
+  /** Zone the views draw in, or `undefined` for the viewer's (nothing mapped) */
+  const displayTimeZone = resolveTimeZone(travelTimeZone ?? primaryTimeZone);
+  // An unknown zone would make its labels throw: leave it out
+  const knownSecondaryTimeZones = React.useMemo(
+    () =>
+      secondaryTimeZoneList.filter(
+        (zone, index) =>
+          isKnownTimeZone(zone) &&
+          secondaryTimeZoneList.indexOf(zone) === index,
+      ),
+    [secondaryTimeZoneList],
+  );
+  const timeZones = React.useMemo<CalendarTimeZones>(
+    () => ({ primary: primaryTimeZone, secondary: knownSecondaryTimeZones }),
+    [primaryTimeZone, knownSecondaryTimeZones],
+  );
   const [viewSettings, setViewSettings] = React.useState<ViewSettings>(() => ({
     ...DEFAULT_VIEW_SETTINGS,
     ...defaultViewSettings,
@@ -757,7 +853,8 @@ function CalendarStateProvider({
     draftState !== null && draftState.event.id === selectedEventId
       ? draftState
       : null;
-  const activeDraft = activeDraftState?.event ?? null;
+  /** The draft as it is kept: instants, like the stored events */
+  const storedDraft = activeDraftState?.event ?? null;
   /** Whether the views draw the draft as an event rather than a tinted range */
   const isDraftAnEvent =
     activeDraftState !== null &&
@@ -821,13 +918,36 @@ function CalendarStateProvider({
     setVisibleDays([]);
   }, [view]);
 
+  // The views draw on the calendar's clock: each timed event as a Date whose
+  // local time reads `timeZone`. What's stored stays instants.
+  const displayEvents = React.useMemo(
+    () =>
+      displayTimeZone
+        ? events.map((event) => toDisplayEvent(event, displayTimeZone))
+        : events,
+    [events, displayTimeZone],
+  );
+
+  // The draft on the calendar's clock, as the views and the details get it
+  const activeDraft = React.useMemo(
+    () => storedDraft && toDisplayEvent(storedDraft, displayTimeZone),
+    [storedDraft, displayTimeZone],
+  );
+
   // A generated occurrence of a repeating event is selected by its id too,
-  // and so is the draft, which isn't stored
-  const selectedEvent = React.useMemo(() => {
+  // and so is the draft, which isn't stored. As stored, for the series math
+  const storedSelectedEvent = React.useMemo(() => {
     if (selectedEventId === null) return null;
-    if (activeDraft) return activeDraft;
+    if (storedDraft) return storedDraft;
     return findEventOrOccurrence(events, selectedEventId);
-  }, [events, selectedEventId, activeDraft]);
+  }, [events, selectedEventId, storedDraft]);
+
+  const selectedEvent = React.useMemo(
+    () =>
+      storedSelectedEvent &&
+      toDisplayEvent(storedSelectedEvent, displayTimeZone),
+    [storedSelectedEvent, displayTimeZone],
+  );
 
   // Only honor the focus request while that event is still the selected one
   const pendingTitleFocusId =
@@ -921,7 +1041,13 @@ function CalendarStateProvider({
       recordHistory("create", [
         { before: null, after: event, index: eventsRef.current.length },
       ]);
-      announce(describeEventCreated(event, hourCycle, locale));
+      announce(
+        describeEventCreated(
+          toDisplayEvent(event, displayTimeZone),
+          hourCycle,
+          locale,
+        ),
+      );
     },
     [
       closeEventDraft,
@@ -931,6 +1057,7 @@ function CalendarStateProvider({
       announce,
       hourCycle,
       locale,
+      displayTimeZone,
     ],
   );
 
@@ -964,20 +1091,30 @@ function CalendarStateProvider({
   }, [settleEventDraft]);
 
   const updateEvent = React.useCallback(
-    (updatedEvent: CalendarEvent) => {
-      if (draftStateRef.current?.event.id === updatedEvent.id) {
-        saveEventDraft(updatedEvent);
+    (shownEvent: CalendarEvent) => {
+      // The draft's first edit saves it, back on instants like any event
+      const draft = draftStateRef.current;
+      if (draft?.event.id === shownEvent.id) {
+        saveEventDraft(
+          fromDisplayEvent(shownEvent, displayTimeZone, draft.event),
+        );
         return;
       }
       const current = eventsRef.current;
-      const index = current.findIndex((e) => e.id === updatedEvent.id);
+      const index = current.findIndex((e) => e.id === shownEvent.id);
       const stored = index === -1 ? undefined : current[index];
       // Not stored: an occurrence the views generated from a repeating
       // event's rule (or an id nothing has)
       const generated = stored
         ? null
-        : findEventOrOccurrence(current, updatedEvent.id);
+        : findEventOrOccurrence(current, shownEvent.id);
       const previous = stored ?? generated ?? undefined;
+      // The views hand it over on the calendar's clock: back to instants
+      const updatedEvent = fromDisplayEvent(
+        shownEvent,
+        displayTimeZone,
+        previous,
+      );
       const next = previous
         ? applyRecurringEdit(current, previous, updatedEvent)
         : updatedEvent;
@@ -999,10 +1136,16 @@ function CalendarStateProvider({
         }
       }
 
-      // Moves and resizes (drag, keyboard, or the details) are announced;
-      // edits that keep the time, like the title, are not
+      // Moves and resizes (drag, keyboard, or the details) are announced,
+      // on the calendar's clock; edits that keep the time, like the title,
+      // are not
       if (!previous) return;
-      const message = describeEventChange(previous, next, hourCycle, locale);
+      const message = describeEventChange(
+        toDisplayEvent(previous, displayTimeZone),
+        toDisplayEvent(next, displayTimeZone),
+        hourCycle,
+        locale,
+      );
       if (message) announce(message);
     },
     [
@@ -1014,20 +1157,32 @@ function CalendarStateProvider({
       locale,
       announce,
       recordHistory,
+      displayTimeZone,
     ],
+  );
+
+  /**
+   * A range the views give, on the calendar's clock, as instants: what
+   * `createEvent` and the app get, like the events they store. Whole days
+   * are calendar dates already.
+   */
+  const toStoredRange = React.useCallback(
+    (range: NewEventRange): NewEventRange =>
+      range.isAllDay ? range : fromDisplayRange(range, displayTimeZone),
+    [displayTimeZone],
   );
 
   /** Builds a draft for a range with the app's factory, or `null` when it declines */
   const buildEventDraft = React.useCallback(
     (range: NewEventRange): CalendarEvent | null => {
-      const draft = (createEvent ?? createDefaultEvent)(range);
+      const draft = (createEvent ?? createDefaultEvent)(toStoredRange(range));
       if (!draft) return null;
       // A factory written for timed slots still gets a whole-day event
       if (range.isAllDay && !draft.isAllDay)
         return { ...draft, isAllDay: true };
       return draft;
     },
-    [createEvent],
+    [createEvent, toStoredRange],
   );
 
   /**
@@ -1054,9 +1209,15 @@ function CalendarStateProvider({
     (draft: CalendarEvent) => {
       setTitleFocusEventId(draft.id);
       onEventSelect?.(draft.id);
-      announce(describeEventDraft(draft, hourCycle, locale));
+      announce(
+        describeEventDraft(
+          toDisplayEvent(draft, displayTimeZone),
+          hourCycle,
+          locale,
+        ),
+      );
     },
-    [onEventSelect, announce, hourCycle, locale],
+    [onEventSelect, announce, hourCycle, locale, displayTimeZone],
   );
 
   const startEventDraft = React.useCallback(
@@ -1068,13 +1229,22 @@ function CalendarStateProvider({
     [buildEventDraft, openEventDraft, presentEventDraft],
   );
 
-  const updateEventDraft = React.useCallback((draft: CalendarEvent) => {
-    const current = draftStateRef.current;
-    if (current?.event.id !== draft.id) return;
-    const next = { ...current, event: draft };
-    draftStateRef.current = next;
-    setDraftState(next);
-  }, []);
+  const updateEventDraft = React.useCallback(
+    (shownDraft: CalendarEvent) => {
+      const current = draftStateRef.current;
+      if (current?.event.id !== shownDraft.id) return;
+      // The details hand it over on the calendar's clock: back to instants
+      const draft = fromDisplayEvent(
+        shownDraft,
+        displayTimeZone,
+        current.event,
+      );
+      const next = { ...current, event: draft };
+      draftStateRef.current = next;
+      setDraftState(next);
+    },
+    [displayTimeZone],
+  );
 
   const drawEventDraft = React.useCallback(
     (range: NewEventRange, phase: EventDrawPhase) => {
@@ -1084,7 +1254,8 @@ function CalendarStateProvider({
       }
       const current = draftStateRef.current;
       if (!current) return;
-      const draft = { ...current.event, start: range.start, end: range.end };
+      const { start, end } = toStoredRange(range);
+      const draft = { ...current.event, start, end };
       // Drawing isn't an edit: the draft is still untouched
       const next = {
         ...current,
@@ -1096,12 +1267,15 @@ function CalendarStateProvider({
       setDraftState(next);
       if (phase === "end") presentEventDraft(draft);
     },
-    [buildEventDraft, openEventDraft, presentEventDraft],
+    [buildEventDraft, openEventDraft, presentEventDraft, toStoredRange],
   );
 
   const addEventFromRange = React.useCallback(
     (range: NewEventRange) => {
-      const newEvent = (createEvent ?? createDefaultEvent)(range);
+      // `createEvent` and the app get instants, like the events they store
+      const newEvent = (createEvent ?? createDefaultEvent)(
+        toStoredRange(range),
+      );
       if (!newEvent) return;
       setEvents((prev) => [...prev, newEvent]);
       onEventCreate?.(newEvent);
@@ -1110,9 +1284,17 @@ function CalendarStateProvider({
       ]);
       selectEvent(newEvent.id);
       setTitleFocusEventId(newEvent.id);
-      announce(describeEventCreated(newEvent, hourCycle, locale));
+      announce(
+        describeEventCreated(
+          toDisplayEvent(newEvent, displayTimeZone),
+          hourCycle,
+          locale,
+        ),
+      );
     },
     [
+      displayTimeZone,
+      toStoredRange,
       createEvent,
       setEvents,
       onEventCreate,
@@ -1207,10 +1389,18 @@ function CalendarStateProvider({
       recordHistory(action, changes);
       selectEvent(copy.id);
       announce(
-        `${describeEventAction(action, copy)}, ${describeEventTime(copy, hourCycle, locale)}`,
+        `${describeEventAction(action, copy)}, ${describeEventTime(toDisplayEvent(copy, displayTimeZone), hourCycle, locale)}`,
       );
     },
-    [commitChanges, recordHistory, selectEvent, announce, hourCycle, locale],
+    [
+      commitChanges,
+      recordHistory,
+      selectEvent,
+      announce,
+      hourCycle,
+      locale,
+      displayTimeZone,
+    ],
   );
 
   const duplicateEvent = React.useCallback(
@@ -1290,11 +1480,52 @@ function CalendarStateProvider({
     return { ...shownNotice.notice, onUndo: undo };
   }, [shownNotice, canUndo, undo]);
 
+  const changeTimeZones = React.useCallback(
+    (change: (zones: CalendarTimeZones) => CalendarTimeZones) => {
+      // The change works on real zones: the viewer's stands in for unset
+      const current: CalendarTimeZones = {
+        primary: primaryTimeZone ?? getViewerTimeZone(),
+        secondary: knownSecondaryTimeZones,
+      };
+      const next = change(current);
+      if (next.primary && next.primary !== current.primary) {
+        setPrimaryTimeZone(next.primary);
+      }
+      const secondaryChanged =
+        next.secondary.length !== current.secondary.length ||
+        next.secondary.some((zone, index) => zone !== current.secondary[index]);
+      if (secondaryChanged) setSecondaryTimeZoneList(next.secondary);
+    },
+    [
+      primaryTimeZone,
+      knownSecondaryTimeZones,
+      setPrimaryTimeZone,
+      setSecondaryTimeZoneList,
+    ],
+  );
+
+  const travelToTimeZone = React.useCallback(
+    (zone: string | null) => {
+      // Travelling to the primary zone is being home
+      const isHome =
+        !zone ||
+        !isKnownTimeZone(zone) ||
+        zone === (primaryTimeZone ?? getViewerTimeZone());
+      setTravelTimeZone(isHome ? null : zone);
+    },
+    [primaryTimeZone],
+  );
+
   const goToToday = React.useCallback(() => {
     setCurrentDate(
-      getPeriodStart(new Date(), view, weekStartsOn, numberOfDays),
+      getPeriodStart(
+        getZonedNow(displayTimeZone),
+        view,
+        weekStartsOn,
+        numberOfDays,
+      ),
     );
-  }, [view, weekStartsOn, numberOfDays, setCurrentDate]);
+  }, [view, weekStartsOn, numberOfDays, setCurrentDate, displayTimeZone]);
 
   const goToPrev = React.useCallback(() => {
     setCurrentDate((prev) => shiftPeriod(prev, view, -1, numberOfDays));
@@ -1309,19 +1540,30 @@ function CalendarStateProvider({
     [setCurrentDate],
   );
 
+  // Series math runs on the stored instants; the arrows get the
+  // occurrences on the calendar's clock
+  const isSelectedAllDay = Boolean(storedSelectedEvent?.isAllDay);
   const previousInSeries = React.useMemo(
     () =>
-      selectedEvent
-        ? findSeriesOccurrence(events, selectedEvent, "previous")
+      storedSelectedEvent
+        ? toDisplayOccurrence(
+            findSeriesOccurrence(events, storedSelectedEvent, "previous"),
+            isSelectedAllDay,
+            displayTimeZone,
+          )
         : null,
-    [events, selectedEvent],
+    [events, storedSelectedEvent, isSelectedAllDay, displayTimeZone],
   );
   const nextInSeries = React.useMemo(
     () =>
-      selectedEvent
-        ? findSeriesOccurrence(events, selectedEvent, "next")
+      storedSelectedEvent
+        ? toDisplayOccurrence(
+            findSeriesOccurrence(events, storedSelectedEvent, "next"),
+            isSelectedAllDay,
+            displayTimeZone,
+          )
         : null,
-    [events, selectedEvent],
+    [events, storedSelectedEvent, isSelectedAllDay, displayTimeZone],
   );
 
   const showSeriesOccurrence = React.useCallback(
@@ -1376,12 +1618,17 @@ function CalendarStateProvider({
       pendingSwitchRef.current = { view, numberOfDays, date: currentDate };
       setView(newView);
       if (newView === "day") {
-        setCurrentDate(startOfDay(new Date()));
+        setCurrentDate(startOfDay(getZonedNow(displayTimeZone)));
         return;
       }
       if (newView === "agenda") {
         setCurrentDate((prev) =>
-          getAgendaStartFrom(prev, view, numberOfDays, new Date()),
+          getAgendaStartFrom(
+            prev,
+            view,
+            numberOfDays,
+            getZonedNow(displayTimeZone),
+          ),
         );
         return;
       }
@@ -1394,7 +1641,9 @@ function CalendarStateProvider({
       }
       setCurrentDate((prev) =>
         getPeriodStart(
-          view === "year" ? getYearViewExitDate(prev, new Date()) : prev,
+          view === "year"
+            ? getYearViewExitDate(prev, getZonedNow(displayTimeZone))
+            : prev,
           newView,
           weekStartsOn,
           numberOfDays,
@@ -1409,6 +1658,7 @@ function CalendarStateProvider({
       headerYear,
       setView,
       setCurrentDate,
+      displayTimeZone,
     ],
   );
 
@@ -1480,6 +1730,7 @@ function CalendarStateProvider({
         pendingSwitch,
         isOnStartingToday:
           startsOnToday && currentDate.getTime() === initialTime,
+        now: getZonedNow(displayTimeZone),
       });
       setView(nextView);
       setNumberOfDays(nextNumberOfDays);
@@ -1507,6 +1758,7 @@ function CalendarStateProvider({
       setView,
       setNumberOfDays,
       setCurrentDate,
+      displayTimeZone,
     ],
   );
 
@@ -1556,20 +1808,77 @@ function CalendarStateProvider({
     // Year view has no slot or day to paste onto, and a paste would land
     // out of sight on a spot a view left behind
     if (!copiedEvent || view === "year") return;
+    // The target and the visible days are on the calendar's clock: place
+    // the copy there, then store its instants
     const target = resolvePasteTarget(
       pasteTargetRef.current,
       visibleRange,
-      new Date(),
+      getZonedNow(displayTimeZone),
       currentDate,
     );
-    addEventCopy(
-      {
-        ...createStandaloneCopy(copiedEvent, crypto.randomUUID()),
-        ...getPastedEventTimes(copiedEvent, target),
-      },
-      "paste",
+    const copy = {
+      ...createStandaloneCopy(copiedEvent, crypto.randomUUID()),
+      ...getPastedEventTimes(
+        toDisplayEvent(copiedEvent, displayTimeZone),
+        target,
+      ),
+    };
+    addEventCopy(fromDisplayEvent(copy, displayTimeZone), "paste");
+  }, [
+    copiedEvent,
+    view,
+    visibleRange,
+    currentDate,
+    addEventCopy,
+    displayTimeZone,
+  ]);
+
+  // Go to date: the date's period in the current view, the day flashing as
+  // after `showDay`
+  const navigateToDate = React.useCallback(
+    (date: Date) => {
+      setCurrentDate(getPeriodStart(date, view, weekStartsOn, numberOfDays));
+      setHighlightedDate(startOfDay(date));
+    },
+    [view, weekStartsOn, numberOfDays, setCurrentDate],
+  );
+
+  // Notion Calendar's C: a draft on the day just gone to, else today, else
+  // the first day shown (month view: of the month it shows), drawn as an
+  // event from the start. All-day in month view, which has no hours.
+  const addEventAtNextSlot = React.useCallback(() => {
+    // The slot and the visible days are on the calendar's clock
+    const now = getZonedNow(displayTimeZone);
+    const day = getNextSlotDay({
+      range: visibleRange,
+      today: startOfDay(now),
+      highlightedDate,
+      firstDay:
+        view === "month" && displayMonth ? displayMonth : visibleRange.start,
+    });
+    if (view === "month") {
+      startEventDraft(getAllDayEventRange(day));
+      return;
+    }
+    startEventDraft(
+      getNextSlotEventRange(day, now, {
+        snapMinutes: Math.max(1, Math.round(snapMinutes)),
+        defaultEventDuration: Math.max(1, Math.round(defaultEventDuration)),
+        ...resolveDayHours(dayStartHour, dayEndHour),
+      }),
     );
-  }, [copiedEvent, view, visibleRange, currentDate, addEventCopy]);
+  }, [
+    visibleRange,
+    view,
+    displayMonth,
+    highlightedDate,
+    startEventDraft,
+    snapMinutes,
+    defaultEventDuration,
+    dayStartHour,
+    dayEndHour,
+    displayTimeZone,
+  ]);
 
   // Report each new range once. While the provider is still adopting the
   // mounted view (its first commit, or a switch the view is undoing), the
@@ -1583,15 +1892,25 @@ function CalendarStateProvider({
         numberOfDaysProp ?? mounted.numberOfDays ?? numberOfDays;
       if (adoptedView !== view || adoptedNumberOfDays !== numberOfDays) return;
     }
-    const key = `${visibleRange.start.getTime()}-${visibleRange.end.getTime()}`;
+    const key = `${visibleRange.start.getTime()}-${visibleRange.end.getTime()}-${displayTimeZone ?? ""}`;
     if (reportedRangeKeyRef.current === key) return;
     reportedRangeKeyRef.current = key;
-    onVisibleRangeChangeRef.current?.(visibleRange);
-  }, [visibleRange, view, numberOfDays, viewProp, numberOfDaysProp]);
+    // The app fetches stored events: hand it the instants the days start
+    onVisibleRangeChangeRef.current?.(
+      fromDisplayRange(visibleRange, displayTimeZone),
+    );
+  }, [
+    visibleRange,
+    view,
+    numberOfDays,
+    viewProp,
+    numberOfDaysProp,
+    displayTimeZone,
+  ]);
 
   const value = React.useMemo<CalendarContextValue>(
     () => ({
-      events,
+      events: displayEvents,
       view,
       currentDate,
       weekStartsOn,
@@ -1606,6 +1925,10 @@ function CalendarStateProvider({
       previousInSeries,
       nextInSeries,
       showSeriesOccurrence,
+      timeZones,
+      changeTimeZones,
+      travelTimeZone,
+      travelToTimeZone,
       highlightedDate,
       monthName,
       year,
@@ -1636,9 +1959,11 @@ function CalendarStateProvider({
       redo,
       canUndo,
       canRedo,
+      navigateToDate,
+      addEventAtNextSlot,
     }),
     [
-      events,
+      displayEvents,
       view,
       currentDate,
       weekStartsOn,
@@ -1653,6 +1978,10 @@ function CalendarStateProvider({
       previousInSeries,
       nextInSeries,
       showSeriesOccurrence,
+      timeZones,
+      changeTimeZones,
+      travelTimeZone,
+      travelToTimeZone,
       highlightedDate,
       monthName,
       year,
@@ -1683,13 +2012,18 @@ function CalendarStateProvider({
       redo,
       canUndo,
       canRedo,
+      navigateToDate,
+      addEventAtNextSlot,
     ],
   );
 
   // The draft joins the events the views draw once it is one itself
   const drawnEvents = React.useMemo(
-    () => (activeDraft && isDraftAnEvent ? [...events, activeDraft] : events),
-    [events, activeDraft, isDraftAnEvent],
+    () =>
+      activeDraft && isDraftAnEvent
+        ? [...displayEvents, activeDraft]
+        : displayEvents,
+    [displayEvents, activeDraft, isDraftAnEvent],
   );
 
   const closeEventPopover = React.useCallback(
@@ -1789,11 +2123,10 @@ function CalendarStateProvider({
       ...resolveDayHours(dayStartHour, dayEndHour),
       hourCycle,
       locale,
-      // An unknown zone would make its labels throw: draw one column instead
-      secondaryTimeZone:
-        secondaryTimeZone && isKnownTimeZone(secondaryTimeZone)
-          ? secondaryTimeZone
-          : undefined,
+      // Unknown zones would make their labels throw: left out
+      secondaryTimeZone: knownSecondaryTimeZones[0],
+      secondaryTimeZones: knownSecondaryTimeZones,
+      timeZone: displayTimeZone,
       weekStartsOn,
       calendars,
       contacts,
@@ -1808,7 +2141,8 @@ function CalendarStateProvider({
       dayEndHour,
       hourCycle,
       locale,
-      secondaryTimeZone,
+      knownSecondaryTimeZones,
+      displayTimeZone,
       weekStartsOn,
       calendars,
       contacts,

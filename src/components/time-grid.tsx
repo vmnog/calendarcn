@@ -42,6 +42,7 @@ import type {
   NewEventRange,
   TimeGridProps,
   TimeGridView,
+  TimeZoneAxisColumn,
   WeekDay,
 } from "./week-view-types";
 import {
@@ -60,18 +61,25 @@ import {
 } from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
 import { EventDraftPopover } from "./event-draft";
+import { AddTimeZoneButton, TimeZoneAxisLabel } from "./time-zone-axis-label";
 
 /** Minimum height of each hour row in pixels */
 const MIN_HOUR_HEIGHT = 48;
 
 /**
- * Width of one time axis column in pixels (4rem = 64px). A second time zone
- * adds a second column of the same width.
+ * Width of one time axis column in pixels (4rem = 64px). Each additional
+ * time zone adds a column of the same width.
  */
 export const TIME_AXIS_WIDTH = 64;
 
-/** Hour labels of a second time zone column before they're known (on the server and during hydration) */
+/** Hour labels of an additional time zone column before they're known (on the server and during hydration) */
 const NO_LABELS: string[] = [];
+
+/** One additional column of the time axis, left of the calendar's own */
+interface ExtraAxisColumn extends TimeZoneAxisColumn {
+  /** The time its zone's clock shows at each hour row, in order */
+  hourLabels: string[];
+}
 
 /** Buffer days per view mode (each side, for horizontal scroll) */
 const BUFFER_DAYS_BY_VIEW: Record<TimeGridView, number> = {
@@ -167,9 +175,16 @@ function withIsToday(
  * driving it from the provider (`<TimeGrid view={view} />`) keeps the
  * vertical scroll position across day/week switches.
  *
- * With the provider's `secondaryTimeZone`, the time axis gets a second
- * column on its left: that zone's hours on the same lines, its short label
- * above them. The now line keeps its one badge, in the viewer's column.
+ * With the provider's `secondaryTimeZones` (or `secondaryTimeZone`), the
+ * time axis gets a column per zone on its left: that zone's hours on the
+ * same lines, its short label above them. While the calendar travels
+ * (`travelToTimeZone`), the home zone gets a column too, and the zone
+ * travelled to is filled in the primary color. The now line keeps its one
+ * badge, in the calendar's column. Each label opens Notion Calendar's time
+ * zone menu, and the "+" left of them adds a zone.
+ *
+ * With the provider's `timeZone`, the hours, today and the now line are
+ * that zone's, and the time axis is labeled with it.
  *
  * Renders the same markup on the server and during hydration: everything that
  * depends on the viewer's clock (today, the current-time line, past events)
@@ -195,6 +210,8 @@ export function TimeGrid({
     numberOfDays: providerNumberOfDays,
     weekStartsOn,
     loading,
+    timeZones,
+    travelTimeZone,
   } = useCalendar();
   const {
     snapMinutes,
@@ -203,7 +220,8 @@ export function TimeGrid({
     dayEndHour,
     hourCycle,
     locale,
-    secondaryTimeZone,
+    secondaryTimeZones,
+    timeZone,
   } = useCalendarConfig();
   const {
     reportView,
@@ -225,15 +243,29 @@ export function TimeGrid({
     providerView === view &&
     (fixedNumberOfDays === undefined ||
       providerNumberOfDays === fixedNumberOfDays);
-  // `null` on the server and during hydration
-  const today = useToday();
+  // `null` on the server and during hydration. On the calendar's clock
+  const today = useToday(timeZone);
   const selectedEventId = selectedEvent?.id;
   const VISIBLE_DAYS = getVisibleDayCount(view, numberOfDays);
   const visibleHourCount = dayEndHour - dayStartHour;
-  /** Width of the time axis: one column, or two with a second time zone */
-  const timeAxisWidth = secondaryTimeZone
-    ? TIME_AXIS_WIDTH * 2
-    : TIME_AXIS_WIDTH;
+  /**
+   * Zones of the columns left of the calendar's own: the additional ones,
+   * then the home zone while travelling (`null`: the viewer's, unknown
+   * until hydration)
+   */
+  const extraZones = React.useMemo(
+    () =>
+      travelTimeZone
+        ? [
+            // The zone travelled to has its own column
+            ...secondaryTimeZones.filter((zone) => zone !== travelTimeZone),
+            timeZones.primary ?? null,
+          ]
+        : secondaryTimeZones,
+    [secondaryTimeZones, travelTimeZone, timeZones.primary],
+  );
+  /** Width of the time axis: one column per zone */
+  const timeAxisWidth = TIME_AXIS_WIDTH * (extraZones.length + 1);
   // A drag held at the grid's side edge moves by one prev/next step
   const edgeNavigationDays =
     view === "day" ? DAY_VIEW_EDGE_NAV_DAYS : getWeekViewStepDays(numberOfDays);
@@ -257,31 +289,60 @@ export function TimeGrid({
     [dayStartHour, dayEndHour, hourCycle, locale],
   );
 
-  // The second time zone's column: its short label, and the time its clock
-  // shows at each hour row. Both depend on the viewer's zone, so like the
-  // viewer's own label they stay blank on the server and during hydration
-  // (`today` is null until then). The offset is read at noon on today, or
-  // on the first day shown when today isn't on screen.
-  const secondaryAxis = React.useMemo(() => {
-    if (!secondaryTimeZone || today === null) return null;
-    const primaryTimeZone = getViewerTimeZone();
+  // Each additional column: its zone's short label, and the time its clock
+  // shows at each hour row. Both depend on the hour rows' zone (the
+  // calendar's, else the viewer's), so like that zone's own label they stay
+  // blank on the server and during hydration (`today` is null until then).
+  // The offset is read at noon on today, or on the first day shown when
+  // today isn't on screen.
+  const extraColumns = React.useMemo<ExtraAxisColumn[]>(() => {
+    const kind = (index: number) =>
+      travelTimeZone && index === extraZones.length - 1 ? "home" : "secondary";
+    if (today === null) {
+      return extraZones.map((zone, index) => ({
+        timeZone: zone ?? "",
+        kind: kind(index),
+        label: "",
+        hourLabels: NO_LABELS,
+      }));
+    }
+    const viewerTimeZone = getViewerTimeZone();
+    const primaryTimeZone = timeZone ?? viewerTimeZone;
     const instant = getSecondaryTimeAxisInstant(
       baseDays.map((day) => day.date),
       today,
       primaryTimeZone,
     );
-    const offsetMinutes = getTimeZoneOffsetDifference(
-      instant,
-      primaryTimeZone,
-      secondaryTimeZone,
-    );
-    return {
-      label: getTimeZoneLabel(instant, secondaryTimeZone),
-      hourLabels: hours.map((slot) =>
-        formatTimeOfDayLabel(slot.hour * 60 + offsetMinutes, hourCycle, locale),
-      ),
-    };
-  }, [secondaryTimeZone, today, baseDays, hours, hourCycle, locale]);
+    return extraZones.map((zone, index) => {
+      const columnZone = zone ?? viewerTimeZone;
+      const offsetMinutes = getTimeZoneOffsetDifference(
+        instant,
+        primaryTimeZone,
+        columnZone,
+      );
+      return {
+        timeZone: columnZone,
+        kind: kind(index),
+        label: getTimeZoneLabel(instant, columnZone),
+        hourLabels: hours.map((slot) =>
+          formatTimeOfDayLabel(
+            slot.hour * 60 + offsetMinutes,
+            hourCycle,
+            locale,
+          ),
+        ),
+      };
+    });
+  }, [
+    extraZones,
+    travelTimeZone,
+    timeZone,
+    today,
+    baseDays,
+    hours,
+    hourCycle,
+    locale,
+  ]);
 
   // The stored events, for the drag and resize hooks to commit from, and
   // the draft once it is drawn as an event: moving or resizing it saves it
@@ -300,8 +361,15 @@ export function TimeGrid({
   const [hourHeight, setHourHeight] = React.useState(MIN_HOUR_HEIGHT);
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
   const [isAllDayResizing, setIsAllDayResizing] = React.useState(false);
-  // Empty on the server and during hydration, the viewer's zone afterwards
-  const timeZoneLabel = useTimeZoneLabel();
+  // Empty on the server and during hydration, the calendar's zone afterwards
+  const timeZoneLabel = useTimeZoneLabel(timeZone);
+  /** The calendar's own column, next to the days */
+  const mainColumn: TimeZoneAxisColumn = {
+    // Read only once the label is known, after hydration
+    timeZone: timeZoneLabel ? (timeZone ?? getViewerTimeZone()) : "",
+    kind: travelTimeZone ? "travel" : "primary",
+    label: timeZoneLabel,
+  };
 
   React.useEffect(() => {
     const updateDimensions = () => {
@@ -536,11 +604,12 @@ export function TimeGrid({
   ).getTime();
   const displayedEvents = React.useMemo(
     () =>
-      expandRecurringEvents(drawnEvents, {
-        start: new Date(bufferStartTime),
-        end: new Date(bufferEndTime),
-      }),
-    [drawnEvents, bufferStartTime, bufferEndTime],
+      expandRecurringEvents(
+        drawnEvents,
+        { start: new Date(bufferStartTime), end: new Date(bufferEndTime) },
+        timeZone,
+      ),
+    [drawnEvents, bufferStartTime, bufferEndTime, timeZone],
   );
   const displayedAllDayEvents = React.useMemo(
     () => displayedEvents.filter((e) => e.isAllDay || isMultiDayEvent(e)),
@@ -658,14 +727,13 @@ export function TimeGrid({
           >
             <div className="flex bg-background">
               {/* Time zone labels, one per time axis column - rendered outside scroll container */}
-              {secondaryTimeZone && (
-                <div className="text-muted-foreground flex w-16 flex-shrink-0 items-center justify-end pr-2 text-xxs">
-                  {secondaryAxis?.label}
-                </div>
-              )}
-              <div className="text-muted-foreground flex w-16 flex-shrink-0 items-center justify-end pr-2 text-xxs">
-                {timeZoneLabel}
-              </div>
+              {[...extraColumns, mainColumn].map((column, index) => (
+                <TimeZoneAxisLabel
+                  key={`${column.kind}-${index}`}
+                  column={column}
+                  hasOtherZones={extraColumns.length > 0}
+                />
+              ))}
               <div className="min-w-0 flex-1 overflow-clip">
                 <div style={scrollStyle}>
                   <CalendarDayHeaders
@@ -677,7 +745,9 @@ export function TimeGrid({
               </div>
             </div>
           </div>
-          <div className="overflow-hidden" ref={allDayScrollRef}>
+          <div className="relative overflow-hidden" ref={allDayScrollRef}>
+            {/* Adds a time zone, left of the "All-day" label */}
+            <AddTimeZoneButton />
             <WeekViewAllDayRow
               days={bufferedDays}
               allDayEvents={displayedAllDayEvents}
@@ -703,9 +773,12 @@ export function TimeGrid({
           </div>
           {/* Under the day columns, along the header's bottom border */}
           {loading && (
-            <CalendarLoadingBar
-              className={secondaryTimeZone ? "left-32" : "left-16"}
-            />
+            <div
+              className="absolute right-0 bottom-0"
+              style={{ left: timeAxisWidth }}
+            >
+              <CalendarLoadingBar />
+            </div>
           )}
         </div>
 
@@ -718,14 +791,19 @@ export function TimeGrid({
             className="relative flex"
             style={{ height: hours.length * hourHeight }}
           >
-            {secondaryTimeZone && (
+            {extraColumns.map((column, index) => (
               <WeekViewTimeAxis
+                key={`${column.kind}-${index}`}
                 hours={hours}
                 hourHeight={hourHeight}
-                labels={secondaryAxis?.hourLabels ?? NO_LABELS}
+                labels={column.hourLabels}
               />
-            )}
-            <WeekViewTimeAxis hours={hours} hourHeight={hourHeight} />
+            ))}
+            <WeekViewTimeAxis
+              hours={hours}
+              hourHeight={hourHeight}
+              highlighted={travelTimeZone !== null}
+            />
             {/* Buffer wrappers clip rather than hide: a hidden box can still be
                 scrolled by script or the browser (e.g. scrollIntoView before
                 an automated click), which would slide the grid out of line

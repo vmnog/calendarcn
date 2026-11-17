@@ -10,9 +10,10 @@ import {
   size,
   useFloating,
 } from "@floating-ui/react-dom";
-import { Globe, History } from "lucide-react";
+import { ArrowUpRight, Globe, History, Undo2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useHoverTooltip } from "@/hooks/use-hover-tooltip";
 import {
   Command,
   CommandEmpty,
@@ -21,19 +22,24 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
+import { useCalendarConfig } from "./calendar-provider";
 import {
   EVENT_DETAIL_HOVER_BORDER_CLASS,
+  EVENT_DETAIL_ICON_BUTTON_CLASS,
   EVENT_DETAIL_ICON_CLASS,
   EVENT_DETAIL_MENU_CLASS,
   EVENT_DETAIL_ROW_HEIGHT_CLASS,
   EVENT_DETAIL_SECONDARY_CLASS,
   EventDetailRow,
   EventDetailSection,
+  EventDetailTooltip,
   getEventDetailPortalContainer,
 } from "./event-detail-parts";
 import {
   POPULAR_TIME_ZONES,
   changeTimeZoneKeepingWallClock,
+  fromDisplayEvent,
+  fromZonedWallClock,
   getEventTimeZone,
   getTimeZoneOption,
   getTimeZoneOptions,
@@ -41,10 +47,12 @@ import {
   getViewerTimeZone,
   searchTimeZones,
   splitSearchMatch,
+  toZonedWallClock,
 } from "@/lib/time-zones";
 import type {
   DetailedCalendarEvent,
-  EventDetailSectionProps,
+  EventDetailClock,
+  EventDetailTimezoneProps,
   TimeZoneOption,
 } from "./week-view-types";
 
@@ -147,6 +155,69 @@ function getSteppedIndex(index: number, step: 1 | -1, count: number): number {
 }
 
 /**
+ * Closest the clock switch's tooltip centers to the viewport's right edge,
+ * in px: half its widest text plus a margin, so it never runs off screen
+ */
+const CLOCK_TOOLTIP_EDGE_GAP = 132;
+
+/** What the clock switch says it does, as Notion Calendar's tooltips */
+const CLOCK_SWITCH_LABELS: Record<EventDetailClock["showing"], string> = {
+  calendar: "Switch to event's time zone to edit",
+  event: "Switch to your primary time zone",
+};
+
+/**
+ * The button at the end of the time zone row that switches the details
+ * between the calendar's clock and the event's own, with its tooltip
+ */
+function ClockSwitchButton({ clock }: { clock: EventDetailClock }) {
+  const tooltip = useHoverTooltip();
+  const [rect, setRect] = React.useState<DOMRect | null>(null);
+  const label = CLOCK_SWITCH_LABELS[clock.showing];
+  const Icon = clock.showing === "calendar" ? Undo2 : ArrowUpRight;
+
+  const show = (element: HTMLElement) => {
+    // The button sits at the panel's right edge: keep the tooltip on screen
+    const box = element.getBoundingClientRect();
+    const center = Math.min(
+      box.left + box.width / 2,
+      window.innerWidth - CLOCK_TOOLTIP_EDGE_GAP,
+    );
+    setRect(new DOMRect(center, box.top, 0, box.height));
+    tooltip.scheduleOpen();
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={() => {
+          tooltip.scheduleClose();
+          clock.onSwitch();
+        }}
+        onPointerEnter={(e) => show(e.currentTarget)}
+        onPointerLeave={tooltip.scheduleClose}
+        onFocus={(e) => {
+          if (e.currentTarget.matches(":focus-visible")) show(e.currentTarget);
+        }}
+        onBlur={tooltip.scheduleClose}
+        className={cn(
+          "flex size-7 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:border-[#3A85D3]",
+          EVENT_DETAIL_ICON_BUTTON_CLASS,
+          EVENT_DETAIL_SECONDARY_CLASS,
+        )}
+      >
+        <Icon className="size-4" />
+      </button>
+      <EventDetailTooltip rect={tooltip.isOpen ? rect : null}>
+        {label}
+      </EventDetailTooltip>
+    </>
+  );
+}
+
+/**
  * "Brasilia Standard Time – Sao Paulo", with the part matching the search in
  * bold white and the rest dimmed while searching
  */
@@ -175,7 +246,7 @@ function ZoneText({ text, query }: { text: string; query: string | null }) {
  */
 export function EventDetailTimezone<
   TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
->({ event, onEventChange }: EventDetailSectionProps<TEvent>) {
+>({ event, onEventChange, clock }: EventDetailTimezoneProps<TEvent>) {
   const listId = React.useId();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
@@ -200,6 +271,7 @@ export function EventDetailTimezone<
     getViewerTimeZone,
     getServerTimeZone,
   );
+  const { timeZone: calendarTimeZone } = useCalendarConfig();
   const recent = React.useSyncExternalStore(
     subscribeToRecentTimeZones,
     getRecentTimeZones,
@@ -231,9 +303,15 @@ export function EventDetailTimezone<
     [event.timeZone, event.timezone],
   );
   const timeZone = eventTimeZone ?? viewerTimeZone;
+  // The event reads on the calendar's clock; offsets and zone changes need
+  // its instant
+  const start = React.useMemo(
+    () => fromDisplayEvent(event, calendarTimeZone).start,
+    [event, calendarTimeZone],
+  );
 
   // Every zone, listed once per edit: typing searches this list
-  const startTime = event.start.getTime();
+  const startTime = start.getTime();
   const options = React.useMemo(
     () => (editing ? getTimeZoneOptions(new Date(startTime)) : []),
     [editing, startTime],
@@ -247,7 +325,7 @@ export function EventDetailTimezone<
     const byId = new Map(options.map((option) => [option.id, option]));
     const pick = (ids: string[]) =>
       ids.flatMap((id) => {
-        const option = byId.get(id) ?? getTimeZoneOption(event.start, id);
+        const option = byId.get(id) ?? getTimeZoneOption(start, id);
         return option ? [option] : [];
       });
     const groups: TimeZoneSection[] = [
@@ -256,7 +334,7 @@ export function EventDetailTimezone<
       { key: "all", options },
     ];
     return groups.filter((group) => group.options.length > 0);
-  }, [listOpen, query, options, recent, event.start]);
+  }, [listOpen, query, options, recent, start]);
 
   const itemValues = React.useMemo(
     () =>
@@ -267,8 +345,8 @@ export function EventDetailTimezone<
   );
 
   const cityOf = React.useCallback(
-    (zone: string) => getTimeZoneRowLabel(event.start, zone).city,
-    [event.start],
+    (zone: string) => getTimeZoneRowLabel(start, zone).city,
+    [start],
   );
 
   // Keep the highlighted item in view after the keyboard moved it or the
@@ -328,11 +406,22 @@ export function EventDetailTimezone<
     setQuery(null);
     setInputText(cityOf(zone));
     if (zone === timeZone) return;
+    // Keep the wall clock in the zone it was in, then hand the event back
+    // on the calendar's clock
+    const moveToZone = (date: Date) =>
+      toZonedWallClock(
+        changeTimeZoneKeepingWallClock(
+          fromZonedWallClock(date, calendarTimeZone),
+          timeZone,
+          zone,
+        ),
+        calendarTimeZone,
+      );
     onEventChange?.({
       ...event,
       timeZone: zone,
-      start: changeTimeZoneKeepingWallClock(event.start, timeZone, zone),
-      end: changeTimeZoneKeepingWallClock(event.end, timeZone, zone),
+      start: moveToZone(event.start),
+      end: moveToZone(event.end),
     });
   };
 
@@ -400,7 +489,33 @@ export function EventDetailTimezone<
     );
   }
 
-  const label = getTimeZoneRowLabel(event.start, timeZone);
+  // On the calendar's clock, the row names the calendar's zone, read only
+  if (clock?.showing === "calendar") {
+    const calendarLabel = getTimeZoneRowLabel(start, clock.calendarTimeZone);
+    return (
+      <EventDetailSection name="timezone">
+        <div
+          className={cn(
+            "flex items-center gap-1 pr-4 pl-[18px]",
+            EVENT_DETAIL_ROW_HEIGHT_CLASS,
+          )}
+        >
+          <div className={cn(ROW_BOX_CLASS, "border border-transparent")}>
+            <Globe className={EVENT_DETAIL_ICON_CLASS} />
+            <span className="flex min-w-0 items-center gap-[5px]">
+              <span className={cn("shrink-0", EVENT_DETAIL_SECONDARY_CLASS)}>
+                {calendarLabel.offset}
+              </span>
+              <span className="truncate">{calendarLabel.city}</span>
+            </span>
+          </div>
+          <ClockSwitchButton clock={clock} />
+        </div>
+      </EventDetailSection>
+    );
+  }
+
+  const label = getTimeZoneRowLabel(start, timeZone);
   // Inside a modal sheet (the panel on phones), which dismisses on presses
   // outside its own DOM; the body anywhere else
   const portalContainer = listOpen
@@ -465,6 +580,7 @@ export function EventDetailTimezone<
             </span>
           </button>
         )}
+        {clock && <ClockSwitchButton clock={clock} />}
       </div>
 
       {listOpen &&

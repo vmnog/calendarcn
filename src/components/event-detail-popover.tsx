@@ -154,7 +154,7 @@ export function EventDetailPopover({
   const series = useCalendarSeries();
   const eventActions = useCalendarEventActions();
   const panelRef = React.useRef<HTMLDivElement>(null);
-  /** Just created by click-to-create: its title should be focused */
+  /** Just created, as a draft or by `addEventFromRange`: its title should be focused */
   const isNew = pendingEventId === event.id;
 
   /**

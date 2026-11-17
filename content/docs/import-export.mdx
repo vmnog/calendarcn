@@ -56,7 +56,7 @@ Each event keeps the file's `UID` as its `id`. The preview uses that to replace 
 Dates and times follow RFC 5545:
 
 - **All-day events.** DATE values (`20260603`) become all-day events. iCalendar's end date is exclusive and the calendar's `end` is the last day, so an event from `20260603` to `20260604` becomes a one-day event on June 3.
-- **Times.** Times in UTC (`20260603T150000Z`), with a `TZID`, and floating times (no zone) all become `Date`s, shown in the viewer's time zone. A `TZID` can be an IANA name, as Google and Apple write it, or a zone the file defines in a `VTIMEZONE`, such as Outlook's `Pacific Standard Time`. Floating times are read in the viewer's zone. A repeating event keeps an IANA `TZID` as its `timeZone`, and its rule is read in that zone.
+- **Times.** Times in UTC (`20260603T150000Z`), with a `TZID`, and floating times (no zone) all become `Date`s, shown in the calendar's time zone (the viewer's unless the provider sets `timeZone`). A `TZID` can be an IANA name, as Google and Apple write it, or a zone the file defines in a `VTIMEZONE`, such as Outlook's `Pacific Standard Time`. Floating times are read in the viewer's zone. A repeating event keeps an IANA `TZID` as its `timeZone`, and its rule is read in that zone.
 - **Text.** Folded lines are joined and escaped commas, semicolons and line breaks are restored.
 - **Reminders.** A `VALARM` set a fixed time before the start (`TRIGGER:-PT15M`) becomes a reminder in its largest whole unit, and `-P1W` in weeks. On an all-day event, an alarm that isn't a whole number of days is a day and a time of day: Apple's `-PT15H` is 1 day before at 9 AM. Alarms after the start, relative to the end or at a fixed date are skipped.
 

@@ -85,13 +85,13 @@ export function MonthViewEventItem({
   onDragPointerDown,
   className,
 }: MonthViewEventItemProps) {
-  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const borderColor = borderColorStyles[color];
   const timeColor = timeColorStyles[color];
   const titleColor = titleColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
-  const eventIsPast = useIsPast(event.end);
+  const eventIsPast = useIsPast(event.end, timeZone);
   // "9 AM" / "2:30 PM", or "09:00" / "14:30" on a 24-hour clock
   const startTimeLabel = formatTime(event.start, hourCycle, locale);
 

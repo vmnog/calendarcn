@@ -24,6 +24,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useCalendarConfig } from "./calendar-provider";
 import { EventDetailAiNotes } from "./event-detail-ai-notes";
 import { EventDetailAvailability } from "./event-detail-availability";
 import { EventDetailCalendar } from "./event-detail-calendar";
@@ -53,7 +54,18 @@ import { EventDetailRecurrence } from "./event-detail-recurrence";
 import { EventDetailReminders } from "./event-detail-reminders";
 import { EventDetailAllDay, EventDetailTime } from "./event-detail-time";
 import { EventDetailTimezone } from "./event-detail-timezone";
-import type { DetailedCalendarEvent, EventKind } from "./week-view-types";
+import {
+  fromDisplayEvent,
+  fromZonedWallClock,
+  getEventTimeZone,
+  getViewerTimeZone,
+  toZonedWallClock,
+} from "@/lib/time-zones";
+import type {
+  DetailedCalendarEvent,
+  EventDetailClock,
+  EventKind,
+} from "./week-view-types";
 
 /**
  * Props for EventDetailPanel. `TEvent` is the app's event type; detail fields
@@ -175,6 +187,45 @@ function EventKindHelpIcon({ tooltip }: { tooltip?: string }) {
  * The muted "All-day  Time zone  Repeat" line a plain timed event shows
  * under its date. Clicking it opens the three rows.
  */
+/**
+ * The event on its own zone's clock, from the calendar's: what the times
+ * show after "Switch to event's time zone to edit"
+ */
+function toOwnClock<TEvent extends DetailedCalendarEvent>(
+  event: TEvent,
+  calendarTimeZone: string,
+  ownTimeZone: string,
+): TEvent {
+  const instants = fromDisplayEvent(event, calendarTimeZone);
+  return {
+    ...event,
+    start: toZonedWallClock(instants.start, ownTimeZone),
+    end: toZonedWallClock(instants.end, ownTimeZone),
+  };
+}
+
+/**
+ * An edit made on the event's own clock, back on the calendar's. A time it
+ * left as shown keeps the calendar's date; all-day dates stay as they are.
+ */
+function fromOwnClock<TEvent extends DetailedCalendarEvent>(
+  edited: TEvent,
+  shown: TEvent,
+  event: TEvent,
+  calendarTimeZone: string,
+  ownTimeZone: string,
+): TEvent {
+  if (edited.isAllDay) return edited;
+  const back = (field: "start" | "end") =>
+    edited[field].getTime() === shown[field].getTime()
+      ? event[field]
+      : toZonedWallClock(
+          fromZonedWallClock(edited[field], ownTimeZone),
+          calendarTimeZone,
+        );
+  return { ...edited, start: back("start"), end: back("end") };
+}
+
 function EventDetailOptionsRow({ onExpand }: { onExpand: () => void }) {
   const labelClass = cn(
     EVENT_DETAIL_PLACEHOLDER_CLASS,
@@ -228,6 +279,46 @@ export function EventDetailPanel<
   const [hoveredOther, setHoveredOther] = React.useState(false);
   /** Whether the compact "All-day / Time zone / Repeat" row is expanded into individual rows. */
   const [optionsExpanded, setOptionsExpanded] = React.useState(false);
+  /** Whether the times show the event's own zone instead of the calendar's */
+  const [showsOwnClock, setShowsOwnClock] = React.useState(false);
+  const { timeZone: calendarTimeZone } = useCalendarConfig();
+  // The calendar draws in another zone than the event's (its `timeZone`, or
+  // travelling): the times read on the calendar's clock, and the time zone
+  // row switches them to the event's own, as Notion Calendar's details do
+  const ownTimeZone =
+    calendarTimeZone && !event.isAllDay
+      ? (getEventTimeZone(event) ?? getViewerTimeZone())
+      : undefined;
+  const clock: EventDetailClock | undefined =
+    calendarTimeZone && ownTimeZone && ownTimeZone !== calendarTimeZone
+      ? {
+          showing: showsOwnClock ? "event" : "calendar",
+          calendarTimeZone,
+          onSwitch: () => setShowsOwnClock((prev) => !prev),
+        }
+      : undefined;
+  const isOnOwnClock = clock?.showing === "event";
+  /** The event the time rows show: on its own clock after the switch */
+  const clockEvent = React.useMemo(
+    () =>
+      isOnOwnClock && calendarTimeZone && ownTimeZone
+        ? toOwnClock(event, calendarTimeZone, ownTimeZone)
+        : event,
+    [isOnOwnClock, event, calendarTimeZone, ownTimeZone],
+  );
+  const handleClockEventChange =
+    isOnOwnClock && calendarTimeZone && ownTimeZone && onEventChange
+      ? (edited: TEvent) =>
+          onEventChange(
+            fromOwnClock(
+              edited,
+              clockEvent,
+              event,
+              calendarTimeZone,
+              ownTimeZone,
+            ),
+          )
+      : onEventChange;
 
   const titleRef = React.useRef<HTMLInputElement>(null);
   /** Shows a title as it is typed: on the draft, or on the stored event */
@@ -258,9 +349,10 @@ export function EventDetailPanel<
     },
   });
 
-  // Reset expanded options when switching to a different event
+  // Reset expanded options and the clock when switching to a different event
   React.useEffect(() => {
     setOptionsExpanded(false);
+    setShowsOwnClock(false);
   }, [event.id]);
 
   // Focus + select the title on request so a new event can be named right away.
@@ -284,6 +376,7 @@ export function EventDetailPanel<
   const showOptionRows =
     optionsExpanded ||
     event.isAllDay ||
+    clock !== undefined ||
     Boolean(
       event.recurrenceRule ??
       event.recurrence ??
@@ -489,7 +582,10 @@ export function EventDetailPanel<
 
       {/* When: time and date, then all-day, time zone and repeat */}
       <EventDetailGroup name="when">
-        <EventDetailTime event={event} onEventChange={onEventChange} />
+        <EventDetailTime
+          event={clockEvent}
+          onEventChange={handleClockEventChange}
+        />
         {showOptionRows ? (
           <>
             <div
@@ -498,9 +594,16 @@ export function EventDetailPanel<
                 EVENT_DETAIL_ROW_HEIGHT_CLASS,
               )}
             >
-              <EventDetailAllDay event={event} onEventChange={onEventChange} />
+              <EventDetailAllDay
+                event={clockEvent}
+                onEventChange={handleClockEventChange}
+              />
             </div>
-            <EventDetailTimezone event={event} onEventChange={onEventChange} />
+            <EventDetailTimezone
+              event={event}
+              onEventChange={onEventChange}
+              clock={clock}
+            />
             <EventDetailRecurrence
               event={event}
               onEventChange={onEventChange}

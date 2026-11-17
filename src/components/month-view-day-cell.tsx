@@ -125,7 +125,7 @@ export function MonthViewDayCell({
   className,
 }: MonthViewDayCellProps) {
   const dayNumber = date.getDate();
-  const { calendars, locale } = useCalendarConfig();
+  const { calendars, locale, timeZone } = useCalendarConfig();
   // The event being created: its days are tinted while it is a draft nothing
   // was typed into, and its details popover (EventDraftPopover) opens
   // beside the first of them
@@ -142,7 +142,7 @@ export function MonthViewDayCell({
   /** The selected event's details popover, for its event's `aria-controls` */
   const detailsId = useId();
   // `null` on the server and during hydration, so no cell is marked as today
-  const today = useToday();
+  const today = useToday(timeZone);
   const todayDate = today !== null && isSameDay(date, today);
   const isAdjacentMonth = !isSameMonth(date, currentMonth);
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;

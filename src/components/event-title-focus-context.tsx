@@ -4,7 +4,7 @@ import * as React from "react";
 
 /**
  * Context that carries a one-shot request to focus an event's title input.
- * Set by CalendarProvider right after click-to-create so the user can type a
+ * Set by CalendarProvider right after an event is created so the user can type a
  * name immediately; the detail panel host that is actually visible (sidebar
  * or popover) consumes it and clears it.
  */

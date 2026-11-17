@@ -1,6 +1,8 @@
 import * as React from "react";
 import { startOfDay } from "date-fns";
 
+import { toZonedWallClock } from "@/lib/time-zones";
+
 /**
  * Milliseconds between clock ticks. Ticks land on multiples of this value
  * (minute boundaries), so the current-time line moves when the minute does.
@@ -40,6 +42,25 @@ function readNow(): number {
   return nowSnapshot;
 }
 
+/** "Now" on the last zone's clock read, kept for the tick it was read in */
+let zonedNowCache: { now: number; timeZone: string; value: number } | null =
+  null;
+
+/**
+ * The shared "now" on a clock in `timeZone`, as `toZonedWallClock` gives it,
+ * or the shared "now" itself without a zone. One zone conversion per tick.
+ */
+function readZonedNow(timeZone: string | undefined): number {
+  const now = readNow();
+  if (!timeZone) return now;
+  if (zonedNowCache?.now === now && zonedNowCache.timeZone === timeZone) {
+    return zonedNowCache.value;
+  }
+  const value = toZonedWallClock(new Date(now), timeZone).getTime();
+  zonedNowCache = { now, timeZone, value };
+  return value;
+}
+
 /** Schedules the next tick on the next interval boundary. */
 function scheduleTick(): void {
   const delay = NOW_TICK_INTERVAL_MS - (Date.now() % NOW_TICK_INTERVAL_MS);
@@ -69,10 +90,6 @@ function getNowSnapshot(): number {
   return readNow();
 }
 
-function getTodaySnapshot(): number {
-  return startOfDay(readNow()).getTime();
-}
-
 /**
  * Server and hydration snapshot. `null` means "the time is not known yet",
  * so nothing that depends on the clock or the viewer's timezone is rendered
@@ -94,8 +111,12 @@ function getServerIsPastSnapshot(): boolean {
  * right after hydration. Client-only renders get the real time on the first
  * render. Components must render their time-dependent parts only when the
  * value is not `null`.
+ *
+ * Give it the calendar's zone (`useCalendarConfig().timeZone`) to read the
+ * clock there: the date is then on that zone's clock, like the events the
+ * views draw.
  */
-export function useNow(): Date | null {
+export function useNow(timeZone?: string): Date | null {
   const timestamp = React.useSyncExternalStore<number | null>(
     subscribe,
     getNowSnapshot,
@@ -103,8 +124,11 @@ export function useNow(): Date | null {
   );
 
   return React.useMemo(
-    () => (timestamp === null ? null : new Date(timestamp)),
-    [timestamp],
+    () =>
+      timestamp === null
+        ? null
+        : toZonedWallClock(new Date(timestamp), timeZone),
+    [timestamp, timeZone],
   );
 }
 
@@ -113,12 +137,18 @@ export function useNow(): Date | null {
  * rendering and hydration.
  *
  * Shares the clock with `useNow`, but the component re-renders only when the
- * day changes, not on every tick.
+ * day changes, not on every tick. Give it the calendar's zone
+ * (`useCalendarConfig().timeZone`) for that zone's today, as a local
+ * midnight like the days the views draw.
  */
-export function useToday(): Date | null {
+export function useToday(timeZone?: string): Date | null {
+  const getSnapshot = React.useCallback(
+    () => startOfDay(readZonedNow(timeZone)).getTime(),
+    [timeZone],
+  );
   const timestamp = React.useSyncExternalStore<number | null>(
     subscribe,
-    getTodaySnapshot,
+    getSnapshot,
     getServerSnapshot,
   );
 
@@ -133,13 +163,15 @@ export function useToday(): Date | null {
  *
  * Returns `false` during server rendering and hydration. Shares the clock
  * with `useNow`, but the component re-renders only when the answer changes,
- * not on every tick.
+ * not on every tick. Give it the calendar's zone
+ * (`useCalendarConfig().timeZone`) when `date` reads on that zone's clock,
+ * like the events the views draw.
  */
-export function useIsPast(date: Date): boolean {
+export function useIsPast(date: Date, timeZone?: string): boolean {
   const timestamp = date.getTime();
   const getSnapshot = React.useCallback(
-    () => timestamp < readNow(),
-    [timestamp],
+    () => timestamp < readZonedNow(timeZone),
+    [timestamp, timeZone],
   );
 
   return React.useSyncExternalStore(

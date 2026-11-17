@@ -337,6 +337,47 @@ export function getAllDayEventRange(
 }
 
 /**
+ * The day an event created from the keyboard (C, or "Create event...") goes
+ * on, as in Notion Calendar: the day Go to date just highlighted, else today,
+ * when on screen (`range`, end exclusive), else `firstDay`
+ */
+export function getNextSlotDay({
+  range,
+  today,
+  highlightedDate,
+  firstDay,
+}: {
+  range: VisibleRange;
+  today: Date;
+  highlightedDate: Date | null;
+  firstDay: Date;
+}): Date {
+  const isOnScreen = (day: Date) => day >= range.start && day < range.end;
+  if (highlightedDate && isOnScreen(highlightedDate)) return highlightedDate;
+  if (isOnScreen(today)) return today;
+  return firstDay;
+}
+
+/** Minutes the C key's new event rounds the time of day up to: the next half hour, as in Notion Calendar */
+export const NEXT_SLOT_MINUTES = 30;
+
+/**
+ * Returns the start/end of an event created from the keyboard (C, or
+ * "Create event..."): on `day`, at `now`'s time of day rounded up to the
+ * next half hour, `defaultEventDuration` long, kept inside the visible hours
+ * and the day like a double-clicked slot (`getClickedEventRange`)
+ */
+export function getNextSlotEventRange(
+  day: Date,
+  now: Date,
+  config: NewEventRangeConfig,
+): NewEventRange {
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const nextSlot = Math.ceil(minutes / NEXT_SLOT_MINUTES) * NEXT_SLOT_MINUTES;
+  return getClickedEventRange(day, nextSlot, config);
+}
+
+/**
  * Returns true when a timed event reaches into a day after the one it starts
  * on. An end at midnight is the end of the day before: 11 PM to 12 AM is one
  * day.
