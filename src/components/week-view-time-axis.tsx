@@ -13,13 +13,19 @@ export function WeekViewTimeAxis({
   hours,
   hourHeight,
   labels,
+  highlighted = false,
   className,
 }: WeekViewTimeAxisProps) {
   return (
     // Hour labels are visual only: each event's label already reads its time
     <div
       aria-hidden
-      className={cn("grid w-16 flex-shrink-0", className)}
+      className={cn(
+        "grid w-16 flex-shrink-0",
+        // The hours' own class sets their color: outrank it
+        highlighted && "bg-primary [&>div]:text-primary-foreground",
+        className,
+      )}
       style={{
         gridTemplateRows: `repeat(${hours.length}, ${hourHeight}px)`,
         gridTemplateColumns: "1fr",

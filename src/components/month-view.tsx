@@ -80,7 +80,7 @@ export function MonthView({
     showDay,
     loading,
   } = useCalendar();
-  const { locale } = useCalendarConfig();
+  const { locale, timeZone } = useCalendarConfig();
   const {
     reportView,
     reportDisplayMonth,
@@ -306,11 +306,12 @@ export function MonthView({
   ).getTime();
   const expandedEvents = useMemo(
     () =>
-      expandRecurringEvents(events, {
-        start: new Date(rangeStartTime),
-        end: new Date(rangeEndTime),
-      }),
-    [events, rangeStartTime, rangeEndTime],
+      expandRecurringEvents(
+        events,
+        { start: new Date(rangeStartTime), end: new Date(rangeEndTime) },
+        timeZone,
+      ),
+    [events, rangeStartTime, rangeEndTime, timeZone],
   );
 
   // Base offset hides the top buffer; scrollOffset + slideOffset shift within

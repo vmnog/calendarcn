@@ -11,6 +11,7 @@ import { formatTimeRange, isMultiDayEvent } from "@/lib/event-utils";
 import { getSharedFreeTime } from "@/lib/free-busy";
 import { getPersonInitial, getPersonName } from "@/lib/people";
 import { expandRecurringEvents } from "@/lib/recurrence";
+import { toDisplayEvent } from "@/lib/time-zones";
 import type {
   CalendarEvent,
   DetailedCalendarEvent,
@@ -52,7 +53,9 @@ export function isPersonEvent(
  * What the time grid draws for the people whose calendars show: their timed
  * events in `range` (repeating ones on each date, all-day and multi-day
  * events left out), and, while you meet with someone, the free time you all
- * share on `days` (`getSharedFreeTime`, within the working hours).
+ * share on `days` (`getSharedFreeTime`, within the working hours). Like
+ * `yourEvents`, `range` and `days` read on the calendar's clock
+ * (`useCalendarConfig().timeZone`), and their events are mapped to it.
  */
 export function usePeopleInTimeGrid(
   yourEvents: DetailedCalendarEvent[],
@@ -61,8 +64,19 @@ export function usePeopleInTimeGrid(
 ): { personEvents: PersonCalendarEvent[]; freeTimes: TimeSpan[] } {
   const { shownPeople, meetWith, getPersonEvents, workingHours } =
     useCalendarPeople();
+  const { timeZone } = useCalendarConfig();
   const rangeStart = range.start.getTime();
   const rangeEnd = range.end.getTime();
+
+  /** Someone's events on the calendar's clock, as `yourEvents` are */
+  const getShownEvents = React.useCallback(
+    (email: string) => {
+      const events = getPersonEvents(email);
+      if (!timeZone) return events;
+      return events.map((event) => toDisplayEvent(event, timeZone));
+    },
+    [getPersonEvents, timeZone],
+  );
 
   const personEvents = React.useMemo(() => {
     if (shownPeople.length === 0) return NO_PERSON_EVENTS;
@@ -71,7 +85,7 @@ export function usePeopleInTimeGrid(
       end: new Date(rangeEnd),
     };
     return shownPeople.flatMap((person) =>
-      expandRecurringEvents(getPersonEvents(person.email), expandRange)
+      expandRecurringEvents(getShownEvents(person.email), expandRange, timeZone)
         .filter((event) => !event.isAllDay && !isMultiDayEvent(event))
         .map(
           (event): PersonCalendarEvent => ({
@@ -82,16 +96,16 @@ export function usePeopleInTimeGrid(
           }),
         ),
     );
-  }, [shownPeople, getPersonEvents, rangeStart, rangeEnd]);
+  }, [shownPeople, getShownEvents, rangeStart, rangeEnd, timeZone]);
 
   const freeTimes = React.useMemo(() => {
     if (meetWith.length === 0) return NO_FREE_TIMES;
     return getSharedFreeTime(
-      [yourEvents, ...meetWith.map((email) => getPersonEvents(email))],
+      [yourEvents, ...meetWith.map((email) => getShownEvents(email))],
       days,
-      { workingHours },
+      { workingHours, timeZone },
     );
-  }, [meetWith, yourEvents, getPersonEvents, days, workingHours]);
+  }, [meetWith, yourEvents, getShownEvents, days, workingHours, timeZone]);
 
   return { personEvents, freeTimes };
 }

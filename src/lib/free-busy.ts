@@ -71,14 +71,18 @@ export function mergeTimeSpans(spans: TimeSpan[]): TimeSpan[] {
 /**
  * When one calendar's events keep its owner busy inside `range`: repeating
  * events on each of their dates, clipped to the range and merged. An event
- * counts as busy by `isBusyEvent`.
+ * counts as busy by `isBusyEvent`. With `timeZone`, the events and the
+ * range read on that zone's clock, as the provider hands them to the views,
+ * and repeating events are expanded on their instants
+ * (`expandRecurringEvents`).
  */
 export function getBusyTimes(
   events: DetailedCalendarEvent[],
   range: VisibleRange,
+  timeZone?: string,
 ): TimeSpan[] {
   const spans: TimeSpan[] = [];
-  for (const event of expandRecurringEvents(events, range)) {
+  for (const event of expandRecurringEvents(events, range, timeZone)) {
     if (!isBusyEvent(event)) continue;
     if (event.end <= range.start || event.start >= range.end) continue;
     spans.push({
@@ -90,9 +94,9 @@ export function getBusyTimes(
 }
 
 /**
- * The working hours of each given day, in the viewer's time zone: a day
- * outside `workingHours.days` has none. `endHour` 24 ends at the next
- * midnight.
+ * The working hours of each given day, on the clock `days` read on (the
+ * viewer's, or the calendar's for the provider's days): a day outside
+ * `workingHours.days` has none. `endHour` 24 ends at the next midnight.
  */
 export function getWorkingTimes(
   days: Date[],
@@ -129,6 +133,12 @@ interface SharedFreeTimeOptions {
   workingHours?: WorkingHours;
   /** Shortest free stretch kept, in minutes. Defaults to `MIN_FREE_MINUTES` */
   minMinutes?: number;
+  /**
+   * The calendar's zone, when `calendars` and `days` read on its clock (the
+   * provider's mapped events, with its `timeZone` set). The working hours
+   * then read on that clock too.
+   */
+  timeZone?: string;
 }
 
 /**
@@ -137,7 +147,7 @@ interface SharedFreeTimeOptions {
  * long. Each calendar is one person's events; pass yours and those of the
  * people you're meeting with. Times are instants, so events written in other
  * time zones block the moments they cover; the working hours are the
- * viewer's.
+ * viewer's, or `timeZone`'s with it.
  */
 export function getSharedFreeTime(
   calendars: DetailedCalendarEvent[][],
@@ -145,6 +155,7 @@ export function getSharedFreeTime(
   {
     workingHours = DEFAULT_WORKING_HOURS,
     minMinutes = MIN_FREE_MINUTES,
+    timeZone,
   }: SharedFreeTimeOptions = {},
 ): TimeSpan[] {
   const working = getWorkingTimes(days, workingHours);
@@ -154,7 +165,7 @@ export function getSharedFreeTime(
     end: addDays(startOfDay(days.reduce((a, b) => (a > b ? a : b))), 1),
   };
   const busy = mergeTimeSpans(
-    calendars.flatMap((events) => getBusyTimes(events, range)),
+    calendars.flatMap((events) => getBusyTimes(events, range, timeZone)),
   );
   const minMs = minMinutes * 60_000;
 

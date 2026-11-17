@@ -16,6 +16,7 @@ import type { DayButtonProps, MonthCaptionProps } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { selectInputSoon, useFieldPopover } from "@/hooks/use-field-popover";
+import { useToday } from "@/hooks/use-now";
 import { Calendar } from "@/components/ui/calendar";
 import { useCalendarConfig } from "./calendar-provider";
 import {
@@ -159,7 +160,9 @@ export function EventDetailDateField({
   readOnly = false,
   className,
 }: EventDetailDateFieldProps) {
-  const { locale, weekStartsOn } = useCalendarConfig();
+  const { locale, weekStartsOn, timeZone } = useCalendarConfig();
+  // The picker marks today on the calendar's clock
+  const today = useToday(timeZone);
   const pickerId = React.useId();
   const inputRef = React.useRef<HTMLInputElement>(null);
 
@@ -318,6 +321,7 @@ export function EventDetailDateField({
         month={month}
         onMonthChange={setMonth}
         showOutsideDays
+        today={today ?? undefined}
         fixedWeeks
         hideNavigation
         locale={locale}

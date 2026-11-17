@@ -9,7 +9,11 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { AgendaView } from "@/components/agenda-view";
 import { CalendarHeader } from "@/components/calendar-header";
-import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
+import {
+  CalendarProvider,
+  useCalendar,
+  useCalendarConfig,
+} from "@/components/calendar-provider";
 import { CalendarSidebar } from "@/components/calendar-sidebar";
 import { CalendarToaster } from "@/components/calendar-toaster";
 import { CommandMenu } from "@/components/command-menu";
@@ -32,6 +36,7 @@ import {
   mergeShownEvents,
 } from "@/lib/event-utils";
 import { parseIcs, toIcs } from "@/lib/ics";
+import { toDisplayEvent } from "@/lib/time-zones";
 import type {
   CalendarProviderProps,
   PeoplePickerMode,
@@ -39,6 +44,7 @@ import type {
 import type {
   CalendarAppProps,
   DetailedCalendarEvent,
+  TimeZoneCommand,
 } from "@/components/week-view-types";
 
 /** Hour the time grid opens on unless `scrollToHour` says otherwise */
@@ -277,6 +283,7 @@ function CalendarAppShell({
   } = useSidebar();
   const { view, weekStartsOn, numberOfDays, goToDate } =
     useCalendar<DetailedCalendarEvent>();
+  const { timeZone } = useCalendarConfig();
   // shadcn tracks the panel's phone state separately; read whichever is active
   const rightSidebarOpen = isMobile ? contextPanelOpenMobile : contextPanelOpen;
   /** Inline calendar sidebar state (tablet and desktop) */
@@ -292,6 +299,10 @@ function CalendarAppShell({
   }
   const leftSidebarVisible = isMobile ? leftOverlayOpen : leftSidebarOpen;
   const [commandMenuOpen, setCommandMenuOpen] = React.useState(false);
+  /** The time zone list the command menu opens on (Z), or none (Cmd+K) */
+  const [commandMenuZoneCommand, setCommandMenuZoneCommand] = React.useState<
+    TimeZoneCommand | undefined
+  >(undefined);
   /** Whether the people picker F and P open is open */
   const [peoplePickerOpen, setPeoplePickerOpen] = React.useState(false);
   /** What picking someone does; kept while the picker closes, so its text stays */
@@ -305,7 +316,14 @@ function CalendarAppShell({
   const showDetailsInPanel = isMobile || rightSidebarOpen;
 
   const toggleCommandMenu = React.useCallback(() => {
+    setCommandMenuZoneCommand(undefined);
     setCommandMenuOpen((prev) => !prev);
+  }, []);
+
+  /** Z: the command menu, on "Travel to time zone..."'s list */
+  const openTravelPicker = React.useCallback(() => {
+    setCommandMenuZoneCommand("travel");
+    setCommandMenuOpen(true);
   }, []);
 
   const openMeetWith = React.useCallback(() => {
@@ -339,11 +357,17 @@ function CalendarAppShell({
       const earliest = imported.reduce((first, event) =>
         event.start < first.start ? event : first,
       );
+      // The period of the day it falls on in the calendar's zone
       goToDate(
-        getPeriodStart(earliest.start, view, weekStartsOn, numberOfDays),
+        getPeriodStart(
+          toDisplayEvent(earliest, timeZone).start,
+          view,
+          weekStartsOn,
+          numberOfDays,
+        ),
       );
     },
-    [onImportEvents, goToDate, view, weekStartsOn, numberOfDays],
+    [onImportEvents, goToDate, view, weekStartsOn, numberOfDays, timeZone],
   );
 
   const exportIcs = React.useCallback(() => {
@@ -379,7 +403,7 @@ function CalendarAppShell({
   // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape,
   // Shift+Cmd+E for weekends, and the event keys: Delete/Backspace, Cmd+X,
   // Cmd+C, Cmd+V, Cmd+D, Cmd+Z and Shift+Cmd+Z. Then the app's own, checked
-  // first: Cmd+K, Cmd+/, /, Shift+M, Cmd+, F and P
+  // first: Cmd+K, Cmd+/, /, Shift+M, Cmd+, Z, F and P
   useCalendarShortcuts({
     enabled: shortcuts,
     onToggleCommandMenu: toggleCommandMenu,
@@ -387,6 +411,7 @@ function CalendarAppShell({
     onToggleContextPanel: toggleSidebar,
     onCycleTheme: cycleTheme,
     onOpenSettings,
+    onTravelToTimeZone: openTravelPicker,
     onMeetWith: openMeetWith,
     onShowTeammateCalendar: openTeammatePicker,
   });
@@ -404,6 +429,7 @@ function CalendarAppShell({
         onMeetWith={openMeetWith}
         onShowTeammateCalendar={openTeammatePicker}
         showComingSoon={showComingSoon}
+        timeZoneCommand={commandMenuZoneCommand}
       />
       <PeoplePicker
         open={peoplePickerOpen}

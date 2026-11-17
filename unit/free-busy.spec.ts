@@ -13,6 +13,7 @@ import {
   isBusyEvent,
   mergeTimeSpans,
 } from "../src/lib/free-busy";
+import { toDisplayEvent } from "../src/lib/time-zones";
 
 /**
  * Free time everyone shares while meeting with people
@@ -260,5 +261,29 @@ test.describe("free time everyone shares", () => {
     expect(slot.end).toEqual(new Date(2026, 10, 1, 4));
     // Five hours long, not four: 1 AM happens twice
     expect((slot.end.getTime() - slot.start.getTime()) / 3_600_000).toBe(5);
+  });
+
+  test("on the calendar's clock, a weekly event keeps its own zone's time", () => {
+    // Thursdays 9 PM in New York: Fridays 10 AM in Tokyo until New York's
+    // clocks go back on November 1, 11 AM after
+    const weekly: DetailedCalendarEvent = {
+      id: "weekly",
+      title: "Weekly sync",
+      start: new Date("2026-10-02T01:00:00Z"),
+      end: new Date("2026-10-02T02:00:00Z"),
+      timeZone: "America/New_York",
+      recurrenceRule: { frequency: "weekly" },
+    };
+    const friday = new Date(2026, 10, 6);
+    const mornings: WorkingHours = { days: [5], startHour: 9, endHour: 13 };
+    const shown = toDisplayEvent(weekly, "Asia/Tokyo");
+    expect(
+      asClock(
+        getSharedFreeTime([[shown]], [friday], {
+          workingHours: mornings,
+          timeZone: "Asia/Tokyo",
+        }),
+      ),
+    ).toEqual(["09:00-11:00", "12:00-13:00"]);
   });
 });

@@ -124,6 +124,32 @@ test("meeting with someone draws their events and the times you're both free", a
   ).toHaveAccessibleName("Everyone free, 9–9:30 AM");
 });
 
+test("travelling to a time zone moves their events and the free time with yours", async ({
+  page,
+}) => {
+  await meetWith(page, "pri");
+  const saturday = dayColumn(page, "Saturday, June 6");
+  await expect(saturday.locator("[data-person-event]")).toHaveCount(0);
+
+  // Escape leaves the empty field, then Z travels to Tokyo
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("z");
+  await page.keyboard.type("Tokyo");
+  await page
+    .getByRole("option", { name: "(GMT+09:00) Japan Standard Time – Tokyo" })
+    .click();
+
+  // Her lunch at noon in New York is 1 AM the next day in Tokyo: Friday's
+  // falls on Saturday, as yours do
+  await expect(
+    saturday.locator('[data-person-event][title^="Priya Shah: Lunch,"]'),
+  ).toHaveAttribute("title", "Priya Shah: Lunch, 1–2 AM");
+  // 9 to 5 in Tokyo is the night in New York: Thursday is free all day
+  await expect(
+    dayColumn(page, "Thursday, June 4").getByRole("note"),
+  ).toHaveAccessibleName("Everyone free, 9 AM–5 PM");
+});
+
 test("people are removed one by one, or all at once with Clear", async ({
   page,
 }) => {
