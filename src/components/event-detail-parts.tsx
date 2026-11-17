@@ -12,6 +12,9 @@ export const EVENT_DETAIL_TEXT_CLASS = "text-[#32302C] dark:text-[#D4D4D4]";
 export const EVENT_DETAIL_SECONDARY_CLASS =
   "text-[#787774] dark:text-[#7F7F7F]";
 
+/** Blue of a checked radio and the details' main buttons, the same in both themes */
+export const EVENT_DETAIL_ACCENT_BG_CLASS = "bg-[#3A85D3] dark:bg-[#3A85D3]";
+
 /** Muted icons: a row's leading icon, the arrow between times, chevrons */
 export const EVENT_DETAIL_MUTED_CLASS = "text-[#C7C5C1] dark:text-[#595959]";
 
@@ -377,5 +380,22 @@ export function EventDetailPlaceholderRow({
         {content}
       </button>
     </EventDetailRow>
+  );
+}
+
+/** A round radio, blue with a white dot when checked */
+export function RadioDot({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex size-4 shrink-0 items-center justify-center rounded-full",
+        checked
+          ? EVENT_DETAIL_ACCENT_BG_CLASS
+          : "border border-[#E8E8E4] bg-[#F5F5F5] dark:border-[#373737] dark:bg-[#303030]",
+      )}
+    >
+      {checked && <span className="size-1.5 rounded-full bg-white" />}
+    </span>
   );
 }

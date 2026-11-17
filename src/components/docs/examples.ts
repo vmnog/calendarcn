@@ -6,6 +6,7 @@ import type { ComponentType, ReactElement } from "react";
 import { AgendaViewDemo } from "@/examples/agenda-view-demo";
 import { CalendarDemo } from "@/examples/calendar-demo";
 import { CalendarHeaderDemo } from "@/examples/calendar-header-demo";
+import { CalendarSettingsDemo } from "@/examples/calendar-settings-demo";
 import { CalendarToasterDemo } from "@/examples/calendar-toaster-demo";
 import { CommandMenuDemo } from "@/examples/command-menu-demo";
 import { ConfigDemo } from "@/examples/config-demo";
@@ -19,6 +20,7 @@ import { MonthViewDemo } from "@/examples/month-view-demo";
 import { RangeLoadingDemo } from "@/examples/range-loading-demo";
 import { SampleDataDemo } from "@/examples/sample-data-demo";
 import { SecondaryTimeZoneDemo } from "@/examples/secondary-time-zone-demo";
+import { TimeZoneDemo } from "@/examples/time-zone-demo";
 import { TimeGridDemo } from "@/examples/time-grid-demo";
 import { TypedEventsDemo } from "@/examples/typed-events-demo";
 import { WeekViewDemo } from "@/examples/week-view-demo";
@@ -42,6 +44,7 @@ const EXAMPLES = {
   "agenda-view-demo": AgendaViewDemo,
   "calendar-demo": CalendarDemo,
   "calendar-header-demo": CalendarHeaderDemo,
+  "calendar-settings-demo": CalendarSettingsDemo,
   "calendar-toaster-demo": CalendarToasterDemo,
   "command-menu-demo": CommandMenuDemo,
   "config-demo": ConfigDemo,
@@ -55,6 +58,7 @@ const EXAMPLES = {
   "range-loading-demo": RangeLoadingDemo,
   "sample-data-demo": SampleDataDemo,
   "secondary-time-zone-demo": SecondaryTimeZoneDemo,
+  "time-zone-demo": TimeZoneDemo,
   "time-grid-demo": TimeGridDemo,
   "typed-events-demo": TypedEventsDemo,
   "week-view-demo": WeekViewDemo,

@@ -149,7 +149,7 @@ test("nudging an all-day bar in day view keeps its days", async ({ page }) => {
   // past the three days the grid renders
   await page.keyboard.press("d");
   await page.keyboard.press("k");
-  await expectHeader(page, "June 2026 Friday, Jun 5");
+  await expectHeader(page, "June 2026 Friday, Jun 5 Week 23");
 
   const event = calendarEvent(page, "Weekend in Hudson Valley");
   await expect(event).toBeInViewport();

@@ -1,23 +1,34 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeft, CalendarSearch, PanelRightIcon, X } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarSearch,
+  PanelRightIcon,
+  SearchIcon,
+  X,
+} from "lucide-react";
 import {
   addDays,
   format,
   isBefore,
+  isSameDay,
   isSameYear,
-  isToday,
-  isTomorrow,
   startOfDay,
 } from "date-fns";
 
 import { cn } from "@/lib/utils";
 import { eventColorStyles } from "@/components/calendar-event-item";
 import { useCalendar, useCalendarConfig } from "@/components/calendar-provider";
-import type { DetailedCalendarEvent } from "@/components/calendar-types";
+import type {
+  DetailedCalendarEvent,
+  KeyboardShortcut,
+  KeyboardShortcutGroup,
+} from "@/components/calendar-types";
+import { AvailabilityPanel } from "@/components/availability-panel";
 import { EventDetailPanel } from "@/components/event-detail-panel";
 import { useEventTitleFocus } from "@/components/event-title-focus-context";
+import { useScheduling } from "@/components/scheduling-provider";
 import {
   CALENDAR_SIDEBAR_COLORS_CLASS,
   SidebarOverlay,
@@ -39,7 +50,14 @@ import {
 } from "@/components/ui/tooltip";
 import { resolveEventColor } from "@/lib/event-utils";
 import { expandRecurringEvents } from "@/lib/recurrence";
+import {
+  KEYBOARD_SHORTCUT_GROUPS,
+  SHORTCUTS,
+  findKeyboardShortcuts,
+} from "@/lib/keyboard-shortcuts";
 import { formatDuration } from "@/lib/time-input";
+import { getZonedNow } from "@/lib/time-zones";
+import type { DetailsSidebarActions } from "@/components/week-view-types";
 
 /**
  * Width of the context panel, inline or as an overlay: Notion Calendar's
@@ -72,11 +90,10 @@ export interface DetailsSidebarShortcut {
  */
 export const USEFUL_SHORTCUTS: DetailsSidebarShortcut[] = [
   { label: "Command menu", keys: ["⌘", "K"] },
-  { label: "Menu bar calendar", keys: ["control", "⌘", "K"], soon: true },
   { label: "Toggle sidebar", keys: ["⌘", "/"] },
-  { label: "Show teammate calendar", keys: ["P"], soon: true },
-  { label: "Go to date", keys: ["."], soon: true },
-  { label: "All keyboard shortcuts", keys: ["?"], soon: true },
+  SHORTCUTS.showTeammateCalendar,
+  SHORTCUTS.goToDate,
+  { label: "All keyboard shortcuts", keys: SHORTCUTS.showShortcuts.keys },
 ];
 
 /** "Soon" badge of a listed shortcut that isn't built yet, as in the command menu */
@@ -91,6 +108,18 @@ interface DetailsSidebarProps extends React.ComponentProps<"div"> {
   overlay?: boolean;
   /** Shortcuts listed while no event is selected or searched */
   shortcuts?: DetailsSidebarShortcut[];
+  /**
+   * The full keyboard shortcut list `actionsRef.current.showAllShortcuts()`
+   * shows. Defaults to `KEYBOARD_SHORTCUT_GROUPS`, every key the live demo
+   * handles
+   */
+  shortcutGroups?: KeyboardShortcutGroup[];
+  /**
+   * Receives the panel's actions, for your commands and keys: open event
+   * search with its field focused (`searchEvents`), or the full shortcut
+   * list (`showAllShortcuts`)
+   */
+  actionsRef?: React.Ref<DetailsSidebarActions>;
 }
 
 interface DateGroup {
@@ -117,23 +146,29 @@ function formatTimeRange(event: DetailedCalendarEvent): string {
   return `${startStr}\u2013${endStr}`;
 }
 
-function formatDateHeader(date: Date): {
+function formatDateHeader(
+  date: Date,
+  now: Date,
+): {
   label: string;
   isTodayGroup: boolean;
 } {
-  if (isToday(date)) {
+  if (isSameDay(date, now)) {
     return { label: "Today", isTodayGroup: true };
   }
-  if (isTomorrow(date)) {
+  if (isSameDay(date, addDays(now, 1))) {
     return { label: "Tomorrow", isTodayGroup: false };
   }
-  if (isSameYear(date, new Date())) {
+  if (isSameYear(date, now)) {
     return { label: format(date, "EEE MMM d"), isTodayGroup: false };
   }
   return { label: format(date, "EEE MMM d, yyyy"), isTodayGroup: false };
 }
 
-function groupEventsByDate(events: DetailedCalendarEvent[]): DateGroup[] {
+function groupEventsByDate(
+  events: DetailedCalendarEvent[],
+  now: Date,
+): DateGroup[] {
   const grouped = new Map<string, DetailedCalendarEvent[]>();
 
   for (const event of events) {
@@ -149,7 +184,7 @@ function groupEventsByDate(events: DetailedCalendarEvent[]): DateGroup[] {
   const groups: DateGroup[] = [];
   for (const [key, groupEvents] of grouped) {
     const date = groupEvents[0].start;
-    const { label, isTodayGroup } = formatDateHeader(date);
+    const { label, isTodayGroup } = formatDateHeader(date, now);
     const sorted = groupEvents.sort(
       (a, b) => a.start.getTime() - b.start.getTime(),
     );
@@ -162,6 +197,8 @@ function groupEventsByDate(events: DetailedCalendarEvent[]): DateGroup[] {
 /**
  * Notion Calendar's context panel, on the right: the selected event's
  * details, event search, and useful shortcuts when nothing is selected.
+ * While open times are marked inside a `SchedulingProvider`, it shows the
+ * scheduling panel (`AvailabilityPanel`) instead.
  * Reads the events and the selection from the nearest `CalendarProvider`;
  * its open state is shadcn/ui's `SidebarProvider` (`useSidebar()`), with
  * `--sidebar-width` set to `CONTEXT_PANEL_WIDTH`.
@@ -169,13 +206,16 @@ function groupEventsByDate(events: DetailedCalendarEvent[]): DateGroup[] {
 export function DetailsSidebar({
   overlay = false,
   shortcuts = USEFUL_SHORTCUTS,
+  shortcutGroups = KEYBOARD_SHORTCUT_GROUPS,
+  actionsRef,
   className,
   ...props
 }: DetailsSidebarProps) {
   const {
     events,
     selectedEvent,
-    updateEvent,
+    clearSelection,
+    editEvent,
     previousInSeries,
     nextInSeries,
     showSeriesOccurrence,
@@ -184,6 +224,7 @@ export function DetailsSidebar({
     copyEvent,
     cutEvent,
   } = useCalendar<DetailedCalendarEvent>();
+  const { timeZone } = useCalendarConfig();
   const {
     toggleSidebar,
     state,
@@ -197,11 +238,22 @@ export function DetailsSidebar({
   const panelOpen = isMobile ? openMobile : open;
   const setPanelOpen = isMobile ? setOpenMobile : setOpen;
   const { pendingEventId, clearPending } = useEventTitleFocus();
+  // While open times are marked, the panel is the scheduling panel
+  const scheduling = useScheduling();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [searchSelectedEvent, setSearchSelectedEvent] =
     React.useState<DetailedCalendarEvent | null>(null);
+  /** Whether the panel shows the full keyboard shortcut list */
+  const [showingAllShortcuts, setShowingAllShortcuts] = React.useState(false);
+  /** Text typed in the shortcut list's find field */
+  const [shortcutQuery, setShortcutQuery] = React.useState("");
+  /** Field to focus once the panel has rendered it, after an action asked */
+  const [pendingFocus, setPendingFocus] = React.useState<
+    "search" | "shortcuts" | null
+  >(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const shortcutInputRef = React.useRef<HTMLInputElement>(null);
 
   const isSearching = searchQuery.trim().length > 0;
   const isLoadingResults = isSearching && searchQuery !== debouncedQuery;
@@ -227,8 +279,56 @@ export function DetailsSidebar({
   React.useEffect(() => {
     if (selectedEvent) {
       setSearchSelectedEvent(null);
+      setShowingAllShortcuts(false);
     }
   }, [selectedEvent]);
+
+  React.useImperativeHandle(
+    actionsRef,
+    () => ({
+      searchEvents: (query = "") => {
+        clearSelection();
+        setSearchSelectedEvent(null);
+        setShowingAllShortcuts(false);
+        setSearchQuery(query);
+        setPanelOpen(true);
+        setPendingFocus("search");
+      },
+      showAllShortcuts: () => {
+        clearSelection();
+        setSearchSelectedEvent(null);
+        setSearchQuery("");
+        setShortcutQuery("");
+        setShowingAllShortcuts(true);
+        setPanelOpen(true);
+        setPendingFocus("shortcuts");
+      },
+    }),
+    [clearSelection, setPanelOpen],
+  );
+
+  // Focus the asked-for field once the open panel shows it (a sheet mounts
+  // its content when it opens)
+  React.useEffect(() => {
+    if (!pendingFocus || !panelOpen) return;
+    const input =
+      pendingFocus === "search" ? inputRef.current : shortcutInputRef.current;
+    if (!input) return;
+    input.focus();
+    input.select();
+    setPendingFocus(null);
+  }, [pendingFocus, panelOpen, showingAllShortcuts, selectedEvent]);
+
+  const foundShortcutGroups = React.useMemo(
+    () => findKeyboardShortcuts(shortcutGroups, shortcutQuery),
+    [shortcutGroups, shortcutQuery],
+  );
+
+  /** Leaves the full shortcut list for the panel's search and useful shortcuts */
+  const closeAllShortcuts = () => {
+    setShowingAllShortcuts(false);
+    setShortcutQuery("");
+  };
 
   const searchResults = React.useMemo(() => {
     if (!debouncedQuery.trim()) {
@@ -237,19 +337,24 @@ export function DetailsSidebar({
     const query = debouncedQuery.trim().toLowerCase();
     // A repeating event is listed on each of its dates within a year of
     // today. Expanded before matching, so an edited date keeps its own title
-    const today = startOfDay(new Date());
-    const occurrences = expandRecurringEvents(events, {
-      start: addDays(today, -SEARCH_RANGE_DAYS),
-      end: addDays(today, SEARCH_RANGE_DAYS + 1),
-    });
+    const today = startOfDay(getZonedNow(timeZone));
+    const occurrences = expandRecurringEvents(
+      events,
+      {
+        start: addDays(today, -SEARCH_RANGE_DAYS),
+        end: addDays(today, SEARCH_RANGE_DAYS + 1),
+      },
+      timeZone,
+    );
     return occurrences.filter((event) =>
       event.title.toLowerCase().includes(query),
     );
-  }, [events, debouncedQuery]);
+  }, [events, debouncedQuery, timeZone]);
 
   const { pastGroups, todayGroup, futureGroups } = React.useMemo(() => {
-    const allGroups = groupEventsByDate(searchResults);
-    const now = new Date();
+    // Today and tomorrow on the calendar's clock, like the events
+    const now = getZonedNow(timeZone);
+    const allGroups = groupEventsByDate(searchResults, now);
     const todayStart = startOfDay(now);
 
     const past: DateGroup[] = [];
@@ -270,7 +375,7 @@ export function DetailsSidebar({
     }
 
     return { pastGroups: past, todayGroup: today, futureGroups: future };
-  }, [searchResults]);
+  }, [searchResults, timeZone]);
 
   const hasUpcomingResults = todayGroup !== null || futureGroups.length > 0;
 
@@ -299,7 +404,9 @@ export function DetailsSidebar({
     },
   });
 
-  const panel = (
+  const panel = scheduling?.isPicking ? (
+    <AvailabilityPanel />
+  ) : (
     <>
       <SidebarHeader className="h-14 justify-center px-4">
         <div className="flex items-center gap-2">
@@ -317,6 +424,41 @@ export function DetailsSidebar({
               </Button>
               <div className="flex-1" />
             </>
+          ) : showingAllShortcuts ? (
+            <div
+              className="group/search flex flex-1 cursor-text items-center gap-2 rounded-sm border border-transparent px-1 hover:border-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:border-[#373737] dark:hover:bg-transparent has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]"
+              onClick={() => shortcutInputRef.current?.focus()}
+            >
+              <SearchIcon className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
+              <input
+                ref={shortcutInputRef}
+                type="text"
+                placeholder="Find keyboard shortcuts"
+                aria-label="Find keyboard shortcuts"
+                value={shortcutQuery}
+                onChange={(e) => setShortcutQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  // Escape goes back, without reaching the calendar's keys
+                  if (e.key !== "Escape") return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  closeAllShortcuts();
+                }}
+                className="text-foreground placeholder:text-muted-foreground h-7 w-full border-none bg-transparent p-0 text-xs outline-none"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Close keyboard shortcuts"
+                className="size-7 shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeAllShortcuts();
+                }}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
           ) : (
             <div
               className="group/search flex flex-1 cursor-text items-center gap-2 rounded-sm border border-transparent px-1 hover:border-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:border-[#373737] dark:hover:bg-transparent has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]"
@@ -368,7 +510,7 @@ export function DetailsSidebar({
         {selectedEvent ? (
           <EventDetailPanel
             event={selectedEvent}
-            onEventChange={updateEvent}
+            onEventChange={editEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             {...getEventActions(selectedEvent.id)}
@@ -378,11 +520,13 @@ export function DetailsSidebar({
         ) : resolvedSearchEvent ? (
           <EventDetailPanel
             event={resolvedSearchEvent}
-            onEventChange={updateEvent}
+            onEventChange={editEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             {...getEventActions(resolvedSearchEvent.id)}
           />
+        ) : showingAllShortcuts ? (
+          <AllShortcutsList groups={foundShortcutGroups} />
         ) : isLoadingResults ? (
           <div className="px-4 pl-8 pt-8">
             <p className="text-[#ABABA9] dark:text-[#7C7C7C] text-xs">
@@ -656,18 +800,105 @@ function SearchResultItem({
   );
 }
 
+/** One key combination as key caps, the keys pressed together */
+function KeyCaps({ keys }: { keys: string[] }) {
+  return keys.map((key) => <Kbd key={key}>{key}</Kbd>);
+}
+
+/** A shortcut's keys, and the other keys that do the same after "or" */
+function ShortcutKeys({ shortcut }: { shortcut: KeyboardShortcut }) {
+  return (
+    <>
+      <KeyCaps keys={shortcut.keys} />
+      {shortcut.alternativeKeys?.map((keys) => (
+        <React.Fragment key={keys.join("+")}>
+          <span>or</span>
+          <KeyCaps keys={keys} />
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Label color of the full shortcut list's rows: the panel's muted color is
+ * too faint on white for a long list, so light mode uses the darker
+ * secondary text
+ */
+const ALL_SHORTCUTS_ROW_CLASS = "text-[#787774] dark:text-muted-foreground";
+
+/**
+ * Notion Calendar's full keyboard shortcut list, in the context panel: each
+ * group under its heading, the shortcuts that act on something under a
+ * muted one ("With a selected event…")
+ */
+function AllShortcutsList({ groups }: { groups: KeyboardShortcutGroup[] }) {
+  if (groups.length === 0) {
+    return (
+      <p className="text-[#ABABA9] dark:text-[#7F7F7F] px-4 pt-6 text-xs">
+        No keyboard shortcut found
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5 px-3 pt-6 pb-16">
+      {groups.map((group) => (
+        <section key={group.heading} aria-label={group.heading}>
+          <h3 className="text-foreground pb-1 text-xs font-semibold">
+            {group.heading}
+          </h3>
+          {group.shortcuts.map((shortcut) => (
+            <ShortcutRow
+              key={shortcut.label}
+              label={shortcut.label}
+              className={ALL_SHORTCUTS_ROW_CLASS}
+            >
+              <ShortcutKeys shortcut={shortcut} />
+            </ShortcutRow>
+          ))}
+          {group.sections?.map((section) => (
+            <div key={section.heading} className="pt-2">
+              <h4 className="text-[#ABABA9] dark:text-[#7F7F7F] py-1 text-xs">
+                {section.heading}
+              </h4>
+              {section.shortcuts.map((shortcut) => (
+                <ShortcutRow
+                  key={shortcut.label}
+                  label={shortcut.label}
+                  className={ALL_SHORTCUTS_ROW_CLASS}
+                >
+                  <ShortcutKeys shortcut={shortcut} />
+                </ShortcutRow>
+              ))}
+            </div>
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+
 function ShortcutRow({
   label,
   soon,
+  className,
   children,
 }: {
   label: string;
   /** Not built yet: a "Soon" badge replaces the keys */
   soon?: boolean;
+  /** Classes for the row, e.g. a text color */
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="text-muted-foreground flex items-center justify-between py-1 text-xs">
+    <div
+      className={cn(
+        "text-muted-foreground flex items-center justify-between py-1 text-xs",
+        className,
+      )}
+    >
       <span>{label}</span>
       <div className="flex items-center gap-1">
         {soon ? SOON_BADGE : children}

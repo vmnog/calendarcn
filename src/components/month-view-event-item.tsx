@@ -8,10 +8,15 @@ import {
   useCalendarConfig,
   useIsEventInSelection,
 } from "./calendar-provider";
-import { EVENT_FOCUS_RING_CLASS } from "./calendar-event-item";
+import { SeriesChangeDot } from "./event-series-scope-dialog";
+import {
+  DECLINED_EVENT_TEXT_CLASS,
+  EVENT_FOCUS_RING_CLASS,
+} from "./calendar-event-item";
 import {
   formatTime,
   getEventLabel,
+  isDeclinedByViewer,
   resolveEventColor,
 } from "@/lib/event-utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
@@ -93,15 +98,17 @@ export function MonthViewEventItem({
   const isInSelection =
     useIsEventInSelection(event.id) && !isGhost && !isDragging;
   const isSelected = isSelectedProp || isInSelection;
-  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const borderColor = borderColorStyles[color];
   const timeColor = timeColorStyles[color];
   const titleColor = titleColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
-  const eventIsPast = useIsPast(event.end);
+  const eventIsPast = useIsPast(event.end, timeZone);
   // "9 AM" / "2:30 PM", or "09:00" / "14:30" on a 24-hour clock
   const startTimeLabel = formatTime(event.start, hourCycle, locale);
+  /** Declined by the viewer: no color accent, struck-through text */
+  const isDeclined = isDeclinedByViewer(event);
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
@@ -154,11 +161,11 @@ export function MonthViewEventItem({
         className,
       )}
     >
-      {/* Colored left border */}
+      {/* Colored left border, kept as a gap when declined */}
       <div
         className={cn(
           "w-[3px] self-stretch shrink-0 rounded-l-sm",
-          borderColor,
+          isDeclined ? "bg-transparent" : borderColor,
         )}
       />
 
@@ -176,8 +183,21 @@ export function MonthViewEventItem({
         className={MONTH_ITEM_SLOT_CLASS}
         fallback={
           <span className="text-[0.6875rem] leading-tight truncate pl-1 pr-1">
-            <span className={timeColor}>{startTimeLabel}</span>{" "}
-            <span className={cn("font-bold", titleColor)}>{event.title}</span>
+            <span
+              className={cn(timeColor, isDeclined && DECLINED_EVENT_TEXT_CLASS)}
+            >
+              {startTimeLabel}
+            </span>{" "}
+            <span
+              className={cn(
+                "font-bold",
+                titleColor,
+                isDeclined && DECLINED_EVENT_TEXT_CLASS,
+              )}
+            >
+              <SeriesChangeDot eventId={event.id} />
+              {event.title}
+            </span>
           </span>
         }
       />

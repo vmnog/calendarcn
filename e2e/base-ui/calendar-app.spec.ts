@@ -6,6 +6,7 @@ import type { Page } from "@playwright/test";
 import {
   CURRENT_WEEK_LABEL,
   FROZEN_NOW,
+  answerThisEvent,
   calendarEvent,
   detailTitle,
 } from "../helpers";
@@ -70,14 +71,108 @@ test.describe("wide screens", () => {
     const menu = page.getByRole("dialog", { name: "Command Menu" });
     await page.keyboard.press("ControlOrMeta+k");
     await expect(menu).toBeVisible();
-    // The demo lists Notion Calendar's commands that aren't built yet
-    await expect(menu.getByText("Soon").first()).toBeVisible();
+    // Every command the demo lists is built: none is marked Soon, even
+    // with `showComingSoon`
+    await expect(menu.getByText("Soon")).toHaveCount(0);
     await menu.getByRole("option", { name: /^Display month view/ }).click();
     await expect(menu).toBeHidden();
     await expect(title(page)).toHaveAccessibleName("June 2026");
 
     await page.keyboard.press("Shift+M");
     await expect(page.locator("html")).toHaveClass(/\blight\b/);
+  });
+
+  test("meets with people from the sidebar, F and P", async ({ page }) => {
+    // The sidebar's field: Priya's events show and the free time you share
+    const field = page.getByRole("combobox", { name: "Meet with" });
+    await field.click();
+    await page.keyboard.type("pri");
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Meeting participants")).toBeVisible();
+    await expect(
+      page.locator('[data-person-event][title^="Priya Shah: Lunch,"]').first(),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("main")
+        .getByRole("group", { name: "Thursday, June 4", exact: true })
+        .getByRole("note", { name: "Everyone free, 1:30–3 PM" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    // F opens the people picker, a Base UI dialog here
+    await page.keyboard.press("f");
+    const meetWith = page.getByRole("dialog", { name: "Meet with..." });
+    await expect(meetWith).toBeVisible();
+    await page.keyboard.type("sam");
+    await page.keyboard.press("Enter");
+    await expect(meetWith).toBeHidden();
+    await expect(
+      page.locator('[data-person-row="sam@example.com"]'),
+    ).toBeVisible();
+
+    // P shows a teammate's calendar
+    await page.keyboard.press("p");
+    const teammate = page.getByRole("dialog", {
+      name: "Show teammate calendar...",
+    });
+    await expect(teammate).toBeVisible();
+    await teammate.getByRole("option", { name: /Morgan Diaz/ }).click();
+    await expect(page.getByText("Team calendars")).toBeVisible();
+    await expect(
+      page
+        .locator('[data-person-event][title^="Morgan Diaz: Conference talk,"]')
+        .first(),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Clear", exact: true }).click();
+    await expect(page.getByText("Meeting participants")).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("note")).toHaveCount(0);
+  });
+
+  test("Go to date, Search events, Create event and the shortcut list work from their keys and commands", async ({
+    page,
+  }) => {
+    const menu = page.getByRole("dialog", { name: "Command Menu" });
+
+    // . opens Go to date; Enter shows the typed day in the current view
+    await page.keyboard.press(".");
+    const dateField = menu.getByPlaceholder("e.g. nov 5, in 10 weeks");
+    await expect(dateField).toBeFocused();
+    await page.keyboard.type("dec 25");
+    await expect(menu.getByRole("option")).toHaveText("Friday, December 25");
+    await page.keyboard.press("Enter");
+    await expect(menu).toBeHidden();
+    await expect(title(page)).toHaveAccessibleName("December 2026 Week 52");
+
+    // ? shows the full list in the context panel, its find field focused
+    await page.keyboard.press("?");
+    const findField = page.getByRole("textbox", {
+      name: "Find keyboard shortcuts",
+    });
+    await expect(findField).toBeFocused();
+    await expect(
+      page.getByRole("heading", { name: "Calendar navigation" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(findField).toHaveCount(0);
+
+    // Search events keeps the focus it gives the search after the menu closes
+    await page.keyboard.press("ControlOrMeta+k");
+    await menu.getByPlaceholder("Type a command...").fill("launch");
+    await menu
+      .getByRole("option", { name: "Search events for “launch”" })
+      .click();
+    const search = page.getByPlaceholder("Search events");
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue("launch");
+
+    // Create event... focuses the new event's title
+    await page.keyboard.press("ControlOrMeta+k");
+    await menu.getByPlaceholder("Type a command...").fill("create event");
+    await page.keyboard.press("Enter");
+    await expect(detailTitle(page)).toBeFocused();
+    await expect(detailTitle(page)).toHaveValue("New event");
   });
 
   test("imports and exports .ics files from the command menu", async ({
@@ -106,6 +201,8 @@ test.describe("wide screens", () => {
   }) => {
     await calendarEvent(page, "Launch Review").click();
     await page.keyboard.press("Backspace");
+    // Launch Review repeats: its question's first option, This event
+    await answerThisEvent(page, "Delete event");
     await expect(calendarEvent(page, "Launch Review")).toHaveCount(0);
 
     const toaster = page.getByRole("region", { name: "Notifications" });

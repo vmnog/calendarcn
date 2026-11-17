@@ -1,0 +1,267 @@
+---
+title: Scheduling
+description: Mark the times you're free on the calendar and copy them as text, as Notion Calendar's scheduling does, and create scheduling links with your own backend.
+---
+
+<LiveDemoPreview />
+
+Scheduling is Notion Calendar's way to offer someone a few times to meet. Press <Kbd>S</Kbd>, or click **Scheduling** in the sidebar, and mark the times you're free on the day or week grid. The context panel writes them up as a short message, and **Copy** puts it on the clipboard, ready to paste into an email or a chat. Nothing on the calendar changes. In the preview above, press <Kbd>S</Kbd> and drag on a day.
+
+## Marking times
+
+While you mark times, a light hatch covers the grid and the events can't be opened or dragged. The keys that change or select events (<Kbd>Delete</Kbd>, <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>X</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>C</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>V</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>D</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup>) do nothing to them until you're done; copying selected text still works. A pill at the bottom says "Mark available times on your calendar".
+
+- **Drag** on a day to mark the time you drag over, in steps of `snapMinutes` (15 minutes by default). A **click** marks one meeting length from the slot you click.
+- **Drag a marked time** to move it, to another day too, and drag its top or bottom edge to resize it.
+- **Remove** one with its <Kbd>×</Kbd>, on the grid or in the panel, or click it and press <Kbd>Delete</Kbd>. A "Time range deleted" toast offers Undo, as in Notion Calendar.
+- Times that overlap or touch on the same day become one: 10 to 11 AM and 11 AM to 12 PM read as 10 AM to 12 PM.
+- **Escape** or **Cancel** leaves without copying anything.
+- On phones and tablets, a long press starts each of these, so a swipe still scrolls. The pill gets Cancel and Copy buttons there, since the context panel isn't on screen.
+
+Starting from the month, year or agenda view switches to the week view. You can move to other weeks while you mark: the times you marked stay.
+
+## The text
+
+The panel shows the meeting length (30 minutes unless you pick another), the text, your time zone and each marked time. **Copy** copies the text and leaves; the copy button beside "Snippet" copies it and lets you keep marking. A toast says "Availability copied to clipboard". The text is worded the way Notion Calendar's is:
+
+| You marked               | The text                                                                                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One time                 | Would 30 min anytime tomorrow Wed Nov 18, 11 AM - 1 PM (GMT-3) work for you?                                                                        |
+| Several times on one day | Would 30 min during any of these times (all in GMT-3) tomorrow Wed Nov 18 work for you?<br />- 11 AM - 1 PM<br />- 2-3 PM                           |
+| Times on several days    | Would 30 min during any of these times (all in GMT-3) work for you?<br />- Tomorrow Wed Nov 18, 11 AM - 1 PM or 2-3 PM<br />- Thu Nov 19, 4-5:30 PM |
+
+Times are in the viewer's time zone, named by its short label ("EST", "GMT-3"). Day and month names come from the provider's `locale`, and the times follow its `hourCycle`: "11:00 - 13:00" on a 24-hour clock. "Today" and "tomorrow" are added to those days, and a day in another year carries the year.
+
+## Installation
+
+Scheduling comes with the items it shows in, so there's nothing extra to install:
+
+- [Calendar Core](/docs/components/calendar-core): `SchedulingProvider`, `useScheduling()`, `useSchedulingShortcuts()` and the text, in `@/lib/availability`.
+- [Time Grid](/docs/components/time-grid): the layer for marking times, drawn by the day and week views inside a `SchedulingProvider`.
+- [Details Sidebar](/docs/components/details-sidebar): the scheduling panel (`AvailabilityPanel`) and the pill (`AvailabilityHint`).
+- [Calendar Sidebar](/docs/components/calendar-sidebar): the Scheduling row.
+- [Command Menu](/docs/components/command-menu): "Share availability..." and the scheduling link commands.
+
+## Usage
+
+[Calendar App](/docs/components/calendar-app) has all of it: <Kbd>S</Kbd>, the sidebar row, the panel, the pill and the command. In a layout of your own, put `SchedulingProvider` inside `CalendarProvider`, around everything that reads it, and call `useSchedulingShortcuts()` before `useCalendarShortcuts()`, so <Kbd>Escape</Kbd> and <Kbd>Delete</Kbd> act on the marked times first:
+
+```tsx
+import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";
+import { AvailabilityHint } from "@/components/availability-panel";
+import { CalendarProvider } from "@/components/calendar-provider";
+import { DetailsSidebar } from "@/components/details-sidebar";
+import {
+  SchedulingProvider,
+  useSchedulingShortcuts,
+} from "@/components/scheduling-provider";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { WeekView } from "@/components/week-view";
+
+export function Schedule() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <SchedulingProvider>
+        <ScheduleLayout />
+      </SchedulingProvider>
+    </CalendarProvider>
+  );
+}
+
+function ScheduleLayout() {
+  useSchedulingShortcuts();
+  useCalendarShortcuts();
+
+  return (
+    <SidebarProvider>
+      <div className="relative flex-1">
+        <WeekView />
+        <AvailabilityHint />
+      </div>
+      <DetailsSidebar />
+    </SidebarProvider>
+  );
+}
+```
+
+The views, the sidebars and the command menu leave scheduling out when there's no `SchedulingProvider` around them. To mark times without the details sidebar, render `AvailabilityPanel` wherever your app has room, or pass `showActions` to `AvailabilityHint` for its Cancel and Copy buttons. Start marking from your own button with `useScheduling().startPicking()`.
+
+## Scheduling links
+
+Notion Calendar also creates scheduling links: booking pages where people pick one of your times. CalendarCN has no backend for them, so it hands them to your app. Pass `onCreateSchedulingLink` to `CalendarApp` (or `SchedulingProvider`), and the Scheduling row opens a menu with **Create recurring link** and **Create one-off link**, and the command menu lists "Create recurring scheduling link..." and "Create one-off scheduling link...". Without it they aren't offered, as in the live demo.
+
+- **Recurring link**: your handler is called right away, with `kind: "recurring"` and the meeting length. Ask for the weekly hours in a form of your own.
+- **One-off link**: the panel opens as "One-off link", you mark the times, and **Create** calls your handler with `kind: "one-off"` and the marked times, merged and in order.
+
+```tsx
+import { enUS } from "date-fns/locale";
+
+import { formatAvailabilityText } from "@/lib/availability";
+
+<CalendarApp
+  defaultEvents={events}
+  onCreateSchedulingLink={async (request) => {
+    // request: { kind, durationMinutes, ranges, timeZone }
+    const { url } = await createBookingPage(request);
+    if (request.kind === "recurring") return;
+    // Notion Calendar's text, ending with the booking page
+    const text = formatAvailabilityText(request.ranges, {
+      durationMinutes: request.durationMinutes,
+      hourCycle: 12,
+      locale: enUS,
+      link: url,
+    });
+    await navigator.clipboard.writeText(text);
+  }}
+/>;
+```
+
+With `link`, the text ends with a blank line and "You can just let me know or confirm here: ..." and the link, as Notion Calendar's does.
+
+## Keyboard shortcuts
+
+| Action                          | Shortcut                          |
+| ------------------------------- | --------------------------------- |
+| Start marking times             | <Kbd>S</Kbd>                      |
+| Leave without copying           | <Kbd>Esc</Kbd>                    |
+| Remove the selected marked time | <Kbd>Delete</Kbd> or <Kbd>⌫</Kbd> |
+
+`useSchedulingShortcuts({ enabled: false })` turns them off; Calendar App does so with `shortcuts={false}`.
+
+## API Reference
+
+### SchedulingProvider
+
+<PropsTable
+  rows={[
+    {
+      name: "onCreateSchedulingLink",
+      type: "(request: SchedulingLinkRequest) => void",
+      description:
+        'Creates a scheduling link in your app. With it, the sidebar and the command menu offer recurring and one-off links. `request` has `kind` (`"recurring"` or `"one-off"`), `durationMinutes`, `ranges` (the marked times of a one-off link, empty for a recurring one) and `timeZone` (the viewer\'s IANA zone).',
+    },
+    {
+      name: "defaultDurationMinutes",
+      type: "number",
+      default: "30",
+      description: "Meeting length the panel starts with, in minutes.",
+    },
+    {
+      name: "children",
+      type: "React.ReactNode",
+      description: "The calendar parts that read `useScheduling()`.",
+    },
+  ]}
+/>
+
+### useScheduling()
+
+Returns the scheduling state, or `null` outside a `SchedulingProvider`.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "isPicking",
+      type: "boolean",
+      description: "Whether times are being marked.",
+    },
+    {
+      name: "purpose",
+      type: '"share" | "one-off-link"',
+      description:
+        "What the times are for: copying as text, or a one-off scheduling link.",
+    },
+    {
+      name: "ranges",
+      type: "AvailabilityRange[]",
+      description:
+        "The marked times (`{ id, start, end }`), merged and in order.",
+    },
+    {
+      name: "text",
+      type: "string",
+      description: "The text Copy copies. Empty while no time is marked.",
+    },
+    {
+      name: "durationMinutes",
+      type: "number",
+      description: "The meeting length. `setDurationMinutes` changes it.",
+    },
+    {
+      name: "startPicking",
+      type: '(purpose?: "share" | "one-off-link") => void',
+      description:
+        "Starts marking, from no times. Switches month, year and agenda view to week view, and clears the event selection.",
+    },
+    {
+      name: "cancelPicking",
+      type: "() => void",
+      description: "Leaves, dropping the marked times.",
+    },
+    {
+      name: "addRange / updateRange / removeRange",
+      type: "functions",
+      description:
+        "Mark, move or resize, and remove a time. `removeRange` shows the Undo toast.",
+    },
+    {
+      name: "selectedRangeId / selectRange",
+      type: "string | null / (id: string | null) => void",
+      description:
+        "The marked time selected on the grid, which Delete removes.",
+    },
+    {
+      name: "copyText",
+      type: "() => Promise<boolean>",
+      description:
+        "Copies `text` and shows the toast. Resolves to false when the browser refuses the clipboard.",
+    },
+    {
+      name: "copyAndFinish",
+      type: "() => Promise<void>",
+      description: "The panel's Copy: copies, then leaves.",
+    },
+    {
+      name: "canCreateLinks",
+      type: "boolean",
+      description: "Whether `onCreateSchedulingLink` was passed.",
+    },
+    {
+      name: "createSchedulingLink",
+      type: '(kind: "recurring" | "one-off") => void',
+      description:
+        "Starts a scheduling link: a recurring one calls your handler, a one-off one marks times first.",
+    },
+    {
+      name: "finishSchedulingLink",
+      type: "() => void",
+      description:
+        "The panel's Create for a one-off link: calls your handler with the marked times and leaves.",
+    },
+  ]}
+/>
+
+### formatAvailabilityText()
+
+`formatAvailabilityText(ranges, options)` from `@/lib/availability` returns the text for any marked times, merged first. `options` takes `durationMinutes`, `hourCycle`, `locale`, and optionally `now` (for "today" and "tomorrow") and `link`.
+
+### AvailabilityHint
+
+<PropsTable
+  rows={[
+    {
+      name: "showActions",
+      type: "boolean",
+      default: "false",
+      description:
+        "Adds Cancel and Copy (Create for a one-off link), for when the scheduling panel isn't on screen.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description:
+        "Classes for the pill's row. It sits `absolute` at the bottom of its positioned parent.",
+    },
+  ]}
+/>

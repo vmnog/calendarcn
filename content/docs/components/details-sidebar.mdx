@@ -1,11 +1,11 @@
 ---
 title: Details Sidebar
-description: The right context panel of the demo, with the selected event's details and event search.
+description: The right context panel of the demo, with the selected event's details, event search and the full keyboard shortcut list.
 ---
 
 <ComponentPreview name="details-sidebar-demo" />
 
-Details Sidebar is the right column of the [live demo](/), Notion Calendar's context panel. It shows the selected event's details in the [`EventDetailPanel`](/docs/components/event-details), and otherwise a search field and a list of useful shortcuts. On wide screens it's a fixed column beside the calendar; on narrower ones it opens as a sheet from the right ([Sidebar Overlay](/docs/components/sidebar-overlay)).
+Details Sidebar is the right column of the [live demo](/), Notion Calendar's context panel. It shows the selected event's details in the [`EventDetailPanel`](/docs/components/event-details), and otherwise a search field and a list of useful shortcuts. While you mark open times inside a [`SchedulingProvider`](/docs/components/scheduling), it shows the scheduling panel: the meeting length, the text to copy and the marked times. On wide screens it's a fixed column beside the calendar; on narrower ones it opens as a sheet from the right ([Sidebar Overlay](/docs/components/sidebar-overlay)).
 
 It reads the events and the selection from the surrounding [`CalendarProvider`](/docs/components/calendar-core), and edits the event through it.
 
@@ -78,13 +78,36 @@ Replace the shortcuts listed while nothing is selected with `shortcuts`:
 
 Mark a shortcut your app doesn't handle yet with `soon: true`: its row shows a "Soon" badge in place of the keys. The default list marks the Notion Calendar shortcuts CalendarCN doesn't have.
 
+### Search and the shortcut list from your commands
+
+Pass a ref to `actionsRef` to open the panel from a command or a key: `searchEvents(query?)` opens it on event search with the field focused (and the text typed in, if you pass some), and `showAllShortcuts()` opens it on the full keyboard shortcut list. Both deselect a selected event, whose details would otherwise cover them. The demo calls them from the [Command Menu](/docs/components/command-menu) and the <Kbd>?</Kbd> key:
+
+```tsx
+import type { DetailsSidebarActions } from "@/components/week-view-types";
+
+const panelActions = React.useRef<DetailsSidebarActions>(null);
+
+useCalendarShortcuts({
+  onShowShortcuts: () => panelActions.current?.showAllShortcuts(),
+});
+
+<DetailsSidebar actionsRef={panelActions} />;
+```
+
+### All keyboard shortcuts
+
+The full list is Notion Calendar's: every shortcut under its group (General, Workflows, Editing, Calendar view, Calendar navigation, App navigation), the ones that act on an event under "With a selected event…". The field at the top finds one by name or by key, and <Kbd>Esc</Kbd> or its × goes back to the useful shortcuts. Selecting an event closes it too.
+
+It lists `KEYBOARD_SHORTCUT_GROUPS` from `lib/keyboard-shortcuts.ts` ([Calendar Core](/docs/components/calendar-core)), every key the live demo handles. Pass `shortcutGroups` for your own: the demo leaves out <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> when it has no settings, with `filterKeyboardShortcutGroups()`. The default "Useful shortcuts" take their Go to date and full-list keys from the same file.
+
 The panel uses the calendar sidebar's colors: see [Colors](/docs/components/calendar-sidebar#colors).
 
 ## Features
 
 - Selecting an event shows its details, editable in place. Creating one by clicking a slot focuses its title.
-- Search events by title. A repeating event is listed on each of its dates within a year of today. Results are grouped by day, past days dimmed, with "Today" always shown. Click a result to see its details, and "Search" to go back.
+- Search events by title, from the field or from your command (`actionsRef`). A repeating event is listed on each of its dates within a year of today. Results are grouped by day, past days dimmed, with "Today" always shown. Click a result to see its details, and "Search" to go back.
 - The repeat row's arrows step through a repeating event's series.
+- The full keyboard shortcut list, with a field to find one by name or key.
 - <Kbd>/</Kbd> and the panel's button toggle it in the demo (the shortcut is the
   page's own). As a sheet it closes on an outside tap or <Kbd>Esc</Kbd>, and
   opens without focusing the search field, so a phone's keyboard stays down.
@@ -110,6 +133,19 @@ Other props go to the inline panel's fixed column.
       default: "USEFUL_SHORTCUTS",
       description:
         'Shortcuts listed while no event is selected or searched: `{ label, keys, soon }`. Each key shows as a key cap; a `soon` one shows a "Soon" badge instead.',
+    },
+    {
+      name: "shortcutGroups",
+      type: "KeyboardShortcutGroup[]",
+      default: "KEYBOARD_SHORTCUT_GROUPS",
+      description:
+        "The full keyboard shortcut list `showAllShortcuts()` shows: groups of `{ label, keys, alternativeKeys, keywords }`, with `sections` for the ones under a muted heading.",
+    },
+    {
+      name: "actionsRef",
+      type: "Ref<DetailsSidebarActions>",
+      description:
+        "Receives `searchEvents(query?)` and `showAllShortcuts()`, which open the panel on event search or the full shortcut list with its field focused.",
     },
     {
       name: "className",

@@ -10,10 +10,12 @@ import {
   useCalendarConfig,
   useIsEventInSelection,
 } from "./calendar-provider";
+import { SeriesChangeDot } from "./event-series-scope-dialog";
 import {
   formatTime,
   formatTimeRange,
   getEventLabel,
+  isDeclinedByViewer,
   resolveEventColor,
 } from "@/lib/event-utils";
 import type {
@@ -26,6 +28,17 @@ import type {
   PopoverAnchorRect,
 } from "./week-view-types";
 import { EventContextMenu } from "./event-context-menu";
+
+/**
+ * Outline of an event the viewer declined, as Notion Calendar draws it: a
+ * dashed border on the page background, without the color fill or bar
+ */
+export const DECLINED_EVENT_OUTLINE_CLASS =
+  "border border-dashed border-muted-foreground/50";
+
+/** Title and time of an event the viewer declined: muted and struck through */
+export const DECLINED_EVENT_TEXT_CLASS =
+  "text-muted-foreground line-through dark:text-muted-foreground";
 
 export const eventColorStyles: Record<
   EventColor,
@@ -244,12 +257,15 @@ export function CalendarEventItem({
   const isInSelection =
     useIsEventInSelection(event.id) && dragVariant === "default";
   const isSelected = isSelectedProp || isInSelection;
-  const { calendars, dayStartHour, dayEndHour, hourCycle, locale } =
+  const { calendars, dayStartHour, dayEndHour, hourCycle, locale, timeZone } =
     useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
+  /** Declined by the viewer: an outline only, struck-through text */
+  const isDeclined = isDeclinedByViewer(event);
+  const showsDeclined = isDeclined && !isSelected;
   // `false` on the server and during hydration, so the markup matches
-  const endIsPast = useIsPast(event.end);
+  const endIsPast = useIsPast(event.end, timeZone);
   const eventIsPast = isPastProp ?? endIsPast;
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
   const isDayView = view === "day";
@@ -426,6 +442,7 @@ export function CalendarEventItem({
                   "dark:text-white/80",
                 )}
               >
+                <SeriesChangeDot eventId={event.id} />
                 {event.title}
               </span>
               {!isCompact && (
@@ -525,6 +542,7 @@ export function CalendarEventItem({
               )}
             >
               <span className="font-medium text-[0.625rem] leading-tight break-words text-white dark:text-white flex items-center gap-0.5">
+                <SeriesChangeDot eventId={event.id} />
                 {event.title}
               </span>
               {heightPx >= 40 && (
@@ -631,6 +649,7 @@ export function CalendarEventItem({
         "cursor-default hover:z-10 focus:outline-none",
         EVENT_FOCUS_RING_CLASS,
         "overflow-hidden select-none",
+        showsDeclined && DECLINED_EVENT_OUTLINE_CLASS,
         isSelected && "z-20",
         className,
       )}
@@ -648,19 +667,21 @@ export function CalendarEventItem({
         )}
       />
 
-      {/* Colored background layer - uses border color when selected */}
-      <div
-        className={cn(
-          "absolute inset-0",
-          hasTopRounding && "rounded-t-md",
-          hasBottomRounding && "rounded-b-md",
-          isSelected ? styles.border : styles.bg,
-          eventIsPast && !isSelected && "opacity-60",
-        )}
-      />
+      {/* Colored background layer - uses border color when selected, none when declined */}
+      {!showsDeclined && (
+        <div
+          className={cn(
+            "absolute inset-0",
+            hasTopRounding && "rounded-t-md",
+            hasBottomRounding && "rounded-b-md",
+            isSelected ? styles.border : styles.bg,
+            eventIsPast && !isSelected && "opacity-60",
+          )}
+        />
+      )}
 
-      {/* Left border - hidden when selected (merges with bg) */}
-      {!isSelected && (
+      {/* Left border - hidden when selected (merges with bg) or declined */}
+      {!isSelected && !isDeclined && (
         <div
           className={cn(
             "absolute left-0 top-0 bottom-0 w-[4px] dark:bg-white dark:mix-blend-overlay",
@@ -691,8 +712,11 @@ export function CalendarEventItem({
                       "dark:text-white/80",
                       eventIsPast && "opacity-60",
                     ),
+                isDeclined && "line-through",
+                showsDeclined && DECLINED_EVENT_TEXT_CLASS,
               )}
             >
+              <SeriesChangeDot eventId={event.id} />
               {event.title}
             </span>
             {!isCompact && (
@@ -706,6 +730,9 @@ export function CalendarEventItem({
                         "dark:text-white dark:mix-blend-overlay",
                         eventIsPast && "opacity-60 dark:opacity-100",
                       ),
+                  isDeclined && "line-through",
+                  showsDeclined &&
+                    cn(DECLINED_EVENT_TEXT_CLASS, "dark:mix-blend-normal"),
                 )}
               >
                 {timeRangeLabel}
@@ -811,14 +838,17 @@ export function AllDayEventItem({
   const isInSelection =
     useIsEventInSelection(event.id) && (dragVariant ?? "default") === "default";
   const isSelected = isSelectedProp || isInSelection;
-  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
   const isDayView = view === "day";
   // `false` on the server and during hydration, so the markup matches
-  const endIsPast = useIsPast(event.end);
+  const endIsPast = useIsPast(event.end, timeZone);
   const eventIsPast = isPastProp ?? endIsPast;
+  /** Declined by the viewer: an outline only, struck-through text */
+  const isDeclined = isDeclinedByViewer(event);
+  const showsDeclined = isDeclined && !isSelected;
 
   /** The event element: anchors and toggles its details popover */
   const eventRef = React.useRef<HTMLDivElement>(null);
@@ -923,6 +953,7 @@ export function AllDayEventItem({
                 "dark:text-white/80",
               )}
             >
+              <SeriesChangeDot eventId={event.id} />
               {event.title}
             </span>
           }
@@ -976,6 +1007,7 @@ export function AllDayEventItem({
                 "dark:text-white/80",
               )}
             >
+              <SeriesChangeDot eventId={event.id} />
               {event.title}
             </span>
           }
@@ -1070,6 +1102,9 @@ export function AllDayEventItem({
         "overflow-hidden select-none flex items-center gap-1",
         spanStart && "rounded-l-md",
         spanEnd && "rounded-r-md",
+        showsDeclined && DECLINED_EVENT_OUTLINE_CLASS,
+        showsDeclined && !spanStart && "border-l-0",
+        showsDeclined && !spanEnd && "border-r-0",
         isSelected && "z-20",
         className,
       )}
@@ -1088,19 +1123,21 @@ export function AllDayEventItem({
         )}
       />
 
-      {/* Colored background layer - uses border color when selected */}
-      <div
-        className={cn(
-          "absolute inset-0",
-          isSelected ? styles.border : styles.bg,
-          spanStart && "rounded-l-md",
-          spanEnd && "rounded-r-md",
-          eventIsPast && !isSelected && "opacity-60",
-        )}
-      />
+      {/* Colored background layer - uses border color when selected, none when declined */}
+      {!showsDeclined && (
+        <div
+          className={cn(
+            "absolute inset-0",
+            isSelected ? styles.border : styles.bg,
+            spanStart && "rounded-l-md",
+            spanEnd && "rounded-r-md",
+            eventIsPast && !isSelected && "opacity-60",
+          )}
+        />
+      )}
 
-      {/* Left border - hidden when selected (merges with bg) */}
-      {spanStart && !isSelected && (
+      {/* Left border - hidden when selected (merges with bg) or declined */}
+      {spanStart && !isSelected && !isDeclined && (
         <div
           className={cn(
             "absolute left-0 top-0 bottom-0 w-[4px] dark:bg-white dark:mix-blend-overlay",
@@ -1126,8 +1163,11 @@ export function AllDayEventItem({
                       "dark:text-white/80",
                       eventIsPast && "opacity-60",
                     ),
+                isDeclined && "line-through",
+                showsDeclined && DECLINED_EVENT_TEXT_CLASS,
               )}
             >
+              <SeriesChangeDot eventId={event.id} />
               {event.title}
             </span>
             {hasStartTime && (
@@ -1141,6 +1181,9 @@ export function AllDayEventItem({
                         "dark:text-white dark:mix-blend-overlay",
                         eventIsPast && "opacity-60",
                       ),
+                  isDeclined && "line-through",
+                  showsDeclined &&
+                    cn(DECLINED_EVENT_TEXT_CLASS, "dark:mix-blend-normal"),
                 )}
               >
                 {startTimeLabel}

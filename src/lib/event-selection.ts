@@ -53,13 +53,16 @@ export function toggleSelectedEventId(
 /**
  * Ids of the events "Select all visible" selects: every event, and every
  * date of a repeating one, that overlaps the dates on screen, in order of
- * start. Notion Calendar's takes the hours scrolled out of view too.
+ * start. Notion Calendar's takes the hours scrolled out of view too. With
+ * the calendar's `timeZone`, `events` and `range` read on its clock, as
+ * `expandRecurringEvents` takes them.
  */
 export function getVisibleEventIds(
   events: CalendarEvent[],
   range: VisibleRange,
+  timeZone?: string,
 ): string[] {
-  return expandRecurringEvents(events, range)
+  return expandRecurringEvents(events, range, timeZone)
     .filter((event) => event.start < range.end && event.end > range.start)
     .sort((a, b) => a.start.getTime() - b.start.getTime())
     .map((event) => event.id);

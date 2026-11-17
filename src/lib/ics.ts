@@ -12,9 +12,12 @@ import {
   getZonedDay,
 } from "@/lib/time-zones";
 import type {
+  CalendarInfo,
   DetailedCalendarEvent,
   EventColor,
+  EventParticipant,
   EventReminder,
+  ParticipantResponse,
 } from "@/components/calendar-types";
 import { getReminderMinutes } from "@/lib/event-utils";
 
@@ -26,6 +29,12 @@ const MAX_LINE_OCTETS = 75;
 
 /** Line break between content lines (RFC 5545 requires CRLF) */
 const CRLF = "\r\n";
+
+/** Start of the ids `toIcsCalendar` gives the calendars it makes */
+const ICS_CALENDAR_ID_PREFIX = "ics:";
+
+/** Name of a calendar made from a file whose name is only ".ics" */
+const UNNAMED_ICS_CALENDAR = "Imported calendar";
 
 /** PRODID written by `toIcs` when the caller doesn't pass one */
 const DEFAULT_PROD_ID = "-//CalendarCN//CalendarCN//EN";
@@ -40,6 +49,27 @@ const EVENT_COLORS: readonly EventColor[] = [
   "purple",
   "gray",
 ];
+
+/** Participant responses by the ATTENDEE `PARTSTAT` that stands for each */
+const PARTSTAT_RESPONSES: Record<string, ParticipantResponse> = {
+  ACCEPTED: "accepted",
+  DECLINED: "declined",
+  TENTATIVE: "tentative",
+  "NEEDS-ACTION": "needs-action",
+};
+
+/**
+ * ATTENDEE parameter marking the viewer (`EventParticipant.self`).
+ * iCalendar has no property for it, so CalendarCN writes its own
+ * X-parameter, which other apps ignore.
+ */
+const SELF_PARAM = "X-CALENDARCN-SELF";
+
+/** ATTENDEE `CUTYPE`s of rooms and equipment, which aren't participants */
+const NON_PERSON_CUTYPES = new Set(["ROOM", "RESOURCE"]);
+
+/** Characters that make a parameter value need double quotes */
+const QUOTED_PARAM_PATTERN = /[;:,]/;
 
 /** Weekday codes used by RRULE BYDAY, indexed like `Date.getDay()` */
 const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
@@ -408,6 +438,9 @@ function toCalendarEvent(
   const location = getText(vevent, "LOCATION");
   if (location) event.location = location;
 
+  const participants = parseParticipants(vevent);
+  if (participants.length > 0) event.participants = participants;
+
   const rrule = getProperty(vevent, "RRULE")?.value.trim();
   const recurrenceId = parseRecurrenceId(vevent, timeZones);
   // A repeating event and its edited occurrences keep their zone: the rule
@@ -446,6 +479,62 @@ function toCalendarEvent(
   if (reminders.length > 0) event.reminders = reminders;
 
   return event;
+}
+
+/** The email of a `mailto:` calendar address, or undefined when empty */
+function parseCalendarAddress(value: string): string | undefined {
+  const email = value.trim().replace(/^mailto:/i, "");
+  return email || undefined;
+}
+
+/**
+ * The event's people: each ATTENDEE that is a person (rooms and equipment
+ * are left out), with its `CN` as the name, `PARTSTAT` as the response,
+ * `ROLE=OPT-PARTICIPANT` as optional and CalendarCN's `X-CALENDARCN-SELF`
+ * as the viewer, in document order. The ORGANIZER marks its attendee, or
+ * comes first when it isn't one.
+ */
+function parseParticipants(vevent: IcsComponent): EventParticipant[] {
+  const participants: EventParticipant[] = [];
+  for (const property of vevent.properties) {
+    if (property.name !== "ATTENDEE") continue;
+    const { params } = property;
+    if (NON_PERSON_CUTYPES.has(params.CUTYPE?.toUpperCase() ?? "")) continue;
+    const email = parseCalendarAddress(property.value);
+    if (!email) continue;
+
+    const participant: EventParticipant = { email };
+    const name = params.CN?.trim();
+    if (name) participant.name = name;
+    const response = PARTSTAT_RESPONSES[params.PARTSTAT?.toUpperCase() ?? ""];
+    if (response) participant.response = response;
+    if (params.ROLE?.toUpperCase() === "OPT-PARTICIPANT") {
+      participant.optional = true;
+    }
+    if (params[SELF_PARAM]?.toUpperCase() === "TRUE") participant.self = true;
+    participants.push(participant);
+  }
+
+  const organizerProperty = getProperty(vevent, "ORGANIZER");
+  const organizerEmail =
+    organizerProperty && parseCalendarAddress(organizerProperty.value);
+  if (!organizerProperty || !organizerEmail) return participants;
+
+  const attendee = participants.find(
+    (participant) =>
+      participant.email.toLowerCase() === organizerEmail.toLowerCase(),
+  );
+  if (attendee) {
+    attendee.organizer = true;
+    return participants;
+  }
+  const organizer: EventParticipant = {
+    email: organizerEmail,
+    organizer: true,
+  };
+  const name = organizerProperty.params.CN?.trim();
+  if (name) organizer.name = name;
+  return [organizer, ...participants];
 }
 
 /**
@@ -1036,6 +1125,7 @@ function eventToLines(
   if (event.location) {
     lines.push(`LOCATION:${escapeText(event.location)}`);
   }
+  lines.push(...participantsToLines(event.participants ?? []));
 
   if (rrule) {
     lines.push(`RRULE:${rrule}`);
@@ -1063,6 +1153,51 @@ function eventToLines(
 
   lines.push("END:VEVENT");
   return lines;
+}
+
+/**
+ * An ORGANIZER line for the organizer, then an ATTENDEE line for every
+ * participant (the organizer included, as Google Calendar writes them):
+ * `CN`, `ROLE=OPT-PARTICIPANT`, `PARTSTAT` and `X-CALENDARCN-SELF` for the
+ * fields that are set.
+ */
+function participantsToLines(participants: EventParticipant[]): string[] {
+  const lines: string[] = [];
+  const organizer = participants.find((participant) => participant.organizer);
+  if (organizer) {
+    const params = organizer.name ? [`CN=${formatParam(organizer.name)}`] : [];
+    lines.push(formatAddressLine("ORGANIZER", params, organizer.email));
+  }
+  for (const participant of participants) {
+    const params: string[] = [];
+    if (participant.name) params.push(`CN=${formatParam(participant.name)}`);
+    if (participant.optional) params.push("ROLE=OPT-PARTICIPANT");
+    const partstat = Object.keys(PARTSTAT_RESPONSES).find(
+      (key) => PARTSTAT_RESPONSES[key] === participant.response,
+    );
+    if (partstat) params.push(`PARTSTAT=${partstat}`);
+    if (participant.self) params.push(`${SELF_PARAM}=TRUE`);
+    lines.push(formatAddressLine("ATTENDEE", params, participant.email));
+  }
+  return lines;
+}
+
+/** `NAME;PARAM=value:mailto:email` */
+function formatAddressLine(
+  name: string,
+  params: string[],
+  email: string,
+): string {
+  return `${[name, ...params].join(";")}:mailto:${email}`;
+}
+
+/**
+ * A parameter value: double quoted when it holds `;`, `:` or `,`. Double
+ * quotes and line breaks can't appear in one, so they become `'` and spaces.
+ */
+function formatParam(value: string): string {
+  const text = value.replace(/"/g, "'").replace(/[\r\n]+/g, " ");
+  return QUOTED_PARAM_PATTERN.test(text) ? `"${text}"` : text;
 }
 
 /**
@@ -1171,4 +1306,33 @@ function utf8Length(codePoint: number): number {
   if (codePoint < 0x800) return 2;
   if (codePoint < 0x10000) return 3;
   return 4;
+}
+
+/**
+ * Makes the events read from an .ics file a calendar of their own, named
+ * after the file ("Team holidays.ics" → "Team holidays"), as the live demo's
+ * "Add calendar account" does. The calendar's id comes from its name, so
+ * the same file again returns the calendar already in `calendars`; a new
+ * one takes the first color no calendar has. Each event gets the calendar's
+ * id, and keeps a `COLOR` of its own.
+ */
+export function toIcsCalendar<TEvent extends DetailedCalendarEvent>(
+  fileName: string,
+  events: TEvent[],
+  calendars: CalendarInfo[],
+): { calendar: CalendarInfo; events: TEvent[] } {
+  const name = fileName.replace(/\.ics$/i, "").trim() || UNNAMED_ICS_CALENDAR;
+  const id = `${ICS_CALENDAR_ID_PREFIX}${name}`;
+  const usedColors = new Set(calendars.map((calendar) => calendar.color));
+  const calendar = calendars.find((existing) => existing.id === id) ?? {
+    id,
+    name,
+    color:
+      EVENT_COLORS.find((color) => !usedColors.has(color)) ??
+      EVENT_COLORS[calendars.length % EVENT_COLORS.length],
+  };
+  return {
+    calendar,
+    events: events.map((event) => ({ ...event, calendarId: calendar.id })),
+  };
 }

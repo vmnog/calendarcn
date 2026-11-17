@@ -5,6 +5,7 @@ import {
   invertEventChanges,
 } from "../src/lib/event-history";
 import { findEventOrOccurrence } from "../src/lib/recurrence";
+import { toDisplayEvent } from "../src/lib/time-zones";
 import {
   describeGroupAction,
   describeGroupNotice,
@@ -82,6 +83,23 @@ test.describe("the selection", () => {
     });
 
     expect(ids).toEqual(["standup-2026-06-08"]);
+  });
+
+  test("with the calendar's zone, the events on its dates, read on its clock", () => {
+    // 11 PM on Saturday June 6 in New York is noon on Sunday in Tokyo, and
+    // the standup's Monday 9 AM is 10 PM there
+    const zone = "Asia/Tokyo";
+    const saturdayNight = timed("saturday-night", 6, 23, 23.5);
+    const shown = [saturdayNight, STANDUP].map((event) =>
+      toDisplayEvent(event, zone),
+    );
+    const ids = getVisibleEventIds(
+      shown,
+      { start: new Date(2026, 5, 7), end: new Date(2026, 5, 14) },
+      zone,
+    );
+
+    expect(ids).toEqual(["saturday-night", "standup-2026-06-08"]);
   });
 });
 
