@@ -3,6 +3,7 @@ import type { Locator, Page } from "@playwright/test";
 
 import {
   CURRENT_WEEK_LABEL,
+  answerThisEvent,
   calendarEvent,
   detailFields,
   detailTitle,
@@ -361,6 +362,8 @@ test("an occurrence moved within its day or to another day keeps its place in th
   await fields.startTime.press("Enter");
   await expect(fields.startTime).toHaveValue("10:30 AM");
   await previous.click();
+  // Leaving the date asks which dates the change is for
+  await answerThisEvent(page, "Save event");
   await expect(fields.startDate).toHaveValue("Sat Jun 6");
   await next.click();
   await expect(fields.startDate).toHaveValue("Sat Jun 20");
@@ -371,6 +374,7 @@ test("an occurrence moved within its day or to another day keeps its place in th
   await fields.startDate.press("Enter");
   await expect(fields.startDate).toHaveValue("Sun Jun 21");
   await previous.click();
+  await answerThisEvent(page, "Save event");
   await expect(fields.startDate).toHaveValue("Sat Jun 6");
   await next.click();
   await expect(fields.startDate).toHaveValue("Sun Jun 21");

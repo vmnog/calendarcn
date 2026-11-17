@@ -26,8 +26,13 @@ import {
   EventContentSlot,
   useCalendar,
   useCalendarConfig,
+  useCalendarSeriesScope,
   useCalendarViewSync,
 } from "./calendar-provider";
+import {
+  EventSeriesScopeDialog,
+  SeriesChangeDot,
+} from "./event-series-scope-dialog";
 import {
   EVENT_FOCUS_RING_CLASS,
   eventColorStyles,
@@ -212,12 +217,16 @@ export function AgendaView({
     scrollContainerRef.current?.scrollTo({ top: 0 });
   }, [currentDate]);
 
+  const { previewEvents } = useCalendarSeriesScope();
   const listedDays = useMemo(() => {
     // A repeating event is listed under each of its dates in the range
-    const occurrences = expandRecurringEvents(
-      events,
-      { start: rangeStart, end: addDays(rangeEnd, 1) },
-      timeZone,
+    // A change to a repeating event's date that waits shows on that date
+    const occurrences = previewEvents(
+      expandRecurringEvents(
+        events,
+        { start: rangeStart, end: addDays(rangeEnd, 1) },
+        timeZone,
+      ),
     );
     const days = getAgendaDays(occurrences, currentDate, AGENDA_DAYS);
     return days.filter((day) => {
@@ -233,6 +242,7 @@ export function AgendaView({
     showWeekends,
     today,
     timeZone,
+    previewEvents,
   ]);
 
   const months = useMemo(() => groupByMonth(listedDays), [listedDays]);
@@ -375,6 +385,8 @@ export function AgendaView({
           />
         )}
       </div>
+      {/* Asks "This event / This and following / All events" for a change to a repeating event's date */}
+      <EventSeriesScopeDialog />
     </CalendarPopoverBoundaryProvider>
   );
 }
@@ -590,6 +602,7 @@ function AgendaEventRow({
                     : cn(styles.text, "dark:text-white/90"),
                 )}
               >
+                <SeriesChangeDot eventId={event.id} />
                 {event.title}
               </span>
               <span

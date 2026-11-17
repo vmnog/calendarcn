@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import {
+  answerThisEvent,
   boxOf,
   calendarEvent,
   detailFields,
@@ -441,8 +442,10 @@ test("switching all-day off after the details reopen gives back the event's time
   await page.getByRole("switch", { name: "All-day" }).click();
   await expect(startTime).toHaveAttribute("readonly", "");
 
-  // Deselect, then open the details again
+  // Deselect, which asks about the waiting change (Launch Review repeats),
+  // then open the details again
   await page.keyboard.press("Escape");
+  await answerThisEvent(page, "Save event");
   await expect(detailTitle(page)).toBeHidden();
   await calendarEvent(page, "Launch Review").click();
   await expect(detailTitle(page)).toHaveValue("Launch Review");
