@@ -21,12 +21,14 @@ import {
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { TimeZoneList } from "@/components/time-zone-list";
 import { formatDateQueryResult, parseDateQuery } from "@/lib/date-query";
+import { NUMBER_OF_DAYS_OPTIONS } from "@/lib/event-utils";
 import {
   addTimeZone,
   getViewerTimeZone,
   makeTimeZonePrimary,
   removeTimeZone,
 } from "@/lib/time-zones";
+import type { WeekStartsOn } from "@/components/calendar-types";
 import type {
   CommandMenuPage,
   TimeZoneCommand,
@@ -62,6 +64,29 @@ const TIME_ZONE_COMMAND_LABELS: Record<TimeZoneCommand, string> = {
   hide: "Hide time zone...",
 };
 
+/** A list of choices the menu shows in place of the commands, as Notion Calendar's does */
+type ChoiceList = "week-start" | "number-of-days";
+
+/** Each list's command label, which its input shows too, as Notion Calendar words it */
+const CHOICE_LIST_LABELS: Record<ChoiceList, string> = {
+  "week-start": "Start week on...",
+  "number-of-days": "Set number of displayed days...",
+};
+
+/**
+ * Days "Start week on..." offers, Monday first, and how it names them. The
+ * day the week starts on now is left out, as in Notion Calendar.
+ */
+const WEEK_START_CHOICES: Array<{ day: WeekStartsOn; label: string }> = [
+  { day: 1, label: "Mondays" },
+  { day: 2, label: "Tuesdays" },
+  { day: 3, label: "Wednesdays" },
+  { day: 4, label: "Thursdays" },
+  { day: 5, label: "Fridays" },
+  { day: 6, label: "Saturdays" },
+  { day: 0, label: "Sundays" },
+];
+
 /** One command of the menu */
 interface MenuCommand {
   label: string;
@@ -78,7 +103,7 @@ interface MenuCommand {
   soon?: boolean;
   /**
    * Runs with the menu still open: it shows what to type or pick next in
-   * its place (Go to date's field, a zone list)
+   * its place (Go to date's field, a zone list, a list of choices)
    */
   keepsOpen?: boolean;
 }
@@ -134,9 +159,11 @@ interface CommandMenuProps {
 
 /**
  * The live demo's ⌘K menu. Creating an event, going to a date, today,
- * previous and next, the views, the view settings and the time zones come
- * from `useCalendar()`, so it goes inside `CalendarProvider`. A time zone
- * command lists the zones in the menu's place. Commands that belong to your
+ * previous and next, the views, the view settings, the week start, the day
+ * count, the hour size and the time zones come from `useCalendar()`, so it
+ * goes inside `CalendarProvider`. A time zone command lists the zones in the
+ * menu's place, and "Start week on..." and "Set number of displayed days..."
+ * their choices. Commands that belong to your
  * app (panels, search, shortcuts, theme, .ics files) show only when you pass
  * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
  *
@@ -171,6 +198,12 @@ export function CommandMenu({
     toggleWeekends,
     toggleDeclinedEvents,
     toggleWeekNumbers,
+    weekStartsOn,
+    setWeekStartsOn,
+    setNumberOfDays,
+    zoomHoursIn,
+    zoomHoursOut,
+    resetHourHeight,
     navigateToDate,
     addEventAtNextSlot,
     timeZones,
@@ -183,7 +216,9 @@ export function CommandMenu({
   const [zoneCommand, setZoneCommand] = React.useState<TimeZoneCommand | null>(
     null,
   );
-  /** Text typed in the input, for the commands, Go to date or a zone list */
+  /** The list of choices shown in place of the commands, if one is */
+  const [choiceList, setChoiceList] = React.useState<ChoiceList | null>(null);
+  /** Text typed in the input, for the commands, Go to date or a list */
   const [query, setQuery] = React.useState("");
   /** The input, focused again when a zone list or Go to date replaces the commands */
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -196,6 +231,7 @@ export function CommandMenu({
     if (open) {
       setPage(defaultPage);
       setZoneCommand(timeZoneCommand ?? null);
+      setChoiceList(null);
       setQuery("");
     }
   }
@@ -258,18 +294,27 @@ export function CommandMenu({
     setQuery("");
   };
 
-  // A click on Go to date or a time zone command takes the focus: give it
-  // back to the input, so typing goes there
-  React.useEffect(() => {
-    if (zoneCommand || page !== "commands") inputRef.current?.focus();
-  }, [zoneCommand, page]);
+  /** Lists a command's choices in place of the commands */
+  const openChoiceList = (list: ChoiceList) => {
+    setChoiceList(list);
+    setQuery("");
+  };
 
-  // Backspace in an empty date or zone field goes back to the commands
+  // A click on Go to date, a time zone command or a list of choices takes
+  // the focus: give it back to the input, so typing goes there
+  React.useEffect(() => {
+    if (zoneCommand || choiceList || page !== "commands") {
+      inputRef.current?.focus();
+    }
+  }, [zoneCommand, choiceList, page]);
+
+  // Backspace in an empty date, zone or choice field goes back to the commands
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Backspace" || query !== "") return;
-    if (!zoneCommand && page === "commands") return;
+    if (!zoneCommand && !choiceList && page === "commands") return;
     e.preventDefault();
     setZoneCommand(null);
+    setChoiceList(null);
     showPage("commands");
   };
 
@@ -374,7 +419,11 @@ export function CommandMenu({
     {
       heading: "View",
       commands: [
-        { label: "Start week on...", soon: true },
+        {
+          label: CHOICE_LIST_LABELS["week-start"],
+          keepsOpen: true,
+          run: () => openChoiceList("week-start"),
+        },
         {
           label: "Display day view",
           keys: ["D"],
@@ -400,11 +449,27 @@ export function CommandMenu({
           keys: ["A"],
           run: () => switchView("agenda"),
         },
-        { label: "Set number of displayed days...", soon: true },
+        {
+          label: CHOICE_LIST_LABELS["number-of-days"],
+          keepsOpen: true,
+          run: () => openChoiceList("number-of-days"),
+        },
         { label: "Select all visible", soon: true },
-        { label: "Default hour size", soon: true },
-        { label: "Zoom hours in", soon: true },
-        { label: "Zoom hours out", soon: true },
+        {
+          label: "Default hour size",
+          keys: ["shift", "⌘", "0"],
+          run: resetHourHeight,
+        },
+        {
+          label: "Zoom hours in",
+          keys: ["shift", "⌘", "."],
+          run: zoomHoursIn,
+        },
+        {
+          label: "Zoom hours out",
+          keys: ["shift", "⌘", ","],
+          run: zoomHoursOut,
+        },
         // Each says what it will do, as Notion Calendar's do
         {
           label: viewSettings.showWeekends ? "Hide weekends" : "Show weekends",
@@ -466,7 +531,8 @@ export function CommandMenu({
     },
   ];
   // Go to date's page lists the typed date alone, a zone list its zones
-  const shownGroups = page === "commands" && !zoneCommand ? groups : [];
+  const shownGroups =
+    page === "commands" && !zoneCommand && !choiceList ? groups : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -490,9 +556,11 @@ export function CommandMenu({
             placeholder={
               zoneCommand
                 ? TIME_ZONE_COMMAND_LABELS[zoneCommand]
-                : page === "go-to-date"
-                  ? GO_TO_DATE_PLACEHOLDER
-                  : "Type a command..."
+                : choiceList
+                  ? CHOICE_LIST_LABELS[choiceList]
+                  : page === "go-to-date"
+                    ? GO_TO_DATE_PLACEHOLDER
+                    : "Type a command..."
             }
             value={query}
             onValueChange={setQuery}
@@ -509,6 +577,28 @@ export function CommandMenu({
             {!zoneCommand && (page === "commands" || query.trim() !== "") && (
               <CommandEmpty>No results found.</CommandEmpty>
             )}
+            {choiceList === "week-start" &&
+              WEEK_START_CHOICES.filter(({ day }) => day !== weekStartsOn).map(
+                ({ day, label }) => (
+                  <CommandItem
+                    key={label}
+                    onSelect={() => runCommand(() => setWeekStartsOn(day))}
+                  >
+                    {label}
+                  </CommandItem>
+                ),
+              )}
+            {/* Bare numbers, as Notion Calendar lists them */}
+            {choiceList === "number-of-days" &&
+              NUMBER_OF_DAYS_OPTIONS.map((count) => (
+                <CommandItem
+                  key={count}
+                  value={String(count)}
+                  onSelect={() => runCommand(() => setNumberOfDays(count))}
+                >
+                  {count}
+                </CommandItem>
+              ))}
             {shownGroups.map((group) => {
               const commands = group.commands.filter((command) =>
                 command.soon ? showComingSoon : command.run !== undefined,

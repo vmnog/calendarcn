@@ -37,6 +37,7 @@ import {
   getVisibleDays,
   getVisibleRange,
   getWeekViewStepDays,
+  getZoomedHourHeight,
   isDeclinedByViewer,
   stepsByDay,
 } from "@/lib/event-utils";
@@ -138,6 +139,18 @@ const DEFAULT_DAY_END_HOUR = 24;
 
 /** Clock style when `hourCycle` is not set */
 const DEFAULT_HOUR_CYCLE: HourCycle = 12;
+
+/** Week start when neither `weekStartsOn` nor `defaultWeekStartsOn` is set (Sunday) */
+const DEFAULT_WEEK_STARTS_ON: WeekStartsOn = 0;
+
+/** Days from a week's first day to its middle, which a new week start keeps on screen */
+const WEEK_MIDDLE_OFFSET = 3;
+
+/**
+ * Hour height zooming starts from when no time grid has reported its own
+ * yet: the smallest height the default size fills the screen with
+ */
+const FALLBACK_HOUR_HEIGHT = 48;
 
 /** Calendars offered by the context menu when `calendars` is not set (stable identity) */
 const NO_CALENDARS: CalendarInfo[] = [];
@@ -257,6 +270,11 @@ interface CalendarViewSyncValue {
    * `pasteEvent` puts the next paste
    */
   reportPasteTarget: (target: EventPasteTarget) => void;
+  /**
+   * Time grid: the hour height it draws, which zooming steps from while
+   * the hours fill the screen (`hourHeight` is `null`)
+   */
+  reportHourHeight: (hourHeight: number) => void;
 }
 
 /**
@@ -675,7 +693,9 @@ export function CalendarProvider<TEvent extends CalendarEvent = CalendarEvent>(
     ? getPeriodStart(
         today,
         props.view ?? props.defaultView ?? "week",
-        props.weekStartsOn ?? 0,
+        props.weekStartsOn ??
+          props.defaultWeekStartsOn ??
+          DEFAULT_WEEK_STARTS_ON,
         props.numberOfDays ??
           props.defaultNumberOfDays ??
           DEFAULT_NUMBER_OF_DAYS,
@@ -707,10 +727,15 @@ function CalendarStateProvider({
   date: dateProp,
   defaultDate,
   onDateChange,
-  weekStartsOn = 0,
+  weekStartsOn: weekStartsOnProp,
+  defaultWeekStartsOn = DEFAULT_WEEK_STARTS_ON,
+  onWeekStartsOnChange,
   numberOfDays: numberOfDaysProp,
   defaultNumberOfDays = DEFAULT_NUMBER_OF_DAYS,
   onNumberOfDaysChange,
+  hourHeight: hourHeightProp,
+  defaultHourHeight = null,
+  onHourHeightChange,
   defaultViewSettings,
   snapMinutes = DEFAULT_SNAP_MINUTES,
   dayStartHour = DEFAULT_DAY_START_HOUR,
@@ -767,6 +792,16 @@ function CalendarStateProvider({
     prop: numberOfDaysProp,
     defaultProp: defaultNumberOfDays,
     onChange: onNumberOfDaysChange,
+  });
+  const [weekStartsOn, setWeekStartsOnState] = useControllableState({
+    prop: weekStartsOnProp,
+    defaultProp: defaultWeekStartsOn,
+    onChange: onWeekStartsOnChange,
+  });
+  const [hourHeight, setHourHeight] = useControllableState<number | null>({
+    prop: hourHeightProp,
+    defaultProp: defaultHourHeight,
+    onChange: onHourHeightChange,
   });
   /** The primary zone, `undefined` for the viewer's */
   const [primaryTimeZone, setPrimaryTimeZone] = useControllableState<
@@ -874,6 +909,8 @@ function CalendarStateProvider({
   const eventsRef = React.useRef(events);
   /** The slot or day a view last had the mouse over: where a paste goes */
   const pasteTargetRef = React.useRef<EventPasteTarget | null>(null);
+  /** Hour height the time grid last drew, which zooming steps from */
+  const renderedHourHeightRef = React.useRef<number | null>(null);
   /** Id of the latest notice; each new one counts up */
   const noticeIdRef = React.useRef(0);
   /**
@@ -1964,6 +2001,59 @@ function CalendarStateProvider({
     ],
   );
 
+  const changeWeekStartsOn = React.useCallback(
+    (day: WeekStartsOn) => {
+      if (day === weekStartsOn) return;
+      setWeekStartsOnState(day);
+      // A full week or a month grid starts on the new day: keep the week
+      // around the middle of the first one on screen (from Sunday May 31,
+      // Monday weeks show June 1-7, not May 25-31). Day steps start on any
+      // day anyway.
+      if (view !== "week" && view !== "month") return;
+      setCurrentDate((prev) => {
+        const middle = addDays(prev, WEEK_MIDDLE_OFFSET);
+        const next = getPeriodStart(
+          middle,
+          view,
+          day,
+          numberOfDays,
+          showWeekends,
+        );
+        return next.getTime() === prev.getTime() ? prev : next;
+      });
+    },
+    [
+      weekStartsOn,
+      view,
+      numberOfDays,
+      showWeekends,
+      setWeekStartsOnState,
+      setCurrentDate,
+    ],
+  );
+
+  /** One zoom step from the set height, else from the one on screen */
+  const zoomHours = React.useCallback(
+    (direction: "in" | "out") => {
+      setHourHeight((prev) =>
+        getZoomedHourHeight(
+          prev ?? renderedHourHeightRef.current ?? FALLBACK_HOUR_HEIGHT,
+          direction,
+        ),
+      );
+    },
+    [setHourHeight],
+  );
+
+  const zoomHoursIn = React.useCallback(() => zoomHours("in"), [zoomHours]);
+
+  const zoomHoursOut = React.useCallback(() => zoomHours("out"), [zoomHours]);
+
+  const resetHourHeight = React.useCallback(
+    () => setHourHeight(null),
+    [setHourHeight],
+  );
+
   const toggleWeekends = React.useCallback(() => {
     setViewSettings((prev) => ({ ...prev, showWeekends: !prev.showWeekends }));
     // Hiding them: a day view on a Saturday or Sunday moves to Monday
@@ -2127,6 +2217,7 @@ function CalendarStateProvider({
       currentDate,
       weekStartsOn,
       numberOfDays,
+      hourHeight,
       viewSettings,
       visibleDays,
       displayMonth,
@@ -2155,6 +2246,10 @@ function CalendarStateProvider({
       clearSelection,
       addEventFromRange,
       updateEvent,
+      setWeekStartsOn: changeWeekStartsOn,
+      zoomHoursIn,
+      zoomHoursOut,
+      resetHourHeight,
       editEvent,
       toggleWeekends,
       toggleDeclinedEvents,
@@ -2178,6 +2273,7 @@ function CalendarStateProvider({
       currentDate,
       weekStartsOn,
       numberOfDays,
+      hourHeight,
       viewSettings,
       visibleDays,
       displayMonth,
@@ -2206,6 +2302,10 @@ function CalendarStateProvider({
       clearSelection,
       addEventFromRange,
       updateEvent,
+      changeWeekStartsOn,
+      zoomHoursIn,
+      zoomHoursOut,
+      resetHourHeight,
       editEvent,
       toggleWeekends,
       toggleDeclinedEvents,
@@ -2338,6 +2438,10 @@ function CalendarStateProvider({
     pasteTargetRef.current = target;
   }, []);
 
+  const reportHourHeight = React.useCallback((height: number) => {
+    renderedHourHeightRef.current = height;
+  }, []);
+
   const viewSync = React.useMemo<CalendarViewSyncValue>(
     () => ({
       reportView,
@@ -2345,8 +2449,9 @@ function CalendarStateProvider({
       reportDisplayMonth: setDisplayMonth,
       closeEventPopover,
       reportPasteTarget,
+      reportHourHeight,
     }),
-    [reportView, closeEventPopover, reportPasteTarget],
+    [reportView, closeEventPopover, reportPasteTarget, reportHourHeight],
   );
 
   const series = React.useMemo<CalendarSeriesValue>(

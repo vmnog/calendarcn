@@ -111,6 +111,23 @@ The views render the question with `EventSeriesScopeDialog` (`@/components/event
 - **Who you are among the participants.** An event is declined when your participant answered "declined": the one with `self: true` (Google Calendar's flag), or, without one, the one whose email is the event's `calendarEmail`. `isDeclinedByViewer(event)` says whether an event is, and `filterDeclinedEvents(events, showDeclinedEvents)` drops them while they're hidden, for a view of your own.
 - **Days without the weekend.** With weekends hidden, `getShownDays()`, `addShownDays()` and `countShownDaysBetween()` count weekdays instead of days, and `getFirstShownDay()` moves a Saturday or Sunday to Monday. `getVisibleDays()`, `getPeriodStart()` and `getVisibleDayCount()` take the setting as their last argument.
 
+## Hour size
+
+The day and week views' hours fill the screen by default, at least 48px an hour. `hourHeight` on `CalendarProvider` sets another size, in pixels, and `null` goes back to the default. It lives in the provider so the [Command Menu](/docs/components/command-menu), the keys and your own controls all change the same size:
+
+- `zoomHoursIn()` and `zoomHoursOut()` step through `HOUR_HEIGHT_STEPS` (24, 32, 40, 48, 64, 80, 96, 128 and 160px), from the size on screen. `resetHourHeight()` goes back to the default. `useCalendarShortcuts()` runs them on <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>.</Kbd></KbdGroup>, <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> and <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>0</Kbd></KbdGroup>, Notion Calendar's keys.
+- Zooming keeps the time in the middle of the screen where it was. Dragging, resizing, creating, the current-time line and horizontal scrolling work at every size.
+- The size isn't stored. To keep it across visits, save `onHourHeightChange`'s value and pass it back as `defaultHourHeight` (or control `hourHeight`).
+
+```tsx
+// Your app's state: load it from wherever you keep preferences
+const [hourHeight, setHourHeight] = React.useState<number | null>(null);
+
+<CalendarProvider hourHeight={hourHeight} onHourHeightChange={setHourHeight}>
+  <WeekView />
+</CalendarProvider>;
+```
+
 ## Configuration
 
 <ComponentPreview name="config-demo" />
@@ -297,8 +314,20 @@ interface Meeting extends CalendarEvent {
     {
       name: "weekStartsOn",
       type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
+      description:
+        "Day the week starts on, 0 for Sunday to 6 for Saturday (controlled). Every view and the mini calendar follow it.",
+    },
+    {
+      name: "defaultWeekStartsOn",
+      type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
       default: "0",
-      description: "Day the week starts on, 0 for Sunday to 6 for Saturday.",
+      description:
+        'Initial week start when `weekStartsOn` is not controlled. "Start week on..." in the command menu changes it.',
+    },
+    {
+      name: "onWeekStartsOnChange",
+      type: "(weekStartsOn: WeekStartsOn) => void",
+      description: "Called when the week start changes.",
     },
     {
       name: "numberOfDays",
@@ -317,6 +346,24 @@ interface Meeting extends CalendarEvent {
       name: "onNumberOfDaysChange",
       type: "(numberOfDays: number) => void",
       description: "Called when the number of days changes.",
+    },
+    {
+      name: "hourHeight",
+      type: "number | null",
+      description:
+        "Height of an hour in the day and week views, in pixels (controlled). `null` is the default size, which fills the screen with the visible hours, at least 48px an hour. See [Hour size](#hour-size).",
+    },
+    {
+      name: "defaultHourHeight",
+      type: "number | null",
+      default: "null",
+      description: "Initial hour height when `hourHeight` is not controlled.",
+    },
+    {
+      name: "onHourHeightChange",
+      type: "(hourHeight: number | null) => void",
+      description:
+        "Called when the hour height changes: zooming in or out, or back to the default size. Store it to keep the size across visits.",
     },
     {
       name: "defaultViewSettings",
@@ -588,6 +635,12 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       description: "Days the week view shows.",
     },
     {
+      name: "hourHeight",
+      type: "number | null",
+      description:
+        "Height of an hour in the day and week views, in pixels, or `null` at the default size, which fills the screen.",
+    },
+    {
       name: "viewSettings",
       type: "ViewSettings",
       description:
@@ -721,6 +774,30 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "setNumberOfDays",
       type: "(numberOfDays: number) => void",
       description: "Sets how many days the week view shows.",
+    },
+    {
+      name: "setWeekStartsOn",
+      type: "(weekStartsOn: WeekStartsOn) => void",
+      description:
+        "Starts the week on another day. A full week or month on screen moves to the week that starts on that day around its middle, so most of the same dates stay.",
+    },
+    {
+      name: "zoomHoursIn",
+      type: "() => void",
+      description:
+        "Makes the hours one step taller (`HOUR_HEIGHT_STEPS`), up to 160px.",
+    },
+    {
+      name: "zoomHoursOut",
+      type: "() => void",
+      description:
+        "Makes the hours one step shorter (`HOUR_HEIGHT_STEPS`), down to 24px.",
+    },
+    {
+      name: "resetHourHeight",
+      type: "() => void",
+      description:
+        "Goes back to the default hour size, which fills the screen.",
     },
     {
       name: "selectEvent",

@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { NUMBER_OF_DAYS_OPTIONS } from "@/lib/event-utils";
 
 import type { ViewSettings, ViewType } from "@/components/week-view-types";
 
@@ -40,9 +41,6 @@ const VIEW_OPTIONS: Array<{
   { value: "year", label: "Year", shortcuts: ["Y"] },
   { value: "agenda", label: "Agenda", shortcuts: ["A"] },
 ];
-
-/** Number-of-days options for the submenu */
-const DAYS_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 /**
  * Shortcut hints inside menu items drop the key-cap background. Classes
@@ -116,7 +114,7 @@ export function ViewDropdown({
             Number of days
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
-            {DAYS_OPTIONS.map((n) => (
+            {NUMBER_OF_DAYS_OPTIONS.map((n) => (
               <DropdownMenuItem key={n} onClick={() => onSetNumberOfDays(n)}>
                 <CheckIcon
                   className={cn(

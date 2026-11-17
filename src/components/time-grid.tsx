@@ -62,7 +62,10 @@ import {
 import { CalendarLoadingBar } from "./calendar-loading-bar";
 import { AddTimeZoneButton, TimeZoneAxisLabel } from "./time-zone-axis-label";
 
-/** Minimum height of each hour row in pixels */
+/**
+ * Smallest hour height the default size fills the screen with, in pixels.
+ * Zooming out (the provider's `hourHeight`) goes below it.
+ */
 const MIN_HOUR_HEIGHT = 48;
 
 /**
@@ -212,6 +215,7 @@ export function TimeGrid({
     goToDate,
     numberOfDays: providerNumberOfDays,
     weekStartsOn,
+    hourHeight: zoomedHourHeight,
     loading,
     timeZones,
     travelTimeZone,
@@ -230,6 +234,7 @@ export function TimeGrid({
     reportVisibleDays,
     closeEventPopover,
     reportPasteTarget,
+    reportHourHeight,
   } = useCalendarViewSync();
   const numberOfDays = numberOfDaysProp ?? providerNumberOfDays;
   const { showWeekends, showDeclinedEvents } = viewSettings;
@@ -363,7 +368,10 @@ export function TimeGrid({
 
   // Compute day column width and dynamic hour height from container
   const [dayColumnWidth, setDayColumnWidth] = React.useState(0);
-  const [hourHeight, setHourHeight] = React.useState(MIN_HOUR_HEIGHT);
+  /** Hour height that fills the container: the default size */
+  const [fillHourHeight, setFillHourHeight] = React.useState(MIN_HOUR_HEIGHT);
+  /** Hour height drawn: the provider's zoomed one, else the default */
+  const hourHeight = zoomedHourHeight ?? fillHourHeight;
   const [contextMenuOpen, setContextMenuOpen] = React.useState(false);
   const [isAllDayResizing, setIsAllDayResizing] = React.useState(false);
   // Empty on the server and during hydration, the calendar's zone afterwards
@@ -382,7 +390,7 @@ export function TimeGrid({
       if (!container) return;
       const availableWidth = container.clientWidth - timeAxisWidth;
       setDayColumnWidth(availableWidth / VISIBLE_DAYS);
-      setHourHeight(
+      setFillHourHeight(
         Math.max(MIN_HOUR_HEIGHT, container.clientHeight / visibleHourCount),
       );
     };
@@ -410,10 +418,9 @@ export function TimeGrid({
       if (hasScrolledToHourRef.current || container.clientHeight === 0) return;
       hasScrolledToHourRef.current = true;
       // Same row height the grid settles on (see updateDimensions above)
-      const rowHeight = Math.max(
-        MIN_HOUR_HEIGHT,
-        container.clientHeight / visibleHourCount,
-      );
+      const rowHeight =
+        zoomedHourHeight ??
+        Math.max(MIN_HOUR_HEIGHT, container.clientHeight / visibleHourCount);
       const hour = Math.min(Math.max(scrollToHour, dayStartHour), dayEndHour);
       container.scrollTop = (hour - dayStartHour) * rowHeight;
     };
@@ -424,7 +431,34 @@ export function TimeGrid({
     const observer = new ResizeObserver(applyScroll);
     observer.observe(container);
     return () => observer.disconnect();
-  }, [scrollToHour, dayStartHour, dayEndHour, visibleHourCount]);
+  }, [
+    scrollToHour,
+    dayStartHour,
+    dayEndHour,
+    visibleHourCount,
+    zoomedHourHeight,
+  ]);
+
+  // Zooming keeps the time in the middle of the screen where it was. Only
+  // a zoom: the default height settling on mount or a resize scrolls nothing.
+  const lastHourHeightRef = React.useRef(hourHeight);
+  const lastZoomedHourHeightRef = React.useRef(zoomedHourHeight);
+  React.useLayoutEffect(() => {
+    const previous = lastHourHeightRef.current;
+    const zoomChanged = lastZoomedHourHeightRef.current !== zoomedHourHeight;
+    lastHourHeightRef.current = hourHeight;
+    lastZoomedHourHeightRef.current = zoomedHourHeight;
+    const container = scrollContainerRef.current;
+    if (!zoomChanged || previous === hourHeight || !container) return;
+    const middle = container.scrollTop + container.clientHeight / 2;
+    container.scrollTop =
+      (middle / previous) * hourHeight - container.clientHeight / 2;
+  }, [hourHeight, zoomedHourHeight]);
+
+  // The provider zooms from the height on screen while it fills the screen
+  React.useEffect(() => {
+    reportHourHeight(hourHeight);
+  }, [hourHeight, reportHourHeight]);
 
   // Track whether navigation was initiated by scroll (to avoid double-animation)
   const scrollNavigatedRef = React.useRef(false);

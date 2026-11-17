@@ -44,6 +44,9 @@ type CalendarShortcutActions = Pick<
   | "setNumberOfDays"
   | "clearSelection"
   | "toggleWeekends"
+  | "zoomHoursIn"
+  | "zoomHoursOut"
+  | "resetHourHeight"
   | "addEventAtNextSlot"
   | "travelTimeZone"
   | "travelToTimeZone"
@@ -75,6 +78,16 @@ type ShortcutActions = CalendarShortcutActions &
 
 /** Keys 2-9: show that many days */
 const NUMBER_OF_DAYS_KEY = /^[2-9]$/;
+
+/**
+ * Shift+Cmd with these keys zooms the hours, by `KeyboardEvent.code`: Shift
+ * turns their `key` into ">", "<" and ")" on most layouts
+ */
+const HOUR_ZOOM_CODES = {
+  in: "Period",
+  out: "Comma",
+  reset: "Digit0",
+} as const;
 
 /** Tags of the form fields that take key presses themselves */
 const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
@@ -162,7 +175,9 @@ function handleAppShortcut(
 
   if (isCommand && e.key === "k") return run(actions.onToggleCommandMenu);
   if (e.metaKey && e.key === "/") return run(actions.onToggleSidebar);
-  if (isCommand && e.key === ",") return run(actions.onOpenSettings);
+  if (isCommand && !e.shiftKey && e.key === ",") {
+    return run(actions.onOpenSettings);
+  }
 
   // Single keys only from here: they'd be typed into a text field
   if (isTypingTarget(e.target)) return false;
@@ -216,6 +231,20 @@ function handleShortcut(
     e.preventDefault();
     actions.toggleWeekends();
     return;
+  }
+
+  // Shift+Cmd+. / , / 0: taller hours, shorter hours, the default height
+  if (isCommand && e.shiftKey && !e.altKey) {
+    const zoom = {
+      [HOUR_ZOOM_CODES.in]: actions.zoomHoursIn,
+      [HOUR_ZOOM_CODES.out]: actions.zoomHoursOut,
+      [HOUR_ZOOM_CODES.reset]: actions.resetHourHeight,
+    }[e.code];
+    if (zoom) {
+      e.preventDefault();
+      zoom();
+      return;
+    }
   }
 
   // Single keys only: Cmd+K, Ctrl+D, Alt+ArrowLeft and the like belong to the
@@ -298,6 +327,8 @@ function handleShortcut(
  *   paste it at the slot under the mouse (Ctrl on Windows and Linux)
  * - Cmd+Z / Shift+Cmd+Z: undo / redo
  * - Shift+Cmd+E (Ctrl on Windows and Linux): show or hide weekends
+ * - Shift+Cmd+. / Shift+Cmd+, / Shift+Cmd+0: zoom the hours in, out, or back
+ *   to the default height
  *
  * Other presses with Cmd, Ctrl or Alt are left alone, and an event key with
  * nothing to act on is too.
@@ -337,6 +368,9 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    zoomHoursIn,
+    zoomHoursOut,
+    resetHourHeight,
     addEventAtNextSlot,
     selectedEvent,
     deleteEvent,
@@ -364,6 +398,9 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    zoomHoursIn,
+    zoomHoursOut,
+    resetHourHeight,
     addEventAtNextSlot,
     selectedEventId,
     hasCopiedEvent,
@@ -399,6 +436,9 @@ export function useCalendarShortcuts({
       setNumberOfDays,
       clearSelection,
       toggleWeekends,
+      zoomHoursIn,
+      zoomHoursOut,
+      resetHourHeight,
       addEventAtNextSlot,
       selectedEventId,
       hasCopiedEvent,
@@ -432,6 +472,9 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    zoomHoursIn,
+    zoomHoursOut,
+    resetHourHeight,
     addEventAtNextSlot,
     selectedEventId,
     hasCopiedEvent,
