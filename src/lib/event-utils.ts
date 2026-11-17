@@ -91,6 +91,41 @@ const DAYS_PER_WEEK = 7;
 /** Days the agenda lists, from its first day; also its prev/next step */
 export const AGENDA_DAYS = 30;
 
+/** Day counts the week view offers: the view switcher's and the command menu's choices */
+export const NUMBER_OF_DAYS_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9];
+
+/**
+ * Hour heights in pixels that zooming the day and week views steps through,
+ * from the most hours on screen to the fewest
+ */
+export const HOUR_HEIGHT_STEPS = [24, 32, 40, 48, 64, 80, 96, 128, 160];
+
+/** Pixels two hour heights may differ by and still count as the same step */
+const HOUR_HEIGHT_TOLERANCE = 0.5;
+
+/**
+ * The hour height one zoom step from `current`: the next of
+ * `HOUR_HEIGHT_STEPS` above it (`"in"`, taller hours) or below it (`"out"`).
+ * A height between two steps goes to the nearer one in that direction, and
+ * the smallest and largest steps are the limits.
+ */
+export function getZoomedHourHeight(
+  current: number,
+  direction: "in" | "out",
+): number {
+  if (direction === "in") {
+    const taller = HOUR_HEIGHT_STEPS.find(
+      (step) => step > current + HOUR_HEIGHT_TOLERANCE,
+    );
+    return taller ?? HOUR_HEIGHT_STEPS[HOUR_HEIGHT_STEPS.length - 1];
+  }
+  // Not `findLast`: installed projects may not have ES2023's lib
+  const shorter = HOUR_HEIGHT_STEPS.filter(
+    (step) => step < current - HOUR_HEIGHT_TOLERANCE,
+  );
+  return shorter[shorter.length - 1] ?? HOUR_HEIGHT_STEPS[0];
+}
+
 /**
  * Format of a month cell's `data-date` attribute. A calendar date with no
  * time or offset, so it reads the same in every timezone and server-rendered
