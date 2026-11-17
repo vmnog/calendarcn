@@ -10,6 +10,7 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { AgendaView } from "@/components/agenda-view";
 import { CalendarHeader } from "@/components/calendar-header";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
+import { CalendarSettingsDialog } from "@/components/calendar-settings";
 import { CalendarSidebar } from "@/components/calendar-sidebar";
 import { CalendarToaster } from "@/components/calendar-toaster";
 import { CommandMenu } from "@/components/command-menu";
@@ -30,10 +31,16 @@ import {
   getPeriodStart,
   mergeShownEvents,
 } from "@/lib/event-utils";
-import { parseIcs, toIcs } from "@/lib/ics";
-import type { CalendarProviderProps } from "@/components/calendar-types";
+import { parseIcs, toIcs, toIcsCalendar } from "@/lib/ics";
+import type {
+  CalendarInfo,
+  CalendarProviderProps,
+  CalendarTheme,
+  HourCycle,
+} from "@/components/calendar-types";
 import type {
   CalendarAppProps,
+  CalendarSettingsSection,
   DetailedCalendarEvent,
 } from "@/components/week-view-types";
 
@@ -59,6 +66,9 @@ const NO_EVENTS: DetailedCalendarEvent[] = [];
 /** No hidden calendars: every calendar shows until its eye is clicked */
 const NO_HIDDEN_CALENDARS: string[] = [];
 
+/** No calendars: an app given no `calendars` and before any is added */
+const NO_CALENDARS: CalendarInfo[] = [];
+
 /** CalendarAppProps that configure the app's chrome rather than the provider */
 type CalendarAppShellOptions = Pick<
   CalendarAppProps,
@@ -68,6 +78,9 @@ type CalendarAppShellOptions = Pick<
   | "exportFileName"
   | "exportCalendarName"
   | "onOpenSettings"
+  | "settingsDialog"
+  | "onSupport"
+  | "onAbout"
   | "showComingSoon"
   | "shortcuts"
 >;
@@ -82,6 +95,18 @@ interface CalendarAppShellProps extends CalendarAppShellOptions {
   isWideLayout: boolean;
   /** Adds events read from an .ics file, replacing those with the same id */
   onImportEvents: (events: DetailedCalendarEvent[]) => void;
+  /**
+   * Adds events read from an .ics file as a calendar named after the file,
+   * and returns them with its id
+   */
+  onImportCalendar: (
+    fileName: string,
+    events: DetailedCalendarEvent[],
+  ) => DetailedCalendarEvent[];
+  /** The app's "Add calendar account", with its helpers bound */
+  onAddCalendarAccount?: CalendarAppProps["onAddCalendarAccount"];
+  /** Sets the clock the calendar shows (the settings' Time format) */
+  onHourCycleChange: (hourCycle: HourCycle) => void;
   /** Every event the app holds, hidden calendars included: what "Export .ics file" writes */
   allEvents: DetailedCalendarEvent[];
   /** Ids of the calendars hidden from the sidebar's list */
@@ -95,7 +120,9 @@ interface CalendarAppShellProps extends CalendarAppShellOptions {
  * header and the day, week, month, year or agenda view in the middle, the details
  * sidebar on the right, the ⌘K command menu, the toasts after a delete,
  * cut or copy, theme cycling, .ics import and export, and the keyboard
- * shortcuts. Takes every `CalendarProvider` prop,
+ * shortcuts. The settings dialog (`settingsDialog`) and the account and app
+ * commands (`onAddCalendarAccount`, `onSupport`, `onAbout`) show when you
+ * turn them on. Takes every `CalendarProvider` prop,
  * so events can be controlled or left to the app, and the calendars,
  * contacts, rooms and conferencing come from your data.
  *
@@ -147,6 +174,10 @@ function CalendarAppState({
   exportFileName,
   exportCalendarName,
   onOpenSettings,
+  settingsDialog,
+  onAddCalendarAccount,
+  onSupport,
+  onAbout,
   showComingSoon,
   shortcuts,
   children,
@@ -162,6 +193,22 @@ function CalendarAppState({
   /** Calendars hidden from the sidebar's list. Their events leave every view */
   const [hiddenCalendarIds, setHiddenCalendarIds] =
     React.useState(NO_HIDDEN_CALENDARS);
+  /** Calendars added from .ics files, after the app's `calendars` */
+  const [addedCalendars, setAddedCalendars] = React.useState(NO_CALENDARS);
+  /** Clock picked in the settings; until then, the app's `hourCycle` */
+  const [pickedHourCycle, setPickedHourCycle] =
+    React.useState<HourCycle | null>(null);
+
+  const calendarsProp = providerProps.calendars ?? NO_CALENDARS;
+  const calendars = React.useMemo(
+    () => [
+      ...calendarsProp,
+      ...addedCalendars.filter(
+        (added) => !calendarsProp.some((calendar) => calendar.id === added.id),
+      ),
+    ],
+    [calendarsProp, addedCalendars],
+  );
 
   // The provider, and with it every view, the details and the search, gets
   // the shown calendars' events only
@@ -211,11 +258,35 @@ function CalendarAppState({
     [setEvents, onEventsImport],
   );
 
+  // An .ics file as a calendar of its own: added once, its events with it
+  const importCalendar = React.useCallback(
+    (fileName: string, imported: DetailedCalendarEvent[]) => {
+      const { calendar, events: calendarEvents } = toIcsCalendar(
+        fileName,
+        imported,
+        calendars,
+      );
+      setAddedCalendars((current) =>
+        current.some((added) => added.id === calendar.id)
+          ? current
+          : [...current, calendar],
+      );
+      setHiddenCalendarIds((current) =>
+        current.filter((id) => id !== calendar.id),
+      );
+      importEvents(calendarEvents);
+      return calendarEvents;
+    },
+    [calendars, importEvents],
+  );
+
   // The provider reads only its own props. Its event type is erased here,
   // as in the Calendar block, because TypeScript can't check JSX props
   // against its generic conditional `createEvent` type.
   const calendarProviderProps: CalendarProviderProps = {
     ...(providerProps as CalendarProviderProps),
+    calendars,
+    hourCycle: pickedHourCycle ?? providerProps.hourCycle,
     events: shownEvents,
     onEventsChange:
       handleShownEventsChange as CalendarProviderProps["onEventsChange"],
@@ -225,6 +296,8 @@ function CalendarAppState({
         <CalendarAppShell
           isWideLayout={isWideLayout}
           onImportEvents={importEvents}
+          onImportCalendar={importCalendar}
+          onHourCycleChange={setPickedHourCycle}
           allEvents={events}
           hiddenCalendarIds={hiddenCalendarIds}
           onHiddenCalendarIdsChange={setHiddenCalendarIds}
@@ -234,6 +307,10 @@ function CalendarAppState({
           exportFileName={exportFileName}
           exportCalendarName={exportCalendarName}
           onOpenSettings={onOpenSettings}
+          settingsDialog={settingsDialog}
+          onAddCalendarAccount={onAddCalendarAccount}
+          onSupport={onSupport}
+          onAbout={onAbout}
           showComingSoon={showComingSoon}
           shortcuts={shortcuts}
         />
@@ -252,6 +329,9 @@ function CalendarAppState({
 function CalendarAppShell({
   isWideLayout,
   onImportEvents,
+  onImportCalendar,
+  onAddCalendarAccount,
+  onHourCycleChange,
   allEvents,
   hiddenCalendarIds,
   onHiddenCalendarIdsChange,
@@ -261,6 +341,9 @@ function CalendarAppShell({
   exportFileName = DEFAULT_EXPORT_FILE_NAME,
   exportCalendarName,
   onOpenSettings,
+  settingsDialog = false,
+  onSupport,
+  onAbout,
   showComingSoon = false,
   shortcuts = true,
 }: CalendarAppShellProps) {
@@ -290,6 +373,12 @@ function CalendarAppShell({
   const [commandMenuOpen, setCommandMenuOpen] = React.useState(false);
   /** Hidden file picker behind the command menu's "Import .ics file" */
   const icsInputRef = React.useRef<HTMLInputElement>(null);
+  /** Hidden file picker behind `importIcsCalendar()` (Add calendar account) */
+  const icsCalendarInputRef = React.useRef<HTMLInputElement>(null);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  /** Pane the settings dialog opens on */
+  const [settingsSection, setSettingsSection] =
+    React.useState<CalendarSettingsSection>("general");
 
   // Phones show event details in the context panel sheet: the 320px popover
   // doesn't fit beside an event on a ~390px screen
@@ -307,6 +396,19 @@ function CalendarAppShell({
     setLeftSidebarOpen((prev) => !prev);
   }, [isMobile]);
 
+  /** Shows the period of the earliest of the imported events */
+  const showImported = React.useCallback(
+    (imported: DetailedCalendarEvent[]) => {
+      const earliest = imported.reduce((first, event) =>
+        event.start < first.start ? event : first,
+      );
+      goToDate(
+        getPeriodStart(earliest.start, view, weekStartsOn, numberOfDays),
+      );
+    },
+    [goToDate, view, weekStartsOn, numberOfDays],
+  );
+
   /** Imports the picked .ics file and shows the period of its first event */
   const handleIcsFileChange = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -317,15 +419,50 @@ function CalendarAppShell({
       const imported = parseIcs(await file.text());
       if (imported.length === 0) return;
       onImportEvents(imported);
-      const earliest = imported.reduce((first, event) =>
-        event.start < first.start ? event : first,
-      );
-      goToDate(
-        getPeriodStart(earliest.start, view, weekStartsOn, numberOfDays),
-      );
+      showImported(imported);
     },
-    [onImportEvents, goToDate, view, weekStartsOn, numberOfDays],
+    [onImportEvents, showImported],
   );
+
+  /** Adds the picked .ics file as a calendar named after it, and shows its first event */
+  const handleIcsCalendarFileChange = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file) return;
+      const imported = parseIcs(await file.text());
+      if (imported.length === 0) return;
+      showImported(onImportCalendar(file.name, imported));
+    },
+    [onImportCalendar, showImported],
+  );
+
+  /** "Add calendar account" in the sidebar, the command menu and the settings */
+  const addCalendarAccount = React.useMemo(() => {
+    if (!onAddCalendarAccount) return undefined;
+    return () =>
+      onAddCalendarAccount({
+        importIcsCalendar: () => icsCalendarInputRef.current?.click(),
+      });
+  }, [onAddCalendarAccount]);
+
+  /** Cmd+, and "Go to settings": the built-in dialog, else the app's own */
+  const openSettings = React.useMemo(() => {
+    if (!settingsDialog) return onOpenSettings;
+    return () => {
+      setSettingsSection("general");
+      setSettingsOpen(true);
+    };
+  }, [settingsDialog, onOpenSettings]);
+
+  /** "Manage calendar accounts": the built-in dialog, on the calendars */
+  const manageCalendarAccounts = React.useMemo(() => {
+    if (!settingsDialog) return undefined;
+    return () => {
+      setSettingsSection("calendars");
+      setSettingsOpen(true);
+    };
+  }, [settingsDialog]);
 
   const exportIcs = React.useCallback(() => {
     const url = URL.createObjectURL(
@@ -367,7 +504,7 @@ function CalendarAppShell({
     onToggleSidebar: toggleLeftSidebar,
     onToggleContextPanel: toggleSidebar,
     onCycleTheme: cycleTheme,
-    onOpenSettings,
+    onOpenSettings: openSettings,
   });
 
   return (
@@ -380,6 +517,11 @@ function CalendarAppShell({
         onCycleTheme={cycleTheme}
         onImportIcs={() => icsInputRef.current?.click()}
         onExportIcs={exportIcs}
+        onOpenSettings={openSettings}
+        onSupport={onSupport}
+        onAddCalendarAccount={addCalendarAccount}
+        onManageCalendarAccounts={manageCalendarAccounts}
+        onAbout={onAbout}
         showComingSoon={showComingSoon}
       />
       <input
@@ -390,6 +532,29 @@ function CalendarAppShell({
         className="hidden"
         onChange={handleIcsFileChange}
       />
+      {onAddCalendarAccount && (
+        <input
+          ref={icsCalendarInputRef}
+          type="file"
+          accept={ICS_FILE_TYPES}
+          aria-label="Add an .ics file as a calendar"
+          className="hidden"
+          onChange={handleIcsCalendarFileChange}
+        />
+      )}
+      {settingsDialog && (
+        <CalendarSettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          defaultSection={settingsSection}
+          theme={theme as CalendarTheme | undefined}
+          onThemeChange={setTheme}
+          onHourCycleChange={onHourCycleChange}
+          hiddenCalendarIds={hiddenCalendarIds}
+          onHiddenCalendarIdsChange={onHiddenCalendarIdsChange}
+          onAddCalendarAccount={addCalendarAccount}
+        />
+      )}
       <CalendarSidebar
         open={leftSidebarVisible}
         onOpenChange={setLeftOverlayOpen}
@@ -397,6 +562,7 @@ function CalendarAppShell({
         footerActions={sidebarFooterActions}
         hiddenCalendarIds={hiddenCalendarIds}
         onHiddenCalendarIdsChange={onHiddenCalendarIdsChange}
+        onAddCalendarAccount={addCalendarAccount}
       />
       <SidebarInset className="flex flex-col overflow-hidden">
         <CalendarHeader

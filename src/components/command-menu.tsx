@@ -70,6 +70,16 @@ interface CommandMenuProps {
   onImportIcs?: () => void;
   /** Adds "Export .ics file" */
   onExportIcs?: () => void;
+  /** Adds "Go to settings" (⌘ ,) */
+  onOpenSettings?: () => void;
+  /** Adds "Support & feedback", e.g. to open your issue tracker */
+  onSupport?: () => void;
+  /** Adds "Add calendar account" */
+  onAddCalendarAccount?: () => void;
+  /** Adds "Manage calendar accounts" */
+  onManageCalendarAccounts?: () => void;
+  /** Adds "About CalendarCN", e.g. to open your docs */
+  onAbout?: () => void;
   /**
    * Also lists the Notion Calendar commands CalendarCN doesn't have yet,
    * disabled with a "Soon" badge, as the live demo does
@@ -80,8 +90,8 @@ interface CommandMenuProps {
 /**
  * The live demo's ⌘K menu. Going to today, previous and next, and the views
  * come from `useCalendar()`, so it goes inside `CalendarProvider`. Commands
- * that belong to your app (panels, theme, .ics files) show only when you pass
- * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
+ * that belong to your app (panels, theme, .ics files, settings, accounts,
+ * support and about) show only when you pass their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
  */
 export function CommandMenu({
   open,
@@ -91,6 +101,11 @@ export function CommandMenu({
   onCycleTheme,
   onImportIcs,
   onExportIcs,
+  onOpenSettings,
+  onSupport,
+  onAddCalendarAccount,
+  onManageCalendarAccounts,
+  onAbout,
   showComingSoon = false,
 }: CommandMenuProps) {
   const { goToToday, goToPrev, goToNext, switchView } = useCalendar();
@@ -182,26 +197,21 @@ export function CommandMenu({
     {
       heading: "Settings & help",
       commands: [
-        { label: "Get CalendarCN mobile app", soon: true },
         { label: "Show keyboard shortcuts", soon: true },
-        { label: "Go to settings", soon: true },
-        { label: "Support & feedback", soon: true },
+        { label: "Go to settings", keys: ["⌘", ","], run: onOpenSettings },
+        { label: "Support & feedback", run: onSupport },
       ],
     },
     {
       heading: "Accounts",
       commands: [
-        { label: "Add Google Calendar account", soon: true },
-        { label: "Manage calendar accounts", soon: true },
-        { label: "Log out", soon: true },
+        { label: "Add calendar account", run: onAddCalendarAccount },
+        { label: "Manage calendar accounts", run: onManageCalendarAccounts },
       ],
     },
     {
       heading: "CalendarCN",
-      commands: [
-        { label: "Check for update", soon: true },
-        { label: "About CalendarCN", soon: true },
-      ],
+      commands: [{ label: "About CalendarCN", run: onAbout }],
     },
     {
       heading: "Panels",

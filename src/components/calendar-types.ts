@@ -1264,3 +1264,6 @@ export interface CalendarContextValue<
   /** Opens the week containing `date` and briefly highlights that day */
   showDay: (date: Date) => void;
 }
+
+/** A color theme: the system's, or light or dark */
+export type CalendarTheme = "system" | "light" | "dark";

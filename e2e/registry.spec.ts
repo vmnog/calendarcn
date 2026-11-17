@@ -20,6 +20,7 @@ const ITEM_NAMES = [
   "calendar-header",
   "command-menu",
   "calendar-toaster",
+  "calendar-settings",
   // The demo's sidebars
   "sidebar-overlay",
   "theme-toggle",

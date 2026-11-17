@@ -5,8 +5,8 @@ import { openCalendar } from "./helpers";
 /**
  * Controls that are drawn but not built yet. Each is disabled or replaced by
  * a "Soon" badge: the
- * view settings the current view doesn't read, the sidebar's scheduling row,
- * "Meet with..." field and "Add calendar account", and the listed shortcuts nothing handles. Shift+Cmd+D is left to the
+ * view settings the current view doesn't read, the sidebar's scheduling row
+ * and "Meet with..." field, and the listed shortcuts nothing handles. Shift+Cmd+D is left to the
  * browser.
  */
 
@@ -102,14 +102,14 @@ test("Shift+Cmd+D is left to the browser, Shift+Cmd+E still toggles weekends", a
   expect(prevented).toEqual([false, true]);
 });
 
-test("the sidebar marks scheduling, meet with and add calendar account", async ({
-  page,
-}) => {
-  for (const name of ["Scheduling", "Add calendar account"]) {
-    await expect(
-      page.getByRole("button", { name: `${name} Soon`, exact: true }),
-    ).toBeDisabled();
-  }
+test("the sidebar marks scheduling and meet with", async ({ page }) => {
+  await expect(
+    page.getByRole("button", { name: "Scheduling Soon", exact: true }),
+  ).toBeDisabled();
+  // Add calendar account works in the demo: no badge
+  await expect(
+    page.getByRole("button", { name: "Add calendar account", exact: true }),
+  ).toBeEnabled();
 
   const meetWith = page.getByPlaceholder("Meet with...");
   await expect(meetWith).toBeDisabled();
@@ -120,10 +120,10 @@ test("the sidebar marks scheduling, meet with and add calendar account", async (
   // The row has a fixed height and clips, so compare the labels themselves:
   // a wrapped label is two lines tall
   const [schedulingLabelHeight, addAccountLabelHeight] = await Promise.all(
-    ["Scheduling", "Add calendar account"].map((label) =>
+    ["Scheduling Soon", "Add calendar account"].map((name) =>
       page
-        .getByRole("button", { name: `${label} Soon`, exact: true })
-        .getByText(label, { exact: true })
+        .getByRole("button", { name, exact: true })
+        .getByText(name.replace(" Soon", ""), { exact: true })
         .evaluate((span) => span.getBoundingClientRect().height),
     ),
   );
@@ -134,8 +134,9 @@ test("the useful shortcuts mark the ones nothing handles", async ({ page }) => {
   const row = (label: string) =>
     page.getByText(label, { exact: true }).locator("xpath=..");
 
+  // The menu bar calendar is gone: a browser has no menu bar
+  await expect(page.getByText("Menu bar calendar")).toHaveCount(0);
   for (const label of [
-    "Menu bar calendar",
     "Show teammate calendar",
     "Go to date",
     "All keyboard shortcuts",

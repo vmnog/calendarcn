@@ -24,6 +24,7 @@ src/
 │   ├── calendar-event-*   # Event rendering & interactions
 │   ├── event-*            # Context menu, detail panel, detail popover
 │   ├── calendar-toaster.tsx # CalendarToaster — toasts after delete, cut and copy
+│   ├── calendar-settings.tsx # CalendarSettingsDialog — Notion's settings: view, time format, theme, accounts
 │   ├── event-detail-<section>.tsx # One file per details panel section (time, timezone, recurrence, participants…)
 │   ├── event-detail-parts.tsx # Details panel building blocks: rows, groups, class constants, menu helpers
 │   ├── calendar-sidebar.tsx # Left sidebar: mini-calendar, calendar-list, theme toggle

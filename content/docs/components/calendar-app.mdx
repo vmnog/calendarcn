@@ -127,6 +127,24 @@ The command menu's "Import .ics file..." reads a file with [`parseIcs()`](/docs/
 
 "Export .ics file" writes every event, those of hidden calendars included, with [`toIcs()`](/docs/import-export#export-events) and downloads it as `exportFileName`, with `exportCalendarName` as the calendar's name.
 
+### Settings and accounts
+
+The account and app controls show only when you turn them on, as the live demo does:
+
+```tsx
+<CalendarApp
+  defaultEvents={events}
+  settingsDialog
+  onAddCalendarAccount={({ importIcsCalendar }) => importIcsCalendar()}
+  onSupport={() => window.open(ISSUES_URL, "_blank")}
+  onAbout={() => router.push("/docs")}
+/>
+```
+
+- `settingsDialog` turns on the [Calendar Settings](/docs/components/calendar-settings) dialog: <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> and "Go to settings" open it, and "Manage calendar accounts" opens it on the calendars. Its theme setting switches next-themes' theme, and its time format the clock every view shows. For settings of your own, pass `onOpenSettings` instead.
+- `onAddCalendarAccount` adds "Add calendar account" to the sidebar, the command menu and the settings. Connect an account your way, or call `importIcsCalendar()`, which opens a file picker and adds the file's events as a calendar named after the file, then shows the first one. The same file again updates that calendar.
+- `onSupport` and `onAbout` add "Support & feedback" and "About CalendarCN" to the command menu.
+
 ### Your own buttons
 
 Put your account menu in the header with `headerActions`, and your own buttons in the sidebar's footer, before the theme toggle, with `sidebarFooterActions`:
@@ -168,19 +186,19 @@ From 768px up, while the details sidebar is closed, a selected event shows its d
 
 `CalendarApp` turns on the calendar's single-key [shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>Y</Kbd>, <Kbd>A</Kbd>…) and the app's own:
 
-| Action                            | Shortcut                                      |
-| --------------------------------- | --------------------------------------------- |
-| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> |
-| Toggle the calendar sidebar       | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> |
-| Toggle the details sidebar        | <Kbd>/</Kbd>                                  |
-| Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
-| Settings, with `onOpenSettings`   | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
+| Action                                              | Shortcut                                      |
+| --------------------------------------------------- | --------------------------------------------- |
+| Command menu                                        | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> |
+| Toggle the calendar sidebar                         | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> |
+| Toggle the details sidebar                          | <Kbd>/</Kbd>                                  |
+| Cycle theme (system, light, dark)                   | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
+| Settings, with `settingsDialog` or `onOpenSettings` | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
 
 They listen on the whole page. Pass `shortcuts={false}` to turn them all off.
 
 ## Not built yet
 
-The app draws a few of Notion Calendar's controls that don't work yet. Each is disabled and marked "Soon": the sidebar's scheduling row, "Meet with..." field and "Add calendar account", and the view settings the current view doesn't read. The [roadmap](/docs/roadmap) lists them all.
+The app draws a few of Notion Calendar's controls that don't work yet. Each is disabled and marked "Soon": the sidebar's scheduling row and "Meet with..." field, and the view settings the current view doesn't read. The [roadmap](/docs/roadmap) lists them all.
 
 ## Parts
 
@@ -192,6 +210,7 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
 - [Time Grid](/docs/components/time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) and [Agenda View](/docs/components/agenda-view): the views.
 - [Details Sidebar](/docs/components/details-sidebar): the right sidebar, with the [Event Details](/docs/components/event-details).
 - [Command Menu](/docs/components/command-menu): the <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu.
+- [Calendar Settings](/docs/components/calendar-settings): the settings dialog.
 - [Calendar Toaster](/docs/components/calendar-toaster): the toasts after a delete, cut or copy, with Undo.
 - [Sidebar Overlay](/docs/components/sidebar-overlay): both sidebars as sheets on narrow screens, and their colors.
 - [Import and Export](/docs/import-export): `parseIcs()` and `toIcs()`.
@@ -234,10 +253,35 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
         "Calendar name written into the exported .ics. Google Calendar and Apple Calendar show it.",
     },
     {
+      name: "settingsDialog",
+      type: "boolean",
+      default: "false",
+      description:
+        'Turns on the built-in [Calendar Settings](/docs/components/calendar-settings) dialog: ⌘, (Ctrl+, elsewhere) and "Go to settings" open it, and "Manage calendar accounts" opens it on the calendars. It wins over `onOpenSettings`.',
+    },
+    {
       name: "onOpenSettings",
       type: "() => void",
       description:
-        "Called on ⌘, (Ctrl+, elsewhere). Without it, the key is left to the browser.",
+        'Called on ⌘, (Ctrl+, elsewhere) and "Go to settings", for settings of your own. Without it or `settingsDialog`, the key is left to the browser.',
+    },
+    {
+      name: "onAddCalendarAccount",
+      type: "(helpers: { importIcsCalendar: () => void }) => void",
+      description:
+        'Adds "Add calendar account" to the sidebar, the command menu and the settings. `importIcsCalendar()` adds an .ics file as a new calendar, as the live demo does.',
+    },
+    {
+      name: "onSupport",
+      type: "() => void",
+      description:
+        'Adds "Support & feedback" to the command menu, e.g. to open your issue tracker.',
+    },
+    {
+      name: "onAbout",
+      type: "() => void",
+      description:
+        'Adds "About CalendarCN" to the command menu, e.g. to open your docs.',
     },
     {
       name: "showComingSoon",

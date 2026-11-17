@@ -11,6 +11,11 @@ Entries marked **Breaking** can stop your code from compiling or change what it 
 
 Live in the registry, but not in a tagged release yet.
 
+### November 17, 2026
+
+- **Added** `calendar-settings`, a new item, with `calendar-app`, `command-menu`, `calendar-sidebar`, `details-sidebar` and `ics`: Notion Calendar's account and app controls. `CalendarSettingsDialog` is a settings dialog laid out as Notion's: General (weekends, week numbers, number of days, time format, theme) and each calendar account's calendars, each setting shown when something can change it. `CommandMenu` adds `onOpenSettings` ("Go to settings"), `onAddCalendarAccount`, `onManageCalendarAccounts`, `onSupport` and `onAbout`, `CalendarSidebar` adds `onAddCalendarAccount`, and `CalendarApp` adds `settingsDialog`, `onAddCalendarAccount` (with `importIcsCalendar()`, which adds an .ics file as a calendar), `onSupport` and `onAbout`. `toIcsCalendar()` is new in `@/lib/ics`. [#TBD](https://github.com/vmnog/calendarcn/pulls)
+  - **Breaking:** without `onAddCalendarAccount`, `CalendarSidebar` no longer draws "Add calendar account" (it was disabled with "Soon"). "Add Google Calendar account" is now "Add calendar account", and the command menu and the useful shortcuts no longer list "Get CalendarCN mobile app", "Log out", "Check for update" or "Menu bar calendar", even with `showComingSoon`.
+
 ### November 16, 2026
 
 - **Added** `calendar-core`, `event-details`, `time-grid`, `month-view`, `details-sidebar`, `calendar-app`: delete, duplicate, cut, copy and paste events from the right-click menu, the details' "..." menu and the keyboard (<Kbd>Delete</Kbd>, <KbdGroup><Kbd>⌘</Kbd><Kbd>X</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>C</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>D</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>V</Kbd></KbdGroup>), and undo or redo every change with <KbdGroup><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup> and <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup>. `useCalendar()` adds `deleteEvent`, `duplicateEvent`, `copyEvent`, `cutEvent`, `pasteEvent`, `undo`, `redo`, `canUndo` and `canRedo`, `CalendarProvider` adds `onEventDelete`, and `EventDetailPanel` adds `onCut`, `onCopy`, `onDuplicate` and `onDelete`. [#78](https://github.com/vmnog/calendarcn/pull/78)
