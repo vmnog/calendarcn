@@ -11,8 +11,10 @@ import type {
   EventResizeState,
   HourSlot,
   NewEventRange,
+  PersonCalendarEvent,
   PositionedEvent,
   TimeGridView,
+  TimeSpan,
   WeekDay,
 } from "./calendar-types";
 
@@ -86,6 +88,12 @@ export type {
   CalendarRenderSlots,
   CalendarProviderProps,
   CalendarContextValue,
+  TimeSpan,
+  WorkingHours,
+  CalendarPerson,
+  CalendarPeopleValue,
+  PersonCalendarEvent,
+  PeoplePickerMode,
   KeyboardShortcut,
   KeyboardShortcutGroup,
 } from "./calendar-types";
@@ -502,6 +510,13 @@ export interface WeekViewGridProps extends EventItemPopoverProps {
   onContextMenuOpenChange?: (open: boolean) => void;
   /** Date to highlight with a temporary background animation (for "+N more" navigation) */
   highlightedDate?: Date | null;
+  /**
+   * Other people's timed events, drawn read-only behind yours ("Meet
+   * with...", "Show teammate calendar...")
+   */
+  personEvents?: PersonCalendarEvent[];
+  /** Free time you and the people you meet with share, highlighted under the events */
+  freeTimes?: TimeSpan[];
   /**
    * Index in `days` of the first on-screen column. Columns outside the
    * on-screen range are scroll buffer: inert and hidden from assistive tech.

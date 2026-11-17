@@ -18,6 +18,10 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useToday } from "@/hooks/use-now";
 import { EventTitleFocusProvider } from "./event-title-focus-context";
 import {
+  CalendarPeopleProvider,
+  useCalendarPeopleState,
+} from "./calendar-people";
+import {
   AGENDA_DAYS,
   DEFAULT_EVENT_DURATION_MINUTES,
   addShownDays,
@@ -75,6 +79,7 @@ import {
   toDisplayEvent,
   toZonedWallClock,
 } from "@/lib/time-zones";
+import { addMeetingParticipants, findContact } from "@/lib/people";
 import type {
   CalendarConfig,
   CalendarContextValue,
@@ -118,7 +123,7 @@ import type {
  */
 declare const process: { env: { NODE_ENV?: string } };
 
-/** Title of a click-created event when no `createEvent` factory is given */
+/** Title of a new event when no `createEvent` factory is given */
 const DEFAULT_NEW_EVENT_TITLE = "";
 
 /** How long the day opened by `showDay` stays highlighted, in milliseconds */
@@ -544,6 +549,29 @@ function isEventDraftEdited(
 }
 
 /**
+ * A new event, or the draft of one, with the people met with ("Meet
+ * with...") invited: as the details' participants field adds them, the
+ * calendar's account organizing. Returned as it is when nobody is met with.
+ */
+function withMeetingParticipants(
+  event: CalendarEvent,
+  meetWith: string[],
+  contacts: EventContact[],
+): CalendarEvent {
+  if (meetWith.length === 0) return event;
+  const detailed: DetailedCalendarEvent = event;
+  const invited: DetailedCalendarEvent = {
+    ...detailed,
+    participants: addMeetingParticipants(
+      detailed.participants ?? [],
+      meetWith.map((email) => findContact(contacts, email)),
+      detailed.calendarEmail,
+    ),
+  };
+  return invited;
+}
+
+/**
  * The option a series change applies with right away: the caller's (one
  * the change doesn't offer falls back to the first it does), the first
  * offered when no dialog can ask, or `null` to ask
@@ -837,6 +865,14 @@ function CalendarStateProvider({
   rooms = NO_ROOMS,
   conferenceProviders = NO_CONFERENCE_PROVIDERS,
   locationSuggestions = NO_LOCATION_SUGGESTIONS,
+  meetWith,
+  defaultMeetWith,
+  onMeetWithChange,
+  teammates,
+  defaultTeammates,
+  onTeammatesChange,
+  contactEvents,
+  workingHours,
   createEvent,
   onEventCreate,
   onEventUpdate,
@@ -919,6 +955,18 @@ function CalendarStateProvider({
     () => ({ primary: primaryTimeZone, secondary: knownSecondaryTimeZones }),
     [primaryTimeZone, knownSecondaryTimeZones],
   );
+  /** Who you meet with and which teammates show, for `useCalendarPeople()` */
+  const people = useCalendarPeopleState({
+    contacts,
+    meetWith,
+    defaultMeetWith,
+    onMeetWithChange,
+    teammates,
+    defaultTeammates,
+    onTeammatesChange,
+    contactEvents,
+    workingHours,
+  });
   const [viewSettings, setViewSettings] = React.useState<ViewSettings>(() => ({
     ...DEFAULT_VIEW_SETTINGS,
     ...defaultViewSettings,
@@ -1589,15 +1637,22 @@ function CalendarStateProvider({
   /** Builds a draft for a range with the app's factory, or `null` when it declines */
   const buildEventDraft = React.useCallback(
     (range: NewEventRange): CalendarEvent | null => {
-      const draft = (createEvent ?? createDefaultEvent)(toStoredRange(range));
-      if (!draft) return null;
+      const created = (createEvent ?? createDefaultEvent)(toStoredRange(range));
+      if (!created) return null;
+      // The people met with are invited from the start: not an edit, so an
+      // untouched draft is still thrown away
+      const draft = withMeetingParticipants(
+        created,
+        people.meetWith,
+        people.contacts,
+      );
       // A factory written for timed slots still gets a whole-day event
       if (range.isAllDay && !draft.isAllDay) {
         return { ...draft, isAllDay: true };
       }
       return draft;
     },
-    [createEvent, toStoredRange],
+    [createEvent, toStoredRange, people.meetWith, people.contacts],
   );
 
   /**
@@ -1705,10 +1760,15 @@ function CalendarStateProvider({
       // Creating an event leaves the one a change waits for
       afterSeriesChange(() => {
         // `createEvent` and the app get instants, like the events they store
-        const newEvent = (createEvent ?? createDefaultEvent)(
+        const created = (createEvent ?? createDefaultEvent)(
           toStoredRange(range),
         );
-        if (!newEvent) return;
+        if (!created) return;
+        const newEvent = withMeetingParticipants(
+          created,
+          people.meetWith,
+          people.contacts,
+        );
         setEvents((prev) => [...prev, newEvent]);
         onEventCreate?.(newEvent);
         recordHistory("create", [
@@ -1730,6 +1790,8 @@ function CalendarStateProvider({
       displayTimeZone,
       toStoredRange,
       createEvent,
+      people.meetWith,
+      people.contacts,
       setEvents,
       onEventCreate,
       selectEvent,
@@ -2905,7 +2967,9 @@ function CalendarStateProvider({
                         pendingEventId={pendingTitleFocusId}
                         clearPending={clearTitleFocus}
                       >
-                        {children}
+                        <CalendarPeopleProvider value={people}>
+                          {children}
+                        </CalendarPeopleProvider>
                         {/* Announces changes, the event actions, undo and redo to screen readers */}
                         <div
                           role="status"

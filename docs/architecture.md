@@ -89,6 +89,7 @@ Double-click or drag on empty space → use-double-click / use-event-draw / use-
 3. The views draw the draft through `event-draft.tsx`. While nothing is typed into it, it is a tinted range (`TimeGridEventDraft`, `AllDayEventDraft`, the month cells). Its first title keystroke, or `startEventDraft()` from code, makes it an event among `drawnEvents`, which the views draw and their drag hooks commit from in place of `events`.
 4. `EventDetailPanel` gets `onTitlePreview` for a draft: title keystrokes go to `updateEventDraft()`, and `onEventChange` (the provider's `editEvent`) saves it on Enter, on blur of a changed title, or on any other field's first edit. Escape restores the title and saves nothing.
 5. With the details in a popover, `EventDraftPopover` hosts them at view level, beside the draft's range, and keeps hosting them after the save while the event stays selected (`useCalendarEventDraft()`), so the popover never remounts under a field that is being typed into.
+6. While you meet with people ("Meet with..."), the draft is built with them in its `participants` (`withMeetingParticipants()` in the provider). They are there from the start, so they don't count as an edit: an untouched draft is still dropped. The shared free time is worked out from the stored events, so a draft takes none until it is saved.
 
 ### Repeating Events
 

@@ -15,6 +15,7 @@ import {
   DEMO_LOCATION_SUGGESTIONS,
   DEMO_PRIMARY_CALENDAR_ID,
   DEMO_ROOMS,
+  generateContactEvents,
   generateMockEvents,
 } from "@/lib/mock-events";
 import { DEMO_CONFERENCE_PROVIDERS } from "./demo-conference-providers";
@@ -70,6 +71,9 @@ export default function Page() {
   // dated from the viewer's today: the calendar renders nothing on the
   // server or during hydration, so the browser's copy is the one shown.
   const [initialEvents] = React.useState(() => generateMockEvents());
+  // The sample teammates' weeks, drawn by "Meet with..." and "Show teammate
+  // calendar..."; an app would load them (free/busy) when someone is added
+  const [contactEvents] = React.useState(() => generateContactEvents());
 
   return (
     <CalendarApp
@@ -77,6 +81,7 @@ export default function Page() {
       defaultViewSettings={DEMO_VIEW_SETTINGS}
       calendars={DEMO_CALENDARS}
       contacts={DEMO_CONTACTS}
+      contactEvents={contactEvents}
       rooms={DEMO_ROOMS}
       conferenceProviders={DEMO_CONFERENCE_PROVIDERS}
       locationSuggestions={DEMO_LOCATION_SUGGESTIONS}

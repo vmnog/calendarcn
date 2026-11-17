@@ -84,7 +84,7 @@ function EventDetails({
         <input
           aria-label="Title"
           value={event.title}
-          // A click-created event opens with its title ready to type
+          // A new event opens with its title ready to type
           autoFocus={isNew}
           onFocus={(e) => e.currentTarget.select()}
           onChange={(e) => editEvent({ ...event, title: e.target.value })}

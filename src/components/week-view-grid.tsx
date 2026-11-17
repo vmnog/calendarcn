@@ -15,12 +15,18 @@ import { CalendarEventItem } from "./calendar-event-item";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
 import { useCalendarConfig } from "./calendar-provider";
 import { TimeGridEventDraft } from "./event-draft";
+import {
+  FreeTimeBlock,
+  PersonEventItem,
+  getDayFreeTimes,
+} from "./week-view-people";
 import type {
   CalendarEvent,
   EventDragState,
   EventItemPopoverProps,
   EventResizeState,
   PositionedEvent,
+  TimeSpan,
   WeekViewGridProps,
 } from "./week-view-types";
 
@@ -51,6 +57,8 @@ export function WeekViewGrid({
   onEventPopoverExpand,
   onEventPopoverClose,
   highlightedDate,
+  personEvents,
+  freeTimes,
   visibleStartIndex = 0,
   visibleCount,
   className,
@@ -219,6 +227,10 @@ export function WeekViewGrid({
             config,
             rightGap,
           );
+          // Other people's events sit behind yours, laid out among themselves
+          const positionedPersonEvents = personEvents?.length
+            ? calculatePositionedEvents(personEvents, day, config, 0)
+            : undefined;
 
           return (
             <DayEventsColumn
@@ -227,6 +239,12 @@ export function WeekViewGrid({
               label={formatFullDate(day.date, config.locale)}
               isOnScreen={isOnScreen}
               events={positionedEvents}
+              personEvents={positionedPersonEvents}
+              freeTimes={
+                freeTimes?.length
+                  ? getDayFreeTimes(freeTimes, day.date)
+                  : undefined
+              }
               hourHeight={hourHeight}
               onEventClick={onEventClick}
               selectedEventId={selectedEventId}
@@ -570,6 +588,10 @@ interface DayEventsColumnProps extends EventItemPopoverProps {
    */
   isOnScreen: boolean;
   events: ReturnType<typeof calculatePositionedEvents>;
+  /** Other people's events on this day, drawn behind yours */
+  personEvents?: PositionedEvent[];
+  /** Free time everyone shares on this day, drawn under the events */
+  freeTimes?: TimeSpan[];
   hourHeight: number;
   onEventClick?: (event: CalendarEvent) => void;
   selectedEventId?: string;
@@ -612,6 +634,8 @@ function DayEventsColumn({
   label,
   isOnScreen,
   events,
+  personEvents,
+  freeTimes,
   hourHeight,
   onEventClick,
   selectedEventId,
@@ -638,6 +662,20 @@ function DayEventsColumn({
       onPointerMove={(e) => onColumnPointerMove?.(e, columnDate)}
       onClick={(e) => onColumnClick?.(e, columnDate)}
     >
+      {freeTimes?.map((span) => (
+        <FreeTimeBlock
+          key={span.start.toISOString()}
+          span={span}
+          hourHeight={hourHeight}
+        />
+      ))}
+      {personEvents?.map((positionedEvent) => (
+        <PersonEventItem
+          key={positionedEvent.event.id}
+          positionedEvent={positionedEvent}
+          hourHeight={hourHeight}
+        />
+      ))}
       {events.map((positionedEvent) => {
         const eventId = positionedEvent.event.id;
         const isBeingDragged =
