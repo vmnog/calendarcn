@@ -259,6 +259,38 @@ body:has(#nd-notebook-layout)
   }
 }
 
+/*
+ * Page actions under the description ("Copy Markdown" and the "Open" menu):
+ * the header buttons' ring, focus ring and press feedback.
+ */
+body:has(#nd-notebook-layout) .docs-page-action {
+  border-color: transparent;
+  box-shadow: var(--shadow-border);
+  transition-property: color, background-color, box-shadow, scale;
+  transition-duration: 150ms;
+  transition-timing-function: ease-out;
+}
+
+body:has(#nd-notebook-layout) .docs-page-action:hover {
+  box-shadow: var(--shadow-border-hover);
+}
+
+body:has(#nd-notebook-layout) .docs-page-action:focus-visible {
+  box-shadow:
+    var(--shadow-border),
+    0 0 0 2px var(--color-fd-ring);
+}
+
+body:has(#nd-notebook-layout) .docs-page-action:active {
+  scale: 0.96;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(#nd-notebook-layout) .docs-page-action:active {
+    scale: none;
+  }
+}
+
 /* Icons beside regular-weight labels use a 1.5px stroke to match the text. */
 body:has(#nd-notebook-layout) :is(button[data-search-full], #toc-title) > svg {
   stroke-width: 1.5;

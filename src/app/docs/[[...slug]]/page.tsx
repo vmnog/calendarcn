@@ -5,18 +5,26 @@ import {
   DocsDescription,
   DocsPage,
   DocsTitle,
+  MarkdownCopyButton,
+  ViewOptionsPopover,
 } from "fumadocs-ui/layouts/notebook/page";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 
 import { DocsEyebrow } from "@/components/docs/docs-eyebrow";
+import { InstallTabs } from "@/components/docs/install-tabs";
+import type { InstallTabsProps } from "@/components/docs/install-tabs";
 import { getMDXComponents } from "@/components/docs/mdx-components";
-import { source } from "@/lib/source";
+import { SITE_URL, getMarkdownPath, source } from "@/lib/source";
 
 /** Social preview image, the same one the root layout uses (served from `public/`). */
 const OG_IMAGE = "/og-image.png";
 
 /** X/Twitter handle credited on shared docs links. */
 const TWITTER_HANDLE = "@mevmnog";
+
+/** Folder of the pages' MDX files on GitHub, for the Open menu's "Open in GitHub". */
+const CONTENT_URL =
+  "https://github.com/vmnog/calendarcn/blob/main/content/docs";
 
 interface DocsPageProps {
   params: Promise<{ slug?: string[] }>;
@@ -30,6 +38,7 @@ export default async function Page({ params }: DocsPageProps) {
   }
 
   const MDX = page.data.body;
+  const markdownPath = getMarkdownPath(page);
 
   return (
     <DocsPage
@@ -41,13 +50,31 @@ export default async function Page({ params }: DocsPageProps) {
       <DocsTitle className="text-[2rem] leading-[1.1] font-bold tracking-[-0.03em] text-balance sm:text-[2.5rem]">
         {page.data.title}
       </DocsTitle>
-      <DocsDescription className="max-w-[64ch] leading-[1.55] text-pretty">
+      <DocsDescription className="mb-4 max-w-[64ch] leading-[1.55] text-pretty">
         {page.data.description}
       </DocsDescription>
+      {/* The page for an AI assistant: its Markdown to paste, or opened in one */}
+      <div className="not-prose mb-8 flex flex-wrap items-center gap-2">
+        <MarkdownCopyButton
+          markdownUrl={markdownPath}
+          className="docs-page-action"
+        />
+        <ViewOptionsPopover
+          markdownUrl={markdownPath}
+          githubUrl={`${CONTENT_URL}/${page.path}`}
+          // Assistants read the Markdown, on the live site whatever host this is
+          pageUrl={`${SITE_URL}${markdownPath}`}
+          className="docs-page-action"
+        />
+      </div>
       <DocsBody>
         <MDX
           components={getMDXComponents({
             a: createRelativeLink(source, page),
+            // The Prompt tab sends an assistant to the page the tabs are on
+            InstallTabs: (props: InstallTabsProps) => (
+              <InstallTabs {...props} docsUrl={`${SITE_URL}${markdownPath}`} />
+            ),
           })}
         />
       </DocsBody>
@@ -77,7 +104,11 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: { canonical: page.url },
+    alternates: {
+      canonical: page.url,
+      // Tells an assistant reading the page where its Markdown is
+      types: { "text/markdown": getMarkdownPath(page) },
+    },
     openGraph: {
       type: "article",
       siteName: "CalendarCN",
