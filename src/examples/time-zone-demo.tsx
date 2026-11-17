@@ -93,6 +93,8 @@ export function TimeZoneDemo() {
             // Owned by the calendar, so the time zone labels can change them
             defaultTimeZone={TIME_ZONE}
             defaultSecondaryTimeZones={SECOND_TIME_ZONES}
+            // The week number beside the title follows the zone's week too
+            defaultViewSettings={{ showWeekNumbers: true }}
             // Other examples share this page: leave the keys to it
             shortcuts={false}
           />

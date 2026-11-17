@@ -134,9 +134,10 @@ interface CommandMenuProps {
 
 /**
  * The live demo's ⌘K menu. Creating an event, going to a date, today,
- * previous and next, the views and the time zones come from `useCalendar()`,
- * so it goes inside `CalendarProvider`. Commands that belong to your app
- * (panels, search, shortcuts, theme, .ics files) show only when you pass
+ * previous and next, the views, the view settings and the time zones come
+ * from `useCalendar()`, so it goes inside `CalendarProvider`. A time zone
+ * command lists the zones in the menu's place. Commands that belong to your
+ * app (panels, search, shortcuts, theme, .ics files) show only when you pass
  * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
  *
  * "Go to date..." turns the field into a date field, as in Notion Calendar:
@@ -166,6 +167,10 @@ export function CommandMenu({
     goToPrev,
     goToNext,
     switchView,
+    viewSettings,
+    toggleWeekends,
+    toggleDeclinedEvents,
+    toggleWeekNumbers,
     navigateToDate,
     addEventAtNextSlot,
     timeZones,
@@ -400,9 +405,24 @@ export function CommandMenu({
         { label: "Default hour size", soon: true },
         { label: "Zoom hours in", soon: true },
         { label: "Zoom hours out", soon: true },
-        { label: "Hide weekends", soon: true },
-        { label: "Hide declined events", soon: true },
-        { label: "Hide week numbers", soon: true },
+        // Each says what it will do, as Notion Calendar's do
+        {
+          label: viewSettings.showWeekends ? "Hide weekends" : "Show weekends",
+          keys: ["shift", "⌘", "E"],
+          run: toggleWeekends,
+        },
+        {
+          label: viewSettings.showDeclinedEvents
+            ? "Hide declined events"
+            : "Show declined events",
+          run: toggleDeclinedEvents,
+        },
+        {
+          label: viewSettings.showWeekNumbers
+            ? "Hide week numbers"
+            : "Show week numbers",
+          run: toggleWeekNumbers,
+        },
       ],
     },
     {

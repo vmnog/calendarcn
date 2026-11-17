@@ -23,11 +23,13 @@ import {
 } from "./calendar-people";
 import {
   AGENDA_DAYS,
+  addShownDays,
   describeEventChange,
   describeEventCreated,
   describeEventTime,
   getCalendarHeaderInfo,
   getEventChangeSummary,
+  getFirstShownDay,
   getNextSlotDay,
   getNextSlotEventRange,
   getSpokenTitle,
@@ -35,6 +37,8 @@ import {
   getVisibleDays,
   getVisibleRange,
   getWeekViewStepDays,
+  isDeclinedByViewer,
+  stepsByDay,
 } from "@/lib/event-utils";
 import {
   EMPTY_EVENT_HISTORY,
@@ -212,6 +216,8 @@ interface AdoptedViewDateOptions {
   pendingSwitch: ViewSwitchSnapshot | null;
   /** Whether the provider still shows its untouched starting date (today's period) */
   isOnStartingToday: boolean;
+  /** Whether weekends are shown: day views land on a weekday while they're not */
+  showWeekends: boolean;
   /** Now, on the calendar's clock */
   now: Date;
 }
@@ -455,19 +461,25 @@ function resolveSeriesScope(
 /**
  * Moves `date` by `amount` periods of the given view: days, months, years, the
  * agenda's `AGENDA_DAYS`, or the week view's step (`numberOfDays` below a
- * week, a week otherwise)
+ * week, a week otherwise). With weekends hidden, the day steps count
+ * weekdays: the day after Friday is Monday.
  */
 function shiftPeriod(
   date: Date,
   view: ViewType,
   amount: number,
   numberOfDays: number,
+  showWeekends: boolean,
 ): Date {
-  if (view === "day") return addDays(date, amount);
+  if (view === "day") return addShownDays(date, amount, showWeekends);
   if (view === "month") return addMonths(date, amount);
   if (view === "year") return addYears(date, amount);
   if (view === "agenda") return addDays(date, amount * AGENDA_DAYS);
-  return addDays(date, amount * getWeekViewStepDays(numberOfDays));
+  const step = getWeekViewStepDays(numberOfDays);
+  if (stepsByDay(view, numberOfDays)) {
+    return addShownDays(date, amount * step, showWeekends);
+  }
+  return addDays(date, amount * step);
 }
 
 /**
@@ -480,8 +492,9 @@ function getAgendaStartFrom(
   view: ViewType,
   numberOfDays: number,
   now: Date,
+  showWeekends: boolean,
 ): Date {
-  const periodEnd = shiftPeriod(date, view, 1, numberOfDays);
+  const periodEnd = shiftPeriod(date, view, 1, numberOfDays, showWeekends);
   if (now >= date && now < periodEnd) return startOfDay(now);
   return startOfDay(date);
 }
@@ -550,6 +563,7 @@ function getAdoptedViewDate({
   weekStartsOn,
   pendingSwitch,
   isOnStartingToday,
+  showWeekends,
   now,
 }: AdoptedViewDateOptions): Date {
   // The mounted view didn't follow the latest switch: undo it, date included
@@ -562,11 +576,17 @@ function getAdoptedViewDate({
   // Still on the starting date picked before any view mounted: today's
   // period of the mounted view instead (today for a day view)
   if (isOnStartingToday) {
-    return getPeriodStart(now, view, weekStartsOn, numberOfDays);
+    return getPeriodStart(now, view, weekStartsOn, numberOfDays, showWeekends);
   }
   // The app swapped in a view of another type: land like switchView
-  if (view === "day") return startOfDay(now);
-  return getPeriodStart(currentDate, view, weekStartsOn, numberOfDays);
+  if (view === "day") return getFirstShownDay(startOfDay(now), showWeekends);
+  return getPeriodStart(
+    currentDate,
+    view,
+    weekStartsOn,
+    numberOfDays,
+    showWeekends,
+  );
 }
 
 /**
@@ -659,6 +679,8 @@ export function CalendarProvider<TEvent extends CalendarEvent = CalendarEvent>(
         props.numberOfDays ??
           props.defaultNumberOfDays ??
           DEFAULT_NUMBER_OF_DAYS,
+        props.defaultViewSettings?.showWeekends ??
+          DEFAULT_VIEW_SETTINGS.showWeekends,
       )
     : null;
   const initialDate = props.defaultDate ?? todayPeriodStart ?? props.date;
@@ -814,7 +836,12 @@ function CalendarStateProvider({
   const [visibleDays, setVisibleDays] = React.useState<Date[]>(() =>
     hasNoVisibleDays(view)
       ? []
-      : getVisibleDays(currentDate, view, numberOfDays),
+      : getVisibleDays(
+          currentDate,
+          view,
+          numberOfDays,
+          viewSettings.showWeekends,
+        ),
   );
   /** ID of a just-created event whose title input should be focused once */
   const [titleFocusEventId, setTitleFocusEventId] = React.useState<
@@ -1602,6 +1629,7 @@ function CalendarStateProvider({
     return { ...shownNotice.notice, onUndo: undo };
   }, [shownNotice, canUndo, undo]);
 
+  const { showWeekends, showDeclinedEvents } = viewSettings;
   const changeTimeZones = React.useCallback(
     (change: (zones: CalendarTimeZones) => CalendarTimeZones) => {
       // The change works on real zones: the viewer's stands in for unset
@@ -1645,21 +1673,39 @@ function CalendarStateProvider({
         view,
         weekStartsOn,
         numberOfDays,
+        showWeekends,
       ),
     );
-  }, [view, weekStartsOn, numberOfDays, setCurrentDate, displayTimeZone]);
+  }, [
+    view,
+    weekStartsOn,
+    numberOfDays,
+    showWeekends,
+    setCurrentDate,
+    displayTimeZone,
+  ]);
 
   const goToPrev = React.useCallback(() => {
-    setCurrentDate((prev) => shiftPeriod(prev, view, -1, numberOfDays));
-  }, [view, numberOfDays, setCurrentDate]);
+    setCurrentDate((prev) =>
+      shiftPeriod(prev, view, -1, numberOfDays, showWeekends),
+    );
+  }, [view, numberOfDays, showWeekends, setCurrentDate]);
 
   const goToNext = React.useCallback(() => {
-    setCurrentDate((prev) => shiftPeriod(prev, view, 1, numberOfDays));
-  }, [view, numberOfDays, setCurrentDate]);
+    setCurrentDate((prev) =>
+      shiftPeriod(prev, view, 1, numberOfDays, showWeekends),
+    );
+  }, [view, numberOfDays, showWeekends, setCurrentDate]);
 
+  // A day view never lands on a hidden weekend: a Saturday shows Monday
   const goToDate = React.useCallback(
-    (date: Date) => setCurrentDate(date),
-    [setCurrentDate],
+    (date: Date) =>
+      setCurrentDate(
+        stepsByDay(view, numberOfDays)
+          ? getFirstShownDay(date, showWeekends)
+          : date,
+      ),
+    [view, numberOfDays, showWeekends, setCurrentDate],
   );
 
   // Series math runs on the stored instants; the arrows get the
@@ -1705,7 +1751,13 @@ function CalendarStateProvider({
       // Month view starts on the week of the 1st, so the month is the one shown
       const periodDate = view === "month" ? startOfMonth(start) : start;
       setCurrentDate(
-        getPeriodStart(periodDate, view, weekStartsOn, numberOfDays),
+        getPeriodStart(
+          periodDate,
+          view,
+          weekStartsOn,
+          numberOfDays,
+          showWeekends,
+        ),
       );
     },
     [
@@ -1716,6 +1768,7 @@ function CalendarStateProvider({
       visibleDays,
       weekStartsOn,
       numberOfDays,
+      showWeekends,
       setCurrentDate,
     ],
   );
@@ -1740,7 +1793,12 @@ function CalendarStateProvider({
       pendingSwitchRef.current = { view, numberOfDays, date: currentDate };
       setView(newView);
       if (newView === "day") {
-        setCurrentDate(startOfDay(getZonedNow(displayTimeZone)));
+        setCurrentDate(
+          getFirstShownDay(
+            startOfDay(getZonedNow(displayTimeZone)),
+            showWeekends,
+          ),
+        );
         return;
       }
       if (newView === "agenda") {
@@ -1750,6 +1808,7 @@ function CalendarStateProvider({
             view,
             numberOfDays,
             getZonedNow(displayTimeZone),
+            showWeekends,
           ),
         );
         return;
@@ -1769,6 +1828,7 @@ function CalendarStateProvider({
           newView,
           weekStartsOn,
           numberOfDays,
+          showWeekends,
         ),
       );
     },
@@ -1777,6 +1837,7 @@ function CalendarStateProvider({
       currentDate,
       weekStartsOn,
       numberOfDays,
+      showWeekends,
       headerYear,
       setView,
       setCurrentDate,
@@ -1793,7 +1854,13 @@ function CalendarStateProvider({
       if (view !== "week") return;
       // Going back to a full week starts on the week's first day again
       setCurrentDate((prev) => {
-        const next = getPeriodStart(prev, "week", weekStartsOn, count);
+        const next = getPeriodStart(
+          prev,
+          "week",
+          weekStartsOn,
+          count,
+          showWeekends,
+        );
         return next.getTime() === prev.getTime() ? prev : next;
       });
     },
@@ -1802,6 +1869,7 @@ function CalendarStateProvider({
       numberOfDays,
       currentDate,
       weekStartsOn,
+      showWeekends,
       setNumberOfDays,
       setCurrentDate,
     ],
@@ -1813,10 +1881,20 @@ function CalendarStateProvider({
         pendingSwitchRef.current = { view, numberOfDays, date: currentDate };
       }
       setView("week");
-      setCurrentDate(getPeriodStart(date, "week", weekStartsOn, numberOfDays));
+      setCurrentDate(
+        getPeriodStart(date, "week", weekStartsOn, numberOfDays, showWeekends),
+      );
       setHighlightedDate(date);
     },
-    [view, currentDate, weekStartsOn, numberOfDays, setView, setCurrentDate],
+    [
+      view,
+      currentDate,
+      weekStartsOn,
+      numberOfDays,
+      showWeekends,
+      setView,
+      setCurrentDate,
+    ],
   );
 
   const reportView = React.useCallback(
@@ -1852,6 +1930,7 @@ function CalendarStateProvider({
         pendingSwitch,
         isOnStartingToday:
           startsOnToday && currentDate.getTime() === initialTime,
+        showWeekends,
         now: getZonedNow(displayTimeZone),
       });
       setView(nextView);
@@ -1864,7 +1943,7 @@ function CalendarStateProvider({
       setVisibleDays(
         hasNoVisibleDays(nextView)
           ? []
-          : getVisibleDays(nextDate, nextView, nextNumberOfDays),
+          : getVisibleDays(nextDate, nextView, nextNumberOfDays, showWeekends),
       );
     },
     [
@@ -1877,6 +1956,7 @@ function CalendarStateProvider({
       startsOnToday,
       initialTime,
       weekStartsOn,
+      showWeekends,
       setView,
       setNumberOfDays,
       setCurrentDate,
@@ -1886,14 +1966,28 @@ function CalendarStateProvider({
 
   const toggleWeekends = React.useCallback(() => {
     setViewSettings((prev) => ({ ...prev, showWeekends: !prev.showWeekends }));
-  }, []);
+    // Hiding them: a day view on a Saturday or Sunday moves to Monday
+    if (!showWeekends || !stepsByDay(view, numberOfDays)) return;
+    setCurrentDate((prev) => {
+      const next = getFirstShownDay(prev, false);
+      return next.getTime() === prev.getTime() ? prev : next;
+    });
+  }, [showWeekends, view, numberOfDays, setCurrentDate]);
 
   const toggleDeclinedEvents = React.useCallback(() => {
     setViewSettings((prev) => ({
       ...prev,
       showDeclinedEvents: !prev.showDeclinedEvents,
     }));
-  }, []);
+    // Hiding them: a declined event that is selected leaves the screen
+    if (
+      showDeclinedEvents &&
+      selectedEvent &&
+      isDeclinedByViewer(selectedEvent)
+    ) {
+      setSelectedEventId(null);
+    }
+  }, [showDeclinedEvents, selectedEvent]);
 
   const toggleWeekNumbers = React.useCallback(() => {
     setViewSettings((prev) => ({
@@ -1959,10 +2053,13 @@ function CalendarStateProvider({
   // after `showDay`
   const navigateToDate = React.useCallback(
     (date: Date) => {
-      setCurrentDate(getPeriodStart(date, view, weekStartsOn, numberOfDays));
+      // A hidden weekend day lands on the Monday after, as goToDate does
+      setCurrentDate(
+        getPeriodStart(date, view, weekStartsOn, numberOfDays, showWeekends),
+      );
       setHighlightedDate(startOfDay(date));
     },
-    [view, weekStartsOn, numberOfDays, setCurrentDate],
+    [view, weekStartsOn, numberOfDays, showWeekends, setCurrentDate],
   );
 
   // Notion Calendar's C: the day just gone to, else today, else the first

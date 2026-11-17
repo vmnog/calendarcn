@@ -97,3 +97,31 @@ test("the app keys run the panels, the theme and the command menu", async ({
     page.getByRole("button", { name: "Agenda", exact: true }),
   ).toBeVisible();
 });
+
+test("the view settings hide the weekend and the week number", async ({
+  page,
+}) => {
+  const saturday = page
+    .getByRole("main")
+    .getByRole("group", { name: "Saturday, June 6", exact: true });
+  await expect(saturday).toBeInViewport();
+
+  /** Toggles a view setting. Base UI keeps the menu open after a check */
+  const toggleSetting = async (name: RegExp) => {
+    await page.getByRole("button", { name: "Week", exact: true }).click();
+    await page.getByRole("menuitem", { name: "View settings" }).click();
+    await page.getByRole("menuitemcheckbox", { name }).click();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+  };
+
+  await toggleSetting(/^Weekends/);
+  await expect(saturday).toHaveCount(0);
+  await expect(
+    page.getByRole("main").getByRole("group", { name: "Friday, June 5" }),
+  ).toBeInViewport();
+
+  await toggleSetting(/^Week numbers/);
+  await expect(title(page)).toHaveAccessibleName("June 2026");
+});

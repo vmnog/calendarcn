@@ -1910,6 +1910,39 @@ function demoEvents(rel: RelativeDate): DetailedCalendarEvent[] {
         calendarEmail: "me@vmnog.com",
       },
     ),
+    // The viewer declined this one: struck through, or hidden with the
+    // "Declined events" setting off
+    ev(
+      "declined-vendor-demo",
+      "Vendor Demo",
+      rel(3, 13),
+      rel(3, 14),
+      "blue",
+      "Work",
+      {
+        description: "Walkthrough of the analytics vendor's new dashboard",
+        participants: [
+          {
+            name: "Morgan Diaz",
+            email: "morgan.diaz@example.com",
+            response: "accepted",
+            organizer: true,
+          },
+          {
+            name: "Jamie Chen",
+            email: "jamie.chen@example.com",
+            response: "accepted",
+          },
+          { email: DEMO_WORK_ACCOUNT, response: "declined", self: true },
+        ],
+        conference: {
+          provider: "zoom",
+          url: "https://example.com/zoom/123-456-789",
+          meetingId: "123 456 789",
+        },
+        calendarEmail: DEMO_WORK_ACCOUNT,
+      },
+    ),
     ev(
       "may26",
       "Architecture Review",

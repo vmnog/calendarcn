@@ -87,6 +87,7 @@ export function CalendarSidebar({
     visibleDays,
     weekStartsOn,
     numberOfDays,
+    viewSettings,
     goToDate,
   } = useCalendar();
 
@@ -117,6 +118,7 @@ export function CalendarSidebar({
                   : visibleDays
               }
               weekStartsOn={weekStartsOn}
+              showWeekNumber={viewSettings.showWeekNumbers}
             />
           </SidebarGroupContent>
         </SidebarGroup>

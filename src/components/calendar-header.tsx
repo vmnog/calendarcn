@@ -21,7 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ViewDropdown } from "@/components/view-dropdown";
-import { AGENDA_DAYS } from "@/lib/event-utils";
+import { AGENDA_DAYS, getFirstShownDay } from "@/lib/event-utils";
 
 import type { ViewType } from "@/components/calendar-types";
 
@@ -148,17 +148,25 @@ interface CalendarPeriodLabelProps {
 
 /**
  * The period on screen, for beside the title: the day ("Thursday, Jun 4"),
- * the week number ("Week 23") or the agenda's range. Empty in month and year view,
- * where the title already says it.
+ * or the agenda's range. While week numbers are on, day and week view add
+ * the week's number ("Week 23"), as Notion Calendar shows it beside the
+ * title. Empty in month and year view, where the title already says it.
  */
 export function CalendarPeriodLabel({ className }: CalendarPeriodLabelProps) {
-  const { view, currentDate, weekNumber } = useCalendar();
+  const { view, currentDate, weekNumber, viewSettings } = useCalendar();
   const { locale } = useCalendarConfig();
+  // The day on screen: with weekends hidden, a Saturday's date shows Monday
+  const day = getFirstShownDay(currentDate, viewSettings.showWeekends);
+  const showWeekNumber =
+    viewSettings.showWeekNumbers && (view === "day" || view === "week");
 
   return (
     <span className={className}>
-      {view === "day" && format(currentDate, "EEEE, MMM d", { locale })}
-      {view === "week" && `Week ${weekNumber}`}
+      {view === "day" && format(day, "EEEE, MMM d", { locale })}
+      {view === "day" && showWeekNumber && " "}
+      {showWeekNumber && (
+        <span className={cn(view === "day" && "ml-1")}>Week {weekNumber}</span>
+      )}
       {view === "agenda" &&
         `${format(currentDate, "MMM d", { locale })} – ${format(addDays(currentDate, AGENDA_DAYS - 1), "MMM d", { locale })}`}
     </span>

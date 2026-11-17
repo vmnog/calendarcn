@@ -51,6 +51,8 @@ interface MiniCalendarProps {
   onDateSelect?: (date: Date) => void;
   /** First day of the week, 0 (Sunday) to 6. Defaults to Sunday */
   weekStartsOn?: WeekStartsOn;
+  /** Whether week numbers show beside the weeks. Defaults to true */
+  showWeekNumber?: boolean;
   className?: string;
 }
 
@@ -80,6 +82,7 @@ export function MiniCalendar({
   visibleDays,
   onDateSelect,
   weekStartsOn = 0,
+  showWeekNumber = true,
   className,
 }: MiniCalendarProps) {
   const { timeZone } = useCalendarConfig();
@@ -144,7 +147,7 @@ export function MiniCalendar({
       }}
       weekStartsOn={weekStartsOn}
       showOutsideDays
-      showWeekNumber
+      showWeekNumber={showWeekNumber}
       fixedWeeks
       captionLayout="label"
       modifiers={modifiers}

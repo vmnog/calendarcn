@@ -24,6 +24,7 @@ import { useVerticalScroll } from "@/hooks/use-vertical-scroll";
 import { useEventKeyboard } from "@/hooks/use-event-keyboard";
 import {
   MONTH_VIEW_ROWS,
+  filterDeclinedEvents,
   generateConsecutiveWeeks,
   generateWeekRow,
   parseCellDate,
@@ -99,7 +100,7 @@ export function MonthView({
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   const selectedEventId = selectedEvent?.id;
-  const { showWeekends, showWeekNumbers } = viewSettings;
+  const { showWeekends, showWeekNumbers, showDeclinedEvents } = viewSettings;
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
@@ -307,17 +308,28 @@ export function MonthView({
     1,
   ).getTime();
   const { previewEvents } = useCalendarSeriesScope();
+  // A change to a repeating event's date that waits shows on that date, and
+  // the events the viewer declined only while they're shown
   const expandedEvents = useMemo(
     () =>
-      // A change to a repeating event's date that waits shows on that date
-      previewEvents(
-        expandRecurringEvents(
-          events,
-          { start: new Date(rangeStartTime), end: new Date(rangeEndTime) },
-          timeZone,
+      filterDeclinedEvents(
+        previewEvents(
+          expandRecurringEvents(
+            events,
+            { start: new Date(rangeStartTime), end: new Date(rangeEndTime) },
+            timeZone,
+          ),
         ),
+        showDeclinedEvents,
       ),
-    [events, rangeStartTime, rangeEndTime, timeZone, previewEvents],
+    [
+      events,
+      rangeStartTime,
+      rangeEndTime,
+      timeZone,
+      previewEvents,
+      showDeclinedEvents,
+    ],
   );
 
   // Base offset hides the top buffer; scrollOffset + slideOffset shift within

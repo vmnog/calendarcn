@@ -7,7 +7,7 @@ description: The left sidebar of the demo, with the mini calendar, scheduling, "
 
 Calendar Sidebar is the left column of the [live demo](/), modeled on Notion Calendar's: the [Mini Calendar](/docs/components/mini-calendar), a scheduling row and a "Meet with..." field, the [Calendar List](/docs/components/calendar-list), "Add calendar account", and a footer with the [Theme Toggle](/docs/components/theme-toggle). On wide screens it's a fixed column that pushes the page over; on phones it opens as a sheet from the left ([Sidebar Overlay](/docs/components/sidebar-overlay)).
 
-It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves and picking a day goes there. The "Meet with..." field meets with the provider's `contacts` (see [Meeting with people](#meeting-with-people)). The scheduling row and "Add calendar account" aren't built yet: they're disabled and marked "Soon" (see the [roadmap](/docs/roadmap)). The file is yours, so wire them up there.
+It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves, numbers its weeks while the provider's week numbers are on, and picking a day goes there (with weekends hidden, a Saturday or Sunday opens the Monday after it in day view). The "Meet with..." field meets with the provider's `contacts` (see [Meeting with people](#meeting-with-people)). The scheduling row and "Add calendar account" aren't built yet: they're disabled and marked "Soon" (see the [roadmap](/docs/roadmap)). The file is yours, so wire them up there.
 
 ## Installation
 
