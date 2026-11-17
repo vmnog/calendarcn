@@ -41,6 +41,8 @@ src/
     ├── timezone-label.ts # Short time zone labels ("GMT-3 Sao Paulo")
     ├── mock-events.ts    # Sample data
     ├── time-input.ts     # Time menu options, typed times and durations, date parsing
+    ├── date-query.ts     # Go to date: typed dates ("next friday", "dec 25") to a day
+    ├── keyboard-shortcuts.ts # The full shortcut list: every key, grouped as Notion Calendar's
     └── utils.ts          # cn() helper
 ```
 

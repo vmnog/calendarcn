@@ -1350,4 +1350,42 @@ export interface CalendarContextValue<
   toggleWeekNumbers: () => void;
   /** Opens the week containing `date` and briefly highlights that day */
   showDay: (date: Date) => void;
+  /**
+   * Shows the period that contains `date` in the current view, as Go to
+   * date does, and briefly highlights that day in the day and week views
+   */
+  navigateToDate: (date: Date) => void;
+  /**
+   * Creates an event at the next half hour, as Notion Calendar's C key and
+   * "Create event..." do: today when it's on screen, else the day last
+   * highlighted, else the first day shown. One hour long (cut at the end of
+   * the visible hours), through `createEvent`, selected with its title
+   * focused. Undoable
+   */
+  addEventAtNextSlot: () => void;
+}
+
+/**
+ * A keyboard shortcut in a list of them, as the details sidebar's full
+ * shortcut list shows it
+ */
+export interface KeyboardShortcut {
+  /** What the keys do, e.g. "Go to today" */
+  label: string;
+  /** Keys pressed together, each shown as a key cap: ["⌘", "K"] */
+  keys: string[];
+  /** Other keys that do the same, each listed after "or": [["1"]] beside D */
+  alternativeKeys?: string[][];
+  /** More words the list's find field matches, besides the label and keys */
+  keywords?: string[];
+}
+
+/**
+ * A titled group of keyboard shortcuts. `sections` hold the ones that act on
+ * something, under a heading of their own ("With a selected event...")
+ */
+export interface KeyboardShortcutGroup {
+  heading: string;
+  shortcuts: KeyboardShortcut[];
+  sections?: KeyboardShortcutGroup[];
 }

@@ -23,6 +23,8 @@ import {
   describeEventCreated,
   describeEventTime,
   getCalendarHeaderInfo,
+  getNextSlotDay,
+  getNextSlotEventRange,
   getPeriodStart,
   getVisibleDays,
   getVisibleRange,
@@ -1490,6 +1492,46 @@ function CalendarStateProvider({
     displayTimeZone,
   ]);
 
+  // Go to date: the date's period in the current view, the day flashing as
+  // after `showDay`
+  const navigateToDate = React.useCallback(
+    (date: Date) => {
+      setCurrentDate(getPeriodStart(date, view, weekStartsOn, numberOfDays));
+      setHighlightedDate(startOfDay(date));
+    },
+    [view, weekStartsOn, numberOfDays, setCurrentDate],
+  );
+
+  // Notion Calendar's C: the day just gone to, else today, else the first
+  // day shown (month view: of the month it shows)
+  const addEventAtNextSlot = React.useCallback(() => {
+    // The slot and the visible days are on the calendar's clock
+    const now = getZonedNow(displayTimeZone);
+    const day = getNextSlotDay({
+      range: visibleRange,
+      today: startOfDay(now),
+      highlightedDate,
+      firstDay:
+        view === "month" && displayMonth ? displayMonth : visibleRange.start,
+    });
+    addEventFromRange(
+      getNextSlotEventRange(day, now, {
+        snapMinutes: Math.max(1, Math.round(snapMinutes)),
+        ...resolveDayHours(dayStartHour, dayEndHour),
+      }),
+    );
+  }, [
+    visibleRange,
+    view,
+    displayMonth,
+    highlightedDate,
+    addEventFromRange,
+    snapMinutes,
+    dayStartHour,
+    dayEndHour,
+    displayTimeZone,
+  ]);
+
   // Report each new range once. While the provider is still adopting the
   // mounted view (its first commit, or a switch the view is undoing), the
   // range belongs to a view that isn't on screen, so wait for the next one.
@@ -1566,6 +1608,8 @@ function CalendarStateProvider({
       redo,
       canUndo,
       canRedo,
+      navigateToDate,
+      addEventAtNextSlot,
     }),
     [
       displayEvents,
@@ -1614,6 +1658,8 @@ function CalendarStateProvider({
       redo,
       canUndo,
       canRedo,
+      navigateToDate,
+      addEventAtNextSlot,
     ],
   );
 

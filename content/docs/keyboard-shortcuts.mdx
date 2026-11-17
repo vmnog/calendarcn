@@ -14,6 +14,9 @@ They come from `useCalendarShortcuts()`, part of [Calendar Core](/docs/component
 | Go to today     | <Kbd>T</Kbd>                 |
 | Previous period | <Kbd>J</Kbd> or <Kbd>←</Kbd> |
 | Next period     | <Kbd>K</Kbd> or <Kbd>→</Kbd> |
+| Go to date      | <Kbd>.</Kbd>, in the app     |
+
+Go to date comes with the [command menu](/docs/components/command-menu), so it's an app shortcut (below). It reads what you type the way Notion Calendar does: "today", "tomorrow", a weekday ("friday", "next friday", "last monday"), "next week", "in 2 weeks", "3 days ago", a month and day in either order ("dec 25", "25 december", "December 25th, 2027"), a numeric date in your locale's order ("12/25", or "25/12" in en-GB) and "2027-12-25". A date without a year is the next one from today, and "next friday" is the Friday of next week, counting weeks from the calendar's `weekStartsOn`. Month and weekday names work in the calendar's `locale` and in English.
 
 ## Views
 
@@ -30,6 +33,7 @@ They come from `useCalendarShortcuts()`, part of [Calendar Core](/docs/component
 
 | Action                                    | Shortcut                                                                                                                                    |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create an event at the next half hour     | <Kbd>C</Kbd>                                                                                                                                |
 | Deselect event                            | <Kbd>Esc</Kbd>                                                                                                                              |
 | Travel back home, with no event selected  | <Kbd>Esc</Kbd>                                                                                                                              |
 | Delete the selected event                 | <Kbd>Delete</Kbd> or <Kbd>⌫</Kbd>                                                                                                           |
@@ -38,6 +42,11 @@ They come from `useCalendarShortcuts()`, part of [Calendar Core](/docs/component
 | Undo                                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup>                                                                                               |
 | Redo                                      | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup>                                                                                   |
 | Show or hide weekends                     | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>E</Kbd></KbdGroup>                                                                                   |
+
+<Kbd>C</Kbd> creates an hour-long event at the next half hour, as in Notion
+Calendar: on today when it's on screen, else on the day Go to date just went to,
+else on the first day shown. It selects the event and focuses its title, like a
+click on an empty slot.
 
 A paste goes where the mouse is: in day and week view the copy starts at the time slot under it, and in month view it lands on the day under it at its own time of day. With the mouse elsewhere it goes to the last spot it pointed at, while that is on screen, else to today, else to the first day on screen. All-day events stay all-day, and every paste is a new event. Undo covers creating, moving, resizing and editing events and every action above; see [Calendar Core](/docs/components/calendar-core#undo-and-redo).
 
@@ -56,6 +65,8 @@ The live demo ([Calendar App](/docs/components/calendar-app)) adds keys for the 
 | Toggle the context panel          | <Kbd>/</Kbd>                                  | `onToggleContextPanel` |
 | Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> | `onCycleTheme`         |
 | Settings                          | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> | `onOpenSettings`       |
+| Go to date                        | <Kbd>.</Kbd>                                  | `onGoToDate`           |
+| All keyboard shortcuts            | <Kbd>?</Kbd>                                  | `onShowShortcuts`      |
 | Travel to time zone               | <Kbd>Z</Kbd>                                  | `onTravelToTimeZone`   |
 
 ```tsx
@@ -64,8 +75,22 @@ useCalendarShortcuts({
   onToggleSidebar: toggleSidebar,
   onToggleContextPanel: toggleContextPanel,
   onCycleTheme: cycleTheme,
+  onGoToDate: openGoToDate,
+  onShowShortcuts: () => detailsSidebarActions.current?.showAllShortcuts(),
 });
 ```
+
+The live demo opens Go to date in the [Command Menu](/docs/components/command-menu#go-to-date) (`defaultPage="go-to-date"`), and the full list in the [Details Sidebar](/docs/components/details-sidebar#all-keyboard-shortcuts).
+
+## The full list
+
+<Kbd>?</Kbd> (or "Show keyboard shortcuts" in the command menu) shows every
+shortcut on this page in the live demo's details sidebar, grouped as Notion
+Calendar groups them: General, Workflows, Editing, Calendar view, Calendar
+navigation and App navigation. Type in its field to find one by name or by key (
+<Kbd>t</Kbd> finds "Go to today"), and press <Kbd>Esc</Kbd> to go back.
+
+The list is data, `KEYBOARD_SHORTCUT_GROUPS` in `lib/keyboard-shortcuts.ts` ([Calendar Core](/docs/components/calendar-core)), with each key in `SHORTCUTS`. The details sidebar's "Useful shortcuts" read their keys from it too. If you change a key in the hook, change it there, so the list stays true.
 
 On Windows and Linux, use <Kbd>Ctrl</Kbd> in place of <Kbd>⌘</Kbd>. The one exception is the sidebar toggle, which needs the <Kbd>⌘</Kbd> (Meta) key. <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> and <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> work from inside a text field too. The [Command Menu](/docs/components/command-menu) and the [Calendar Header](/docs/components/calendar-header) show these keys next to their commands and buttons.
 
@@ -95,4 +120,4 @@ Pass `shortcuts={false}` to the Calendar block, or `useCalendarShortcuts({ enabl
 
 ### Change them
 
-The hook is your code: the keys live in `handleShortcut()`, `handleEditShortcut()` and `handleAppShortcut()` in `hooks/use-calendar-shortcuts.ts`, so remap or remove them there. The app keys are checked before the calendar's, and one that runs stops the event from reaching later `keydown` listeners. To give your app another key the calendar also uses, handle it in a `keydown` listener added before the hook's and call `event.stopImmediatePropagation()`.
+The hook is your code: the keys live in `handleShortcut()`, `handleEditShortcut()` and `handleAppShortcut()` in `hooks/use-calendar-shortcuts.ts`, so remap or remove them there, and in `lib/keyboard-shortcuts.ts` for the list. The app keys are checked before the calendar's, and one that runs stops the event from reaching later `keydown` listeners. To give your app another key the calendar also uses, handle it in a `keydown` listener added before the hook's and call `event.stopImmediatePropagation()`.
