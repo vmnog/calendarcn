@@ -48,8 +48,13 @@ type EditShortcutActions = Pick<
   | "redo"
   | "canUndo"
   | "canRedo"
+  | "selectAllVisible"
 > & {
-  /** The selected event's id, or `null` when none (or a missing one) is selected */
+  /**
+   * The id the event keys act on: the selected event's, or the first of
+   * several selected (an action on one of them acts on them all). `null`
+   * when none (or a missing one) is selected
+   */
   selectedEventId: string | null;
   /** Whether a cut or copied event waits to be pasted */
   hasCopiedEvent: boolean;
@@ -111,6 +116,11 @@ function handleEditShortcut(
   }
   if (isCommand && !e.shiftKey && key === "v") {
     return actions.hasCopiedEvent && run(actions.pasteEvent);
+  }
+  // Notion Calendar's "Select all visible": outside a field, Cmd+A selects
+  // the events on screen rather than the page's text
+  if (isCommand && !e.shiftKey && key === "a") {
+    return run(actions.selectAllVisible);
   }
   if (!selectedEventId) return false;
   if (!isCommand && (e.key === "Delete" || e.key === "Backspace")) {
@@ -256,6 +266,8 @@ function handleShortcut(
  * - Cmd+X, Cmd+C, Cmd+D: cut, copy, duplicate the selected event; Cmd+V:
  *   paste it at the slot under the mouse (Ctrl on Windows and Linux)
  * - Cmd+Z / Shift+Cmd+Z: undo / redo
+ * - Cmd+A: select every event on screen ("Select all visible"); with
+ *   several selected, the event keys act on all of them
  * - Shift+Cmd+E (Ctrl on Windows and Linux): show or hide weekends
  *
  * Other presses with Cmd, Ctrl or Alt are left alone, and an event key with
@@ -290,6 +302,8 @@ export function useCalendarShortcuts({
     clearSelection,
     toggleWeekends,
     selectedEvent,
+    selectedEventIds,
+    selectAllVisible,
     deleteEvent,
     duplicateEvent,
     copyEvent,
@@ -301,7 +315,7 @@ export function useCalendarShortcuts({
     canRedo,
   } = useCalendar();
   const eventActions = useCalendarEventActions();
-  const selectedEventId = selectedEvent?.id ?? null;
+  const selectedEventId = selectedEvent?.id ?? selectedEventIds[0] ?? null;
   const hasCopiedEvent = eventActions?.hasCopiedEvent ?? false;
 
   /** Latest actions, read by the window listener */
@@ -324,6 +338,7 @@ export function useCalendarShortcuts({
     redo,
     canUndo,
     canRedo,
+    selectAllVisible,
     onToggleCommandMenu,
     onToggleSidebar,
     onToggleContextPanel,
@@ -351,6 +366,7 @@ export function useCalendarShortcuts({
       redo,
       canUndo,
       canRedo,
+      selectAllVisible,
       onToggleCommandMenu,
       onToggleSidebar,
       onToggleContextPanel,
@@ -376,6 +392,7 @@ export function useCalendarShortcuts({
     redo,
     canUndo,
     canRedo,
+    selectAllVisible,
     onToggleCommandMenu,
     onToggleSidebar,
     onToggleContextPanel,

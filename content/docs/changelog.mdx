@@ -11,6 +11,12 @@ Entries marked **Breaking** can stop your code from compiling or change what it 
 
 Live in the registry, but not in a tagged release yet.
 
+### November 17, 2026
+
+- **Added** `calendar-core`, `event-details`, `time-grid`, `month-view`, `agenda-view`, `command-menu`: selecting several events, as in Notion Calendar. Shift- or <Kbd>⌘</Kbd>-click adds an event to the selection (and takes a selected one out), and <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup> or the command menu's "Select all visible" selects every event on screen. Delete, cut, copy, paste and duplicate on one of them act on them all, each as one undo step, with Notion's toasts ("2 events deleted", "2 events cut", "2 events copied to clipboard"); dragging one, or <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>, moves them all. `useCalendar()` adds `selectedEventIds`, `setSelectedEventIds`, `toggleEventSelection` and `selectAllVisible`, and `useIsEventInSelection()` is new in `calendar-core`, with the helpers in `@/lib/event-selection`. See [Calendar Core](/docs/components/calendar-core#selecting-several-events). [#TBD]
+  - **Breaking:** `useCalendarShortcuts()` now handles <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup> outside text fields, so it no longer selects the page's text there. If your app uses it, handle it in a `keydown` listener added before the hook's and call `event.stopImmediatePropagation()`.
+  - **Breaking:** while several events are selected, `selectedEventId` and `selectedEvent` are `null`. An object you type as `CalendarContextValue` yourself, like a test mock, needs the four new members.
+
 ### November 16, 2026
 
 - **Added** `calendar-core`, `event-details`, `time-grid`, `month-view`, `details-sidebar`, `calendar-app`: delete, duplicate, cut, copy and paste events from the right-click menu, the details' "..." menu and the keyboard (<Kbd>Delete</Kbd>, <KbdGroup><Kbd>⌘</Kbd><Kbd>X</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>C</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>D</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>V</Kbd></KbdGroup>), and undo or redo every change with <KbdGroup><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup> and <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup>. `useCalendar()` adds `deleteEvent`, `duplicateEvent`, `copyEvent`, `cutEvent`, `pasteEvent`, `undo`, `redo`, `canUndo` and `canRedo`, `CalendarProvider` adds `onEventDelete`, and `EventDetailPanel` adds `onCut`, `onCopy`, `onDuplicate` and `onDelete`. [#78](https://github.com/vmnog/calendarcn/pull/78)

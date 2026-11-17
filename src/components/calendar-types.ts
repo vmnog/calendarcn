@@ -1155,8 +1155,18 @@ export interface CalendarContextValue<
   visibleRange: VisibleRange;
   /** Whether the provider's `loading` prop is set */
   loading: boolean;
-  /** ID of the selected event, or `null` */
+  /**
+   * ID of the selected event, or `null`. Also `null` while several events
+   * are selected: then `selectedEventIds` lists them, and no event shows
+   * its details
+   */
   selectedEventId: string | null;
+  /**
+   * IDs of every selected event, in the order they were selected: the one
+   * `selectedEventId` names, or the several picked with Shift- or Cmd-click
+   * and "Select all visible". Empty when nothing is selected
+   */
+  selectedEventIds: string[];
   /**
    * The selected event: a stored one, or the generated occurrence its id
    * names. `null` when nothing (or a missing event) is selected
@@ -1201,10 +1211,25 @@ export interface CalendarContextValue<
   switchView: (view: ViewType) => void;
   /** Sets how many days the week view shows */
   setNumberOfDays: (numberOfDays: number) => void;
-  /** Selects an event */
+  /** Selects an event, alone */
   selectEvent: (eventId: string) => void;
   /** Clears the selection (closes the event popover) */
   clearSelection: () => void;
+  /**
+   * Selects these events: none clears the selection, one selects it as
+   * `selectEvent` does, several select them together
+   */
+  setSelectedEventIds: (eventIds: string[]) => void;
+  /**
+   * Adds an event to the selection, or takes it out when it is in it: what
+   * Shift- and Cmd-click on an event do
+   */
+  toggleEventSelection: (eventId: string) => void;
+  /**
+   * Selects every event on the dates on screen (Notion Calendar's "Select
+   * all visible", Cmd+A). Does nothing in year view, which draws no events
+   */
+  selectAllVisible: () => void;
   /**
    * Creates an event for a clicked slot via `createEvent`, selects it and
    * focuses its title
@@ -1218,7 +1243,9 @@ export interface CalendarContextValue<
   updateEvent: (event: TEvent) => void;
   /**
    * Deletes the event through `onEventsChange` and `onEventDelete`, and
-   * clears the selection when it was selected. Undoable
+   * clears the selection when it was selected. Undoable. On one of several
+   * selected events, deleting, duplicating, copying and cutting act on all of
+   * them, as one undo step
    */
   deleteEvent: (eventId: string) => void;
   /**

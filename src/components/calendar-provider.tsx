@@ -46,9 +46,19 @@ import {
   createStandaloneCopy,
   findEventOrOccurrence,
   findSeriesOccurrence,
-  getOccurrenceRemoval,
 } from "@/lib/recurrence";
 import { isKnownTimeZone } from "@/lib/time-zones";
+import {
+  describeGroupAction,
+  describeGroupNotice,
+  getEventRemovalChanges,
+  getGroupMoveTimes,
+  getPastedGroupTimes,
+  getVisibleEventIds,
+  isEventMove,
+  mergeEventChanges,
+  toggleSelectedEventId,
+} from "@/lib/event-selection";
 import type {
   CalendarConfig,
   CalendarContextValue,
@@ -273,6 +283,28 @@ interface ShownNotice {
   step: EventHistoryEntry | null;
 }
 
+/**
+ * The latest press on an event that doesn't simply select it: with Shift or
+ * Cmd (Ctrl elsewhere) held it adds the event to the selected ones, or
+ * takes it out, once (the views select on the press and again on its
+ * click). On one of several selected events it keeps them selected, so
+ * they drag together, and its click selects that event alone
+ */
+interface SelectionPress {
+  eventId: string;
+  /** Shift or Cmd (Ctrl elsewhere) was held */
+  modifier: boolean;
+  /** The event was one of several selected */
+  inGroup: boolean;
+  /** The modifier's toggle already ran */
+  handled: boolean;
+  /** Where the press started, in viewport pixels */
+  startX: number;
+  startY: number;
+  /** The pointer moved past `SELECTION_DRAG_THRESHOLD_PX`: a drag, not a click */
+  dragged: boolean;
+}
+
 /** Props of the stateful provider, once the starting date is known */
 type CalendarStateProviderProps = CalendarProviderProps & {
   /** Starting date when `date` is not controlled */
@@ -307,6 +339,25 @@ const CalendarSeriesContext =
 
 const CalendarEventActionsContext =
   React.createContext<CalendarEventActionsValue | null>(null);
+
+/** No event selected */
+const NO_SELECTED_IDS: string[] = [];
+
+/**
+ * Pointer travel (px) after which a press on a selected event is a drag, as
+ * in the drag hooks: its click no longer selects the event alone
+ */
+const SELECTION_DRAG_THRESHOLD_PX = 4;
+
+/** The selected events' ids, for the event items that draw several selected */
+const CalendarSelectionContext = React.createContext<string[]>(NO_SELECTED_IDS);
+
+/** Whether a press with Shift, Cmd, or Ctrl outside a Mac, adds to the selection */
+function isSelectionModifierPress(e: PointerEvent): boolean {
+  if (e.shiftKey || e.metaKey) return true;
+  // Ctrl+click on a Mac is a right-click
+  return e.ctrlKey && !/Mac|iPhone|iPad/.test(navigator.userAgent);
+}
 
 /** Outside a provider: no notice, and nothing to show or close */
 const NO_NOTICE: CalendarNoticeValue = {
@@ -584,6 +635,14 @@ function CalendarStateProvider({
   const [selectedEventId, setSelectedEventId] = React.useState<string | null>(
     null,
   );
+  /**
+   * Events selected together, two or more, with Shift- or Cmd-click or
+   * "Select all visible". `null` while one or none is selected, which
+   * `selectedEventId` holds
+   */
+  const [groupSelection, setGroupSelection] = React.useState<string[] | null>(
+    null,
+  );
   const [highlightedDate, setHighlightedDate] = React.useState<Date | null>(
     null,
   );
@@ -609,6 +668,10 @@ function CalendarStateProvider({
   const [copiedEvent, setCopiedEvent] = React.useState<CalendarEvent | null>(
     null,
   );
+  /** Events cut or copied together, which `pasteEvent` adds as a group; `null` after one alone */
+  const [copiedGroup, setCopiedGroup] = React.useState<CalendarEvent[] | null>(
+    null,
+  );
   /** The notice `CalendarToaster` shows, one at a time */
   const [shownNotice, setShownNotice] = React.useState<ShownNotice | null>(
     null,
@@ -623,6 +686,15 @@ function CalendarStateProvider({
   }
   /** Latest events, so `updateEvent` can compare without depending on them */
   const eventsRef = React.useRef(events);
+  /** The latest press on an event with a selection modifier, see `SelectionPress` */
+  const selectionPressRef = React.useRef<SelectionPress | null>(null);
+  /**
+   * The events each undo step on several events acted on: undo and redo
+   * select them again, as Notion Calendar's Undo of "3 events deleted" does
+   */
+  const groupStepsRef = React.useRef(
+    new WeakMap<EventHistoryEntry, string[]>(),
+  );
   /** The slot or day a view last had the mouse over: where a paste goes */
   const pasteTargetRef = React.useRef<EventPasteTarget | null>(null);
   /** Id of the latest notice; each new one counts up */
@@ -683,15 +755,125 @@ function CalendarStateProvider({
     setTitleFocusEventId(null);
   }, []);
 
-  const selectEvent = React.useCallback(
-    (eventId: string) => {
-      setSelectedEventId(eventId);
-      onEventSelect?.(eventId);
+  const selectedEventIds = React.useMemo(() => {
+    if (groupSelection) return groupSelection;
+    return selectedEventId === null ? NO_SELECTED_IDS : [selectedEventId];
+  }, [groupSelection, selectedEventId]);
+
+  /** Latest selection, so a modifier press can toggle without depending on it */
+  const selectedEventIdsRef = React.useRef(selectedEventIds);
+
+  React.useEffect(() => {
+    selectedEventIdsRef.current = selectedEventIds;
+  }, [selectedEventIds]);
+
+  const setSelectedEventIds = React.useCallback(
+    (eventIds: string[]) => {
+      const unique = [...new Set(eventIds)];
+      if (unique.length > 1) {
+        setGroupSelection(unique);
+        setSelectedEventId(null);
+        return;
+      }
+      setGroupSelection(null);
+      const [only] = unique;
+      setSelectedEventId(only ?? null);
+      if (only !== undefined) onEventSelect?.(only);
     },
     [onEventSelect],
   );
 
+  const toggleEventSelection = React.useCallback(
+    (eventId: string) => {
+      setSelectedEventIds(
+        toggleSelectedEventId(selectedEventIdsRef.current, eventId),
+      );
+    },
+    [setSelectedEventIds],
+  );
+
+  // Remember presses on events that don't simply select them (see
+  // `SelectionPress`): the views select the pressed event through
+  // `selectEvent`, which reads it. A key press forgets it, so Enter selects
+  // alone. The click of a press on one of several selected events selects
+  // it alone; after a drag the click is swallowed, and the group stays
+  React.useEffect(() => {
+    const getEventId = (target: EventTarget | null) =>
+      target instanceof Element
+        ? target.closest("[data-event-id]")?.getAttribute("data-event-id")
+        : undefined;
+    const handlePointerDown = (e: PointerEvent) => {
+      const eventId = getEventId(e.target);
+      const modifier = isSelectionModifierPress(e);
+      const inGroup =
+        selectedEventIdsRef.current.length > 1 &&
+        eventId !== undefined &&
+        eventId !== null &&
+        selectedEventIdsRef.current.includes(eventId);
+      selectionPressRef.current =
+        eventId && (modifier || inGroup)
+          ? {
+              eventId,
+              modifier,
+              inGroup,
+              handled: false,
+              startX: e.clientX,
+              startY: e.clientY,
+              dragged: false,
+            }
+          : null;
+    };
+    const handlePointerMove = (e: PointerEvent) => {
+      const press = selectionPressRef.current;
+      if (!press || press.dragged || e.buttons === 0) return;
+      const distance = Math.hypot(
+        e.clientX - press.startX,
+        e.clientY - press.startY,
+      );
+      if (distance > SELECTION_DRAG_THRESHOLD_PX) press.dragged = true;
+    };
+    // Capture: the event items stop their clicks from bubbling
+    const handleClick = (e: MouseEvent) => {
+      const press = selectionPressRef.current;
+      if (!press || press.modifier || !press.inGroup || press.dragged) return;
+      if (getEventId(e.target) !== press.eventId) return;
+      selectionPressRef.current = null;
+      setSelectedEventIds([press.eventId]);
+    };
+    const forgetPress = () => {
+      selectionPressRef.current = null;
+    };
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("pointermove", handlePointerMove, true);
+    window.addEventListener("click", handleClick, true);
+    window.addEventListener("keydown", forgetPress, true);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("pointermove", handlePointerMove, true);
+      window.removeEventListener("click", handleClick, true);
+      window.removeEventListener("keydown", forgetPress, true);
+    };
+  }, [setSelectedEventIds]);
+
+  const selectEvent = React.useCallback(
+    (eventId: string) => {
+      const press = selectionPressRef.current;
+      if (press?.eventId === eventId) {
+        // A press on one of several selected events keeps them all
+        if (!press.modifier || press.handled) return;
+        press.handled = true;
+        toggleEventSelection(eventId);
+        return;
+      }
+      setGroupSelection(null);
+      setSelectedEventId(eventId);
+      onEventSelect?.(eventId);
+    },
+    [onEventSelect, toggleEventSelection],
+  );
+
   const clearSelection = React.useCallback(() => {
+    setGroupSelection(null);
     setSelectedEventId(null);
   }, []);
 
@@ -761,6 +943,44 @@ function CalendarStateProvider({
     [setEvents, onEventCreate, onEventUpdate, onEventDelete],
   );
 
+  /**
+   * Moves every selected event by as much as `moved` moved from `previous`,
+   * as one undo step: what dragging one of several selected events, or
+   * moving it with the keyboard, does
+   */
+  const moveEventGroup = React.useCallback(
+    (eventIds: string[], previous: CalendarEvent, moved: CalendarEvent) => {
+      let working = eventsRef.current;
+      const changes: EventHistoryChange[] = [];
+      for (const eventId of eventIds) {
+        const event =
+          eventId === moved.id
+            ? previous
+            : findEventOrOccurrence(working, eventId);
+        if (!event) continue;
+        const edited =
+          eventId === moved.id
+            ? moved
+            : { ...event, ...getGroupMoveTimes(event, previous, moved) };
+        const index = working.findIndex((e) => e.id === eventId);
+        const next = applyRecurringEdit(working, event, edited);
+        // A generated date is stored by its first edit (ADR-007)
+        const change: EventHistoryChange =
+          index === -1
+            ? { before: null, after: next, index: working.length }
+            : { before: working[index], after: next, index };
+        working = applyEventChanges(working, [change]);
+        changes.push(change);
+      }
+      const merged = mergeEventChanges(changes);
+      commitChanges(merged);
+      const step = recordHistory("edit", merged);
+      groupStepsRef.current.set(step, eventIds);
+      announce(describeGroupAction("move", merged.length));
+    },
+    [commitChanges, recordHistory, announce],
+  );
+
   const updateEvent = React.useCallback(
     (updatedEvent: CalendarEvent) => {
       const current = eventsRef.current;
@@ -772,6 +992,15 @@ function CalendarStateProvider({
         ? null
         : findEventOrOccurrence(current, updatedEvent.id);
       const previous = stored ?? generated ?? undefined;
+      // Moving one of several selected events moves them all
+      if (
+        previous &&
+        groupSelection?.includes(updatedEvent.id) &&
+        isEventMove(previous, updatedEvent)
+      ) {
+        moveEventGroup(groupSelection, previous, updatedEvent);
+        return;
+      }
       const next = previous
         ? applyRecurringEdit(current, previous, updatedEvent)
         : updatedEvent;
@@ -807,6 +1036,8 @@ function CalendarStateProvider({
       locale,
       announce,
       recordHistory,
+      groupSelection,
+      moveEventGroup,
     ],
   );
 
@@ -846,22 +1077,8 @@ function CalendarStateProvider({
       // A generated date of a repeating event isn't stored
       const event = current[index] ?? findEventOrOccurrence(current, eventId);
       if (!event) return null;
-      // One date of a series goes by being excluded from it, and its stored
-      // event, when it has one, goes with it (ADR-007). The series' own
-      // event stands for the series and is deleted as any event
-      const removal = getOccurrenceRemoval(current, event);
-      const changes: EventHistoryChange[] = removal
-        ? [
-            ...(removal.removed
-              ? [{ before: removal.removed, after: null, index }]
-              : []),
-            {
-              before: removal.series,
-              after: removal.excluded,
-              index: current.indexOf(removal.series),
-            },
-          ]
-        : [{ before: event, after: null, index }];
+      // One date of a series goes by being excluded from it (ADR-007)
+      const changes = getEventRemovalChanges(current, event);
       commitChanges(changes);
       const step = recordHistory(action, changes);
       setSelectedEventId((prev) => (prev === eventId ? null : prev));
@@ -870,36 +1087,144 @@ function CalendarStateProvider({
     [commitChanges, recordHistory],
   );
 
+  /**
+   * Deletes or cuts several events as one undo step, and clears the
+   * selection. Returns them with the step, or `null` when none was found
+   */
+  const removeEvents = React.useCallback(
+    (eventIds: string[], action: "delete" | "cut") => {
+      let working = eventsRef.current;
+      const changes: EventHistoryChange[] = [];
+      const removed: CalendarEvent[] = [];
+      for (const eventId of eventIds) {
+        const event =
+          working.find((e) => e.id === eventId) ??
+          findEventOrOccurrence(working, eventId);
+        if (!event) continue;
+        const eventChanges = getEventRemovalChanges(working, event);
+        working = applyEventChanges(working, eventChanges);
+        changes.push(...eventChanges);
+        removed.push(event);
+      }
+      if (removed.length === 0) return null;
+      const merged = mergeEventChanges(changes);
+      commitChanges(merged);
+      const step = recordHistory(action, merged);
+      groupStepsRef.current.set(
+        step,
+        removed.map((event) => event.id),
+      );
+      setGroupSelection(null);
+      setSelectedEventId(null);
+      return { events: removed, step };
+    },
+    [commitChanges, recordHistory],
+  );
+
+  /**
+   * The selected events an action on `eventId` acts on: all of them when it
+   * is one of several selected, else `null` (it acts on that event alone)
+   */
+  const getActionGroup = React.useCallback(
+    (eventId: string) =>
+      groupSelection?.includes(eventId) ? groupSelection : null,
+    [groupSelection],
+  );
+
+  /** The events the ids name, stored or generated, in order; missing ones are left out */
+  const findEvents = React.useCallback(
+    (eventIds: string[]) =>
+      eventIds.flatMap((eventId) => {
+        const event = findEventOrOccurrence(eventsRef.current, eventId);
+        return event ? [event] : [];
+      }),
+    [],
+  );
+
+  /**
+   * Adds duplicated or pasted copies of several events as one undo step,
+   * and selects them together
+   */
+  const addEventCopies = React.useCallback(
+    (copies: CalendarEvent[], action: "duplicate" | "paste") => {
+      const start = eventsRef.current.length;
+      const changes: EventHistoryChange[] = copies.map((copy, offset) => ({
+        before: null,
+        after: copy,
+        index: start + offset,
+      }));
+      commitChanges(changes);
+      const step = recordHistory(action, changes);
+      const copyIds = copies.map((copy) => copy.id);
+      groupStepsRef.current.set(step, copyIds);
+      setSelectedEventIds(copyIds);
+      announce(describeGroupAction(action, copies.length));
+    },
+    [commitChanges, recordHistory, setSelectedEventIds, announce],
+  );
+
   const deleteEvent = React.useCallback(
     (eventId: string) => {
+      const group = getActionGroup(eventId);
+      if (group) {
+        const removedGroup = removeEvents(group, "delete");
+        if (!removedGroup) return;
+        const count = removedGroup.events.length;
+        announce(describeGroupAction("delete", count));
+        openNotice(describeGroupNotice("delete", count), removedGroup.step);
+        return;
+      }
       const removed = removeEvent(eventId, "delete");
       if (!removed) return;
       announce(describeEventAction("delete", removed.event));
       openNotice(describeEventNotice("delete", removed.event), removed.step);
     },
-    [removeEvent, announce, openNotice],
+    [getActionGroup, removeEvents, removeEvent, announce, openNotice],
   );
 
   const cutEvent = React.useCallback(
     (eventId: string) => {
+      const group = getActionGroup(eventId);
+      if (group) {
+        const removedGroup = removeEvents(group, "cut");
+        if (!removedGroup) return;
+        const count = removedGroup.events.length;
+        setCopiedEvent(removedGroup.events[0]);
+        setCopiedGroup(removedGroup.events);
+        announce(describeGroupAction("cut", count));
+        openNotice(describeGroupNotice("cut", count), removedGroup.step);
+        return;
+      }
       const removed = removeEvent(eventId, "cut");
       if (!removed) return;
       setCopiedEvent(removed.event);
+      setCopiedGroup(null);
       announce(describeEventAction("cut", removed.event));
       openNotice(describeEventNotice("cut", removed.event), removed.step);
     },
-    [removeEvent, announce, openNotice],
+    [getActionGroup, removeEvents, removeEvent, announce, openNotice],
   );
 
   const copyEvent = React.useCallback(
     (eventId: string) => {
+      const group = getActionGroup(eventId);
+      if (group) {
+        const copied = findEvents(group);
+        if (copied.length === 0) return;
+        setCopiedEvent(copied[0]);
+        setCopiedGroup(copied);
+        announce(describeGroupAction("copy", copied.length));
+        openNotice(describeGroupNotice("copy", copied.length), null);
+        return;
+      }
       const event = findEventOrOccurrence(eventsRef.current, eventId);
       if (!event) return;
       setCopiedEvent(event);
+      setCopiedGroup(null);
       announce(describeEventAction("copy", event));
       openNotice(describeEventNotice("copy", event), null);
     },
-    [announce, openNotice],
+    [getActionGroup, findEvents, announce, openNotice],
   );
 
   /** Adds a duplicated or pasted copy, selects it and announces where it is */
@@ -920,6 +1245,18 @@ function CalendarStateProvider({
 
   const duplicateEvent = React.useCallback(
     (eventId: string) => {
+      const group = getActionGroup(eventId);
+      if (group) {
+        const sources = findEvents(group);
+        if (sources.length === 0) return;
+        addEventCopies(
+          sources.map((source) =>
+            createStandaloneCopy(source, crypto.randomUUID()),
+          ),
+          "duplicate",
+        );
+        return;
+      }
       const source = findEventOrOccurrence(eventsRef.current, eventId);
       if (!source) return;
       // A copy never claims to be an occurrence of the series it came from
@@ -928,7 +1265,7 @@ function CalendarStateProvider({
         "duplicate",
       );
     },
-    [addEventCopy],
+    [getActionGroup, findEvents, addEventCopies, addEventCopy],
   );
 
   /** After undo or redo: selects the event the step leaves, or clears the selection when it removed the selected one */
@@ -946,6 +1283,24 @@ function CalendarStateProvider({
     [selectEvent],
   );
 
+  /**
+   * After undo or redo of a step on several events: selects them, unless
+   * the step just took them away. Returns whether it was such a step
+   */
+  const selectGroupStep = React.useCallback(
+    (entry: EventHistoryEntry, direction: "undo" | "redo") => {
+      const eventIds = groupStepsRef.current.get(entry);
+      if (!eventIds) return false;
+      const removesOnUndo =
+        entry.action === "paste" || entry.action === "duplicate";
+      const removesOnRedo = entry.action === "delete" || entry.action === "cut";
+      const removes = direction === "undo" ? removesOnUndo : removesOnRedo;
+      setSelectedEventIds(removes ? NO_SELECTED_IDS : eventIds);
+      return true;
+    },
+    [setSelectedEventIds],
+  );
+
   const undo = React.useCallback(() => {
     const entry = history.past[history.past.length - 1];
     if (!entry) return;
@@ -956,9 +1311,9 @@ function CalendarStateProvider({
       past: history.past.slice(0, -1),
       future: [...history.future, entry],
     });
-    selectChangedEvent(changes);
+    if (!selectGroupStep(entry, "undo")) selectChangedEvent(changes);
     announce(describeHistoryStep(entry, "undo"));
-  }, [history, commitChanges, selectChangedEvent, announce]);
+  }, [history, commitChanges, selectGroupStep, selectChangedEvent, announce]);
 
   const redo = React.useCallback(() => {
     const entry = history.future[history.future.length - 1];
@@ -969,9 +1324,9 @@ function CalendarStateProvider({
       past: [...history.past, entry],
       future: history.future.slice(0, -1),
     });
-    selectChangedEvent(entry.changes);
+    if (!selectGroupStep(entry, "redo")) selectChangedEvent(entry.changes);
     announce(describeHistoryStep(entry, "redo"));
-  }, [history, commitChanges, selectChangedEvent, announce]);
+  }, [history, commitChanges, selectGroupStep, selectChangedEvent, announce]);
 
   // A step applies only while its events are still the objects it left
   // (see canApplyEventChanges): an app that replaced them turns these off
@@ -1267,6 +1622,19 @@ function CalendarStateProvider({
       new Date(),
       currentDate,
     );
+    // Events cut or copied together land together: the earliest at the
+    // target, the others as far from it as they were
+    if (copiedGroup && copiedGroup.length > 1) {
+      const times = getPastedGroupTimes(copiedGroup, target);
+      addEventCopies(
+        copiedGroup.map((source, index) => ({
+          ...createStandaloneCopy(source, crypto.randomUUID()),
+          ...times[index],
+        })),
+        "paste",
+      );
+      return;
+    }
     addEventCopy(
       {
         ...createStandaloneCopy(copiedEvent, crypto.randomUUID()),
@@ -1274,7 +1642,21 @@ function CalendarStateProvider({
       },
       "paste",
     );
-  }, [copiedEvent, view, visibleRange, currentDate, addEventCopy]);
+  }, [
+    copiedEvent,
+    copiedGroup,
+    view,
+    visibleRange,
+    currentDate,
+    addEventCopies,
+    addEventCopy,
+  ]);
+
+  const selectAllVisible = React.useCallback(() => {
+    // Year view draws no events to select
+    if (view === "year") return;
+    setSelectedEventIds(getVisibleEventIds(eventsRef.current, visibleRange));
+  }, [view, visibleRange, setSelectedEventIds]);
 
   // Report each new range once. While the provider is still adopting the
   // mounted view (its first commit, or a switch the view is undoing), the
@@ -1307,6 +1689,7 @@ function CalendarStateProvider({
       visibleRange,
       loading,
       selectedEventId,
+      selectedEventIds,
       selectedEvent,
       previousInSeries,
       nextInSeries,
@@ -1323,6 +1706,9 @@ function CalendarStateProvider({
       setNumberOfDays: changeNumberOfDays,
       selectEvent,
       clearSelection,
+      setSelectedEventIds,
+      toggleEventSelection,
+      selectAllVisible,
       addEventFromRange,
       updateEvent,
       toggleWeekends,
@@ -1351,6 +1737,7 @@ function CalendarStateProvider({
       visibleRange,
       loading,
       selectedEventId,
+      selectedEventIds,
       selectedEvent,
       previousInSeries,
       nextInSeries,
@@ -1367,6 +1754,9 @@ function CalendarStateProvider({
       changeNumberOfDays,
       selectEvent,
       clearSelection,
+      setSelectedEventIds,
+      toggleEventSelection,
+      selectAllVisible,
       addEventFromRange,
       updateEvent,
       toggleWeekends,
@@ -1481,7 +1871,9 @@ function CalendarStateProvider({
                     pendingEventId={pendingTitleFocusId}
                     clearPending={clearTitleFocus}
                   >
-                    {children}
+                    <CalendarSelectionContext.Provider value={selectedEventIds}>
+                      {children}
+                    </CalendarSelectionContext.Provider>
                     {/* Announces changes, the event actions, undo and redo to screen readers */}
                     <div role="status" aria-live="polite" className="sr-only">
                       {announcement && (
@@ -1555,6 +1947,14 @@ export function useCalendarSeries(): CalendarSeriesValue {
  */
 export function useCalendarEventActions(): CalendarEventActionsValue | null {
   return React.useContext(CalendarEventActionsContext);
+}
+
+/**
+ * Whether the event is one of the selected events. Event items read it to
+ * draw several selected events at once; outside a provider, false.
+ */
+export function useIsEventInSelection(eventId: string): boolean {
+  return React.useContext(CalendarSelectionContext).includes(eventId);
 }
 
 /**

@@ -78,6 +78,10 @@
         {
           "path": "src/lib/event-history.ts",
           "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/event-selection.ts",
+          "type": "registry:lib"
         }
       ],
       "cssVars": {

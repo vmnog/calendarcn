@@ -31,6 +31,7 @@ They come from `useCalendarShortcuts()`, part of [Calendar Core](/docs/component
 | Action                                    | Shortcut                                                                                                                                    |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Deselect event                            | <Kbd>Esc</Kbd>                                                                                                                              |
+| Select all visible                        | <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup>                                                                                               |
 | Delete the selected event                 | <Kbd>Delete</Kbd> or <Kbd>⌫</Kbd>                                                                                                           |
 | Cut, copy or duplicate the selected event | <KbdGroup><Kbd>⌘</Kbd><Kbd>X</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>C</Kbd></KbdGroup>, <KbdGroup><Kbd>⌘</Kbd><Kbd>D</Kbd></KbdGroup> |
 | Paste                                     | <KbdGroup><Kbd>⌘</Kbd><Kbd>V</Kbd></KbdGroup>                                                                                               |
@@ -43,6 +44,8 @@ A paste goes where the mouse is: in day and week view the copy starts at the tim
 These keys act only when they have something to act on (a selected event, something cut or copied, a change to undo or redo) and otherwise leave the press to the browser. They pause while you type in a field or compose text with an input method, and <KbdGroup><Kbd>⌘</Kbd><Kbd>C</Kbd></KbdGroup> and <KbdGroup><Kbd>⌘</Kbd><Kbd>X</Kbd></KbdGroup> also while text is selected on the page.
 
 In a field or menu of the event details, <Kbd>Esc</Kbd> only closes it and restores the value from before. Press it again to deselect the event.
+
+Shift-click or <Kbd>⌘</Kbd>-click on events selects several, and <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup> every event on screen (in a text field it still selects the text). The event keys then act on all of them, and <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> and <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup> on one of them move them all. See [Selecting several events](/docs/components/calendar-core#selecting-several-events).
 
 ## App shortcuts
 

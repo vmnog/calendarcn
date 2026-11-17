@@ -38,6 +38,7 @@ src/
     ├── event-utils.ts    # Event positioning & column assignment algorithms
     ├── recurrence.ts     # Repeat rules: RRULE parse/format, labels, series occurrences
     ├── time-zones.ts     # IANA zone list, offsets, zone days, wall-clock zone changes
+    ├── event-selection.ts # Several selected events: select all visible, group changes, paste offsets
     ├── timezone-label.ts # Short time zone labels ("GMT-3 Sao Paulo")
     ├── mock-events.ts    # Sample data
     ├── time-input.ts     # Time menu options, typed times and durations, date parsing

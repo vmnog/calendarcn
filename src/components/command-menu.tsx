@@ -93,7 +93,8 @@ export function CommandMenu({
   onExportIcs,
   showComingSoon = false,
 }: CommandMenuProps) {
-  const { goToToday, goToPrev, goToNext, switchView } = useCalendar();
+  const { goToToday, goToPrev, goToNext, switchView, selectAllVisible } =
+    useCalendar();
 
   const runCommand = React.useCallback(
     (command: () => void) => {
@@ -170,7 +171,11 @@ export function CommandMenu({
           run: () => switchView("agenda"),
         },
         { label: "Set number of displayed days...", soon: true },
-        { label: "Select all visible", soon: true },
+        {
+          label: "Select all visible",
+          keys: ["⌘", "A"],
+          run: selectAllVisible,
+        },
         { label: "Default hour size", soon: true },
         { label: "Zoom hours in", soon: true },
         { label: "Zoom hours out", soon: true },

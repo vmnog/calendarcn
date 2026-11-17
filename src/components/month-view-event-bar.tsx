@@ -3,7 +3,11 @@
 import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
 import { isPrimaryPress } from "@/hooks/use-pointer-gesture";
-import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
+import {
+  EventContentSlot,
+  useCalendarConfig,
+  useIsEventInSelection,
+} from "./calendar-provider";
 import { EVENT_FOCUS_RING_CLASS } from "./calendar-event-item";
 import { getEventLabel, resolveEventColor } from "@/lib/event-utils";
 import type { CalendarEvent, EventColor } from "./calendar-types";
@@ -98,7 +102,7 @@ export function MonthViewEventBar({
   event,
   roundedLeft,
   roundedRight,
-  isSelected = false,
+  isSelected: isSelectedProp = false,
   isGhost,
   detailsTriggerProps,
   isDragging = false,
@@ -109,6 +113,10 @@ export function MonthViewEventBar({
   onResizePointerDown,
   className,
 }: MonthViewEventBarProps) {
+  // One of several selected events looks selected too
+  const isInSelection =
+    useIsEventInSelection(event.id) && !isGhost && !isDragging;
+  const isSelected = isSelectedProp || isInSelection;
   const { calendars, hourCycle, locale } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = barColorStyles[color];

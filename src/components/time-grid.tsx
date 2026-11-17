@@ -185,6 +185,7 @@ export function TimeGrid({
     currentDate,
     events,
     selectedEvent,
+    selectedEventIds,
     highlightedDate,
     selectEvent,
     clearSelection,
@@ -679,7 +680,11 @@ export function TimeGrid({
                   events={displayedTimedEvents}
                   onEventClick={handleEventClick}
                   selectedEventId={selectedEventId}
-                  onEventCreate={addEventFromRange}
+                  // With several events selected, a click on empty space
+                  // only clears the selection, as in Notion Calendar
+                  onEventCreate={
+                    selectedEventIds.length > 1 ? undefined : addEventFromRange
+                  }
                   onSlotHover={handleSlotHover}
                   dragState={dragState ?? undefined}
                   onEventDragPointerDown={handleEventPointerDown}
