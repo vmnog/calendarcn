@@ -17,7 +17,7 @@ import { DocsPre } from "@/components/docs/docs-code-block";
 import registry from "../../../registry.json";
 
 /** Registry namespace configured in `components.json` (see the Installation page). */
-const REGISTRY_NAMESPACE = "@calendarcn";
+export const REGISTRY_NAMESPACE = "@calendarcn";
 
 /** Where the Manual tab links each file's source */
 const SOURCE_URL = "https://github.com/vmnog/calendarcn/blob/main";
@@ -25,19 +25,30 @@ const SOURCE_URL = "https://github.com/vmnog/calendarcn/blob/main";
 /** shadcn/ui items every project already has after `shadcn init` */
 const PRESET_REGISTRY_ITEMS = new Set(["utils"]);
 
+/** A package manager's shadcn CLI runner and the command that adds npm packages */
+interface PackageManager {
+  name: string;
+  runner: string;
+  add: string;
+}
+
+/** npm: the package manager the tabs' Markdown form writes its commands for */
+export const NPM: PackageManager = {
+  name: "npm",
+  runner: "npx",
+  add: "npm install",
+};
+
 /**
- * Package managers shown in the CLI tab, each with its shadcn CLI runner and
- * the command that adds npm packages. Runners match the tabs fumadocs-mdx
+ * Package managers shown in the CLI tab. Runners match the tabs fumadocs-mdx
  * generates for ```npm code blocks.
  */
-const PACKAGE_MANAGERS = [
+const PACKAGE_MANAGERS: PackageManager[] = [
   { name: "pnpm", runner: "pnpm dlx", add: "pnpm add" },
-  { name: "npm", runner: "npx", add: "npm install" },
+  NPM,
   { name: "yarn", runner: "yarn dlx", add: "yarn add" },
   { name: "bun", runner: "bun x", add: "bun add" },
-] as const;
-
-type PackageManager = (typeof PACKAGE_MANAGERS)[number];
+];
 
 /** The parts of a `registry.json` item the Manual tab reads */
 interface RegistryItem {
@@ -51,6 +62,72 @@ interface RegistryItem {
 const REGISTRY_ITEMS = new Map<string, RegistryItem>(
   (registry.items as RegistryItem[]).map((entry) => [entry.name, entry]),
 );
+
+/** A file the CLI copies, as the Manual tab lists it */
+interface InstallFile {
+  /** Path under the project's source folder, e.g. `components/week-view.tsx` */
+  label: string;
+  /** The file's source on GitHub */
+  url: string;
+}
+
+/**
+ * What the CLI does for a registry item, as the Manual tab and the tabs'
+ * Markdown form (`src/components/docs/markdown.ts`) both write it out.
+ */
+export interface InstallSteps {
+  /** The command that adds the item with the shadcn CLI */
+  cliCommand: (packageManager: PackageManager) => string;
+  /** CalendarCN items it builds on, without the namespace */
+  calendarItems: string[];
+  /** The command that installs its npm packages, when it has any */
+  dependenciesCommand?: (packageManager: PackageManager) => string;
+  /** The command that adds the shadcn/ui components it uses, when it uses any */
+  shadcnCommand?: (packageManager: PackageManager) => string;
+  /** The files to copy */
+  files: InstallFile[];
+}
+
+/**
+ * Reads a registry item's install steps from `registry.json`, so they always
+ * match what the CLI installs. Throws for a name that isn't an item: a typo
+ * in an MDX page fails the build.
+ */
+export function getInstallSteps(item: string): InstallSteps {
+  const entry = REGISTRY_ITEMS.get(item);
+  if (!entry) {
+    throw new Error(`InstallTabs: "${item}" is not an item in registry.json`);
+  }
+
+  const dependencies = entry.dependencies ?? [];
+  const registryDependencies = entry.registryDependencies ?? [];
+  const calendarItems = registryDependencies
+    .filter((name) => name.startsWith(`${REGISTRY_NAMESPACE}/`))
+    .map((name) => name.slice(REGISTRY_NAMESPACE.length + 1));
+  const shadcnItems = registryDependencies.filter(
+    (name) =>
+      !name.startsWith(`${REGISTRY_NAMESPACE}/`) &&
+      !PRESET_REGISTRY_ITEMS.has(name),
+  );
+
+  return {
+    cliCommand: ({ runner }) =>
+      `${runner} shadcn add ${REGISTRY_NAMESPACE}/${item}`,
+    calendarItems,
+    dependenciesCommand:
+      dependencies.length > 0
+        ? ({ add }) => `${add} ${dependencies.join(" ")}`
+        : undefined,
+    shadcnCommand:
+      shadcnItems.length > 0
+        ? ({ runner }) => `${runner} shadcn add ${shadcnItems.join(" ")}`
+        : undefined,
+    files: entry.files.map(({ path }) => ({
+      label: path.replace(/^src\//, ""),
+      url: `${SOURCE_URL}/${path}`,
+    })),
+  };
+}
 
 interface InstallTabsProps {
   /** Registry item name, e.g. `week-view`. */
@@ -66,24 +143,19 @@ interface InstallTabsProps {
  * so its dependencies and files always match what the CLI installs.
  */
 export function InstallTabs({ item, children }: InstallTabsProps) {
-  const entry = REGISTRY_ITEMS.get(item);
-  if (!entry) {
-    throw new Error(`InstallTabs: "${item}" is not an item in registry.json`);
-  }
+  const steps = getInstallSteps(item);
 
   return (
     <Tabs items={["CLI", "Manual"]} className="docs-surface">
       {/* The package-manager tabs fill the panel edge to edge, sharing its radius. */}
       <Tab value="CLI" className="not-prose p-0">
         <PackageManagerTabs
-          command={({ runner }) =>
-            `${runner} shadcn add ${REGISTRY_NAMESPACE}/${item}`
-          }
+          command={steps.cliCommand}
           className="rounded-[inherit] border-none"
         />
       </Tab>
       <Tab value="Manual">
-        <ManualSteps entry={entry} />
+        <ManualSteps steps={steps} />
         {children}
       </Tab>
     </Tabs>
@@ -91,21 +163,12 @@ export function InstallTabs({ item, children }: InstallTabsProps) {
 }
 
 interface ManualStepsProps {
-  entry: RegistryItem;
+  steps: InstallSteps;
 }
 
-/** The steps the CLI would run, written out: packages, components, items, files */
-function ManualSteps({ entry }: ManualStepsProps) {
-  const dependencies = entry.dependencies ?? [];
-  const registryDependencies = entry.registryDependencies ?? [];
-  const calendarItems = registryDependencies
-    .filter((name) => name.startsWith(`${REGISTRY_NAMESPACE}/`))
-    .map((name) => name.slice(REGISTRY_NAMESPACE.length + 1));
-  const shadcnItems = registryDependencies.filter(
-    (name) =>
-      !name.startsWith(`${REGISTRY_NAMESPACE}/`) &&
-      !PRESET_REGISTRY_ITEMS.has(name),
-  );
+/** The steps the CLI would run, written out: items, packages, components, files */
+function ManualSteps({ steps }: ManualStepsProps) {
+  const { calendarItems, dependenciesCommand, shadcnCommand, files } = steps;
 
   return (
     <Steps>
@@ -121,22 +184,16 @@ function ManualSteps({ entry }: ManualStepsProps) {
           </ul>
         </Step>
       )}
-      {dependencies.length > 0 && (
+      {dependenciesCommand && (
         <Step>
           <p>Install the dependencies:</p>
-          <PackageManagerTabs
-            command={({ add }) => `${add} ${dependencies.join(" ")}`}
-          />
+          <PackageManagerTabs command={dependenciesCommand} />
         </Step>
       )}
-      {shadcnItems.length > 0 && (
+      {shadcnCommand && (
         <Step>
           <p>Add the shadcn/ui components it uses:</p>
-          <PackageManagerTabs
-            command={({ runner }) =>
-              `${runner} shadcn add ${shadcnItems.join(" ")}`
-            }
-          />
+          <PackageManagerTabs command={shadcnCommand} />
         </Step>
       )}
       <Step>
@@ -145,10 +202,10 @@ function ManualSteps({ entry }: ManualStepsProps) {
           components, hooks and lib folders:
         </p>
         <ul>
-          {entry.files.map(({ path }) => (
-            <li key={path}>
-              <a href={`${SOURCE_URL}/${path}`}>
-                <code>{path.replace(/^src\//, "")}</code>
+          {files.map(({ label, url }) => (
+            <li key={url}>
+              <a href={url}>
+                <code>{label}</code>
               </a>
             </li>
           ))}
