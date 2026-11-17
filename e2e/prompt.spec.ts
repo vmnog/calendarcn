@@ -20,22 +20,40 @@ const IMPORT_EXPORT_PATH = "/docs/import-export";
 /** The "Use with AI" page */
 const AI_PATH = "/docs/ai";
 
-/** A tab of an example. Only the examples have Code and Prompt tabs */
-function exampleTab(page: Page, name: string): Locator {
-  return page.getByRole("tab", { name, exact: true });
+/**
+ * The tab lists of a page's examples: the ones with a Preview tab. Other tabs
+ * on a page can be named Prompt too (the Installation tabs'), so a tab is
+ * always looked up inside its example.
+ */
+function exampleTabLists(page: Page): Locator {
+  return page
+    .getByRole("tablist")
+    .filter({ has: page.getByRole("tab", { name: "Preview", exact: true }) });
 }
 
-/** The code of an example's Code or Prompt tab, once that tab is open */
-function panelCode(page: Page, name: string): Locator {
-  return page.getByRole("tabpanel", { name, exact: true }).locator("pre");
+/** A tab of the page's nth example */
+function exampleTab(page: Page, name: string, index = 0): Locator {
+  return exampleTabLists(page)
+    .nth(index)
+    .getByRole("tab", { name, exact: true });
 }
 
-/** Opens an example's Prompt tab and returns the prompt's text */
-async function openPrompt(page: Page): Promise<string> {
-  await exampleTab(page, "Prompt").click();
-  const prompt = panelCode(page, "Prompt");
-  await expect(prompt).toBeVisible();
-  return (await prompt.textContent()) ?? "";
+/** Opens the Code or Prompt tab of the page's nth example and returns its panel */
+async function openTab(page: Page, name: string, index = 0): Promise<Locator> {
+  const tab = exampleTab(page, name, index);
+  await tab.click();
+  await expect(tab).toHaveAttribute("aria-selected", "true");
+
+  // The panel the tab names, not any panel on the page with that label
+  const panelId = await tab.getAttribute("aria-controls");
+  const panel = page.locator(`[id="${panelId}"]`);
+  await expect(panel.locator("pre")).toBeVisible();
+  return panel;
+}
+
+/** The text of an open Code or Prompt panel */
+async function readCode(panel: Locator): Promise<string> {
+  return (await panel.locator("pre").textContent()) ?? "";
 }
 
 test("an example has Preview, Code and Prompt tabs, in that order", async ({
@@ -43,10 +61,12 @@ test("an example has Preview, Code and Prompt tabs, in that order", async ({
 }) => {
   await page.goto(WEEK_VIEW_PATH);
 
-  const tabs = page
-    .getByRole("tablist")
-    .filter({ has: exampleTab(page, "Prompt") });
-  await expect(tabs.getByRole("tab")).toHaveText(["Preview", "Code", "Prompt"]);
+  await expect(exampleTabLists(page)).toHaveCount(1);
+  await expect(exampleTabLists(page).getByRole("tab")).toHaveText([
+    "Preview",
+    "Code",
+    "Prompt",
+  ]);
   // The preview stays the tab an example opens on
   await expect(exampleTab(page, "Preview")).toHaveAttribute(
     "aria-selected",
@@ -60,11 +80,10 @@ test("the prompt leads with the install command and holds the example's code and
 }) => {
   await page.goto(WEEK_VIEW_PATH);
 
-  await exampleTab(page, "Code").click();
-  const code = (await panelCode(page, "Code").textContent()) ?? "";
+  const code = await readCode(await openTab(page, "Code"));
   expect(code).toContain("export function WeekViewDemo()");
 
-  const prompt = await openPrompt(page);
+  const prompt = await readCode(await openTab(page, "Prompt"));
   expect(prompt).toContain(code);
   expect(
     prompt.startsWith("Run `npx shadcn@latest add @calendarcn/week-view"),
@@ -82,9 +101,9 @@ test("the copy button puts the whole prompt on the clipboard", async ({
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto(WEEK_VIEW_PATH);
-  const prompt = await openPrompt(page);
+  const panel = await openTab(page, "Prompt");
+  const prompt = await readCode(panel);
 
-  const panel = page.getByRole("tabpanel", { name: "Prompt", exact: true });
   await panel.getByRole("button", { name: "Copy Text" }).click();
 
   await expect(
@@ -102,15 +121,15 @@ test("long lines of the prompt wrap instead of scrolling sideways", async ({
   page,
 }) => {
   await page.goto(WEEK_VIEW_PATH);
-  await openPrompt(page);
+  const prompt = (await openTab(page, "Prompt")).locator("pre");
 
-  const overflow = await panelCode(page, "Prompt").evaluate((pre) => {
+  const overflow = await prompt.evaluate((pre) => {
     const viewport = pre.parentElement;
     return viewport ? viewport.scrollWidth - viewport.clientWidth : -1;
   });
   expect(overflow).toBe(0);
   // Blank lines between the paragraphs keep their height
-  const blankLine = panelCode(page, "Prompt").locator(".line").nth(1);
+  const blankLine = prompt.locator(".line").nth(1);
   await expect(blankLine).toHaveText("");
   expect((await blankLine.boundingBox())?.height).toBeGreaterThan(10);
 });
@@ -120,11 +139,14 @@ test("every example on a page has its own prompt", async ({ page }) => {
 
   const examples = await page.locator("[data-example]").count();
   expect(examples).toBeGreaterThan(1);
-  await expect(exampleTab(page, "Prompt")).toHaveCount(examples);
+  await expect(exampleTabLists(page)).toHaveCount(examples);
+  await expect(
+    exampleTabLists(page).getByRole("tab", { name: "Prompt", exact: true }),
+  ).toHaveCount(examples);
 
   // The second example's prompt carries the second example's file
-  await exampleTab(page, "Prompt").nth(1).click();
-  await expect(panelCode(page, "Prompt")).toContainText(
+  const second = await openTab(page, "Prompt", 1);
+  await expect(second.locator("pre")).toContainText(
     "src/examples/config-demo.tsx",
   );
 });
@@ -133,7 +155,7 @@ test("a guide's prompt installs the guide's item and links the guide", async ({
   page,
 }) => {
   await page.goto(IMPORT_EXPORT_PATH);
-  const prompt = await openPrompt(page);
+  const prompt = await readCode(await openTab(page, "Prompt"));
 
   expect(prompt).toContain("npx shadcn@latest add @calendarcn/ics");
   expect(prompt).toContain('from the "Import and Export" page of the docs');
