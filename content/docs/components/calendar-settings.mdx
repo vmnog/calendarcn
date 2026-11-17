@@ -7,7 +7,7 @@ description: Notion Calendar's settings dialog, with the calendar view, time for
 
 Calendar Settings is the live demo's settings dialog, laid out as Notion Calendar's: on the left, General and each calendar account, then "Add calendar account"; on the right, the pane you picked. Open it in the [live demo](/) with <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> or "Go to settings" in the command menu.
 
-- **General**: the calendar view (weekends, week numbers, and the number of days in week view), the time format and the theme. "Declined events" is listed with a "Soon" badge until a view filters them.
+- **General**: the calendar view (weekends, declined events, week numbers, and the number of days in week view), the time format and the theme.
 - **A calendar account**: its calendars, each with its color and a button to show or hide it.
 
 Each setting shows only when something can change it, so the dialog fits what your app supports. The calendar view settings come from the surrounding [`CalendarProvider`](/docs/components/calendar-core); the time format, the theme, hiding calendars and "Add calendar account" show when you pass their handlers.

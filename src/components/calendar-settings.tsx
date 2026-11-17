@@ -67,13 +67,6 @@ const NAV_HEADING_CLASS =
 const SELECT_CLASS =
   "border-input bg-background text-foreground h-8 rounded-md border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
-/** "Soon" badge of a setting no view reads yet, as in the view menu */
-const SOON_BADGE = (
-  <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px] leading-none font-medium">
-    Soon
-  </span>
-);
-
 /** Key of a pane: "general", or a calendar account's email ("" without one) */
 type PaneKey = "general" | `account:${string}`;
 
@@ -246,13 +239,10 @@ function SettingsSwitch({
   label,
   checked,
   onCheckedChange,
-  soon = false,
 }: {
   label: string;
   checked: boolean;
   onCheckedChange: () => void;
-  /** No view reads it yet: disabled, with a "Soon" badge */
-  soon?: boolean;
 }) {
   const id = React.useId();
   return (
@@ -261,13 +251,9 @@ function SettingsSwitch({
         id={id}
         aria-label={label}
         checked={checked}
-        disabled={soon}
         onCheckedChange={() => onCheckedChange()}
       />
-      <label htmlFor={id} className={cn(soon && "opacity-50")}>
-        {label}
-      </label>
-      {soon && SOON_BADGE}
+      <label htmlFor={id}>{label}</label>
     </div>
   );
 }
@@ -304,12 +290,10 @@ function GeneralPane({
           checked={viewSettings.showWeekends}
           onCheckedChange={toggleWeekends}
         />
-        {/* No view filters declined events yet */}
         <SettingsSwitch
           label="Declined events"
           checked={viewSettings.showDeclinedEvents}
           onCheckedChange={toggleDeclinedEvents}
-          soon
         />
         <SettingsSwitch
           label="Week numbers"
