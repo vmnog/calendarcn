@@ -36,6 +36,11 @@ import {
   mergeShownEvents,
 } from "@/lib/event-utils";
 import { parseIcs, toIcs } from "@/lib/ics";
+import {
+  KEYBOARD_SHORTCUT_GROUPS,
+  SHORTCUTS,
+  filterKeyboardShortcutGroups,
+} from "@/lib/keyboard-shortcuts";
 import { toDisplayEvent } from "@/lib/time-zones";
 import type {
   CalendarProviderProps,
@@ -43,7 +48,9 @@ import type {
 } from "@/components/calendar-types";
 import type {
   CalendarAppProps,
+  CommandMenuPage,
   DetailedCalendarEvent,
+  DetailsSidebarActions,
   TimeZoneCommand,
 } from "@/components/week-view-types";
 
@@ -299,6 +306,9 @@ function CalendarAppShell({
   }
   const leftSidebarVisible = isMobile ? leftOverlayOpen : leftSidebarOpen;
   const [commandMenuOpen, setCommandMenuOpen] = React.useState(false);
+  /** Page the command menu opens on: its commands, or Go to date's field (.) */
+  const [commandMenuPage, setCommandMenuPage] =
+    React.useState<CommandMenuPage>("commands");
   /** The time zone list the command menu opens on (Z), or none (Cmd+K) */
   const [commandMenuZoneCommand, setCommandMenuZoneCommand] = React.useState<
     TimeZoneCommand | undefined
@@ -310,18 +320,29 @@ function CalendarAppShell({
     React.useState<PeoplePickerMode>("meet-with");
   /** Hidden file picker behind the command menu's "Import .ics file" */
   const icsInputRef = React.useRef<HTMLInputElement>(null);
+  /** The details sidebar's event search and full shortcut list */
+  const detailsActionsRef = React.useRef<DetailsSidebarActions>(null);
 
   // Phones show event details in the context panel sheet: the 320px popover
   // doesn't fit beside an event on a ~390px screen
   const showDetailsInPanel = isMobile || rightSidebarOpen;
 
   const toggleCommandMenu = React.useCallback(() => {
+    setCommandMenuPage("commands");
     setCommandMenuZoneCommand(undefined);
     setCommandMenuOpen((prev) => !prev);
   }, []);
 
+  /** The . key: the command menu, on Go to date's field */
+  const openGoToDate = React.useCallback(() => {
+    setCommandMenuPage("go-to-date");
+    setCommandMenuZoneCommand(undefined);
+    setCommandMenuOpen(true);
+  }, []);
+
   /** Z: the command menu, on "Travel to time zone..."'s list */
   const openTravelPicker = React.useCallback(() => {
+    setCommandMenuPage("commands");
     setCommandMenuZoneCommand("travel");
     setCommandMenuOpen(true);
   }, []);
@@ -335,6 +356,28 @@ function CalendarAppShell({
     setPeoplePickerMode("teammate");
     setPeoplePickerOpen(true);
   }, []);
+
+  const searchEvents = React.useCallback((query: string) => {
+    detailsActionsRef.current?.searchEvents(query);
+  }, []);
+
+  /** The ? key and "Show keyboard shortcuts": the full list, in the context panel */
+  const showAllShortcuts = React.useCallback(() => {
+    detailsActionsRef.current?.showAllShortcuts();
+  }, []);
+
+  // The full list names only the keys this app handles: Cmd+, needs a
+  // settings action
+  const shortcutGroups = React.useMemo(
+    () =>
+      onOpenSettings
+        ? KEYBOARD_SHORTCUT_GROUPS
+        : filterKeyboardShortcutGroups(
+            KEYBOARD_SHORTCUT_GROUPS,
+            (shortcut) => shortcut !== SHORTCUTS.openSettings,
+          ),
+    [onOpenSettings],
+  );
 
   const toggleLeftSidebar = React.useCallback(() => {
     if (isMobile) {
@@ -400,10 +443,10 @@ function CalendarAppShell({
     setTheme("system");
   }, [theme, setTheme]);
 
-  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape,
+  // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, C, Escape,
   // Shift+Cmd+E for weekends, and the event keys: Delete/Backspace, Cmd+X,
   // Cmd+C, Cmd+V, Cmd+D, Cmd+Z and Shift+Cmd+Z. Then the app's own, checked
-  // first: Cmd+K, Cmd+/, /, Shift+M, Cmd+, Z, F and P
+  // first: Cmd+K, Cmd+/, /, Shift+M, Cmd+, . ? Z, F and P
   useCalendarShortcuts({
     enabled: shortcuts,
     onToggleCommandMenu: toggleCommandMenu,
@@ -411,6 +454,8 @@ function CalendarAppShell({
     onToggleContextPanel: toggleSidebar,
     onCycleTheme: cycleTheme,
     onOpenSettings,
+    onGoToDate: openGoToDate,
+    onShowShortcuts: showAllShortcuts,
     onTravelToTimeZone: openTravelPicker,
     onMeetWith: openMeetWith,
     onShowTeammateCalendar: openTeammatePicker,
@@ -428,6 +473,9 @@ function CalendarAppShell({
         onExportIcs={exportIcs}
         onMeetWith={openMeetWith}
         onShowTeammateCalendar={openTeammatePicker}
+        onSearchEvents={searchEvents}
+        onShowShortcuts={showAllShortcuts}
+        defaultPage={commandMenuPage}
         showComingSoon={showComingSoon}
         timeZoneCommand={commandMenuZoneCommand}
       />
@@ -489,7 +537,11 @@ function CalendarAppShell({
           <CalendarToaster />
         </div>
       </SidebarInset>
-      <DetailsSidebar overlay={!isWideLayout} />
+      <DetailsSidebar
+        overlay={!isWideLayout}
+        actionsRef={detailsActionsRef}
+        shortcutGroups={shortcutGroups}
+      />
     </>
   );
 }

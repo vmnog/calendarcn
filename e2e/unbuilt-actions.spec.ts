@@ -134,15 +134,17 @@ test("the useful shortcuts mark the ones nothing handles", async ({ page }) => {
   const row = (label: string) =>
     page.getByText(label, { exact: true }).locator("xpath=..");
 
+  await expect(
+    row("Menu bar calendar").getByText("Soon", { exact: true }),
+  ).toBeVisible();
+  await expect(row("Command menu").getByText("Soon")).toHaveCount(0);
   for (const label of [
-    "Menu bar calendar",
+    "Show teammate calendar",
     "Go to date",
     "All keyboard shortcuts",
   ]) {
-    await expect(row(label).getByText("Soon", { exact: true })).toBeVisible();
+    await expect(row(label).getByText("Soon")).toHaveCount(0);
   }
-  await expect(row("Command menu").getByText("Soon")).toHaveCount(0);
-  await expect(row("Show teammate calendar").getByText("Soon")).toHaveCount(0);
   await expect(row("Show teammate calendar")).toContainText("P");
   await expect(row("Toggle sidebar")).toContainText("⌘");
   await expect(row("Toggle sidebar")).toContainText("/");

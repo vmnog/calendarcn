@@ -232,6 +232,20 @@ test("F and the command menu's Meet with... open the people picker", async ({
   await expect(personRow(page, "alex@example.com")).toBeVisible();
 });
 
+test("the full shortcut list names F and P under Workflows", async ({
+  page,
+}) => {
+  await page.keyboard.press("?");
+  const field = page.getByRole("textbox", { name: "Find keyboard shortcuts" });
+  await expect(field).toBeFocused();
+  await field.fill("teammate");
+  const row = page.getByText("Show teammate calendar", { exact: true });
+  await expect(row).toBeVisible();
+  await expect(row.locator("xpath=..")).toContainText("P");
+  await field.fill("meet");
+  await expect(page.getByText("Meet with...", { exact: true })).toBeVisible();
+});
+
 test("P shows a teammate's calendar, without a meeting", async ({ page }) => {
   await page.keyboard.press("p");
   const picker = page.getByRole("dialog", {

@@ -167,19 +167,23 @@ From 768px up, while the details sidebar is closed, a selected event shows its d
 
 ## Keyboard shortcuts
 
-`CalendarApp` turns on the calendar's single-key [shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>Y</Kbd>, <Kbd>A</Kbd>…) and the app's own:
+`CalendarApp` turns on the calendar's single-key [shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>Y</Kbd>, <Kbd>A</Kbd>, <Kbd>C</Kbd>…) and the app's own:
 
-| Action                            | Shortcut                                      |
-| --------------------------------- | --------------------------------------------- |
-| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> |
-| Toggle the calendar sidebar       | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> |
-| Toggle the details sidebar        | <Kbd>/</Kbd>                                  |
-| Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
-| Settings, with `onOpenSettings`   | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
-| Meet with...                      | <Kbd>F</Kbd>                                  |
-| Show teammate calendar...         | <Kbd>P</Kbd>                                  |
+| Action                                         | Shortcut                                      |
+| ---------------------------------------------- | --------------------------------------------- |
+| Command menu                                   | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> |
+| Toggle the calendar sidebar                    | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> |
+| Toggle the details sidebar                     | <Kbd>/</Kbd>                                  |
+| Cycle theme (system, light, dark)              | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
+| Settings, with `onOpenSettings`                | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
+| Go to date                                     | <Kbd>.</Kbd>                                  |
+| All keyboard shortcuts, in the details sidebar | <Kbd>?</Kbd>                                  |
+| Meet with...                                   | <Kbd>F</Kbd>                                  |
+| Show teammate calendar...                      | <Kbd>P</Kbd>                                  |
 
 They listen on the whole page. Pass `shortcuts={false}` to turn them all off.
+
+Press <Kbd>.</Kbd> to open the command menu on Go to date: type a date ("tomorrow", "next friday", "dec 25", "in 2 weeks") and press <Kbd>Enter</Kbd> to show it in the current view. Press <Kbd>?</Kbd> to see every shortcut the app handles in the details sidebar, grouped as Notion Calendar groups them, with a field to find one by name or key. The command menu's "Search events" opens the details sidebar's event search with the field focused, and text typed in the menu offers "Search events for “…”".
 
 ## Not built yet
 
@@ -262,7 +266,7 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
       type: "boolean",
       default: "true",
       description:
-        "Whether the keyboard shortcuts are on: the calendar's single keys and the app's ⌘K, ⌘/, / and ⇧M. They listen on `window`.",
+        "Whether the keyboard shortcuts are on: the calendar's single keys and the app's ⌘K, ⌘/, /, ⇧M, . and ?. They listen on `window`.",
     },
     {
       name: "className",

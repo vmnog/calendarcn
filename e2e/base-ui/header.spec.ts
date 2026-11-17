@@ -82,9 +82,13 @@ test("the app keys run the panels, the theme and the command menu", async ({
   await expect(menu.getByRole("option", { name: /Import \.ics/ })).toHaveCount(
     0,
   );
-  await expect(menu.getByRole("option", { name: /Create event/ })).toHaveCount(
+  await expect(menu.getByRole("option", { name: /Search events/ })).toHaveCount(
     0,
   );
+  // The calendar's own commands are always there
+  await expect(
+    menu.getByRole("option", { name: /Create event/ }),
+  ).toBeVisible();
 
   await menu.getByPlaceholder("Type a command...").fill("agenda");
   await page.keyboard.press("Enter");
