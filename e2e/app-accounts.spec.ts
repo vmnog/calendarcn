@@ -256,7 +256,12 @@ test("the removed controls appear nowhere", async ({ page }) => {
     "menu bar",
   ]) {
     await field.fill(text);
-    await expect(commandMenu(page).getByRole("option")).toHaveCount(0);
+    // Only the event search for the typed text is left
+    await expect(
+      commandMenu(page)
+        .getByRole("option")
+        .filter({ hasNotText: "Search events for" }),
+    ).toHaveCount(0);
   }
 
   // The account commands under their neutral names, without "Soon"

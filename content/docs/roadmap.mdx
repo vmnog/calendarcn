@@ -15,7 +15,6 @@ Submit CalendarCN to the shadcn/ui registry directory, so it shows up next to th
 
 Not scheduled yet, roughly in priority order.
 
-- **Time zones**: a `timeZone` prop, to draw the calendar in a zone other than the viewer's.
 - **Editing repeating events**: ask whether an edit applies to "this event", "this and following events" or "all events".
 - **More views**: a resource view with people or rooms side by side.
 - **Large calendars**: virtualized rendering for thousands of events.
@@ -29,7 +28,7 @@ Some controls are drawn the way Notion Calendar has them and aren't built yet. E
 
 - **Calendar sidebar**: the scheduling row and the "Meet with..." field. See [Calendar Sidebar](/docs/components/calendar-sidebar).
 - **View settings**: "Declined events" in every view, "Weekends" in day, week and year view, and "Week numbers" outside month and year view. See [Calendar Header](/docs/components/calendar-header).
-- **Shortcuts**: a teammate's calendar, go to date and the full shortcut list, in the "Useful shortcuts" of the [Details Sidebar](/docs/components/details-sidebar).
+- **Shortcuts**: a teammate's calendar, in the "Useful shortcuts" of the [Details Sidebar](/docs/components/details-sidebar).
 - **Commands**: with `showComingSoon`, the [Command Menu](/docs/components/command-menu) lists the Notion Calendar commands that aren't built.
 
 ## Recently shipped
@@ -37,6 +36,8 @@ Some controls are drawn the way Notion Calendar has them and aren't built yet. E
 The highlights. The [Changelog](/docs/changelog) lists every change item by item, with breaking changes called out.
 
 - **Settings and accounts**: a settings dialog like Notion Calendar's, for the calendar view, time format, theme and each account's calendars, opened with <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup>. "Add calendar account", "Support & feedback" and "About CalendarCN" call your app's handlers; the live demo adds an .ics file as a calendar. See [Calendar Settings](/docs/components/calendar-settings) and [Calendar App](/docs/components/calendar-app#settings-and-accounts).
+- **Go to date, search and every shortcut**: press <Kbd>.</Kbd> and type a date ("next friday", "dec 25", "in 2 weeks") to go there, <Kbd>C</Kbd> to create an event at the next half hour, and <Kbd>?</Kbd> to see every keyboard shortcut, grouped as Notion Calendar groups them. The command menu also searches events. See [Keyboard shortcuts](/docs/keyboard-shortcuts) and the [Command Menu](/docs/components/command-menu).
+- **Time zones**: draw the calendar in any zone with `timeZone`, add zones beside the time axis from their labels or "Show additional time zones...", and travel to a zone for a while with <Kbd>Z</Kbd>, as in Notion Calendar. See [Calendar Core](/docs/components/calendar-core#time-zone).
 - **Year view**: [Year View](/docs/components/year-view) shows the year as twelve month grids, with today and the days that have events marked, like Google Calendar's. Press <Kbd>Y</Kbd> to open it.
 - **Event actions and undo**: delete, duplicate, cut, copy and paste events from the right-click menu, the details' menu or the keyboard, and undo or redo every change with <KbdGroup><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup> and <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup>. A toast confirms each delete, cut and copy, with Undo, as in Notion Calendar: see [Calendar Toaster](/docs/components/calendar-toaster). See [Keyboard shortcuts](/docs/keyboard-shortcuts).
 - **Repeating events**: a repeating event is drawn on every date of its rule in every view and in event search, and editing one date changes only that date. .ics files bring their edited and cancelled dates along. See [Calendar Core](/docs/components/calendar-core#repeating-events).
