@@ -29,6 +29,18 @@ Go to date comes with the [command menu](/docs/components/command-menu), so it's
 | Year view        | <Kbd>Y</Kbd>                 |
 | Agenda view      | <Kbd>A</Kbd>                 |
 
+## Hour size
+
+In day and week view, make the hours taller to read busy days, or shorter to see more of the day. Zooming keeps the middle of the screen where it was.
+
+| Action            | Shortcut                                                  |
+| ----------------- | --------------------------------------------------------- |
+| Zoom hours in     | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>.</Kbd></KbdGroup> |
+| Zoom hours out    | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
+| Default hour size | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>0</Kbd></KbdGroup> |
+
+Like the event keys, they work with <Kbd>Ctrl</Kbd> on Windows and Linux. See [Hour size](/docs/components/calendar-core#hour-size).
+
 ## Events
 
 | Action                                    | Shortcut                                                                                                                                    |
@@ -58,16 +70,18 @@ In a field or menu of the event details, <Kbd>Esc</Kbd> only closes it and resto
 
 The live demo ([Calendar App](/docs/components/calendar-app)) adds keys for the parts around the calendar. They come from the same hook, each one on only when you pass its action, so a calendar without a command menu or panels never claims them:
 
-| Action                            | Shortcut                                      | Option                 |
-| --------------------------------- | --------------------------------------------- | ---------------------- |
-| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> | `onToggleCommandMenu`  |
-| Toggle the sidebar                | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> | `onToggleSidebar`      |
-| Toggle the context panel          | <Kbd>/</Kbd>                                  | `onToggleContextPanel` |
-| Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> | `onCycleTheme`         |
-| Settings                          | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> | `onOpenSettings`       |
-| Go to date                        | <Kbd>.</Kbd>                                  | `onGoToDate`           |
-| All keyboard shortcuts            | <Kbd>?</Kbd>                                  | `onShowShortcuts`      |
-| Travel to time zone               | <Kbd>Z</Kbd>                                  | `onTravelToTimeZone`   |
+| Action                            | Shortcut                                      | Option                   |
+| --------------------------------- | --------------------------------------------- | ------------------------ |
+| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> | `onToggleCommandMenu`    |
+| Toggle the sidebar                | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> | `onToggleSidebar`        |
+| Toggle the context panel          | <Kbd>/</Kbd>                                  | `onToggleContextPanel`   |
+| Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> | `onCycleTheme`           |
+| Settings                          | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> | `onOpenSettings`         |
+| Go to date                        | <Kbd>.</Kbd>                                  | `onGoToDate`             |
+| All keyboard shortcuts            | <Kbd>?</Kbd>                                  | `onShowShortcuts`        |
+| Travel to time zone               | <Kbd>Z</Kbd>                                  | `onTravelToTimeZone`     |
+| Meet with...                      | <Kbd>F</Kbd>                                  | `onMeetWith`             |
+| Show teammate calendar...         | <Kbd>P</Kbd>                                  | `onShowTeammateCalendar` |
 
 ```tsx
 useCalendarShortcuts({
@@ -77,8 +91,14 @@ useCalendarShortcuts({
   onCycleTheme: cycleTheme,
   onGoToDate: openGoToDate,
   onShowShortcuts: () => detailsSidebarActions.current?.showAllShortcuts(),
+  onMeetWith: () => openPeoplePicker("meet-with"),
+  onShowTeammateCalendar: () => openPeoplePicker("teammate"),
 });
 ```
+
+<Kbd>F</Kbd> and <Kbd>P</Kbd> open the [People
+Picker](/docs/components/people-picker), to meet with someone or show a
+teammate's calendar, as in Notion Calendar.
 
 The live demo opens Go to date in the [Command Menu](/docs/components/command-menu#go-to-date) (`defaultPage="go-to-date"`), and the full list in the [Details Sidebar](/docs/components/details-sidebar#all-keyboard-shortcuts).
 

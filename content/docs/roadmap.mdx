@@ -15,7 +15,6 @@ Submit CalendarCN to the shadcn/ui registry directory, so it shows up next to th
 
 Not scheduled yet, roughly in priority order.
 
-- **Editing repeating events**: ask whether an edit applies to "this event", "this and following events" or "all events".
 - **More views**: a resource view with people or rooms side by side.
 - **Large calendars**: virtualized rendering for thousands of events.
 - **Theming**: event colors as CSS variables, so you can add your own next to the seven built in, and shading for business hours.
@@ -26,9 +25,7 @@ Not scheduled yet, roughly in priority order.
 
 Some controls are drawn the way Notion Calendar has them and aren't built yet. Each is disabled and carries a "Soon" badge, in the [live demo](/) and in the code you install, so nobody clicks a control that does nothing. They still need implementing:
 
-- **Calendar sidebar**: the scheduling row and the "Meet with..." field. See [Calendar Sidebar](/docs/components/calendar-sidebar).
-- **View settings**: "Declined events" in every view, "Weekends" in day, week and year view, and "Week numbers" outside month and year view. See [Calendar Header](/docs/components/calendar-header).
-- **Shortcuts**: a teammate's calendar, in the "Useful shortcuts" of the [Details Sidebar](/docs/components/details-sidebar).
+- **Calendar sidebar**: the scheduling row. See [Calendar Sidebar](/docs/components/calendar-sidebar).
 - **Commands**: with `showComingSoon`, the [Command Menu](/docs/components/command-menu) lists the Notion Calendar commands that aren't built.
 
 ## Recently shipped
@@ -36,11 +33,14 @@ Some controls are drawn the way Notion Calendar has them and aren't built yet. E
 The highlights. The [Changelog](/docs/changelog) lists every change item by item, with breaking changes called out.
 
 - **Settings and accounts**: a settings dialog like Notion Calendar's, for the calendar view, time format, theme and each account's calendars, opened with <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup>. "Add calendar account", "Support & feedback" and "About CalendarCN" call your app's handlers; the live demo adds an .ics file as a calendar. See [Calendar Settings](/docs/components/calendar-settings) and [Calendar App](/docs/components/calendar-app#settings-and-accounts).
+- **Meet with people**: type a name in the sidebar's "Meet with..." field, or press <Kbd>F</Kbd>, and that person's events show beside yours, with the times you're all free highlighted. An event you create meanwhile invites them. <Kbd>P</Kbd> shows a teammate's calendar the same way, without the meeting. Their events come from your app, from Google Calendar's free/busy for example. See [Meeting with people](/docs/components/calendar-core#meeting-with-people).
+- **Week start and hour size**: start the week on any day and set the number of days from the command menu, and zoom the day and week views' hours in and out with Notion Calendar's keys. See [Calendar Core](/docs/components/calendar-core#hour-size).
+- **View settings in every view**: hide weekends, show week numbers and hide the events you declined from the view switcher or the command menu, in every view. Day and week view step over a hidden weekend, and declined events are struck through on a dashed outline, as in Notion Calendar. See [Calendar Header](/docs/components/calendar-header#calendarviewswitcher).
 - **Go to date, search and every shortcut**: press <Kbd>.</Kbd> and type a date ("next friday", "dec 25", "in 2 weeks") to go there, <Kbd>C</Kbd> to create an event at the next half hour, and <Kbd>?</Kbd> to see every keyboard shortcut, grouped as Notion Calendar groups them. The command menu also searches events. See [Keyboard shortcuts](/docs/keyboard-shortcuts) and the [Command Menu](/docs/components/command-menu).
 - **Time zones**: draw the calendar in any zone with `timeZone`, add zones beside the time axis from their labels or "Show additional time zones...", and travel to a zone for a while with <Kbd>Z</Kbd>, as in Notion Calendar. See [Calendar Core](/docs/components/calendar-core#time-zone).
 - **Year view**: [Year View](/docs/components/year-view) shows the year as twelve month grids, with today and the days that have events marked, like Google Calendar's. Press <Kbd>Y</Kbd> to open it.
 - **Event actions and undo**: delete, duplicate, cut, copy and paste events from the right-click menu, the details' menu or the keyboard, and undo or redo every change with <KbdGroup><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup> and <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>Z</Kbd></KbdGroup>. A toast confirms each delete, cut and copy, with Undo, as in Notion Calendar: see [Calendar Toaster](/docs/components/calendar-toaster). See [Keyboard shortcuts](/docs/keyboard-shortcuts).
-- **Repeating events**: a repeating event is drawn on every date of its rule in every view and in event search, and editing one date changes only that date. .ics files bring their edited and cancelled dates along. See [Calendar Core](/docs/components/calendar-core#repeating-events).
+- **Repeating events**: a repeating event is drawn on every date of its rule in every view and in event search, and editing one date changes only that date. .ics files bring their edited and cancelled dates along. Changing or deleting one date asks whether it's this event, this and following events, or all events. See [Calendar Core](/docs/components/calendar-core#repeating-events).
 - **The live demo as a block**: [Calendar App](/docs/components/calendar-app) installs the whole live demo with one command: both sidebars, the header, every view, the command menu, theme switching and .ics files. The live demo renders this block, so the two stay the same. Each part installs on its own too, from the [Calendar Sidebar](/docs/components/calendar-sidebar) and [Details Sidebar](/docs/components/details-sidebar) to the [Command Menu](/docs/components/command-menu) and the [Sample Data](/docs/sample-data).
 - **Notion-style event details**: the details panel matches Notion Calendar section by section: time and date, time zone, repeat, participants and rooms, conferencing, location, links and attachments, description, calendar, availability and reminders. It works the same in Radix and Base UI projects, and each section can be used on its own. See [Event Details](/docs/components/event-details).
 - **Base UI styles**: the registry installs into shadcn/ui projects set up with Base UI as well as Radix. The event details render their own popover, so they no longer rely on Radix-only features. See [Installation](/docs/installation). <Contributor handle="doneumark" pr={43} />

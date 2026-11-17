@@ -19,6 +19,7 @@ const ITEM_NAMES = [
   "sample-data",
   "calendar-header",
   "command-menu",
+  "people-picker",
   "calendar-toaster",
   "calendar-settings",
   // The demo's sidebars

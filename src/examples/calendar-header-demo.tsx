@@ -19,7 +19,11 @@ export function CalendarHeaderDemo() {
   const [initialEvents] = React.useState(() => createSampleEvents(new Date()));
 
   return (
-    <CalendarProvider defaultEvents={initialEvents}>
+    // Week numbers on, so the title names the week ("Week 23")
+    <CalendarProvider
+      defaultEvents={initialEvents}
+      defaultViewSettings={{ showWeekNumbers: true }}
+    >
       <CalendarLayout />
     </CalendarProvider>
   );

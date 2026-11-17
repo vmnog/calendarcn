@@ -1,0 +1,88 @@
+---
+title: People Picker
+description: Notion Calendar's F and P dialog, to meet with someone or show a teammate's calendar.
+---
+
+`PeoplePicker` is the dialog the [live demo](/) opens with <Kbd>F</Kbd> ("Meet with...") and <Kbd>P</Kbd> ("Show teammate calendar..."), and from the same commands in the [Command Menu](/docs/components/command-menu). It searches the provider's `contacts` by name or email, and offers a typed address no contact has. Picking someone meets with them or shows their calendar through [`useCalendarPeople()`](/docs/components/calendar-core#usecalendarpeople), so it goes inside `CalendarProvider`.
+
+## Installation
+
+<InstallTabs item="people-picker" />
+
+## Usage
+
+```tsx
+import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";
+import { CalendarProvider } from "@/components/calendar-provider";
+import { PeoplePicker } from "@/components/people-picker";
+import { WeekView } from "@/components/week-view";
+import type { PeoplePickerMode } from "@/components/calendar-types";
+
+export function Schedule() {
+  return (
+    <CalendarProvider
+      defaultEvents={events}
+      contacts={contacts}
+      contactEvents={contactEvents}
+    >
+      <CalendarWithPeople />
+    </CalendarProvider>
+  );
+}
+
+function CalendarWithPeople() {
+  const [open, setOpen] = React.useState(false);
+  const [mode, setMode] = React.useState<PeoplePickerMode>("meet-with");
+  const openPicker = (next: PeoplePickerMode) => {
+    setMode(next);
+    setOpen(true);
+  };
+
+  // F and P open it, as in Notion Calendar
+  useCalendarShortcuts({
+    onMeetWith: () => openPicker("meet-with"),
+    onShowTeammateCalendar: () => openPicker("teammate"),
+  });
+
+  return (
+    <>
+      <WeekView />
+      <PeoplePicker open={open} onOpenChange={setOpen} mode={mode} />
+    </>
+  );
+}
+```
+
+- `"meet-with"` adds the person to the meeting: their events show beside yours and the times you're all free are highlighted. An event you create meanwhile invites them. See [Meeting with people](/docs/components/calendar-core#meeting-with-people).
+- `"teammate"` shows their calendar beside yours, without a meeting.
+
+The people already added are left out of the list. The arrow keys move through it, <Kbd>Enter</Kbd> picks, and <Kbd>Esc</Kbd> closes the picker, which opens empty the next time. The [Calendar Sidebar](/docs/components/calendar-sidebar) lists who was picked, each removable.
+
+## API Reference
+
+### PeoplePicker
+
+<PropsTable
+  rows={[
+    {
+      name: "open",
+      type: "boolean",
+      required: true,
+      description: "Whether the picker is open.",
+    },
+    {
+      name: "onOpenChange",
+      type: "(open: boolean) => void",
+      required: true,
+      description:
+        "Called when the picker opens or closes: on Escape, a click outside, or once someone is picked.",
+    },
+    {
+      name: "mode",
+      type: '"meet-with" | "teammate"',
+      default: '"meet-with"',
+      description:
+        'Meet with the picked person, or show their calendar. Also sets the placeholder: "Meet with..." or "Show teammate calendar...".',
+    },
+  ]}
+/>

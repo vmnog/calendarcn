@@ -97,3 +97,53 @@ test("the app keys run the panels, the theme and the command menu", async ({
     page.getByRole("button", { name: "Agenda", exact: true }),
   ).toBeVisible();
 });
+
+test("the command menu's week start list starts the week on the day picked", async ({
+  page,
+}) => {
+  const column = (date: string) =>
+    page.getByRole("main").getByRole("group", { name: date, exact: true });
+  await expect(column("Sunday, May 31")).not.toHaveAttribute("inert", "");
+
+  await page.keyboard.press("ControlOrMeta+k");
+  const menu = page.getByRole("dialog", { name: "Command Menu" });
+  await menu.getByPlaceholder("Type a command...").fill("start week");
+  await menu.getByRole("option", { name: /^Start week on/ }).click();
+  // The search field keeps focus, so typing filters the days
+  await page.keyboard.type("mon");
+  await expect(menu.getByRole("option")).toHaveText(["Mondays"]);
+  await page.keyboard.press("Enter");
+  await expect(menu).toBeHidden();
+
+  await expect(column("Monday, June 1")).not.toHaveAttribute("inert", "");
+  await expect(column("Sunday, June 7")).not.toHaveAttribute("inert", "");
+  await expect(column("Sunday, May 31")).toHaveAttribute("inert", "");
+});
+
+test("the view settings hide the weekend and the week number", async ({
+  page,
+}) => {
+  const saturday = page
+    .getByRole("main")
+    .getByRole("group", { name: "Saturday, June 6", exact: true });
+  await expect(saturday).toBeInViewport();
+
+  /** Toggles a view setting. Base UI keeps the menu open after a check */
+  const toggleSetting = async (name: RegExp) => {
+    await page.getByRole("button", { name: "Week", exact: true }).click();
+    await page.getByRole("menuitem", { name: "View settings" }).click();
+    await page.getByRole("menuitemcheckbox", { name }).click();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+  };
+
+  await toggleSetting(/^Weekends/);
+  await expect(saturday).toHaveCount(0);
+  await expect(
+    page.getByRole("main").getByRole("group", { name: "Friday, June 5" }),
+  ).toBeInViewport();
+
+  await toggleSetting(/^Week numbers/);
+  await expect(title(page)).toHaveAccessibleName("June 2026");
+});

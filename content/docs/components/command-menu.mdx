@@ -5,7 +5,7 @@ description: The live demo's ⌘K menu, for creating an event, going to a typed 
 
 <ComponentPreview name="command-menu-demo" />
 
-`CommandMenu` is the [live demo](/)'s <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu, built on shadcn/ui's [Command](https://ui.shadcn.com/docs/components/command) in a Dialog. Creating an event, going to a date, today, previous and next, and the day, week, month, year and agenda views come from [`useCalendar()`](/docs/components/calendar-core#usecalendar), so it goes inside `CalendarProvider`. Commands that belong to your app, such as its panels, event search, the shortcut list, its theme and .ics files, show only when you pass their callback.
+`CommandMenu` is the [live demo](/)'s <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu, built on shadcn/ui's [Command](https://ui.shadcn.com/docs/components/command) in a Dialog. Creating an event, going to a date, today, previous and next, the day, week, month, year and agenda views, the view settings ("Hide weekends", "Hide declined events" and "Hide week numbers", which read "Show …" while the setting is off, as in Notion Calendar), the week start ("Start week on..."), the number of days ("Set number of displayed days...") and the hour size ("Default hour size", "Zoom hours in", "Zoom hours out") come from [`useCalendar()`](/docs/components/calendar-core#usecalendar), so it goes inside `CalendarProvider`. Commands that belong to your app, such as its panels, event search, the shortcut list, its theme and .ics files, show only when you pass their callback.
 
 ## Installation
 
@@ -80,6 +80,10 @@ useCalendarShortcuts({
 
 "Create event..." (<Kbd>C</Kbd> outside the menu) creates an hour-long event at the next half hour, as Notion Calendar does: on today when it's on screen, else on the first day shown (`addEventAtNextSlot`). It goes through your `createEvent`, so undo and the details work as for a clicked slot, and the new event's title is focused.
 
+### Second lists
+
+"Start week on..." and "Set number of displayed days..." open a second list in the same menu, as Notion Calendar's do: the days of the week other than the one the week starts on now ("Mondays", "Tuesdays", ...), or the day counts 2 to 9. Type to filter them, <Kbd>↵</Kbd> picks one, <Kbd>⌫</Kbd> in the empty search goes back to the commands, and <Kbd>Esc</Kbd> closes the menu.
+
 ### Your app's commands
 
 Pass a callback to add its command. These are the demo's:
@@ -100,6 +104,8 @@ Pass a callback to add its command. These are the demo's:
   onAbout={() => router.push("/docs")}
   onSearchEvents={(query) => detailsActions.current?.searchEvents(query)}
   onShowShortcuts={() => detailsActions.current?.showAllShortcuts()}
+  onMeetWith={() => openPeoplePicker("meet-with")}
+  onShowTeammateCalendar={() => openPeoplePicker("teammate")}
   showComingSoon
 />
 ```
@@ -108,6 +114,7 @@ Pass a callback to add its command. These are the demo's:
 - `onCycleTheme` adds "Set theme...". The demo goes from system to light to dark with `useTheme()` from next-themes.
 - `onSearchEvents` adds "Search events", and once you type, "Search events for “…”" with your text. The demo opens the [Details Sidebar](/docs/components/details-sidebar)'s event search with the field focused.
 - `onShowShortcuts` adds "Show keyboard shortcuts" (<Kbd>?</Kbd>). The demo shows the details sidebar's full list.
+- `onMeetWith` and `onShowTeammateCalendar` add "Meet with..." (F) and "Show teammate calendar..." (P). The demo opens the [People Picker](/docs/components/people-picker) from both.
 - `onToggleSidebar` and `onToggleContextPanel` add the panel toggles, next to the [Calendar Header](/docs/components/calendar-header)'s buttons.
 - `onOpenSettings` adds "Go to settings" (<KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup>). The demo opens the [Calendar Settings](/docs/components/calendar-settings) dialog.
 - `onAddCalendarAccount` and `onManageCalendarAccounts` add "Add calendar account" and "Manage calendar accounts". The demo adds an .ics file as a calendar, and opens the settings on the calendars.
@@ -207,6 +214,16 @@ The dialog is translucent and blurred in dark mode. The CLI also adds a rule to 
       name: "onAbout",
       type: "() => void",
       description: 'Adds "About CalendarCN".',
+    },
+    {
+      name: "onMeetWith",
+      type: "() => void",
+      description: 'Adds "Meet with..." (F).',
+    },
+    {
+      name: "onShowTeammateCalendar",
+      type: "() => void",
+      description: 'Adds "Show teammate calendar..." (P).',
     },
     {
       name: "onSearchEvents",

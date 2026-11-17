@@ -41,14 +41,16 @@ test("without handlers, the account and app controls aren't there", async ({
   await page.keyboard.press("ControlOrMeta+k");
   const menu = page.getByRole("dialog", { name: "Command Menu" });
   const field = menu.getByPlaceholder("Type a command...");
-  for (const text of [
-    "go to settings",
-    "support",
-    "about",
-    "calendar account",
-  ]) {
+  // cmdk matches loosely ("about" finds "Show keyboard shortcuts"), so look
+  // for the commands themselves rather than an empty list
+  for (const [text, name] of [
+    ["go to settings", /go to settings/i],
+    ["support", /support/i],
+    ["about", /about/i],
+    ["calendar account", /calendar account/i],
+  ] as const) {
     await field.fill(text);
-    await expect(menu.getByRole("option")).toHaveCount(0);
+    await expect(menu.getByRole("option", { name })).toHaveCount(0);
   }
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);

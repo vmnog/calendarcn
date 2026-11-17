@@ -89,7 +89,7 @@ export interface DetailsSidebarShortcut {
 export const USEFUL_SHORTCUTS: DetailsSidebarShortcut[] = [
   { label: "Command menu", keys: ["⌘", "K"] },
   { label: "Toggle sidebar", keys: ["⌘", "/"] },
-  { label: "Show teammate calendar", keys: ["P"], soon: true },
+  SHORTCUTS.showTeammateCalendar,
   SHORTCUTS.goToDate,
   { label: "All keyboard shortcuts", keys: SHORTCUTS.showShortcuts.keys },
 ];
@@ -211,7 +211,7 @@ export function DetailsSidebar({
     events,
     selectedEvent,
     clearSelection,
-    updateEvent,
+    editEvent,
     previousInSeries,
     nextInSeries,
     showSeriesOccurrence,
@@ -502,7 +502,7 @@ export function DetailsSidebar({
         {selectedEvent ? (
           <EventDetailPanel
             event={selectedEvent}
-            onEventChange={updateEvent}
+            onEventChange={editEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             {...getEventActions(selectedEvent.id)}
@@ -512,7 +512,7 @@ export function DetailsSidebar({
         ) : resolvedSearchEvent ? (
           <EventDetailPanel
             event={resolvedSearchEvent}
-            onEventChange={updateEvent}
+            onEventChange={editEvent}
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             {...getEventActions(resolvedSearchEvent.id)}

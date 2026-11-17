@@ -74,7 +74,7 @@ Dates and times follow RFC 5545:
 
 <Callout title="Recurring events">
 
-A weekly meeting comes in as one event with its rule in `recurrenceRule`, and the views draw it on every date. A rule `recurrenceRule` can't hold exactly (`BYMONTHDAY=1,15`, `BYHOUR`, a fifth weekday of the month, ...) is kept as written in `recurrence`, reads "Custom repeat" and draws once. An edited occurrence comes in as its own event with `seriesId` and `originalStart` and takes its date's place; a cancelled one becomes an `excludedDates` entry of its series. Attendees, attachments, to-dos (`VTODO`) and other components are skipped.
+A weekly meeting comes in as one event with its rule in `recurrenceRule`, and the views draw it on every date. A rule `recurrenceRule` can't hold exactly (`BYMONTHDAY=1,15`, `BYHOUR`, a fifth weekday of the month, ...) is kept as written in `recurrence`, reads "Custom repeat" and draws once. An edited occurrence comes in as its own event with `seriesId` and `originalStart` and takes its date's place; a cancelled one becomes an `excludedDates` entry of its series. Attendees and the organizer come in as `participants`: their name (`CN`), response (`PARTSTAT`), `optional` (`ROLE=OPT-PARTICIPANT`) and `organizer`, and `toIcs()` writes them back. iCalendar doesn't say which attendee you are, so `toIcs()` marks the participant with `self: true` with a `X-CALENDARCN-SELF=TRUE` parameter that other apps ignore, and `parseIcs()` reads it back. Rooms and equipment (`CUTYPE=ROOM` or `RESOURCE`), attachments, to-dos (`VTODO`) and other components are skipped.
 
 </Callout>
 

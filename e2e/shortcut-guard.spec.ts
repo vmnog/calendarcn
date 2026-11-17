@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 
 import {
   CURRENT_WEEK_LABEL,
+  answerThisEvent,
   calendarEvent,
   detailTitle,
   expectHeader,
@@ -160,6 +161,7 @@ test("Cmd+Z in the title is the field's own undo, not the calendar's", async ({
 }) => {
   await calendarEvent(page, "Launch Review").click();
   await page.keyboard.press("Backspace");
+  await answerThisEvent(page, "Delete event");
   await expect(calendarEvent(page, "Launch Review")).toHaveCount(0);
 
   await calendarEvent(page, "Quick Sync").click();

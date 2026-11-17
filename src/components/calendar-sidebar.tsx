@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Link2, PanelLeftIcon, Plus, UserRound } from "lucide-react";
+import { Link2, PanelLeftIcon, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useCalendar } from "@/components/calendar-provider";
 import { CalendarList } from "@/components/calendar-list";
+import { CalendarSidebarPeople } from "@/components/calendar-sidebar-people";
 import { MiniCalendar } from "@/components/mini-calendar";
 import {
   CALENDAR_SIDEBAR_COLORS_CLASS,
@@ -64,12 +65,13 @@ interface CalendarSidebarProps {
 
 /**
  * Notion Calendar's left sidebar: the mini calendar, scheduling, the
- * calendar list and a theme toggle. Inline it's a fixed column that pushes
+ * "Meet with..." field with the people you meet with and the teammates
+ * shown, the calendar list and a theme toggle. Inline it's a fixed column that pushes
  * the page over; with `overlay` it's a sheet from the left. Reads the
  * calendar's date and view from the nearest `CalendarProvider`, and needs
  * shadcn/ui's `SidebarProvider` around it. "Add calendar account" shows
- * when you pass `onAddCalendarAccount`. The scheduling row and the "Meet
- * with..." field aren't built: they are disabled and marked "Soon".
+ * when you pass `onAddCalendarAccount`. The scheduling row isn't built: it
+ * is disabled and marked "Soon".
  */
 export function CalendarSidebar({
   open = true,
@@ -89,6 +91,7 @@ export function CalendarSidebar({
     visibleDays,
     weekStartsOn,
     numberOfDays,
+    viewSettings,
     goToDate,
   } = useCalendar();
 
@@ -119,6 +122,7 @@ export function CalendarSidebar({
                   : visibleDays
               }
               weekStartsOn={weekStartsOn}
+              showWeekNumber={viewSettings.showWeekNumbers}
             />
           </SidebarGroupContent>
         </SidebarGroup>
@@ -142,19 +146,8 @@ export function CalendarSidebar({
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {/* Meet with input: not built yet */}
-        <SidebarGroup className="py-2 px-2">
-          <div className="flex items-center gap-2 rounded-sm bg-[#EFEFEE] dark:bg-sidebar px-2 py-1.5">
-            <UserRound className="size-4 shrink-0 text-calendar-sidebar-muted-foreground" />
-            <input
-              type="text"
-              disabled
-              placeholder="Meet with..."
-              className="min-w-0 flex-1 bg-transparent text-sm text-sidebar-foreground placeholder:text-calendar-sidebar-muted-foreground outline-none"
-            />
-            <span className={CALENDAR_SIDEBAR_SOON_CLASS}>Soon</span>
-          </div>
-        </SidebarGroup>
+        {/* "Meet with...", meeting participants and team calendars */}
+        <CalendarSidebarPeople />
         <CalendarList
           hiddenCalendarIds={hiddenCalendarIds}
           defaultHiddenCalendarIds={defaultHiddenCalendarIds}

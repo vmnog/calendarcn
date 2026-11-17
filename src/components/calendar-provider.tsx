@@ -18,20 +18,32 @@ import { useControllableState } from "@/hooks/use-controllable-state";
 import { useToday } from "@/hooks/use-now";
 import { EventTitleFocusProvider } from "./event-title-focus-context";
 import {
+  CalendarPeopleProvider,
+  useCalendarPeopleState,
+} from "./calendar-people";
+import {
   AGENDA_DAYS,
+  addShownDays,
   describeEventChange,
   describeEventCreated,
   describeEventTime,
   getCalendarHeaderInfo,
+  getEventChangeSummary,
+  getFirstShownDay,
   getNextSlotDay,
   getNextSlotEventRange,
+  getSpokenTitle,
   getPeriodStart,
   getVisibleDays,
   getVisibleRange,
   getWeekViewStepDays,
+  getZoomedHourHeight,
+  isDeclinedByViewer,
+  stepsByDay,
 } from "@/lib/event-utils";
 import {
   EMPTY_EVENT_HISTORY,
+  EVENT_HISTORY_MERGE_MS,
   applyEventChanges,
   canApplyEventChanges,
   describeEventAction,
@@ -47,8 +59,13 @@ import {
   applyRecurringEdit,
   createStandaloneCopy,
   findEventOrOccurrence,
+  findEventSeries,
   findSeriesOccurrence,
   getOccurrenceRemoval,
+  getSeriesDeleteChanges,
+  getSeriesDeleteScopes,
+  getSeriesEditChanges,
+  getSeriesEditScopes,
 } from "@/lib/recurrence";
 import {
   fromDisplayEvent,
@@ -59,6 +76,7 @@ import {
   toDisplayEvent,
   toZonedWallClock,
 } from "@/lib/time-zones";
+import { addMeetingParticipants, findContact } from "@/lib/people";
 import type {
   CalendarConfig,
   CalendarContextValue,
@@ -71,6 +89,7 @@ import type {
   CalendarRenderSlots,
   CalendarTimeZones,
   ConferenceProviderOption,
+  DetailedCalendarEvent,
   EventContact,
   EventContentProps,
   EventHistory,
@@ -82,7 +101,10 @@ import type {
   HourCycle,
   LocationSuggestion,
   NewEventRange,
+  SeriesEditScope,
   SeriesOccurrence,
+  SeriesScopeAnswer,
+  SeriesScopeQuestion,
   ViewSettings,
   ViewType,
   VisibleRange,
@@ -117,6 +139,18 @@ const DEFAULT_DAY_END_HOUR = 24;
 
 /** Clock style when `hourCycle` is not set */
 const DEFAULT_HOUR_CYCLE: HourCycle = 12;
+
+/** Week start when neither `weekStartsOn` nor `defaultWeekStartsOn` is set (Sunday) */
+const DEFAULT_WEEK_STARTS_ON: WeekStartsOn = 0;
+
+/** Days from a week's first day to its middle, which a new week start keeps on screen */
+const WEEK_MIDDLE_OFFSET = 3;
+
+/**
+ * Hour height zooming starts from when no time grid has reported its own
+ * yet: the smallest height the default size fills the screen with
+ */
+const FALLBACK_HOUR_HEIGHT = 48;
 
 /** Calendars offered by the context menu when `calendars` is not set (stable identity) */
 const NO_CALENDARS: CalendarInfo[] = [];
@@ -195,6 +229,8 @@ interface AdoptedViewDateOptions {
   pendingSwitch: ViewSwitchSnapshot | null;
   /** Whether the provider still shows its untouched starting date (today's period) */
   isOnStartingToday: boolean;
+  /** Whether weekends are shown: day views land on a weekday while they're not */
+  showWeekends: boolean;
   /** Now, on the calendar's clock */
   now: Date;
 }
@@ -234,6 +270,11 @@ interface CalendarViewSyncValue {
    * `pasteEvent` puts the next paste
    */
   reportPasteTarget: (target: EventPasteTarget) => void;
+  /**
+   * Time grid: the hour height it draws, which zooming steps from while
+   * the hours fill the screen (`hourHeight` is `null`)
+   */
+  reportHourHeight: (hourHeight: number) => void;
 }
 
 /**
@@ -322,6 +363,58 @@ const NO_SERIES: CalendarSeriesValue = {
 const CalendarSeriesContext =
   React.createContext<CalendarSeriesValue>(NO_SERIES);
 
+/** A change to a repeating event's date that waits for its answer */
+interface PendingSeriesChange {
+  action: "update" | "delete";
+  /** The date as drawn before the change (for a delete, the date) */
+  before: DetailedCalendarEvent;
+  /** The date with every change so far (for a delete, the date) */
+  after: DetailedCalendarEvent;
+  /** Whether the question is on screen. A details change waits without it */
+  isAsking: boolean;
+  /** What leaving the event was about to do, run after Save or Discard */
+  onLeave: (() => void) | null;
+}
+
+/**
+ * A waiting change to a repeating event's date, for the views (its preview
+ * and dot) and `EventSeriesScopeDialog` (its question). Kept out of
+ * `useCalendar()`: only those read it.
+ */
+interface CalendarSeriesScopeValue {
+  /** The question to show, or `null` while none is asked */
+  question: SeriesScopeQuestion | null;
+  /** Takes the answer to the open question */
+  answer: (answer: SeriesScopeAnswer) => void;
+  /** Called by a mounted dialog; returns its cleanup. Without one, changes don't wait */
+  registerDialog: () => () => void;
+  /** Id of the date a change waits for (it shows a dot), or `null` */
+  pendingEventId: string | null;
+  /** The views' drawn events with the waiting change shown on its date */
+  previewEvents: <TEvent extends CalendarEvent>(drawn: TEvent[]) => TEvent[];
+  /**
+   * The details' way to change an event: holds a selected repeating date's
+   * change back until the event is left, else calls `apply`
+   */
+  editEvent: (
+    event: CalendarEvent,
+    apply: (event: CalendarEvent) => void,
+  ) => void;
+}
+
+/** Outside a provider: nothing waits, details changes apply at once */
+const NO_SERIES_SCOPE: CalendarSeriesScopeValue = {
+  question: null,
+  answer: () => {},
+  registerDialog: () => () => {},
+  pendingEventId: null,
+  previewEvents: (drawn) => drawn,
+  editEvent: (event, apply) => apply(event),
+};
+
+const CalendarSeriesScopeContext =
+  React.createContext<CalendarSeriesScopeValue>(NO_SERIES_SCOPE);
+
 const CalendarEventActionsContext =
   React.createContext<CalendarEventActionsValue | null>(null);
 
@@ -346,21 +439,65 @@ function createDefaultEvent(range: NewEventRange): CalendarEvent {
 }
 
 /**
+ * A just-created event with the people met with ("Meet with...") invited:
+ * as the details' participants field adds them, the calendar's account
+ * organizing. Returned as it is when nobody is met with.
+ */
+function withMeetingParticipants(
+  event: CalendarEvent,
+  meetWith: string[],
+  contacts: EventContact[],
+): CalendarEvent {
+  if (meetWith.length === 0) return event;
+  const detailed: DetailedCalendarEvent = event;
+  const invited: DetailedCalendarEvent = {
+    ...detailed,
+    participants: addMeetingParticipants(
+      detailed.participants ?? [],
+      meetWith.map((email) => findContact(contacts, email)),
+      detailed.calendarEmail,
+    ),
+  };
+  return invited;
+}
+
+/**
+ * The option a series change applies with right away: the caller's (one
+ * the change doesn't offer falls back to the first it does), the first
+ * offered when no dialog can ask, or `null` to ask
+ */
+function resolveSeriesScope(
+  scope: SeriesEditScope | undefined,
+  scopes: SeriesEditScope[],
+  canAsk: boolean,
+): SeriesEditScope | null {
+  if (scope) return scopes.includes(scope) ? scope : scopes[0];
+  if (!canAsk) return scopes[0];
+  return null;
+}
+
+/**
  * Moves `date` by `amount` periods of the given view: days, months, years, the
  * agenda's `AGENDA_DAYS`, or the week view's step (`numberOfDays` below a
- * week, a week otherwise)
+ * week, a week otherwise). With weekends hidden, the day steps count
+ * weekdays: the day after Friday is Monday.
  */
 function shiftPeriod(
   date: Date,
   view: ViewType,
   amount: number,
   numberOfDays: number,
+  showWeekends: boolean,
 ): Date {
-  if (view === "day") return addDays(date, amount);
+  if (view === "day") return addShownDays(date, amount, showWeekends);
   if (view === "month") return addMonths(date, amount);
   if (view === "year") return addYears(date, amount);
   if (view === "agenda") return addDays(date, amount * AGENDA_DAYS);
-  return addDays(date, amount * getWeekViewStepDays(numberOfDays));
+  const step = getWeekViewStepDays(numberOfDays);
+  if (stepsByDay(view, numberOfDays)) {
+    return addShownDays(date, amount * step, showWeekends);
+  }
+  return addDays(date, amount * step);
 }
 
 /**
@@ -373,8 +510,9 @@ function getAgendaStartFrom(
   view: ViewType,
   numberOfDays: number,
   now: Date,
+  showWeekends: boolean,
 ): Date {
-  const periodEnd = shiftPeriod(date, view, 1, numberOfDays);
+  const periodEnd = shiftPeriod(date, view, 1, numberOfDays, showWeekends);
   if (now >= date && now < periodEnd) return startOfDay(now);
   return startOfDay(date);
 }
@@ -443,6 +581,7 @@ function getAdoptedViewDate({
   weekStartsOn,
   pendingSwitch,
   isOnStartingToday,
+  showWeekends,
   now,
 }: AdoptedViewDateOptions): Date {
   // The mounted view didn't follow the latest switch: undo it, date included
@@ -455,11 +594,17 @@ function getAdoptedViewDate({
   // Still on the starting date picked before any view mounted: today's
   // period of the mounted view instead (today for a day view)
   if (isOnStartingToday) {
-    return getPeriodStart(now, view, weekStartsOn, numberOfDays);
+    return getPeriodStart(now, view, weekStartsOn, numberOfDays, showWeekends);
   }
   // The app swapped in a view of another type: land like switchView
-  if (view === "day") return startOfDay(now);
-  return getPeriodStart(currentDate, view, weekStartsOn, numberOfDays);
+  if (view === "day") return getFirstShownDay(startOfDay(now), showWeekends);
+  return getPeriodStart(
+    currentDate,
+    view,
+    weekStartsOn,
+    numberOfDays,
+    showWeekends,
+  );
 }
 
 /**
@@ -548,10 +693,14 @@ export function CalendarProvider<TEvent extends CalendarEvent = CalendarEvent>(
     ? getPeriodStart(
         today,
         props.view ?? props.defaultView ?? "week",
-        props.weekStartsOn ?? 0,
+        props.weekStartsOn ??
+          props.defaultWeekStartsOn ??
+          DEFAULT_WEEK_STARTS_ON,
         props.numberOfDays ??
           props.defaultNumberOfDays ??
           DEFAULT_NUMBER_OF_DAYS,
+        props.defaultViewSettings?.showWeekends ??
+          DEFAULT_VIEW_SETTINGS.showWeekends,
       )
     : null;
   const initialDate = props.defaultDate ?? todayPeriodStart ?? props.date;
@@ -578,10 +727,15 @@ function CalendarStateProvider({
   date: dateProp,
   defaultDate,
   onDateChange,
-  weekStartsOn = 0,
+  weekStartsOn: weekStartsOnProp,
+  defaultWeekStartsOn = DEFAULT_WEEK_STARTS_ON,
+  onWeekStartsOnChange,
   numberOfDays: numberOfDaysProp,
   defaultNumberOfDays = DEFAULT_NUMBER_OF_DAYS,
   onNumberOfDaysChange,
+  hourHeight: hourHeightProp,
+  defaultHourHeight = null,
+  onHourHeightChange,
   defaultViewSettings,
   snapMinutes = DEFAULT_SNAP_MINUTES,
   dayStartHour = DEFAULT_DAY_START_HOUR,
@@ -600,6 +754,14 @@ function CalendarStateProvider({
   rooms = NO_ROOMS,
   conferenceProviders = NO_CONFERENCE_PROVIDERS,
   locationSuggestions = NO_LOCATION_SUGGESTIONS,
+  meetWith,
+  defaultMeetWith,
+  onMeetWithChange,
+  teammates,
+  defaultTeammates,
+  onTeammatesChange,
+  contactEvents,
+  workingHours,
   createEvent,
   onEventCreate,
   onEventUpdate,
@@ -630,6 +792,16 @@ function CalendarStateProvider({
     prop: numberOfDaysProp,
     defaultProp: defaultNumberOfDays,
     onChange: onNumberOfDaysChange,
+  });
+  const [weekStartsOn, setWeekStartsOnState] = useControllableState({
+    prop: weekStartsOnProp,
+    defaultProp: defaultWeekStartsOn,
+    onChange: onWeekStartsOnChange,
+  });
+  const [hourHeight, setHourHeight] = useControllableState<number | null>({
+    prop: hourHeightProp,
+    defaultProp: defaultHourHeight,
+    onChange: onHourHeightChange,
   });
   /** The primary zone, `undefined` for the viewer's */
   const [primaryTimeZone, setPrimaryTimeZone] = useControllableState<
@@ -672,6 +844,18 @@ function CalendarStateProvider({
     () => ({ primary: primaryTimeZone, secondary: knownSecondaryTimeZones }),
     [primaryTimeZone, knownSecondaryTimeZones],
   );
+  /** Who you meet with and which teammates show, for `useCalendarPeople()` */
+  const people = useCalendarPeopleState({
+    contacts,
+    meetWith,
+    defaultMeetWith,
+    onMeetWithChange,
+    teammates,
+    defaultTeammates,
+    onTeammatesChange,
+    contactEvents,
+    workingHours,
+  });
   const [viewSettings, setViewSettings] = React.useState<ViewSettings>(() => ({
     ...DEFAULT_VIEW_SETTINGS,
     ...defaultViewSettings,
@@ -687,7 +871,12 @@ function CalendarStateProvider({
   const [visibleDays, setVisibleDays] = React.useState<Date[]>(() =>
     hasNoVisibleDays(view)
       ? []
-      : getVisibleDays(currentDate, view, numberOfDays),
+      : getVisibleDays(
+          currentDate,
+          view,
+          numberOfDays,
+          viewSettings.showWeekends,
+        ),
   );
   /** ID of a just-created event whose title input should be focused once */
   const [titleFocusEventId, setTitleFocusEventId] = React.useState<
@@ -720,6 +909,8 @@ function CalendarStateProvider({
   const eventsRef = React.useRef(events);
   /** The slot or day a view last had the mouse over: where a paste goes */
   const pasteTargetRef = React.useRef<EventPasteTarget | null>(null);
+  /** Hour height the time grid last drew, which zooming steps from */
+  const renderedHourHeightRef = React.useRef<number | null>(null);
   /** Id of the latest notice; each new one counts up */
   const noticeIdRef = React.useRef(0);
   /**
@@ -742,6 +933,80 @@ function CalendarStateProvider({
   React.useEffect(() => {
     eventsRef.current = events;
   }, [events]);
+
+  /** A change to a repeating event's date that waits for its answer */
+  const [pendingSeriesChange, setPendingSeriesChange] =
+    React.useState<PendingSeriesChange | null>(null);
+  /** Latest waiting change, read by the callbacks right away */
+  const pendingSeriesChangeRef = React.useRef<PendingSeriesChange | null>(null);
+  /** How many series questions are mounted. Without one, nothing waits */
+  const seriesDialogCountRef = React.useRef(0);
+
+  /** Sets the waiting change, and its ref at once for the next callback */
+  const setPending = React.useCallback((next: PendingSeriesChange | null) => {
+    pendingSeriesChangeRef.current = next;
+    setPendingSeriesChange(next);
+  }, []);
+
+  const registerSeriesDialog = React.useCallback(() => {
+    seriesDialogCountRef.current += 1;
+    return () => {
+      seriesDialogCountRef.current -= 1;
+    };
+  }, []);
+
+  /** A date as the views draw it: stored, or generated from its series */
+  const resolveDrawn = React.useCallback(
+    (eventId: string): DetailedCalendarEvent | null =>
+      findEventOrOccurrence(eventsRef.current, eventId),
+    [],
+  );
+
+  /**
+   * Holds a change to a repeating event's date: drawn on that date, asked
+   * about now (`isAsking`) or once the event is left. A change that came
+   * back to where it began waits no more
+   */
+  const holdSeriesChange = React.useCallback(
+    (after: DetailedCalendarEvent, isAsking: boolean) => {
+      const pending = pendingSeriesChangeRef.current;
+      const before =
+        pending?.action === "update" && pending.before.id === after.id
+          ? pending.before
+          : resolveDrawn(after.id);
+      if (!before) return;
+      if (getSeriesEditScopes(eventsRef.current, before, after).length === 0) {
+        setPending(null);
+        return;
+      }
+      setPending({ action: "update", before, after, isAsking, onLeave: null });
+    },
+    [resolveDrawn, setPending],
+  );
+
+  /**
+   * Runs `action`, which leaves the selected event, unless a change waits:
+   * then it asks first and runs it after Save or Discard. While the
+   * question is on screen it does nothing: the dialog is modal
+   */
+  const afterSeriesChange = React.useCallback(
+    (action: () => void) => {
+      const pending = pendingSeriesChangeRef.current;
+      if (!pending) {
+        action();
+        return;
+      }
+      if (pending.isAsking) return;
+      setPending({ ...pending, isAsking: true, onLeave: action });
+    },
+    [setPending],
+  );
+
+  /** Whether `eventId` names the date a change waits for */
+  const isWaitingDate = React.useCallback(
+    (eventId: string) => pendingSeriesChangeRef.current?.before.id === eventId,
+    [],
+  );
 
   React.useEffect(() => {
     onVisibleRangeChangeRef.current = onVisibleRangeChange;
@@ -775,11 +1040,18 @@ function CalendarStateProvider({
   );
 
   // A generated occurrence of a repeating event is selected by its id too.
-  // As stored, for the series math
+  // A date whose change waits shows the change. As stored, for the series
+  // math
   const storedSelectedEvent = React.useMemo(() => {
     if (selectedEventId === null) return null;
+    if (
+      pendingSeriesChange?.action === "update" &&
+      pendingSeriesChange.before.id === selectedEventId
+    ) {
+      return pendingSeriesChange.after;
+    }
     return findEventOrOccurrence(events, selectedEventId);
-  }, [events, selectedEventId]);
+  }, [events, selectedEventId, pendingSeriesChange]);
 
   const selectedEvent = React.useMemo(
     () =>
@@ -798,15 +1070,23 @@ function CalendarStateProvider({
 
   const selectEvent = React.useCallback(
     (eventId: string) => {
-      setSelectedEventId(eventId);
-      onEventSelect?.(eventId);
+      const select = () => {
+        setSelectedEventId(eventId);
+        onEventSelect?.(eventId);
+      };
+      // Selecting another event leaves the one a change waits for
+      if (isWaitingDate(eventId)) {
+        select();
+        return;
+      }
+      afterSeriesChange(select);
     },
-    [onEventSelect],
+    [onEventSelect, isWaitingDate, afterSeriesChange],
   );
 
   const clearSelection = React.useCallback(() => {
-    setSelectedEventId(null);
-  }, []);
+    afterSeriesChange(() => setSelectedEventId(null));
+  }, [afterSeriesChange]);
 
   const announce = React.useCallback((text: string) => {
     setAnnouncement((prev) => ({ id: (prev?.id ?? 0) + 1, text }));
@@ -874,23 +1154,144 @@ function CalendarStateProvider({
     [setEvents, onEventCreate, onEventUpdate, onEventDelete],
   );
 
-  const updateEvent = React.useCallback(
-    (shownEvent: CalendarEvent) => {
+  /**
+   * A changed event the views or the details hand over, on the calendar's
+   * clock, as stored: instants. A time the change kept keeps its instant,
+   * read from the change that waits for that date or the event as stored
+   */
+  const toStoredEvent = React.useCallback(
+    (shownEvent: CalendarEvent): CalendarEvent => {
+      const pending = pendingSeriesChangeRef.current;
+      const previous =
+        pending?.action === "update" && pending.before.id === shownEvent.id
+          ? pending.after
+          : (eventsRef.current.find((e) => e.id === shownEvent.id) ??
+            findEventOrOccurrence(eventsRef.current, shownEvent.id) ??
+            undefined);
+      return fromDisplayEvent(shownEvent, displayTimeZone, previous);
+    },
+    [displayTimeZone],
+  );
+
+  /**
+   * Applies a change to a repeating event's date to the option picked, as
+   * one undo step, and shows Notion's "Event updated" notice
+   */
+  const applySeriesEdit = React.useCallback(
+    (
+      before: DetailedCalendarEvent,
+      after: DetailedCalendarEvent,
+      scope: SeriesEditScope,
+    ) => {
+      const { changes, occurrenceId } = getSeriesEditChanges({
+        events: eventsRef.current,
+        before,
+        after,
+        scope,
+        newSeriesId: crypto.randomUUID(),
+      });
+      if (changes.length === 0) return;
+      commitChanges(changes);
+      // An action that waited for this answer runs next: it reads the result
+      eventsRef.current = applyEventChanges(eventsRef.current, changes);
+      // One answer is one undo step: dated so it never merges with a quick
+      // edit just before it, as edits to one event less than a second
+      // apart otherwise do
+      setHistory((prev) => {
+        const top = prev.past[prev.past.length - 1];
+        const time = Math.max(
+          Date.now(),
+          (top?.time ?? 0) + EVENT_HISTORY_MERGE_MS,
+        );
+        return recordEventHistory(prev, { action: "edit", changes, time });
+      });
+      // The date stays selected under the id it is drawn with now
+      setSelectedEventId((prev) => (prev === before.id ? occurrenceId : prev));
+      const message = describeEventChange(
+        toDisplayEvent(before, displayTimeZone),
+        toDisplayEvent(after, displayTimeZone),
+        hourCycle,
+        locale,
+      );
+      if (message) announce(message);
+      openNotice({ message: "Event updated" }, null);
+    },
+    [commitChanges, hourCycle, locale, announce, openNotice, displayTimeZone],
+  );
+
+  /**
+   * Deletes a repeating event's date, the following ones or all of them, as
+   * one undo step, with Notion's notice and its Undo
+   */
+  const applySeriesDelete = React.useCallback(
+    (event: DetailedCalendarEvent, scope: SeriesEditScope) => {
+      const changes = getSeriesDeleteChanges({
+        events: eventsRef.current,
+        event,
+        scope,
+      });
+      if (changes.length === 0) return;
+      commitChanges(changes);
+      eventsRef.current = applyEventChanges(eventsRef.current, changes);
+      const step = recordHistory("delete", changes);
+      setSelectedEventId((prev) => (prev === event.id ? null : prev));
+      announce(describeEventAction("delete", event));
+      openNotice(
+        {
+          message: scope === "all" ? "All events deleted" : "Event deleted",
+          title: getSpokenTitle(event),
+        },
+        step,
+      );
+    },
+    [commitChanges, recordHistory, announce, openNotice],
+  );
+
+  /**
+   * Applies a change to an event, handed over on the calendar's clock. A
+   * date of a repeating event goes to the option `scope` names, or the
+   * question asks for one
+   */
+  const applyEventUpdate = React.useCallback(
+    (shownEvent: CalendarEvent, scope?: SeriesEditScope) => {
+      // The views hand it over on the calendar's clock: back to instants
+      const updatedEvent = toStoredEvent(shownEvent);
+      const pending = pendingSeriesChangeRef.current;
+      const drawn =
+        pending?.action === "update" && pending.before.id === updatedEvent.id
+          ? pending.before
+          : resolveDrawn(updatedEvent.id);
+      if (drawn && findEventSeries(eventsRef.current, drawn)) {
+        const edited = updatedEvent as DetailedCalendarEvent;
+        const scopes = getSeriesEditScopes(eventsRef.current, drawn, edited);
+        if (scopes.length === 0) {
+          if (pending?.before.id === edited.id) setPending(null);
+          return;
+        }
+        const chosen = resolveSeriesScope(
+          scope,
+          scopes,
+          seriesDialogCountRef.current > 0,
+        );
+        if (chosen) {
+          setPending(null);
+          applySeriesEdit(drawn, edited, chosen);
+          return;
+        }
+        // A drag, resize, keyboard move or menu change asks at once
+        holdSeriesChange(edited, true);
+        return;
+      }
+
       const current = eventsRef.current;
-      const index = current.findIndex((e) => e.id === shownEvent.id);
+      const index = current.findIndex((e) => e.id === updatedEvent.id);
       const stored = index === -1 ? undefined : current[index];
       // Not stored: an occurrence the views generated from a repeating
       // event's rule (or an id nothing has)
       const generated = stored
         ? null
-        : findEventOrOccurrence(current, shownEvent.id);
+        : findEventOrOccurrence(current, updatedEvent.id);
       const previous = stored ?? generated ?? undefined;
-      // The views hand it over on the calendar's clock: back to instants
-      const updatedEvent = fromDisplayEvent(
-        shownEvent,
-        displayTimeZone,
-        previous,
-      );
       const next = previous
         ? applyRecurringEdit(current, previous, updatedEvent)
         : updatedEvent;
@@ -933,34 +1334,101 @@ function CalendarStateProvider({
       announce,
       recordHistory,
       displayTimeZone,
+      toStoredEvent,
+      resolveDrawn,
+      setPending,
+      applySeriesEdit,
+      holdSeriesChange,
     ],
+  );
+
+  const updateEvent = React.useCallback(
+    (updatedEvent: CalendarEvent, scope?: SeriesEditScope) => {
+      // A change to another event leaves the one a change waits for
+      if (pendingSeriesChangeRef.current && !isWaitingDate(updatedEvent.id)) {
+        afterSeriesChange(() => applyEventUpdate(updatedEvent, scope));
+        return;
+      }
+      applyEventUpdate(updatedEvent, scope);
+    },
+    [isWaitingDate, afterSeriesChange, applyEventUpdate],
+  );
+
+  /**
+   * The details' way to change an event: the selected date of a repeating
+   * event (or the one a change waits for) keeps the change waiting until
+   * the event is left, as Notion Calendar does; other events change through
+   * `apply`
+   */
+  const editSeriesEvent = React.useCallback(
+    (event: CalendarEvent, apply: (event: CalendarEvent) => void) => {
+      const isWaiting = isWaitingDate(event.id);
+      const drawn = isWaiting
+        ? (pendingSeriesChangeRef.current?.before ?? null)
+        : resolveDrawn(event.id);
+      const repeats =
+        drawn !== null && findEventSeries(eventsRef.current, drawn) !== null;
+      if (
+        repeats &&
+        (isWaiting || selectedEventId === event.id) &&
+        seriesDialogCountRef.current > 0
+      ) {
+        // Held as stored, like the events the question answers for
+        holdSeriesChange(toStoredEvent(event) as DetailedCalendarEvent, false);
+        return;
+      }
+      apply(event);
+    },
+    [
+      isWaitingDate,
+      resolveDrawn,
+      selectedEventId,
+      holdSeriesChange,
+      toStoredEvent,
+    ],
+  );
+
+  const editEvent = React.useCallback(
+    (event: CalendarEvent) => editSeriesEvent(event, updateEvent),
+    [editSeriesEvent, updateEvent],
   );
 
   const addEventFromRange = React.useCallback(
     (range: NewEventRange) => {
-      // `createEvent` and the app get instants, like the events they store
-      const newEvent = (createEvent ?? createDefaultEvent)(
-        fromDisplayRange(range, displayTimeZone),
-      );
-      if (!newEvent) return;
-      setEvents((prev) => [...prev, newEvent]);
-      onEventCreate?.(newEvent);
-      recordHistory("create", [
-        { before: null, after: newEvent, index: eventsRef.current.length },
-      ]);
-      selectEvent(newEvent.id);
-      setTitleFocusEventId(newEvent.id);
-      announce(
-        describeEventCreated(
-          toDisplayEvent(newEvent, displayTimeZone),
-          hourCycle,
-          locale,
-        ),
-      );
+      // Creating an event leaves the one a change waits for
+      afterSeriesChange(() => {
+        // `createEvent` and the app get instants, like the events they store
+        const created = (createEvent ?? createDefaultEvent)(
+          fromDisplayRange(range, displayTimeZone),
+        );
+        if (!created) return;
+        const newEvent = withMeetingParticipants(
+          created,
+          people.meetWith,
+          people.contacts,
+        );
+        setEvents((prev) => [...prev, newEvent]);
+        onEventCreate?.(newEvent);
+        recordHistory("create", [
+          { before: null, after: newEvent, index: eventsRef.current.length },
+        ]);
+        selectEvent(newEvent.id);
+        setTitleFocusEventId(newEvent.id);
+        announce(
+          describeEventCreated(
+            toDisplayEvent(newEvent, displayTimeZone),
+            hourCycle,
+            locale,
+          ),
+        );
+      });
     },
     [
+      afterSeriesChange,
       displayTimeZone,
       createEvent,
+      people.meetWith,
+      people.contacts,
       setEvents,
       onEventCreate,
       selectEvent,
@@ -1006,25 +1474,75 @@ function CalendarStateProvider({
     [commitChanges, recordHistory],
   );
 
-  const deleteEvent = React.useCallback(
-    (eventId: string) => {
+  /**
+   * Deletes an event. A date of a repeating event goes with the option
+   * `scope` names, or the question asks for one
+   */
+  const applyEventDelete = React.useCallback(
+    (eventId: string, scope?: SeriesEditScope) => {
+      const event = resolveDrawn(eventId);
+      const scopes = event
+        ? getSeriesDeleteScopes(eventsRef.current, event)
+        : [];
+      if (event && scopes.length > 0) {
+        const chosen = resolveSeriesScope(
+          scope,
+          scopes,
+          seriesDialogCountRef.current > 0,
+        );
+        // A delete of the date a change waits for drops that change
+        if (chosen) {
+          setPending(null);
+          applySeriesDelete(event, chosen);
+          return;
+        }
+        setPending({
+          action: "delete",
+          before: event,
+          after: event,
+          isAsking: true,
+          onLeave: null,
+        });
+        return;
+      }
       const removed = removeEvent(eventId, "delete");
       if (!removed) return;
       announce(describeEventAction("delete", removed.event));
       openNotice(describeEventNotice("delete", removed.event), removed.step);
     },
-    [removeEvent, announce, openNotice],
+    [
+      resolveDrawn,
+      setPending,
+      applySeriesDelete,
+      removeEvent,
+      announce,
+      openNotice,
+    ],
+  );
+
+  const deleteEvent = React.useCallback(
+    (eventId: string, scope?: SeriesEditScope) => {
+      // Deleting another event leaves the one a change waits for
+      if (pendingSeriesChangeRef.current && !isWaitingDate(eventId)) {
+        afterSeriesChange(() => applyEventDelete(eventId, scope));
+        return;
+      }
+      applyEventDelete(eventId, scope);
+    },
+    [isWaitingDate, afterSeriesChange, applyEventDelete],
   );
 
   const cutEvent = React.useCallback(
     (eventId: string) => {
-      const removed = removeEvent(eventId, "cut");
-      if (!removed) return;
-      setCopiedEvent(removed.event);
-      announce(describeEventAction("cut", removed.event));
-      openNotice(describeEventNotice("cut", removed.event), removed.step);
+      afterSeriesChange(() => {
+        const removed = removeEvent(eventId, "cut");
+        if (!removed) return;
+        setCopiedEvent(removed.event);
+        announce(describeEventAction("cut", removed.event));
+        openNotice(describeEventNotice("cut", removed.event), removed.step);
+      });
     },
-    [removeEvent, announce, openNotice],
+    [afterSeriesChange, removeEvent, announce, openNotice],
   );
 
   const copyEvent = React.useCallback(
@@ -1091,6 +1609,11 @@ function CalendarStateProvider({
   );
 
   const undo = React.useCallback(() => {
+    // A change waits: ask about it first; undo again once it is answered
+    if (pendingSeriesChangeRef.current) {
+      afterSeriesChange(() => {});
+      return;
+    }
     const entry = history.past[history.past.length - 1];
     if (!entry) return;
     const changes = invertEventChanges(entry.changes);
@@ -1102,9 +1625,13 @@ function CalendarStateProvider({
     });
     selectChangedEvent(changes);
     announce(describeHistoryStep(entry, "undo"));
-  }, [history, commitChanges, selectChangedEvent, announce]);
+  }, [history, commitChanges, selectChangedEvent, announce, afterSeriesChange]);
 
   const redo = React.useCallback(() => {
+    if (pendingSeriesChangeRef.current) {
+      afterSeriesChange(() => {});
+      return;
+    }
     const entry = history.future[history.future.length - 1];
     if (!entry) return;
     if (!canApplyEventChanges(eventsRef.current, entry.changes)) return;
@@ -1115,7 +1642,7 @@ function CalendarStateProvider({
     });
     selectChangedEvent(entry.changes);
     announce(describeHistoryStep(entry, "redo"));
-  }, [history, commitChanges, selectChangedEvent, announce]);
+  }, [history, commitChanges, selectChangedEvent, announce, afterSeriesChange]);
 
   // A step applies only while its events are still the objects it left
   // (see canApplyEventChanges): an app that replaced them turns these off
@@ -1139,6 +1666,7 @@ function CalendarStateProvider({
     return { ...shownNotice.notice, onUndo: undo };
   }, [shownNotice, canUndo, undo]);
 
+  const { showWeekends, showDeclinedEvents } = viewSettings;
   const changeTimeZones = React.useCallback(
     (change: (zones: CalendarTimeZones) => CalendarTimeZones) => {
       // The change works on real zones: the viewer's stands in for unset
@@ -1182,21 +1710,39 @@ function CalendarStateProvider({
         view,
         weekStartsOn,
         numberOfDays,
+        showWeekends,
       ),
     );
-  }, [view, weekStartsOn, numberOfDays, setCurrentDate, displayTimeZone]);
+  }, [
+    view,
+    weekStartsOn,
+    numberOfDays,
+    showWeekends,
+    setCurrentDate,
+    displayTimeZone,
+  ]);
 
   const goToPrev = React.useCallback(() => {
-    setCurrentDate((prev) => shiftPeriod(prev, view, -1, numberOfDays));
-  }, [view, numberOfDays, setCurrentDate]);
+    setCurrentDate((prev) =>
+      shiftPeriod(prev, view, -1, numberOfDays, showWeekends),
+    );
+  }, [view, numberOfDays, showWeekends, setCurrentDate]);
 
   const goToNext = React.useCallback(() => {
-    setCurrentDate((prev) => shiftPeriod(prev, view, 1, numberOfDays));
-  }, [view, numberOfDays, setCurrentDate]);
+    setCurrentDate((prev) =>
+      shiftPeriod(prev, view, 1, numberOfDays, showWeekends),
+    );
+  }, [view, numberOfDays, showWeekends, setCurrentDate]);
 
+  // A day view never lands on a hidden weekend: a Saturday shows Monday
   const goToDate = React.useCallback(
-    (date: Date) => setCurrentDate(date),
-    [setCurrentDate],
+    (date: Date) =>
+      setCurrentDate(
+        stepsByDay(view, numberOfDays)
+          ? getFirstShownDay(date, showWeekends)
+          : date,
+      ),
+    [view, numberOfDays, showWeekends, setCurrentDate],
   );
 
   // Series math runs on the stored instants; the arrows get the
@@ -1242,7 +1788,13 @@ function CalendarStateProvider({
       // Month view starts on the week of the 1st, so the month is the one shown
       const periodDate = view === "month" ? startOfMonth(start) : start;
       setCurrentDate(
-        getPeriodStart(periodDate, view, weekStartsOn, numberOfDays),
+        getPeriodStart(
+          periodDate,
+          view,
+          weekStartsOn,
+          numberOfDays,
+          showWeekends,
+        ),
       );
     },
     [
@@ -1253,6 +1805,7 @@ function CalendarStateProvider({
       visibleDays,
       weekStartsOn,
       numberOfDays,
+      showWeekends,
       setCurrentDate,
     ],
   );
@@ -1277,7 +1830,12 @@ function CalendarStateProvider({
       pendingSwitchRef.current = { view, numberOfDays, date: currentDate };
       setView(newView);
       if (newView === "day") {
-        setCurrentDate(startOfDay(getZonedNow(displayTimeZone)));
+        setCurrentDate(
+          getFirstShownDay(
+            startOfDay(getZonedNow(displayTimeZone)),
+            showWeekends,
+          ),
+        );
         return;
       }
       if (newView === "agenda") {
@@ -1287,6 +1845,7 @@ function CalendarStateProvider({
             view,
             numberOfDays,
             getZonedNow(displayTimeZone),
+            showWeekends,
           ),
         );
         return;
@@ -1306,6 +1865,7 @@ function CalendarStateProvider({
           newView,
           weekStartsOn,
           numberOfDays,
+          showWeekends,
         ),
       );
     },
@@ -1314,6 +1874,7 @@ function CalendarStateProvider({
       currentDate,
       weekStartsOn,
       numberOfDays,
+      showWeekends,
       headerYear,
       setView,
       setCurrentDate,
@@ -1330,7 +1891,13 @@ function CalendarStateProvider({
       if (view !== "week") return;
       // Going back to a full week starts on the week's first day again
       setCurrentDate((prev) => {
-        const next = getPeriodStart(prev, "week", weekStartsOn, count);
+        const next = getPeriodStart(
+          prev,
+          "week",
+          weekStartsOn,
+          count,
+          showWeekends,
+        );
         return next.getTime() === prev.getTime() ? prev : next;
       });
     },
@@ -1339,6 +1906,7 @@ function CalendarStateProvider({
       numberOfDays,
       currentDate,
       weekStartsOn,
+      showWeekends,
       setNumberOfDays,
       setCurrentDate,
     ],
@@ -1350,10 +1918,20 @@ function CalendarStateProvider({
         pendingSwitchRef.current = { view, numberOfDays, date: currentDate };
       }
       setView("week");
-      setCurrentDate(getPeriodStart(date, "week", weekStartsOn, numberOfDays));
+      setCurrentDate(
+        getPeriodStart(date, "week", weekStartsOn, numberOfDays, showWeekends),
+      );
       setHighlightedDate(date);
     },
-    [view, currentDate, weekStartsOn, numberOfDays, setView, setCurrentDate],
+    [
+      view,
+      currentDate,
+      weekStartsOn,
+      numberOfDays,
+      showWeekends,
+      setView,
+      setCurrentDate,
+    ],
   );
 
   const reportView = React.useCallback(
@@ -1389,6 +1967,7 @@ function CalendarStateProvider({
         pendingSwitch,
         isOnStartingToday:
           startsOnToday && currentDate.getTime() === initialTime,
+        showWeekends,
         now: getZonedNow(displayTimeZone),
       });
       setView(nextView);
@@ -1401,7 +1980,7 @@ function CalendarStateProvider({
       setVisibleDays(
         hasNoVisibleDays(nextView)
           ? []
-          : getVisibleDays(nextDate, nextView, nextNumberOfDays),
+          : getVisibleDays(nextDate, nextView, nextNumberOfDays, showWeekends),
       );
     },
     [
@@ -1414,6 +1993,7 @@ function CalendarStateProvider({
       startsOnToday,
       initialTime,
       weekStartsOn,
+      showWeekends,
       setView,
       setNumberOfDays,
       setCurrentDate,
@@ -1421,16 +2001,83 @@ function CalendarStateProvider({
     ],
   );
 
+  const changeWeekStartsOn = React.useCallback(
+    (day: WeekStartsOn) => {
+      if (day === weekStartsOn) return;
+      setWeekStartsOnState(day);
+      // A full week or a month grid starts on the new day: keep the week
+      // around the middle of the first one on screen (from Sunday May 31,
+      // Monday weeks show June 1-7, not May 25-31). Day steps start on any
+      // day anyway.
+      if (view !== "week" && view !== "month") return;
+      setCurrentDate((prev) => {
+        const middle = addDays(prev, WEEK_MIDDLE_OFFSET);
+        const next = getPeriodStart(
+          middle,
+          view,
+          day,
+          numberOfDays,
+          showWeekends,
+        );
+        return next.getTime() === prev.getTime() ? prev : next;
+      });
+    },
+    [
+      weekStartsOn,
+      view,
+      numberOfDays,
+      showWeekends,
+      setWeekStartsOnState,
+      setCurrentDate,
+    ],
+  );
+
+  /** One zoom step from the set height, else from the one on screen */
+  const zoomHours = React.useCallback(
+    (direction: "in" | "out") => {
+      setHourHeight((prev) =>
+        getZoomedHourHeight(
+          prev ?? renderedHourHeightRef.current ?? FALLBACK_HOUR_HEIGHT,
+          direction,
+        ),
+      );
+    },
+    [setHourHeight],
+  );
+
+  const zoomHoursIn = React.useCallback(() => zoomHours("in"), [zoomHours]);
+
+  const zoomHoursOut = React.useCallback(() => zoomHours("out"), [zoomHours]);
+
+  const resetHourHeight = React.useCallback(
+    () => setHourHeight(null),
+    [setHourHeight],
+  );
+
   const toggleWeekends = React.useCallback(() => {
     setViewSettings((prev) => ({ ...prev, showWeekends: !prev.showWeekends }));
-  }, []);
+    // Hiding them: a day view on a Saturday or Sunday moves to Monday
+    if (!showWeekends || !stepsByDay(view, numberOfDays)) return;
+    setCurrentDate((prev) => {
+      const next = getFirstShownDay(prev, false);
+      return next.getTime() === prev.getTime() ? prev : next;
+    });
+  }, [showWeekends, view, numberOfDays, setCurrentDate]);
 
   const toggleDeclinedEvents = React.useCallback(() => {
     setViewSettings((prev) => ({
       ...prev,
       showDeclinedEvents: !prev.showDeclinedEvents,
     }));
-  }, []);
+    // Hiding them: a declined event that is selected leaves the screen
+    if (
+      showDeclinedEvents &&
+      selectedEvent &&
+      isDeclinedByViewer(selectedEvent)
+    ) {
+      setSelectedEventId(null);
+    }
+  }, [showDeclinedEvents, selectedEvent]);
 
   const toggleWeekNumbers = React.useCallback(() => {
     setViewSettings((prev) => ({
@@ -1496,10 +2143,13 @@ function CalendarStateProvider({
   // after `showDay`
   const navigateToDate = React.useCallback(
     (date: Date) => {
-      setCurrentDate(getPeriodStart(date, view, weekStartsOn, numberOfDays));
+      // A hidden weekend day lands on the Monday after, as goToDate does
+      setCurrentDate(
+        getPeriodStart(date, view, weekStartsOn, numberOfDays, showWeekends),
+      );
       setHighlightedDate(startOfDay(date));
     },
-    [view, weekStartsOn, numberOfDays, setCurrentDate],
+    [view, weekStartsOn, numberOfDays, showWeekends, setCurrentDate],
   );
 
   // Notion Calendar's C: the day just gone to, else today, else the first
@@ -1567,6 +2217,7 @@ function CalendarStateProvider({
       currentDate,
       weekStartsOn,
       numberOfDays,
+      hourHeight,
       viewSettings,
       visibleDays,
       displayMonth,
@@ -1595,6 +2246,11 @@ function CalendarStateProvider({
       clearSelection,
       addEventFromRange,
       updateEvent,
+      setWeekStartsOn: changeWeekStartsOn,
+      zoomHoursIn,
+      zoomHoursOut,
+      resetHourHeight,
+      editEvent,
       toggleWeekends,
       toggleDeclinedEvents,
       toggleWeekNumbers,
@@ -1617,6 +2273,7 @@ function CalendarStateProvider({
       currentDate,
       weekStartsOn,
       numberOfDays,
+      hourHeight,
       viewSettings,
       visibleDays,
       displayMonth,
@@ -1645,6 +2302,11 @@ function CalendarStateProvider({
       clearSelection,
       addEventFromRange,
       updateEvent,
+      changeWeekStartsOn,
+      zoomHoursIn,
+      zoomHoursOut,
+      resetHourHeight,
+      editEvent,
       toggleWeekends,
       toggleDeclinedEvents,
       toggleWeekNumbers,
@@ -1663,12 +2325,121 @@ function CalendarStateProvider({
     ],
   );
 
-  const closeEventPopover = React.useCallback((eventId: string) => {
-    setSelectedEventId((prev) => (prev === eventId ? null : prev));
-  }, []);
+  const closeEventPopover = React.useCallback(
+    (eventId: string) => {
+      const close = () =>
+        setSelectedEventId((prev) => (prev === eventId ? null : prev));
+      // Closing the details of the date a change waits for leaves it
+      if (isWaitingDate(eventId)) {
+        afterSeriesChange(close);
+        return;
+      }
+      close();
+    },
+    [isWaitingDate, afterSeriesChange],
+  );
+
+  /** Takes the answer to the series question */
+  const answerSeriesScope = React.useCallback(
+    (answer: SeriesScopeAnswer) => {
+      const pending = pendingSeriesChangeRef.current;
+      if (!pending) return;
+      if (answer.action === "continue") {
+        // Back to the change: the date selected, its details open
+        setPending({ ...pending, isAsking: false, onLeave: null });
+        setSelectedEventId(pending.before.id);
+        onEventSelect?.(pending.before.id);
+        return;
+      }
+      setPending(null);
+      if (answer.action === "delete") {
+        applySeriesDelete(pending.before, answer.scope);
+        return;
+      }
+      if (answer.action === "cancel") return;
+      if (answer.action === "save") {
+        applySeriesEdit(pending.before, pending.after, answer.scope);
+      }
+      // Save or Discard: what leaving the event was about to do goes on
+      pending.onLeave?.();
+    },
+    [setPending, onEventSelect, applySeriesEdit, applySeriesDelete],
+  );
+
+  // While a change to a repeating event's date waits, the views draw that
+  // date with the change; Discard drops it, so a dragged date goes back
+  const previewSeriesChange = React.useCallback(
+    <TEvent extends CalendarEvent>(drawn: TEvent[]): TEvent[] => {
+      const pending = pendingSeriesChange;
+      if (pending?.action !== "update") return drawn;
+      // Held as stored: drawn on the calendar's clock, like the rest
+      const shown = toDisplayEvent(pending.after, displayTimeZone);
+      return drawn.map((event) =>
+        event.id === pending.before.id ? (shown as TEvent) : event,
+      );
+    },
+    [pendingSeriesChange, displayTimeZone],
+  );
+
+  const seriesQuestion = React.useMemo<SeriesScopeQuestion | null>(() => {
+    const pending = pendingSeriesChange;
+    if (!pending?.isAsking) return null;
+    if (pending.action === "delete") {
+      return {
+        action: "delete",
+        title: pending.before.title,
+        scopes: getSeriesDeleteScopes(events, pending.before),
+        summary: [],
+      };
+    }
+    return {
+      action: "update",
+      title: pending.before.title,
+      scopes: getSeriesEditScopes(events, pending.before, pending.after),
+      // Times read on the calendar's clock
+      summary: getEventChangeSummary(
+        toDisplayEvent(pending.before, displayTimeZone),
+        toDisplayEvent(pending.after, displayTimeZone),
+        { hourCycle, locale, calendars },
+      ),
+    };
+  }, [
+    pendingSeriesChange,
+    events,
+    hourCycle,
+    locale,
+    calendars,
+    displayTimeZone,
+  ]);
+
+  const seriesScope = React.useMemo<CalendarSeriesScopeValue>(
+    () => ({
+      question: seriesQuestion,
+      answer: answerSeriesScope,
+      registerDialog: registerSeriesDialog,
+      pendingEventId:
+        pendingSeriesChange?.action === "update"
+          ? pendingSeriesChange.before.id
+          : null,
+      previewEvents: previewSeriesChange,
+      editEvent: editSeriesEvent,
+    }),
+    [
+      seriesQuestion,
+      answerSeriesScope,
+      registerSeriesDialog,
+      pendingSeriesChange,
+      previewSeriesChange,
+      editSeriesEvent,
+    ],
+  );
 
   const reportPasteTarget = React.useCallback((target: EventPasteTarget) => {
     pasteTargetRef.current = target;
+  }, []);
+
+  const reportHourHeight = React.useCallback((height: number) => {
+    renderedHourHeightRef.current = height;
   }, []);
 
   const viewSync = React.useMemo<CalendarViewSyncValue>(
@@ -1678,8 +2449,9 @@ function CalendarStateProvider({
       reportDisplayMonth: setDisplayMonth,
       closeEventPopover,
       reportPasteTarget,
+      reportHourHeight,
     }),
-    [reportView, closeEventPopover, reportPasteTarget],
+    [reportView, closeEventPopover, reportPasteTarget, reportHourHeight],
   );
 
   const series = React.useMemo<CalendarSeriesValue>(
@@ -1753,22 +2525,26 @@ function CalendarStateProvider({
         <CalendarRenderSlotsContext.Provider value={renderSlots}>
           <CalendarConfigContext.Provider value={config}>
             <CalendarSeriesContext.Provider value={series}>
-              <CalendarEventActionsContext.Provider value={eventActions}>
-                <CalendarNoticeContext.Provider value={noticeValue}>
-                  <EventTitleFocusProvider
-                    pendingEventId={pendingTitleFocusId}
-                    clearPending={clearTitleFocus}
-                  >
-                    {children}
-                    {/* Announces changes, the event actions, undo and redo to screen readers */}
-                    <div role="status" aria-live="polite" className="sr-only">
-                      {announcement && (
-                        <span key={announcement.id}>{announcement.text}</span>
-                      )}
-                    </div>
-                  </EventTitleFocusProvider>
-                </CalendarNoticeContext.Provider>
-              </CalendarEventActionsContext.Provider>
+              <CalendarSeriesScopeContext.Provider value={seriesScope}>
+                <CalendarEventActionsContext.Provider value={eventActions}>
+                  <CalendarNoticeContext.Provider value={noticeValue}>
+                    <EventTitleFocusProvider
+                      pendingEventId={pendingTitleFocusId}
+                      clearPending={clearTitleFocus}
+                    >
+                      <CalendarPeopleProvider value={people}>
+                        {children}
+                      </CalendarPeopleProvider>
+                      {/* Announces changes, the event actions, undo and redo to screen readers */}
+                      <div role="status" aria-live="polite" className="sr-only">
+                        {announcement && (
+                          <span key={announcement.id}>{announcement.text}</span>
+                        )}
+                      </div>
+                    </EventTitleFocusProvider>
+                  </CalendarNoticeContext.Provider>
+                </CalendarEventActionsContext.Provider>
+              </CalendarSeriesScopeContext.Provider>
             </CalendarSeriesContext.Provider>
           </CalendarConfigContext.Provider>
         </CalendarRenderSlotsContext.Provider>
@@ -1823,6 +2599,14 @@ export function useCalendarRenderSlots(): CalendarRenderSlots {
  */
 export function useCalendarSeries(): CalendarSeriesValue {
   return React.useContext(CalendarSeriesContext);
+}
+
+/**
+ * Internal: the waiting change to a repeating event's date, for the views
+ * and `EventSeriesScopeDialog`. Nothing waits outside a provider.
+ */
+export function useCalendarSeriesScope(): CalendarSeriesScopeValue {
+  return React.useContext(CalendarSeriesScopeContext);
 }
 
 /**
