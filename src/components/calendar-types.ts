@@ -205,6 +205,20 @@ export interface TimeZoneOption {
 }
 
 /**
+ * The time zones a calendar shows beside its time axis, as Notion
+ * Calendar's time zone settings hold them
+ */
+export interface CalendarTimeZones {
+  /**
+   * IANA zone the calendar draws in, closest to the days. `undefined` is
+   * the viewer's own zone
+   */
+  primary: string | undefined;
+  /** Additional zones, each in a column left of the primary's, left to right */
+  secondary: string[];
+}
+
+/**
  * A guest's answer to an invitation
  */
 export type ParticipantResponse =
@@ -903,6 +917,20 @@ export interface CalendarConfig {
    */
   secondaryTimeZone?: string;
   /**
+   * IANA zone the views draw in: the provider's `timeZone` when the runtime
+   * knows it, else `undefined` (the viewer's zone). Event times from
+   * `useCalendar()` read on its clock; `fromZonedWallClock(date, timeZone)`
+   * turns one back into an instant. While travelling, the zone travelled to.
+   */
+  timeZone?: string;
+  /**
+   * Additional zones the day and week views show left of the time axis,
+   * left to right: the provider's `secondaryTimeZones` (or
+   * `secondaryTimeZone`) that the runtime knows. While travelling, the
+   * home zone follows them. `secondaryTimeZone` is the first one
+   */
+  secondaryTimeZones: string[];
+  /**
    * Day the week starts on, for date pickers. Unset outside a
    * CalendarProvider, where the locale's first day applies.
    */
@@ -1133,6 +1161,40 @@ interface CalendarProviderBaseProps<
    */
   secondaryTimeZone?: string;
   /**
+   * IANA time zone the views draw in (e.g. "Asia/Tokyo"), as Notion
+   * Calendar's primary time zone: events, today, the current-time line, the
+   * first day of each week, a click-created event and the details' times
+   * follow its clock, and the time axis is labeled with it. What you pass in
+   * and get back stays instants (`events`, `onEventsChange`, `onEventCreate`,
+   * `onEventUpdate`, `createEvent`'s range, `onVisibleRangeChange`'s range);
+   * inside the provider (`useCalendar()`, the render slots) event times are
+   * Dates whose local time reads this zone's clock. Days stay calendar
+   * dates. A zone the runtime doesn't know is ignored. Defaults to the
+   * viewer's zone
+   */
+  timeZone?: string;
+  /** Initial `timeZone` when it isn't controlled. Defaults to the viewer's zone */
+  defaultTimeZone?: string;
+  /**
+   * Called when the primary zone changes from the time zone labels or
+   * commands ("Make time zone primary", "Add as primary time zone")
+   */
+  onTimeZoneChange?: (timeZone: string) => void;
+  /**
+   * Additional IANA zones whose hours the day and week views show in
+   * columns left of the time axis, left to right, as Notion Calendar's
+   * additional time zones. Takes over from `secondaryTimeZone`. Zones the
+   * runtime doesn't know are left out
+   */
+  secondaryTimeZones?: string[];
+  /** Initial `secondaryTimeZones` when they aren't controlled. Defaults to none */
+  defaultSecondaryTimeZones?: string[];
+  /**
+   * Called when the additional zones change from the time zone labels or
+   * commands (added, changed, removed or made primary)
+   */
+  onSecondaryTimeZonesChange?: (timeZones: string[]) => void;
+  /**
    * Calendars the details panel's calendar picker offers, grouped by `email`,
    * and the event context menu under "Block on calendar" (hidden when
    * empty). Both move the event with `moveEventToCalendar()`. An event
@@ -1275,6 +1337,31 @@ export interface CalendarContextValue<
    * is selected as it is.
    */
   showSeriesOccurrence: (occurrence: SeriesOccurrence<TEvent>) => void;
+  /**
+   * The zones beside the time axis: the primary one (`timeZone`, the
+   * viewer's when unset) and the additional ones
+   */
+  timeZones: CalendarTimeZones;
+  /**
+   * Changes the zones: gets them with the primary zone resolved (the
+   * viewer's when unset) and returns the new ones. The helpers in
+   * `@/lib/time-zones` (`addTimeZone`, `removeTimeZone`,
+   * `makeTimeZonePrimary`, ...) build the change
+   */
+  changeTimeZones: (
+    change: (timeZones: CalendarTimeZones) => CalendarTimeZones,
+  ) => void;
+  /**
+   * The zone the calendar travelled to, drawn as the primary one until
+   * `travelToTimeZone(null)`, or `null` at home
+   */
+  travelTimeZone: string | null;
+  /**
+   * Travels to a zone, as Notion Calendar's "Travel to time zone": the
+   * calendar draws in it for now, with the home zones beside it. `null`
+   * travels back home
+   */
+  travelToTimeZone: (timeZone: string | null) => void;
   /** Day briefly highlighted after `showDay`, or `null` */
   highlightedDate: Date | null;
   /** Month name for the header (e.g. "October"). Empty in year view, where the header names the year alone */

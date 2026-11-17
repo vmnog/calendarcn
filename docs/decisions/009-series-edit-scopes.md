@@ -1,4 +1,4 @@
-# ADR-008: Ask Which Dates of a Repeating Event a Change Applies To
+# ADR-009: Ask Which Dates of a Repeating Event a Change Applies To
 
 ## Status
 
@@ -22,6 +22,7 @@ A change to one date of a repeating event goes through a question, `EventSeriesS
 - **All events** changes the series event: a new time moves every date by the same time of day and days; dates with a time of their own keep it, and other changed fields reach the stored dates that still had the series' value. A delete removes the series and its stored dates.
 - **Stored and excluded dates** move along with a split or an All events edit when the dates keep their days, rule, all-day and time zone, and are removed when they don't: their days no longer name dates of the series.
 - **One answer is one undo step**, applied in one `onEventsChange`, then reported as `onEventDelete`, `onEventUpdate` and `onEventCreate`, in that order, so a new series reaches an app before its dates. An answer never merges with the edit before it in the history.
+- **On the calendar's clock** (`timeZone`, ADR-008), a change the views or the details hand over is mapped back to instants before it waits or is answered, so the question works on the events as stored. The views draw the waiting change, and the question lists its times, on the calendar's clock.
 - **Without a question mounted, nothing waits.** A change applies to the first option offered. `updateEvent(event, scope)` and `deleteEvent(id, scope)` take the answer and never ask; `editEvent(event)` is the details' way to change an event, holding a repeating date back as above.
 
 ## Consequences

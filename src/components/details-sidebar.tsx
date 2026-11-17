@@ -6,9 +6,8 @@ import {
   addDays,
   format,
   isBefore,
+  isSameDay,
   isSameYear,
-  isToday,
-  isTomorrow,
   startOfDay,
 } from "date-fns";
 
@@ -40,6 +39,7 @@ import {
 import { resolveEventColor } from "@/lib/event-utils";
 import { expandRecurringEvents } from "@/lib/recurrence";
 import { formatDuration } from "@/lib/time-input";
+import { getZonedNow } from "@/lib/time-zones";
 
 /**
  * Width of the context panel, inline or as an overlay: Notion Calendar's
@@ -117,23 +117,29 @@ function formatTimeRange(event: DetailedCalendarEvent): string {
   return `${startStr}\u2013${endStr}`;
 }
 
-function formatDateHeader(date: Date): {
+function formatDateHeader(
+  date: Date,
+  now: Date,
+): {
   label: string;
   isTodayGroup: boolean;
 } {
-  if (isToday(date)) {
+  if (isSameDay(date, now)) {
     return { label: "Today", isTodayGroup: true };
   }
-  if (isTomorrow(date)) {
+  if (isSameDay(date, addDays(now, 1))) {
     return { label: "Tomorrow", isTodayGroup: false };
   }
-  if (isSameYear(date, new Date())) {
+  if (isSameYear(date, now)) {
     return { label: format(date, "EEE MMM d"), isTodayGroup: false };
   }
   return { label: format(date, "EEE MMM d, yyyy"), isTodayGroup: false };
 }
 
-function groupEventsByDate(events: DetailedCalendarEvent[]): DateGroup[] {
+function groupEventsByDate(
+  events: DetailedCalendarEvent[],
+  now: Date,
+): DateGroup[] {
   const grouped = new Map<string, DetailedCalendarEvent[]>();
 
   for (const event of events) {
@@ -149,7 +155,7 @@ function groupEventsByDate(events: DetailedCalendarEvent[]): DateGroup[] {
   const groups: DateGroup[] = [];
   for (const [key, groupEvents] of grouped) {
     const date = groupEvents[0].start;
-    const { label, isTodayGroup } = formatDateHeader(date);
+    const { label, isTodayGroup } = formatDateHeader(date, now);
     const sorted = groupEvents.sort(
       (a, b) => a.start.getTime() - b.start.getTime(),
     );
@@ -184,6 +190,7 @@ export function DetailsSidebar({
     copyEvent,
     cutEvent,
   } = useCalendar<DetailedCalendarEvent>();
+  const { timeZone } = useCalendarConfig();
   const {
     toggleSidebar,
     state,
@@ -237,19 +244,24 @@ export function DetailsSidebar({
     const query = debouncedQuery.trim().toLowerCase();
     // A repeating event is listed on each of its dates within a year of
     // today. Expanded before matching, so an edited date keeps its own title
-    const today = startOfDay(new Date());
-    const occurrences = expandRecurringEvents(events, {
-      start: addDays(today, -SEARCH_RANGE_DAYS),
-      end: addDays(today, SEARCH_RANGE_DAYS + 1),
-    });
+    const today = startOfDay(getZonedNow(timeZone));
+    const occurrences = expandRecurringEvents(
+      events,
+      {
+        start: addDays(today, -SEARCH_RANGE_DAYS),
+        end: addDays(today, SEARCH_RANGE_DAYS + 1),
+      },
+      timeZone,
+    );
     return occurrences.filter((event) =>
       event.title.toLowerCase().includes(query),
     );
-  }, [events, debouncedQuery]);
+  }, [events, debouncedQuery, timeZone]);
 
   const { pastGroups, todayGroup, futureGroups } = React.useMemo(() => {
-    const allGroups = groupEventsByDate(searchResults);
-    const now = new Date();
+    // Today and tomorrow on the calendar's clock, like the events
+    const now = getZonedNow(timeZone);
+    const allGroups = groupEventsByDate(searchResults, now);
     const todayStart = startOfDay(now);
 
     const past: DateGroup[] = [];
@@ -270,7 +282,7 @@ export function DetailsSidebar({
     }
 
     return { pastGroups: past, todayGroup: today, futureGroups: future };
-  }, [searchResults]);
+  }, [searchResults, timeZone]);
 
   const hasUpcomingResults = todayGroup !== null || futureGroups.length > 0;
 

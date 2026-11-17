@@ -168,11 +168,11 @@ export function AgendaView({
     goToDate,
     loading,
   } = useCalendar();
-  const { locale } = useCalendarConfig();
+  const { locale, timeZone } = useCalendarConfig();
   const { reportView, reportVisibleDays, closeEventPopover } =
     useCalendarViewSync();
   // `null` on the server and during hydration, so no day is marked as today
-  const today = useToday();
+  const today = useToday(timeZone);
   /**
    * Whether the provider navigates by the agenda's range. False for the
    * commit before it adopts this view (on mount, or right after a switch it
@@ -222,10 +222,11 @@ export function AgendaView({
     // A repeating event is listed under each of its dates in the range
     // A change to a repeating event's date that waits shows on that date
     const occurrences = previewEvents(
-      expandRecurringEvents(events, {
-        start: rangeStart,
-        end: addDays(rangeEnd, 1),
-      }),
+      expandRecurringEvents(
+        events,
+        { start: rangeStart, end: addDays(rangeEnd, 1) },
+        timeZone,
+      ),
     );
     const days = getAgendaDays(occurrences, currentDate, AGENDA_DAYS);
     return days.filter((day) => {
@@ -240,6 +241,7 @@ export function AgendaView({
     currentDate,
     showWeekends,
     today,
+    timeZone,
     previewEvents,
   ]);
 
@@ -446,8 +448,9 @@ function AgendaDayGroup({ day, isToday, renderRow }: AgendaDayGroupProps) {
  * re-renders as the clock ticks.
  */
 function AgendaTodayRows({ day, renderRow }: AgendaTodayRowsProps) {
+  const { timeZone } = useCalendarConfig();
   // `null` on the server and during hydration: no line until then
-  const now = useNow();
+  const now = useNow(timeZone);
 
   if (day.entries.length === 0) {
     return (
@@ -498,11 +501,11 @@ function AgendaEventRow({
   onPopoverExpand,
 }: AgendaEventRowProps) {
   const { event } = entry;
-  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
-  const eventIsPast = useIsPast(event.end);
+  const eventIsPast = useIsPast(event.end, timeZone);
   // Every field is optional: plain events read as details without any
   const { location }: DetailedCalendarEvent = event;
   const timeLabel = formatAgendaTime(entry, hourCycle, locale);

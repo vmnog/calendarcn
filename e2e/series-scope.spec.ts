@@ -310,3 +310,37 @@ test("month view asks too", async ({ page }) => {
   await question(page).getByRole("button", { name: "Discard change" }).click();
   await expect(chip).toBeVisible();
 });
+
+test("while travelling, a date's change is saved at the time the zone's clock shows", async ({
+  page,
+}) => {
+  // Measured before travelling: then two columns label each hour
+  const hour = await hourHeight(page);
+  // Tokyo is 13 hours ahead of New York: Thursday's 2 PM date is Friday
+  // 3 AM there, and Wednesday's is Thursday 3 AM
+  await page.keyboard.press("z");
+  await page.keyboard.type("Tokyo");
+  await page
+    .getByRole("option", { name: "(GMT+09:00) Japan Standard Time – Tokyo" })
+    .click();
+  const friday = occurrence(page, "Friday, June 5", "3:00 AM to 4:30 AM");
+  await friday.scrollIntoViewIfNeeded();
+  await dragBy(page, friday, { dx: 0, dy: hour });
+
+  // The question reads the times on Tokyo's clock
+  await expect(question(page).getByText("4–5:30 AM")).toBeVisible();
+  await answer(page, "This event");
+  await expect(
+    occurrence(page, "Friday, June 5", "4:00 AM to 5:30 AM"),
+  ).toBeVisible();
+  await expect(
+    occurrence(page, "Thursday, June 4", "3:00 AM to 4:30 AM"),
+  ).toBeVisible();
+
+  // Back home, the date moved by the same hour and the others stayed
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(occurrence(page, "Thursday, June 4", AT_THREE)).toBeVisible();
+  await expect(occurrence(page, "Wednesday, June 3")).toBeVisible();
+  await expect(occurrence(page, "Friday, June 5")).toBeVisible();
+});

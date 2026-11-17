@@ -13,10 +13,13 @@ import {
 import type { Locale } from "date-fns";
 
 import {
+  fromDisplayEvent,
+  fromDisplayRange,
   fromZonedDayTime,
   getEventTimeZone,
   getZonedDay,
   getZonedTimeOfDay,
+  toDisplayEvent,
 } from "@/lib/time-zones";
 import type {
   CalendarEvent,
@@ -1014,6 +1017,19 @@ function getOccurrenceOnDay<TEvent extends SeriesEvent>(
   return createOccurrence(series, day, timeZone);
 }
 
+/**
+ * Days on a calendar drawn in `timeZone` as a range of stored events: wide
+ * enough for both the instants those days span (timed events) and the
+ * local midnights that name them (all-day events, which are dates)
+ */
+function toStoredRange(range: VisibleRange, timeZone: string): VisibleRange {
+  const instants = fromDisplayRange(range, timeZone);
+  return {
+    start: instants.start < range.start ? instants.start : range.start,
+    end: instants.end > range.end ? instants.end : range.end,
+  };
+}
+
 /** Whether an event covers part of `range`; an all-day event covers its last day */
 function overlapsRange(event: CalendarEvent, range: VisibleRange): boolean {
   if (event.start >= range.end) return false;
@@ -1147,11 +1163,23 @@ function getOccurrencesInRange<TEvent extends SeriesEvent>(
  * occurrence id (an edited occurrence, or a copy ADR-004's arrows stored),
  * or when a stored event names the series and that day with `seriesId` and
  * `originalStart`. One series returns at most `MAX_OCCURRENCES_PER_RANGE`.
+ *
+ * `timeZone` is the calendar's (`useCalendarConfig().timeZone`): with it,
+ * `events` and `range` read on that zone's clock, as `useCalendar()` hands
+ * them out, and so do the events returned. Each series still repeats in
+ * its own zone.
  */
 export function expandRecurringEvents<TEvent extends SeriesEvent>(
   events: TEvent[],
   range: VisibleRange,
+  timeZone?: string,
 ): TEvent[] {
+  if (timeZone) {
+    return expandRecurringEvents(
+      events.map((event) => fromDisplayEvent(event, timeZone)),
+      toStoredRange(range, timeZone),
+    ).map((event) => toDisplayEvent(event, timeZone));
+  }
   const byId = new Map(events.map((event) => [event.id, event]));
   // Occurrence ids that stored events stand for: their own ids, and the
   // day an edited occurrence names through `originalStart`
@@ -1178,12 +1206,21 @@ export function expandRecurringEvents<TEvent extends SeriesEvent>(
  * The event with this id: a stored one, or the occurrence of a repeating
  * event it names (`<series id>-<yyyy-MM-dd>`), generated as the views draw
  * it. `null` when there is neither: an unknown id, or a day its series
- * skips, excludes or stores under another id.
+ * skips, excludes or stores under another id. With the calendar's
+ * `timeZone`, `events` and the event returned read on its clock.
  */
 export function findEventOrOccurrence<TEvent extends SeriesEvent>(
   events: TEvent[],
   id: string,
+  timeZone?: string,
 ): TEvent | null {
+  if (timeZone) {
+    const found = findEventOrOccurrence(
+      events.map((event) => fromDisplayEvent(event, timeZone)),
+      id,
+    );
+    return found && toDisplayEvent(found, timeZone);
+  }
   const stored = events.find((event) => event.id === id);
   if (stored) return stored;
   const match = OCCURRENCE_ID_PATTERN.exec(id);
