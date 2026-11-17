@@ -64,6 +64,7 @@ Pass a callback to add its command. These are the demo's:
 - `onImportIcs` and `onExportIcs` add "Import .ics file..." and "Export .ics file". Read and write the files with [`@calendarcn/ics`](/docs/import-export): the demo opens a hidden `<input type="file">`, passes its text to `parseIcs()` and adds the events, and downloads `toIcs(events)` as a file.
 - `onCycleTheme` adds "Set theme...". The demo goes from system to light to dark with `useTheme()` from next-themes.
 - `onToggleSidebar` and `onToggleContextPanel` add the panel toggles, next to the [Calendar Header](/docs/components/calendar-header)'s buttons.
+- `onShareAvailability` adds "Share availability..." (<Kbd>S</Kbd>), and `onCreateSchedulingLink` adds "Create recurring scheduling link..." and "Create one-off scheduling link...", called with `"recurring"` or `"one-off"`. Calendar App passes them from [`useScheduling()`](/docs/components/scheduling#usescheduling); the link commands only when the app creates scheduling links.
 - `showComingSoon` also lists the Notion Calendar commands CalendarCN doesn't have yet, disabled with a "Soon" badge, as the demo does.
 
 ### Keyboard shortcuts
@@ -124,6 +125,17 @@ The dialog is translucent and blurred in dark mode. The CLI also adds a rule to 
       name: "onExportIcs",
       type: "() => void",
       description: 'Adds "Export .ics file".',
+    },
+    {
+      name: "onShareAvailability",
+      type: "() => void",
+      description: 'Adds "Share availability..." (S).',
+    },
+    {
+      name: "onCreateSchedulingLink",
+      type: '(kind: "recurring" | "one-off") => void',
+      description:
+        'Adds "Create recurring scheduling link..." and "Create one-off scheduling link...".',
     },
     {
       name: "showComingSoon",

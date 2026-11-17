@@ -57,6 +57,8 @@ import {
   isEventInsideCalendarPopover,
 } from "./calendar-popover-context";
 import { CalendarLoadingBar } from "./calendar-loading-bar";
+import { AvailabilityLayer } from "./availability-layer";
+import { useScheduling } from "./scheduling-provider";
 
 /** Minimum height of each hour row in pixels */
 const MIN_HOUR_HEIGHT = 48;
@@ -209,6 +211,8 @@ export function TimeGrid({
     closeEventPopover,
     reportPasteTarget,
   } = useCalendarViewSync();
+  // Outside a SchedulingProvider, `null`: no open times to mark
+  const scheduling = useScheduling();
   const numberOfDays = numberOfDaysProp ?? providerNumberOfDays;
   /** Day columns this grid pins the provider to (none in day view) */
   const fixedNumberOfDays = view === "week" ? numberOfDaysProp : undefined;
@@ -694,6 +698,15 @@ export function TimeGrid({
                   visibleStartIndex={dynamicBuffer}
                   visibleCount={VISIBLE_DAYS}
                 />
+                {/* Marking open times while scheduling, over the events */}
+                {scheduling?.isPicking && (
+                  <AvailabilityLayer
+                    days={bufferedDays}
+                    hourHeight={hourHeight}
+                    visibleStartIndex={dynamicBuffer}
+                    visibleCount={VISIBLE_DAYS}
+                  />
+                )}
               </div>
             </div>
             <WeekViewTimeIndicator

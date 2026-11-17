@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import type { SchedulingLinkKind } from "@/components/calendar-types";
 
 /** Reusable "Soon" badge for unimplemented command items */
 const SOON_BADGE = (
@@ -70,6 +71,13 @@ interface CommandMenuProps {
   onImportIcs?: () => void;
   /** Adds "Export .ics file" */
   onExportIcs?: () => void;
+  /** Adds "Share availability..." (S): marking open times to copy as text */
+  onShareAvailability?: () => void;
+  /**
+   * Adds "Create recurring scheduling link..." and "Create one-off
+   * scheduling link...", called with the kind of link
+   */
+  onCreateSchedulingLink?: (kind: SchedulingLinkKind) => void;
   /**
    * Also lists the Notion Calendar commands CalendarCN doesn't have yet,
    * disabled with a "Soon" badge, as the live demo does
@@ -80,8 +88,9 @@ interface CommandMenuProps {
 /**
  * The live demo's ⌘K menu. Going to today, previous and next, and the views
  * come from `useCalendar()`, so it goes inside `CalendarProvider`. Commands
- * that belong to your app (panels, theme, .ics files) show only when you pass
- * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
+ * that belong to your app (panels, theme, .ics files, scheduling) show only
+ * when you pass their callback. Open it with
+ * `useCalendarShortcuts({ onToggleCommandMenu })`.
  */
 export function CommandMenu({
   open,
@@ -91,6 +100,8 @@ export function CommandMenu({
   onCycleTheme,
   onImportIcs,
   onExportIcs,
+  onShareAvailability,
+  onCreateSchedulingLink,
   showComingSoon = false,
 }: CommandMenuProps) {
   const { goToToday, goToPrev, goToNext, switchView } = useCalendar();
@@ -110,8 +121,22 @@ export function CommandMenu({
         { label: "Create event...", soon: true },
         { label: "Meet with...", soon: true },
         { label: "Show teammate calendar...", soon: true },
-        { label: "Create recurring scheduling link...", soon: true },
-        { label: "Create one-off scheduling link...", soon: true },
+        {
+          label: "Create recurring scheduling link...",
+          run:
+            onCreateSchedulingLink &&
+            (() => onCreateSchedulingLink("recurring")),
+        },
+        {
+          label: "Create one-off scheduling link...",
+          run:
+            onCreateSchedulingLink && (() => onCreateSchedulingLink("one-off")),
+        },
+        {
+          label: "Share availability...",
+          keys: ["S"],
+          run: onShareAvailability,
+        },
         { label: "Import .ics file...", run: onImportIcs },
         { label: "Export .ics file", run: onExportIcs },
       ],

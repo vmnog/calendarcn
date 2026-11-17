@@ -24,6 +24,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/scheduling-provider.tsx",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/calendar-popover-context.tsx",
           "type": "registry:component"
         },
@@ -77,6 +81,10 @@
         },
         {
           "path": "src/lib/event-history.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "src/lib/availability.ts",
           "type": "registry:lib"
         }
       ],
@@ -350,6 +358,10 @@
         },
         {
           "path": "src/components/week-view-time-indicator.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/availability-layer.tsx",
           "type": "registry:component"
         },
         {
@@ -716,6 +728,7 @@
         "@calendarcn/sidebar-overlay",
         "@calendarcn/theme-toggle",
         "button",
+        "dropdown-menu",
         "kbd",
         "sidebar",
         "tooltip"
@@ -731,13 +744,14 @@
       "name": "details-sidebar",
       "type": "registry:component",
       "title": "Details Sidebar",
-      "description": "The right context panel: the selected event's details, event search and useful shortcuts.",
+      "description": "The right context panel: the selected event's details, event search, useful shortcuts and the scheduling panel.",
       "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "@calendarcn/event-details",
         "@calendarcn/sidebar-overlay",
         "button",
+        "dropdown-menu",
         "kbd",
         "sidebar",
         "tooltip"
@@ -745,6 +759,10 @@
       "files": [
         {
           "path": "src/components/details-sidebar.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/availability-panel.tsx",
           "type": "registry:component"
         }
       ]

@@ -175,12 +175,13 @@ From 768px up, while the details sidebar is closed, a selected event shows its d
 | Toggle the details sidebar        | <Kbd>/</Kbd>                                  |
 | Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
 | Settings, with `onOpenSettings`   | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
+| Mark open times to share          | <Kbd>S</Kbd>                                  |
 
 They listen on the whole page. Pass `shortcuts={false}` to turn them all off.
 
 ## Not built yet
 
-The app draws a few of Notion Calendar's controls that don't work yet. Each is disabled and marked "Soon": the sidebar's scheduling row, "Meet with..." field and "Add calendar account", and the view settings the current view doesn't read. The [roadmap](/docs/roadmap) lists them all.
+The app draws a few of Notion Calendar's controls that don't work yet. Each is disabled and marked "Soon": the sidebar's "Meet with..." field and "Add calendar account", and the view settings the current view doesn't read. The [roadmap](/docs/roadmap) lists them all.
 
 ## Parts
 
@@ -193,6 +194,7 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
 - [Details Sidebar](/docs/components/details-sidebar): the right sidebar, with the [Event Details](/docs/components/event-details).
 - [Command Menu](/docs/components/command-menu): the <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu.
 - [Calendar Toaster](/docs/components/calendar-toaster): the toasts after a delete, cut or copy, with Undo.
+- [Scheduling](/docs/components/scheduling): marking open times and copying them as text, and scheduling links through `onCreateSchedulingLink`.
 - [Sidebar Overlay](/docs/components/sidebar-overlay): both sidebars as sheets on narrow screens, and their colors.
 - [Import and Export](/docs/import-export): `parseIcs()` and `toIcs()`.
 - [Sample Data](/docs/sample-data) and the [conference providers](/docs/components/event-details#conference-providers): the demo's data.
@@ -238,6 +240,12 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
       type: "() => void",
       description:
         "Called on ⌘, (Ctrl+, elsewhere). Without it, the key is left to the browser.",
+    },
+    {
+      name: "onCreateSchedulingLink",
+      type: "(request: SchedulingLinkRequest) => void",
+      description:
+        "Creates a scheduling link (a booking page) in your app. With it, the sidebar's Scheduling row and the command menu offer recurring and one-off links. See [Scheduling links](/docs/components/scheduling#scheduling-links).",
     },
     {
       name: "showComingSoon",

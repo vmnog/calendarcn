@@ -7,7 +7,7 @@ description: The left sidebar of the demo, with the mini calendar, scheduling an
 
 Calendar Sidebar is the left column of the [live demo](/), modeled on Notion Calendar's: the [Mini Calendar](/docs/components/mini-calendar), a scheduling row and a "Meet with..." field, the [Calendar List](/docs/components/calendar-list), "Add calendar account", and a footer with the [Theme Toggle](/docs/components/theme-toggle). On wide screens it's a fixed column that pushes the page over; on phones it opens as a sheet from the left ([Sidebar Overlay](/docs/components/sidebar-overlay)).
 
-It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves and picking a day goes there. The scheduling row, the "Meet with..." field and "Add calendar account" aren't built yet: they're disabled and marked "Soon" (see the [roadmap](/docs/roadmap)). The file is yours, so wire them up there.
+It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves and picking a day goes there. Inside a [`SchedulingProvider`](/docs/components/scheduling), the Scheduling row starts marking open times to share, or opens a menu of scheduling links when your app creates them; without one, the row isn't there. The "Meet with..." field and "Add calendar account" aren't built yet: they're disabled and marked "Soon" (see the [roadmap](/docs/roadmap)). The file is yours, so wire them up there.
 
 ## Installation
 
@@ -102,6 +102,7 @@ The sidebars bring Notion Calendar's colors as their own tokens, added to your C
 
 - The mini calendar shows the month of the days on screen, highlights them, and marks today. Browse months with its arrows; the next navigation brings it back.
 - Picking a day goes to its period in the current view: the day in day view, its week in week view.
+- Scheduling starts marking the times you're free, like <Kbd>S</Kbd>, and leaves again on a second click. On phones the sheet closes so you can mark on the grid.
 - Calendars are grouped by account, each account collapsible. Hover a calendar to show or hide it.
 - The theme toggle cycles system, light and dark.
 - On phones, the sheet closes on an outside tap, <Kbd>Esc</Kbd>, its close button (where the header's toggle sits) or a day pick.

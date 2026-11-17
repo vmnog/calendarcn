@@ -8,6 +8,7 @@ import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { AgendaView } from "@/components/agenda-view";
+import { AvailabilityHint } from "@/components/availability-panel";
 import { CalendarHeader } from "@/components/calendar-header";
 import { CalendarProvider, useCalendar } from "@/components/calendar-provider";
 import { CalendarSidebar } from "@/components/calendar-sidebar";
@@ -18,6 +19,11 @@ import {
   DetailsSidebar,
 } from "@/components/details-sidebar";
 import { MonthView } from "@/components/month-view";
+import {
+  SchedulingProvider,
+  useScheduling,
+  useSchedulingShortcuts,
+} from "@/components/scheduling-provider";
 import { TimeGrid } from "@/components/time-grid";
 import { YearView } from "@/components/year-view";
 import {
@@ -94,8 +100,9 @@ interface CalendarAppShellProps extends CalendarAppShellOptions {
  * The live demo as one component: the calendar sidebar on the left, the
  * header and the day, week, month, year or agenda view in the middle, the details
  * sidebar on the right, the ⌘K command menu, the toasts after a delete,
- * cut or copy, theme cycling, .ics import and export, and the keyboard
- * shortcuts. Takes every `CalendarProvider` prop,
+ * cut or copy, theme cycling, .ics import and export, scheduling (marking
+ * open times to copy, and links through `onCreateSchedulingLink`), and the
+ * keyboard shortcuts. Takes every `CalendarProvider` prop,
  * so events can be controlled or left to the app, and the calendars,
  * contacts, rooms and conferencing come from your data.
  *
@@ -147,6 +154,7 @@ function CalendarAppState({
   exportFileName,
   exportCalendarName,
   onOpenSettings,
+  onCreateSchedulingLink,
   showComingSoon,
   shortcuts,
   children,
@@ -221,7 +229,7 @@ function CalendarAppState({
       handleShownEventsChange as CalendarProviderProps["onEventsChange"],
     onEventSelect: handleEventSelect,
     children: (
-      <>
+      <SchedulingProvider onCreateSchedulingLink={onCreateSchedulingLink}>
         <CalendarAppShell
           isWideLayout={isWideLayout}
           onImportEvents={importEvents}
@@ -238,7 +246,7 @@ function CalendarAppState({
           shortcuts={shortcuts}
         />
         {children}
-      </>
+      </SchedulingProvider>
     ),
   };
 
@@ -268,9 +276,12 @@ function CalendarAppShell({
   const {
     toggleSidebar,
     open: contextPanelOpen,
+    setOpen: setContextPanelOpen,
     openMobile: contextPanelOpenMobile,
     isMobile,
   } = useSidebar();
+  const scheduling = useScheduling();
+  const isPicking = scheduling?.isPicking ?? false;
   const { view, weekStartsOn, numberOfDays, goToDate } =
     useCalendar<DetailedCalendarEvent>();
   // shadcn tracks the panel's phone state separately; read whichever is active
@@ -357,6 +368,21 @@ function CalendarAppShell({
     setTheme("system");
   }, [theme, setTheme]);
 
+  // Marking open times opens the context panel where it sits inline, for
+  // the scheduling panel. Only when marking starts: closing it stays closed
+  const wasPickingRef = React.useRef(isPicking);
+  React.useEffect(() => {
+    const started = isPicking && !wasPickingRef.current;
+    wasPickingRef.current = isPicking;
+    if (started && isWideLayout && !contextPanelOpen) {
+      setContextPanelOpen(true);
+    }
+  }, [isPicking, isWideLayout, contextPanelOpen, setContextPanelOpen]);
+
+  // Scheduling's keys first: S, and Escape and Delete while times are
+  // marked, so the calendar's own Escape and Delete don't also run
+  useSchedulingShortcuts({ enabled: shortcuts });
+
   // Calendar shortcuts: T, J/K, arrows, D/1, W/0, 2-9, M, A, Escape,
   // Shift+Cmd+E for weekends, and the event keys: Delete/Backspace, Cmd+X,
   // Cmd+C, Cmd+V, Cmd+D, Cmd+Z and Shift+Cmd+Z. Then the app's own, checked
@@ -380,6 +406,14 @@ function CalendarAppShell({
         onCycleTheme={cycleTheme}
         onImportIcs={() => icsInputRef.current?.click()}
         onExportIcs={exportIcs}
+        onShareAvailability={
+          scheduling ? () => scheduling.startPicking() : undefined
+        }
+        onCreateSchedulingLink={
+          scheduling?.canCreateLinks
+            ? scheduling.createSchedulingLink
+            : undefined
+        }
         showComingSoon={showComingSoon}
       />
       <input
@@ -431,6 +465,9 @@ function CalendarAppShell({
               onEventPopoverExpand={expandEventPopover}
             />
           )}
+          {/* "Mark available times on your calendar" while scheduling, with
+              Cancel and Copy when the scheduling panel isn't on screen */}
+          <AvailabilityHint showActions={!rightSidebarOpen} />
           {/* Notion Calendar's toasts, at the bottom right over the view */}
           <CalendarToaster />
         </div>

@@ -749,6 +749,101 @@ export interface CalendarNoticeValue {
 }
 
 /**
+ * A stretch of time marked as open while scheduling: one block on the time
+ * grid and one time in the text that gets copied. It starts and ends on the
+ * same day (an end at midnight is the end of that day).
+ */
+export interface AvailabilityRange {
+  /** Stays the same while the range is moved or resized */
+  id: string;
+  start: Date;
+  end: Date;
+}
+
+/** Notion Calendar's two kinds of scheduling link */
+export type SchedulingLinkKind = "recurring" | "one-off";
+
+/**
+ * What a scheduling link is asked for with: the app creates the booking page
+ * (CalendarCN has no backend for it) from these.
+ */
+export interface SchedulingLinkRequest {
+  kind: SchedulingLinkKind;
+  /** Length of the meeting people book, in minutes: the scheduling panel's duration */
+  durationMinutes: number;
+  /**
+   * The open times marked on the calendar, merged and in order, for a
+   * one-off link. Empty for a recurring link, whose weekly hours your app
+   * asks for
+   */
+  ranges: AvailabilityRange[];
+  /** IANA zone the times were picked in: the viewer's */
+  timeZone: string;
+}
+
+/** What scheduling is picking open times for */
+export type SchedulingPurpose = "share" | "one-off-link";
+
+/** Options of `formatAvailabilityText()` */
+export interface AvailabilityTextOptions {
+  /** Length of the meeting asked for, in minutes ("Would 30 min ...") */
+  durationMinutes: number;
+  hourCycle: HourCycle;
+  /** Day, month and AM/PM names */
+  locale: Locale;
+  /** Now: times on its day and the next read "today" and "tomorrow". Defaults to the current time */
+  now?: Date;
+  /** A booking page, added after the times ("You can just let me know or confirm here: ...") */
+  link?: string;
+}
+
+/** What `useScheduling()` returns inside a `SchedulingProvider` */
+export interface SchedulingContextValue {
+  /** Whether open times are being marked on the day and week views */
+  isPicking: boolean;
+  /** What the times are for: copying them as text, or a one-off scheduling link */
+  purpose: SchedulingPurpose;
+  /** The marked times, merged and in order */
+  ranges: AvailabilityRange[];
+  /** Id of the marked time selected on the grid (Delete removes it), or `null` */
+  selectedRangeId: string | null;
+  /** Length of the meeting asked for, in minutes. 30 at first */
+  durationMinutes: number;
+  /** The text "Copy" puts on the clipboard; empty while no time is marked */
+  text: string;
+  /** Whether the app creates scheduling links (it passed `onCreateSchedulingLink`) */
+  canCreateLinks: boolean;
+  /**
+   * Starts marking open times, from none, in the week view when the
+   * calendar is in month, year or agenda view. Clears the event selection
+   */
+  startPicking: (purpose?: SchedulingPurpose) => void;
+  /** Stops marking and drops the marked times, changing nothing */
+  cancelPicking: () => void;
+  /** Marks a time, merged with the marked times it overlaps or touches */
+  addRange: (range: Omit<AvailabilityRange, "id">) => void;
+  /** Moves or resizes a marked time */
+  updateRange: (range: AvailabilityRange) => void;
+  /** Removes a marked time, with an Undo toast */
+  removeRange: (id: string) => void;
+  /** Selects a marked time, or none with `null` */
+  selectRange: (id: string | null) => void;
+  setDurationMinutes: (minutes: number) => void;
+  /** Copies `text` to the clipboard and confirms it with a toast. Resolves to whether it was copied */
+  copyText: () => Promise<boolean>;
+  /** "Copy" in the panel: copies `text`, then stops marking once it's copied */
+  copyAndFinish: () => Promise<void>;
+  /**
+   * Starts a scheduling link: a recurring one goes straight to the app's
+   * `onCreateSchedulingLink`, a one-off one marks times first. Does nothing
+   * without `onCreateSchedulingLink`
+   */
+  createSchedulingLink: (kind: SchedulingLinkKind) => void;
+  /** "Create" of a one-off link: hands the marked times to the app and stops marking */
+  finishSchedulingLink: () => void;
+}
+
+/**
  * A calendar events can belong to (e.g. "Work"), listed by the details
  * panel's calendar picker and the event context menu's "Block on calendar"
  * submenu

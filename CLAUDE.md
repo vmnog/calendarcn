@@ -24,6 +24,8 @@ src/
 │   ├── calendar-event-*   # Event rendering & interactions
 │   ├── event-*            # Context menu, detail panel, detail popover
 │   ├── calendar-toaster.tsx # CalendarToaster — toasts after delete, cut and copy
+│   ├── scheduling-provider.tsx # SchedulingProvider + useScheduling — marking open times, scheduling links
+│   ├── availability-*.tsx # Scheduling's grid layer (time grid) and panel + hint pill (details sidebar)
 │   ├── event-detail-<section>.tsx # One file per details panel section (time, timezone, recurrence, participants…)
 │   ├── event-detail-parts.tsx # Details panel building blocks: rows, groups, class constants, menu helpers
 │   ├── calendar-sidebar.tsx # Left sidebar: mini-calendar, calendar-list, theme toggle
@@ -38,6 +40,7 @@ src/
     ├── event-utils.ts    # Event positioning & column assignment algorithms
     ├── recurrence.ts     # Repeat rules: RRULE parse/format, labels, series occurrences
     ├── time-zones.ts     # IANA zone list, offsets, zone days, wall-clock zone changes
+    ├── availability.ts   # Scheduling: merge marked times, Notion's "Would 30 min..." text
     ├── timezone-label.ts # Short time zone labels ("GMT-3 Sao Paulo")
     ├── mock-events.ts    # Sample data
     ├── time-input.ts     # Time menu options, typed times and durations, date parsing

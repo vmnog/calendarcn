@@ -78,6 +78,10 @@ The provider records each change it makes itself (a click-create, every `updateE
 
 After a delete, a cut or a copy the provider keeps one notice (`CalendarNotice`: a message, an optional title and an optional undo), read with `useCalendarNotice()` and drawn by `CalendarToaster`. A delete's or cut's notice holds the undo step it came from and closes, during render, as soon as that step is no longer the latest, so its Undo only ever takes back its own action. The notice is not announced by the toaster: the provider's live region reads every action.
 
+### Scheduling
+
+`SchedulingProvider` (`src/components/scheduling-provider.tsx`), inside `CalendarProvider`, holds the open times marked while scheduling: whether they're being marked, the marked ranges (merged and sorted by `mergeAvailabilityRanges()`), the meeting length, and the text Copy copies (`formatAvailabilityText()` in `src/lib/availability.ts`, Notion Calendar's wording). It changes no events. `useScheduling()` returns it, or `null` outside a provider, and every part that reads it leaves scheduling out then: `TimeGrid` draws `AvailabilityLayer` over its events while times are marked (it takes the pointer, so events can't be dragged or opened), `DetailsSidebar` swaps its content for `AvailabilityPanel`, `CalendarSidebar` shows its Scheduling row. Scheduling links have no backend: `onCreateSchedulingLink` hands a `SchedulingLinkRequest` to the app. `useSchedulingShortcuts()` handles S, and Escape and Delete while marking, from a `window` listener added before `useCalendarShortcuts()`'s.
+
 ### Event Positioning Pipeline
 
 ```
@@ -188,6 +192,7 @@ Components access event colors via the `eventColorStyles` map (`calendar-event-i
 | Grid background  | 0       | Base grid lines                  |
 | Events           | 0–2     | Column index determines stacking |
 | Selected event   | 20      | Elevated above peers             |
+| Scheduling layer | 22      | Marking open times, over events  |
 | Drag placeholder | 25      | Shows drop target                |
 | Dragging copy    | 30      | Follows cursor                   |
 | Toast            | 40      | Calendar Toaster, over the view  |
