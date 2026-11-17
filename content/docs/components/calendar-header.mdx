@@ -5,7 +5,7 @@ description: The live demo's header, with the month and week, the view switcher,
 
 <ComponentPreview name="calendar-header-demo" />
 
-`CalendarHeader` is the bar at the top of the [live demo](/): a sidebar toggle, the month and year with the period on screen ("Week 23"), then the view switcher, today, previous and next, and a context panel toggle. It reads the calendar from [`useCalendar()`](/docs/components/calendar-core#usecalendar), so it goes inside `CalendarProvider`. The panels belong to your app, so their state comes in as props, and each toggle shows only when you pass its callback.
+`CalendarHeader` is the bar at the top of the [live demo](/): a sidebar toggle, the month and year with the period on screen ("Week 23" while week numbers are on), then the view switcher, today, previous and next, and a context panel toggle. It reads the calendar from [`useCalendar()`](/docs/components/calendar-core#usecalendar), so it goes inside `CalendarProvider`. The panels belong to your app, so their state comes in as props, and each toggle shows only when you pass its callback.
 
 ## Installation
 
@@ -173,7 +173,7 @@ Today, then previous and next. The arrows are labelled with the period they move
 
 ### CalendarPeriodLabel
 
-The period on screen: the day in day view ("Thursday, Jun 4"), the week number in week view ("Week 23") and the dates in the agenda ("Jun 4 – Jul 3"). It's empty in month and year view, where the title says it all. In year view the title shows the year alone. Day and month names follow the provider's `locale`.
+The period on screen: the day in day view ("Thursday, Jun 4") and the dates in the agenda ("Jun 4 – Jul 3"). While the provider's week numbers are on (`viewSettings.showWeekNumbers`), day and week view add the week's number ("Week 23"), where Notion Calendar shows it. It's empty in month and year view, where the title says it all. In year view the title shows the year alone. Day and month names follow the provider's `locale`.
 
 <PropsTable
   rows={[
@@ -187,4 +187,10 @@ The period on screen: the day in day view ("Thursday, Jun 4"), the week number i
 
 ### CalendarViewSwitcher
 
-The view dropdown, wired to the provider: day, week, month, year or agenda, 2 to 9 days, and the weekend, declined events and week number settings. It takes no props. A setting the current view doesn't read is disabled and marked "Soon": "Declined events" in every view, "Weekends" in day, week and year view, "Week numbers" outside month and year view. `ViewDropdown` in `components/view-dropdown.tsx` is the same menu driven by props instead of `useCalendar()`.
+The view dropdown, wired to the provider: day, week, month, year or agenda, 2 to 9 days, and the view settings. It takes no props. Every view reads the three settings:
+
+- **Weekends** (<KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>E</Kbd></KbdGroup>): off, day and week view show weekdays only and step over the weekend. The day after Friday is Monday, a full week shows Monday to Friday, a few days count weekdays (three days from Thursday are Thursday, Friday and Monday), and a drag from Friday to the next column lands on Monday. A Saturday you go to opens the Monday after it. Month and year view drop their weekend columns, and the agenda leaves weekend days out.
+- **Declined events**: off, the events you declined are hidden. On, they're drawn struck through on a dashed outline, without their color. An event is declined when its participant marked `self` (or the one whose email is the event's `calendarEmail`) has the response "declined".
+- **Week numbers**: on, the title names the week in day and week view ("Week 23"), the agenda marks where each week starts, and month and year view and the mini calendar number their weeks.
+
+`ViewDropdown` in `components/view-dropdown.tsx` is the same menu driven by props instead of `useCalendar()`.

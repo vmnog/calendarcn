@@ -8,8 +8,8 @@ import {
   openCalendar,
 } from "./helpers";
 
-/** Header label of the day view on FROZEN_NOW */
-const DAY_LABEL = "June 2026 Thursday, Jun 4";
+/** Header label of the day view on FROZEN_NOW (the demo shows week numbers) */
+const DAY_LABEL = "June 2026 Thursday, Jun 4 Week 23";
 
 /** Header label of the month view opened from the current week */
 const MONTH_LABEL = "June 2026";

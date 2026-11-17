@@ -104,6 +104,13 @@ Each answer is one undo step. `onEventsChange` gets the full list once, then `on
 
 The views render the question with `EventSeriesScopeDialog` (`@/components/event-series-scope-dialog`). In a layout without them, render it once inside the provider; without it, a change applies to that date only (a repeat rule change, to that date and the following ones). To skip the question in your own code, pass the answer: `updateEvent(event, "all")` or `deleteEvent(event.id, "this")`. Custom details should change events with `editEvent(event)`, which waits like the built-in details. `getSeriesEditChanges()` and `getSeriesDeleteChanges()` from `@/lib/recurrence` return the same changes without a provider.
 
+## View settings
+
+`viewSettings` holds the view dropdown's three settings, and every view reads them: `showWeekends`, `showDeclinedEvents` and `showWeekNumbers`. Start with your own through `defaultViewSettings`, and flip them with `toggleWeekends`, `toggleDeclinedEvents` and `toggleWeekNumbers`, or let the [view switcher](/docs/components/calendar-header#calendarviewswitcher) and the [Command Menu](/docs/components/command-menu) do it.
+
+- **Who you are among the participants.** An event is declined when your participant answered "declined": the one with `self: true` (Google Calendar's flag), or, without one, the one whose email is the event's `calendarEmail`. `isDeclinedByViewer(event)` says whether an event is, and `filterDeclinedEvents(events, showDeclinedEvents)` drops them while they're hidden, for a view of your own.
+- **Days without the weekend.** With weekends hidden, `getShownDays()`, `addShownDays()` and `countShownDaysBetween()` count weekdays instead of days, and `getFirstShownDay()` moves a Saturday or Sunday to Monday. `getVisibleDays()`, `getPeriodStart()` and `getVisibleDayCount()` take the setting as their last argument.
+
 ## Configuration
 
 <ComponentPreview name="config-demo" />
@@ -505,7 +512,7 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       name: "viewSettings",
       type: "ViewSettings",
       description:
-        "`showWeekends`, `showDeclinedEvents` and `showWeekNumbers`.",
+        "`showWeekends`, `showDeclinedEvents` and `showWeekNumbers`, which every view reads. See [Calendar Header](/docs/components/calendar-header#calendarviewswitcher).",
     },
     {
       name: "visibleDays",
@@ -720,13 +727,14 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     {
       name: "toggleWeekends",
       type: "() => void",
-      description: "Shows or hides weekend columns.",
+      description:
+        "Shows or hides the weekend in every view. Hiding it in day view, or with fewer than 7 days, moves a Saturday or Sunday on screen to Monday.",
     },
     {
       name: "toggleDeclinedEvents",
       type: "() => void",
       description:
-        "Flips `viewSettings.showDeclinedEvents`. The views don't filter by it yet.",
+        "Shows or hides the events you declined (see `isDeclinedByViewer`). Hiding them clears the selection when the selected event is one.",
     },
     {
       name: "toggleWeekNumbers",

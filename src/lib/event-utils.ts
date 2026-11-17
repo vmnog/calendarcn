@@ -33,6 +33,7 @@ import type {
   DetailedCalendarEvent,
   EventChangeSummaryRow,
   EventColor,
+  EventParticipant,
   EventReminder,
   HourCycle,
   PositionedEvent,
@@ -93,6 +94,9 @@ const MINUTES_PER_DAY = 24 * 60;
 
 /** Days in a week: the week view's default column count and prev/next step */
 const DAYS_PER_WEEK = 7;
+
+/** Monday to Friday: the columns a full week shows with weekends hidden */
+export const WEEKDAYS_PER_WEEK = 5;
 
 /** Days the agenda lists, from its first day; also its prev/next step */
 export const AGENDA_DAYS = 30;
@@ -988,16 +992,93 @@ export function calculateMonthCellLayout(
 /**
  * Returns how many days a view shows: one in day view, `numberOfDays` (at
  * least one) in week view, a full week in month view, `AGENDA_DAYS` in the
- * agenda.
+ * agenda. With weekends hidden, a full week shows its five weekdays, and any
+ * other day count that many weekdays, as Notion Calendar does.
  */
 export function getVisibleDayCount(
   view: ViewType,
   numberOfDays: number,
+  showWeekends = true,
 ): number {
   if (view === "day") return 1;
   if (view === "month") return DAYS_PER_WEEK;
   if (view === "agenda") return AGENDA_DAYS;
-  return Math.max(1, Math.round(numberOfDays));
+  const count = Math.max(1, Math.round(numberOfDays));
+  if (!showWeekends && count === DAYS_PER_WEEK) return WEEKDAYS_PER_WEEK;
+  return count;
+}
+
+/**
+ * Returns `date` when the time grid draws it, else the Monday after it: with
+ * weekends hidden, a Saturday or Sunday shows as the next weekday.
+ */
+export function getFirstShownDay(date: Date, showWeekends: boolean): Date {
+  if (showWeekends || !isWeekend(date)) return date;
+  return addDays(date, date.getDay() === 6 ? 2 : 1);
+}
+
+/**
+ * Moves `date` by `amount` days the time grid draws: calendar days, or
+ * weekdays while weekends are hidden, counted from the day it shows first
+ * (`getFirstShownDay`). Friday plus one is Monday then.
+ */
+export function addShownDays(
+  date: Date,
+  amount: number,
+  showWeekends: boolean,
+): Date {
+  if (showWeekends) return addDays(date, amount);
+  const step = amount < 0 ? -1 : 1;
+  const weeks = Math.trunc(amount / WEEKDAYS_PER_WEEK);
+  let day = addDays(getFirstShownDay(date, false), weeks * DAYS_PER_WEEK);
+  let remaining = amount - weeks * WEEKDAYS_PER_WEEK;
+  while (remaining !== 0) {
+    day = addDays(day, step);
+    if (!isWeekend(day)) remaining -= step;
+  }
+  return day;
+}
+
+/**
+ * How many days the time grid draws from `from` to `to`, negative when `to`
+ * comes first: calendar days, or weekdays while weekends are hidden. It
+ * undoes `addShownDays`.
+ */
+export function countShownDaysBetween(
+  from: Date,
+  to: Date,
+  showWeekends: boolean,
+): number {
+  if (showWeekends) return differenceInCalendarDays(to, from);
+  const start = getFirstShownDay(from, false);
+  const end = getFirstShownDay(to, false);
+  const step = end < start ? -1 : 1;
+  const weeks = Math.trunc(
+    differenceInCalendarDays(end, start) / DAYS_PER_WEEK,
+  );
+  let count = weeks * WEEKDAYS_PER_WEEK;
+  let day = addDays(start, weeks * DAYS_PER_WEEK);
+  while (!isSameDay(day, end)) {
+    day = addDays(day, step);
+    if (!isWeekend(day)) count += step;
+  }
+  return count;
+}
+
+/**
+ * The `count` days the time grid draws from `start` on: consecutive days, or
+ * weekdays from the first one on or after `start` while weekends are hidden
+ */
+export function getShownDays(
+  start: Date,
+  count: number,
+  showWeekends: boolean,
+): Date[] {
+  const days = [getFirstShownDay(start, showWeekends)];
+  while (days.length < count) {
+    days.push(addShownDays(days[days.length - 1], 1, showWeekends));
+  }
+  return days;
 }
 
 /**
@@ -1009,33 +1090,50 @@ export function getWeekViewStepDays(numberOfDays: number): number {
 }
 
 /**
+ * Whether the view starts its period on any day and steps by days: day view,
+ * and a week view shorter than a week
+ */
+export function stepsByDay(view: ViewType, numberOfDays: number): boolean {
+  if (view === "day") return true;
+  return view === "week" && getWeekViewStepDays(numberOfDays) < DAYS_PER_WEEK;
+}
+
+/**
  * Returns the first day of the period that contains `date`: the day itself
  * in day view, the agenda and a week view shorter than a week, the start of
- * its week otherwise, and January 1 in year view.
+ * its week otherwise, and January 1 in year view. With weekends hidden, day
+ * view and a week view shorter than a week start on the next weekday
+ * instead of a Saturday or Sunday.
  */
 export function getPeriodStart(
   date: Date,
   view: ViewType,
   weekStartsOn: WeekStartsOn,
   numberOfDays: number,
+  showWeekends = true,
 ): Date {
   if (view === "year") return startOfYear(date);
-  if (view === "day" || view === "agenda") return startOfDay(date);
-  if (view === "week" && getWeekViewStepDays(numberOfDays) < DAYS_PER_WEEK) {
-    return startOfDay(date);
+  if (view === "agenda") return startOfDay(date);
+  if (stepsByDay(view, numberOfDays)) {
+    return getFirstShownDay(startOfDay(date), showWeekends);
   }
   return startOfWeek(date, { weekStartsOn });
 }
 
 /**
- * Returns the visible days starting from the given date (used for sidebar highlighting)
+ * Returns the visible days starting from the given date (used for sidebar
+ * highlighting). Day and week view leave the weekend out while it is hidden.
  */
 export function getVisibleDays(
   currentDate: Date,
   view: ViewType,
   numberOfDays: number,
+  showWeekends = true,
 ): Date[] {
-  const count = getVisibleDayCount(view, numberOfDays);
+  const count = getVisibleDayCount(view, numberOfDays, showWeekends);
+  if (view === "day" || view === "week") {
+    return getShownDays(currentDate, count, showWeekends);
+  }
   const end = addDays(currentDate, count - 1);
   return eachDayOfInterval({ start: currentDate, end });
 }
@@ -1043,13 +1141,14 @@ export function getVisibleDays(
 /**
  * Returns the dates a view draws, from the first visible day's midnight to
  * the midnight after the last (end exclusive). Day and week views start on
- * `currentDate` and span their columns, and the agenda its `AGENDA_DAYS`
- * days. Month view spans its whole grid,
+ * `currentDate` and span their columns; with weekends hidden they start on
+ * the first weekday and end after their last weekday column. The agenda
+ * spans its `AGENDA_DAYS` days, weekends included (it lists none of their
+ * events while they are hidden). Month view spans its whole grid,
  * `MONTH_VIEW_ROWS` weeks from the week containing `currentDate`, days of
  * other months included; with weekends hidden, the weekend columns at the
- * grid's edges are left out. Only month view hides weekends, so
- * `showWeekends` doesn't change the other views' range. Year view spans its
- * year, January 1 to the next January 1, weekends always included.
+ * grid's edges are left out. Year view spans its year, January 1 to the
+ * next January 1.
  */
 export function getVisibleRange(
   currentDate: Date,
@@ -1062,10 +1161,17 @@ export function getVisibleRange(
     const start = startOfYear(currentDate);
     return { start, end: addYears(start, 1) };
   }
-  if (view !== "month") {
+  if (view === "day" || view === "week") {
+    const days = getShownDays(
+      startOfDay(currentDate),
+      getVisibleDayCount(view, numberOfDays, showWeekends),
+      showWeekends,
+    );
+    return { start: days[0], end: addDays(days[days.length - 1], 1) };
+  }
+  if (view === "agenda") {
     const start = startOfDay(currentDate);
-    const end = addDays(start, getVisibleDayCount(view, numberOfDays));
-    return { start, end };
+    return { start, end: addDays(start, AGENDA_DAYS) };
   }
 
   let start = startOfWeek(currentDate, { weekStartsOn });
@@ -1440,7 +1546,47 @@ export function getEventLabel(
   hourCycle: HourCycle,
   locale: Locale,
 ): string {
-  return `${getSpokenTitle(event)}, ${describeEventTime(event, hourCycle, locale)}`;
+  const label = `${getSpokenTitle(event)}, ${describeEventTime(event, hourCycle, locale)}`;
+  return isDeclinedByViewer(event) ? `${label}, declined` : label;
+}
+
+/**
+ * The participant who is the viewer: the one marked `self` (Google
+ * Calendar's flag), else the one whose email is the event calendar's
+ * `calendarEmail`, the account the event shows in
+ */
+function getViewerParticipant(
+  event: DetailedCalendarEvent,
+): EventParticipant | undefined {
+  const { participants, calendarEmail } = event;
+  if (!participants) return undefined;
+  const self = participants.find((participant) => participant.self);
+  if (self || !calendarEmail) return self;
+  const viewerEmail = calendarEmail.toLowerCase();
+  return participants.find(
+    (participant) => participant.email.toLowerCase() === viewerEmail,
+  );
+}
+
+/**
+ * Whether the viewer declined the event: their participant's `response` is
+ * "declined". The views hide these events while `showDeclinedEvents` is off
+ * and draw them struck through otherwise.
+ */
+export function isDeclinedByViewer(event: DetailedCalendarEvent): boolean {
+  return getViewerParticipant(event)?.response === "declined";
+}
+
+/**
+ * The events a view draws with the "Declined events" setting: all of them,
+ * or all but the ones the viewer declined
+ */
+export function filterDeclinedEvents<TEvent extends CalendarEvent>(
+  events: TEvent[],
+  showDeclinedEvents: boolean,
+): TEvent[] {
+  if (showDeclinedEvents) return events;
+  return events.filter((event) => !isDeclinedByViewer(event));
 }
 
 /**
@@ -1485,7 +1631,8 @@ export function describeEventCreated(
  * Returns the event after an Alt+Arrow key press on it, or `null` when the
  * key doesn't apply (or the event can't move further):
  *
- * - Alt+ArrowLeft/Right: one day earlier/later
+ * - Alt+ArrowLeft/Right: one day earlier/later, over the weekend while
+ *   it is hidden (`showWeekends` false): Friday to Monday
  * - Alt+ArrowUp/Down: one `snapMinutes` step earlier/later in the day and
  *   week views (single-day timed events only, kept inside the visible
  *   hours), one week earlier/later in month view
@@ -1502,15 +1649,20 @@ export function getKeyboardEventChange(
     dayStartHour,
     dayEndHour,
   }: Pick<CalendarConfig, "snapMinutes" | "dayStartHour" | "dayEndHour">,
+  showWeekends = true,
 ): CalendarEvent | null {
   const direction = key === "ArrowRight" || key === "ArrowDown" ? 1 : -1;
 
   if (key === "ArrowLeft" || key === "ArrowRight") {
     if (shiftKey) return null;
+    const days = differenceInCalendarDays(
+      addShownDays(event.start, direction, showWeekends),
+      event.start,
+    );
     return {
       ...event,
-      start: addDays(event.start, direction),
-      end: addDays(event.end, direction),
+      start: addDays(event.start, days),
+      end: addDays(event.end, days),
     };
   }
   if (key !== "ArrowUp" && key !== "ArrowDown") return null;

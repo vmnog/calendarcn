@@ -260,6 +260,75 @@ test.describe("parseIcs", () => {
     expect(parseIcs("")).toEqual([]);
     expect(parseIcs("Just some notes\nwith: colons")).toEqual([]);
   });
+
+  test("reads attendees and the organizer as participants", () => {
+    const [event] = parseIcs(
+      [
+        "BEGIN:VCALENDAR",
+        "BEGIN:VEVENT",
+        "UID:vendor-demo",
+        "DTSTART:20260603T180000Z",
+        "DTEND:20260603T190000Z",
+        "SUMMARY:Vendor demo",
+        "ORGANIZER;CN=Morgan Diaz:mailto:morgan@example.com",
+        "ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;CN=Morgan",
+        // A folded line drops one leading space: the second is the name's
+        "  Diaz;X-NUM-GUESTS=0:mailto:morgan@example.com",
+        'ATTENDEE;PARTSTAT=DECLINED;CN="Diaz, Ana";X-CALENDARCN-SELF=TRUE:MAILTO:a',
+        " na@example.com",
+        "ATTENDEE;ROLE=OPT-PARTICIPANT;PARTSTAT=TENTATIVE:mailto:sam@example.com",
+        "ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:lee@example.com",
+        "ATTENDEE;CUTYPE=RESOURCE;CN=Room 4B;PARTSTAT=ACCEPTED:mailto:c_1@resource",
+        " .calendar.google.com",
+        "BEGIN:VALARM",
+        "ACTION:EMAIL",
+        "ATTENDEE:mailto:alarm@example.com",
+        "TRIGGER:-PT10M",
+        "END:VALARM",
+        "END:VEVENT",
+        "END:VCALENDAR",
+      ].join("\r\n"),
+    );
+
+    // Rooms and alarm recipients aren't guests
+    expect(event.participants).toEqual([
+      {
+        email: "morgan@example.com",
+        name: "Morgan Diaz",
+        response: "accepted",
+        organizer: true,
+      },
+      {
+        email: "ana@example.com",
+        name: "Diaz, Ana",
+        response: "declined",
+        self: true,
+      },
+      { email: "sam@example.com", response: "tentative", optional: true },
+      { email: "lee@example.com", response: "needs-action" },
+    ]);
+  });
+
+  test("adds an organizer who isn't an attendee", () => {
+    const [event] = parseIcs(
+      [
+        "BEGIN:VCALENDAR",
+        "BEGIN:VEVENT",
+        "UID:one-on-one",
+        "DTSTART:20260603T180000Z",
+        "SUMMARY:1:1",
+        "ORGANIZER:mailto:host@example.com",
+        "ATTENDEE;PARTSTAT=ACCEPTED:mailto:guest@example.com",
+        "END:VEVENT",
+        "END:VCALENDAR",
+      ].join("\r\n"),
+    );
+
+    expect(event.participants).toEqual([
+      { email: "host@example.com", organizer: true },
+      { email: "guest@example.com", response: "accepted" },
+    ]);
+  });
 });
 
 test.describe("toIcs", () => {
@@ -509,6 +578,47 @@ test.describe("toIcs", () => {
       expect(event.recurrenceRule, rrule).toBeUndefined();
       expect(event.recurrence, rrule).toBe(rrule);
     }
+  });
+
+  test("writes participants as attendees, the viewer's answer included", () => {
+    const events: DetailedCalendarEvent[] = [
+      {
+        id: "vendor-demo",
+        title: "Vendor demo",
+        start: new Date("2026-06-03T18:00:00Z"),
+        end: new Date("2026-06-03T19:00:00Z"),
+        participants: [
+          {
+            email: "morgan@example.com",
+            name: "Morgan Diaz",
+            response: "accepted",
+            organizer: true,
+          },
+          {
+            email: "you@example.com",
+            name: "You; and a comma, too",
+            response: "declined",
+            self: true,
+          },
+          { email: "sam@example.com", response: "tentative", optional: true },
+          { email: "lee@example.com" },
+        ],
+      },
+    ];
+
+    const ics = toIcs(events, { timestamp });
+    const unfolded = ics.replace(/\r\n /g, "");
+    expect(unfolded).toContain(
+      "ORGANIZER;CN=Morgan Diaz:mailto:morgan@example.com\r\n",
+    );
+    expect(unfolded).toContain(
+      'ATTENDEE;CN="You; and a comma, too";PARTSTAT=DECLINED;X-CALENDARCN-SELF=TRUE:mailto:you@example.com\r\n',
+    );
+    expect(unfolded).toContain(
+      "ATTENDEE;ROLE=OPT-PARTICIPANT;PARTSTAT=TENTATIVE:mailto:sam@example.com\r\n",
+    );
+    expect(unfolded).toContain("ATTENDEE:mailto:lee@example.com\r\n");
+    expect(parseIcs(ics)).toEqual(events);
   });
 
   test("round-trips the sample events", () => {

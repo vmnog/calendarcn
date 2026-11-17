@@ -34,9 +34,25 @@ test("week view covers numberOfDays columns from the first one", () => {
   expect(formatRange(getVisibleRange(THURSDAY, "week", 3, 0, true))).toBe(
     "2026-06-04 → 2026-06-07",
   );
-  // Hidden weekends don't change the time grid, which always shows them
+});
+
+test("day and week view with hidden weekends cover the weekdays they draw", () => {
+  const sunday = new Date(2026, 4, 31);
+  // A full week: Monday to Friday
   expect(formatRange(getVisibleRange(sunday, "week", 7, 0, false))).toBe(
-    "2026-05-31 → 2026-06-07",
+    "2026-06-01 → 2026-06-06",
+  );
+  // Three days from Thursday: Thursday, Friday and the next Monday
+  expect(formatRange(getVisibleRange(THURSDAY, "week", 3, 0, false))).toBe(
+    "2026-06-04 → 2026-06-09",
+  );
+  // A Saturday in day view shows the Monday after it
+  expect(
+    formatRange(getVisibleRange(new Date(2026, 5, 6), "day", 7, 0, false)),
+  ).toBe("2026-06-08 → 2026-06-09");
+  // The agenda lists its days and leaves the weekend ones empty
+  expect(formatRange(getVisibleRange(THURSDAY, "agenda", 7, 0, false))).toBe(
+    formatRange(getVisibleRange(THURSDAY, "agenda", 7, 0, true)),
   );
 });
 

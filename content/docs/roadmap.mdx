@@ -26,7 +26,6 @@ Not scheduled yet, roughly in priority order.
 Some controls are drawn the way Notion Calendar has them and aren't built yet. Each is disabled and carries a "Soon" badge, in the [live demo](/) and in the code you install, so nobody clicks a control that does nothing. They still need implementing:
 
 - **Calendar sidebar**: the scheduling row, the "Meet with..." field and "Add calendar account". See [Calendar Sidebar](/docs/components/calendar-sidebar).
-- **View settings**: "Declined events" in every view, "Weekends" in day, week and year view, and "Week numbers" outside month and year view. See [Calendar Header](/docs/components/calendar-header).
 - **Shortcuts**: the menu bar calendar and a teammate's calendar, in the "Useful shortcuts" of the [Details Sidebar](/docs/components/details-sidebar).
 - **Commands**: with `showComingSoon`, the [Command Menu](/docs/components/command-menu) lists the Notion Calendar commands that aren't built.
 
@@ -34,6 +33,7 @@ Some controls are drawn the way Notion Calendar has them and aren't built yet. E
 
 The highlights. The [Changelog](/docs/changelog) lists every change item by item, with breaking changes called out.
 
+- **View settings in every view**: hide weekends, show week numbers and hide the events you declined from the view switcher or the command menu, in every view. Day and week view step over a hidden weekend, and declined events are struck through on a dashed outline, as in Notion Calendar. See [Calendar Header](/docs/components/calendar-header#calendarviewswitcher).
 - **Go to date, search and every shortcut**: press <Kbd>.</Kbd> and type a date ("next friday", "dec 25", "in 2 weeks") to go there, <Kbd>C</Kbd> to create an event at the next half hour, and <Kbd>?</Kbd> to see every keyboard shortcut, grouped as Notion Calendar groups them. The command menu also searches events. See [Keyboard shortcuts](/docs/keyboard-shortcuts) and the [Command Menu](/docs/components/command-menu).
 - **Time zones**: draw the calendar in any zone with `timeZone`, add zones beside the time axis from their labels or "Show additional time zones...", and travel to a zone for a while with <Kbd>Z</Kbd>, as in Notion Calendar. See [Calendar Core](/docs/components/calendar-core#time-zone).
 - **Year view**: [Year View](/docs/components/year-view) shows the year as twelve month grids, with today and the days that have events marked, like Google Calendar's. Press <Kbd>Y</Kbd> to open it.
