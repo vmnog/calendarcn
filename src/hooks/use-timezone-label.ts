@@ -13,27 +13,24 @@ function subscribe(): () => void {
   return () => {};
 }
 
-function getClientSnapshot(): string {
-  return getTimeZoneLabel(new Date());
-}
-
-function getClientDisplayNameSnapshot(): string {
-  return getTimeZoneDisplayName(new Date());
-}
-
 function getServerSnapshot(): string {
   return SERVER_TIMEZONE_LABEL;
 }
 
 /**
- * Returns the viewer's short timezone label ("EDT", "GMT-3", "GMT+5:30").
+ * Returns the short timezone label ("EDT", "GMT-3", "GMT+5:30") of
+ * `timeZone`, the viewer's zone by default.
  *
  * Server rendering and the client's hydration render both return
  * `SERVER_TIMEZONE_LABEL`, so the markup matches. React then re-renders
  * with the client snapshot right after hydration. Client-only renders
  * (no SSR) get the real label on the first render.
  */
-export function useTimeZoneLabel(): string {
+export function useTimeZoneLabel(timeZone?: string): string {
+  const getClientSnapshot = React.useCallback(
+    () => getTimeZoneLabel(new Date(), timeZone),
+    [timeZone],
+  );
   return React.useSyncExternalStore(
     subscribe,
     getClientSnapshot,
@@ -42,14 +39,18 @@ export function useTimeZoneLabel(): string {
 }
 
 /**
- * Returns the viewer's timezone label with its city ("GMT-3 Sao Paulo",
- * "EDT New York"). Like `useTimeZoneLabel`, it is empty on the server and
- * during hydration.
+ * Returns the timezone label with its city ("GMT-3 Sao Paulo", "EDT New
+ * York") of `timeZone`, the viewer's zone by default. Like
+ * `useTimeZoneLabel`, it is empty on the server and during hydration.
  */
-export function useTimeZoneDisplayName(): string {
+export function useTimeZoneDisplayName(timeZone?: string): string {
+  const getClientSnapshot = React.useCallback(
+    () => getTimeZoneDisplayName(new Date(), timeZone),
+    [timeZone],
+  );
   return React.useSyncExternalStore(
     subscribe,
-    getClientDisplayNameSnapshot,
+    getClientSnapshot,
     getServerSnapshot,
   );
 }

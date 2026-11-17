@@ -3,6 +3,8 @@ import type React from "react";
 import type {
   AllDayResizeState,
   CalendarEvent,
+  CalendarTheme,
+  HourCycle,
   CalendarProviderProps,
   DetailedCalendarEvent,
   EventDetailSectionProps,
@@ -11,9 +13,11 @@ import type {
   EventResizeState,
   HourSlot,
   NewEventRange,
+  PersonCalendarEvent,
   PositionedEvent,
   SchedulingLinkRequest,
   TimeGridView,
+  TimeSpan,
   WeekDay,
 } from "./calendar-types";
 
@@ -38,7 +42,15 @@ export type {
   NormalizedRecurrenceRule,
   FormatRRuleOptions,
   SeriesOccurrence,
+  SeriesEditScope,
+  SeriesEditOptions,
+  SeriesEditResult,
+  SeriesDeleteOptions,
+  EventChangeSummaryRow,
+  SeriesScopeQuestion,
+  SeriesScopeAnswer,
   TimeZoneOption,
+  CalendarTimeZones,
   ParticipantResponse,
   EventParticipant,
   EventRoom,
@@ -84,6 +96,15 @@ export type {
   CalendarRenderSlots,
   CalendarProviderProps,
   CalendarContextValue,
+  CalendarTheme,
+  TimeSpan,
+  WorkingHours,
+  CalendarPerson,
+  CalendarPeopleValue,
+  PersonCalendarEvent,
+  PeoplePickerMode,
+  KeyboardShortcut,
+  KeyboardShortcutGroup,
 } from "./calendar-types";
 
 /** A rectangle in viewport pixels that a popover is placed beside */
@@ -216,6 +237,26 @@ export interface CalendarToasterProps {
 }
 
 /**
+ * A page of the command menu: its list of commands, or the date field "Go
+ * to date..." opens
+ */
+export type CommandMenuPage = "commands" | "go-to-date";
+
+/** What an app can open in the details sidebar, through its `actionsRef` */
+export interface DetailsSidebarActions {
+  /**
+   * Opens the panel on event search with `query` typed in (empty by
+   * default) and focuses the field. A selected event is deselected
+   */
+  searchEvents: (query?: string) => void;
+  /**
+   * Opens the panel on the full keyboard shortcut list and focuses its find
+   * field. A selected event is deselected
+   */
+  showAllShortcuts: () => void;
+}
+
+/**
  * Props for the Calendar block: everything CalendarProvider takes (events,
  * view, date, configuration, render slots), plus options for its toolbar
  * and views. `children` render inside the provider, after the calendar.
@@ -267,7 +308,10 @@ export type CalendarAppProps = CalendarProviderProps<DetailedCalendarEvent> & {
   exportFileName?: string;
   /** Calendar name written into the exported .ics (Google and Apple show it) */
   exportCalendarName?: string;
-  /** Called on Cmd+, (Ctrl+, elsewhere). The key is left to the browser without it */
+  /**
+   * Called on Cmd+, (Ctrl+, elsewhere) and "Go to settings", for settings of
+   * your own. The key is left to the browser without it or `settingsDialog`
+   */
   onOpenSettings?: () => void;
   /**
    * Creates a scheduling link (a booking page) in your app, which CalendarCN
@@ -278,13 +322,31 @@ export type CalendarAppProps = CalendarProviderProps<DetailedCalendarEvent> & {
    */
   onCreateSchedulingLink?: (request: SchedulingLinkRequest) => void;
   /**
+   * Turns on the built-in settings dialog (`CalendarSettingsDialog`): Cmd+,
+   * (Ctrl+, elsewhere) and "Go to settings" open it, and "Manage calendar
+   * accounts" opens it on the calendars. It wins over `onOpenSettings`.
+   * Defaults to false
+   */
+  settingsDialog?: boolean;
+  /**
+   * Adds "Add calendar account" to the sidebar, the command menu and the
+   * settings dialog. Called with helpers: `importIcsCalendar()` adds an .ics
+   * file as a new calendar, as the live demo does
+   */
+  onAddCalendarAccount?: (helpers: CalendarAccountHelpers) => void;
+  /** Adds "Support & feedback" to the command menu, e.g. to open your issue tracker */
+  onSupport?: () => void;
+  /** Adds "About CalendarCN" to the command menu, e.g. to open your docs */
+  onAbout?: () => void;
+  /**
    * Also lists the Notion Calendar commands CalendarCN doesn't have yet in
    * the command menu, disabled with a "Soon" badge. Defaults to false
    */
   showComingSoon?: boolean;
   /**
    * Whether the keyboard shortcuts (the calendar's single keys, plus Cmd+K,
-   * Cmd+/, / and Shift+M) are on. They listen on `window`. Defaults to true
+   * Cmd+/, /, Shift+M, . and ?) are on. They listen on `window`. Defaults to
+   * true
    */
   shortcuts?: boolean;
   /**
@@ -337,8 +399,75 @@ export interface WeekViewTimeAxisProps {
    * blank
    */
   labels?: string[];
+  /**
+   * Fills the column with the primary color, its hours in white: the zone
+   * the calendar travelled to, as Notion Calendar marks it
+   */
+  highlighted?: boolean;
   /** Optional className */
   className?: string;
+}
+
+/**
+ * One time zone column of the time grid's axis, left to right: an
+ * additional zone, the home zone while travelling, or the zone the
+ * calendar draws in
+ */
+export interface TimeZoneAxisColumn {
+  /** IANA zone */
+  timeZone: string;
+  /** Short label at the top ("EST", "GMT+9"); empty before hydration */
+  label: string;
+  /**
+   * - `"secondary"`: an additional zone
+   * - `"home"`: the primary zone while the calendar travels
+   * - `"primary"`: the zone the calendar draws in, at home
+   * - `"travel"`: the zone the calendar travelled to
+   */
+  kind: "secondary" | "home" | "primary" | "travel";
+}
+
+/**
+ * Props for the TimeZoneAxisLabel component
+ */
+export interface TimeZoneAxisLabelProps {
+  column: TimeZoneAxisColumn;
+  /** Whether other zones are shown, so this one can be removed or made secondary */
+  hasOtherZones: boolean;
+}
+
+/**
+ * A command menu command that picks a time zone from a list:
+ * - `"travel"`: "Travel to time zone..."
+ * - `"add"`: "Show additional time zones..."
+ * - `"primary"`: "Make time zone primary..."
+ * - `"hide"`: "Hide time zone..."
+ */
+export type TimeZoneCommand = "travel" | "add" | "primary" | "hide";
+
+/** How a time zone list reads: the command menu's rows, or a dark menu's */
+export type TimeZoneListVariant = "command" | "menu";
+
+/**
+ * Props for the TimeZoneList component: the zones of a picker, inside a
+ * cmdk `Command` with `shouldFilter={false}`
+ */
+export interface TimeZoneListProps {
+  /** Text typed in the picker's input: lists the zones that match */
+  query: string;
+  /** Called with the IANA id of the zone picked */
+  onSelect: (timeZone: string) => void;
+  /**
+   * Only these zones, in this order (e.g. the zones shown, for hiding one).
+   * Every zone by default, the popular ones first
+   */
+  timeZones?: string[];
+  /**
+   * `"command"`: "(GMT−08:00) Pacific Standard Time – Los Angeles", as the
+   * command menu lists them. `"menu"`: the offset in its own column, on a
+   * dark menu
+   */
+  variant?: TimeZoneListVariant;
 }
 
 /**
@@ -385,6 +514,13 @@ export interface WeekViewGridProps extends EventItemPopoverProps {
   onContextMenuOpenChange?: (open: boolean) => void;
   /** Date to highlight with a temporary background animation (for "+N more" navigation) */
   highlightedDate?: Date | null;
+  /**
+   * Other people's timed events, drawn read-only behind yours ("Meet
+   * with...", "Show teammate calendar...")
+   */
+  personEvents?: PersonCalendarEvent[];
+  /** Free time you and the people you meet with share, highlighted under the events */
+  freeTimes?: TimeSpan[];
   /**
    * Index in `days` of the first on-screen column. Columns outside the
    * on-screen range are scroll buffer: inert and hidden from assistive tech.
@@ -606,6 +742,37 @@ export interface EventDetailDateFieldProps {
 }
 
 /**
+ * Which clock the details' times read on when the calendar draws in a zone
+ * (`timeZone`, or travelling) other than the event's own, as Notion
+ * Calendar's details switch between them
+ */
+export interface EventDetailClock {
+  /**
+   * `"calendar"`: the calendar's zone, which the time zone row shows.
+   * `"event"`: the event's own zone, which the row can change
+   */
+  showing: "calendar" | "event";
+  /** The zone the calendar draws in */
+  calendarTimeZone: string;
+  /** Switches the details to the other clock */
+  onSwitch: () => void;
+}
+
+/**
+ * Props for the EventDetailTimezone component
+ */
+export interface EventDetailTimezoneProps<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> extends EventDetailSectionProps<TEvent> {
+  /**
+   * Set when the calendar draws in another zone than the event's: the row
+   * shows the calendar's zone with "Switch to event's time zone to edit",
+   * or the event's with "Switch to your primary time zone"
+   */
+  clock?: EventDetailClock;
+}
+
+/**
  * Props for the EventDetailRecurrence component
  */
 export interface EventDetailRecurrenceProps<
@@ -672,4 +839,43 @@ export interface AvailabilityHintProps {
   showActions?: boolean;
   /** Classes for the pill's row; it sits `absolute` at the bottom of its positioned parent */
   className?: string;
+}
+
+/** The pane the settings dialog opens on: General, or the first calendar account */
+export type CalendarSettingsSection = "general" | "calendars";
+
+/**
+ * Props for CalendarSettingsDialog. Each setting shows only when something
+ * can change it: the calendar view settings come from the surrounding
+ * CalendarProvider, the rest from these handlers.
+ */
+export interface CalendarSettingsDialogProps {
+  /** Whether the dialog is open */
+  open: boolean;
+  /** Called when the dialog opens or closes (Escape, a click outside, the close button) */
+  onOpenChange: (open: boolean) => void;
+  /** Pane the dialog opens on, each time it opens. Defaults to "general" */
+  defaultSection?: CalendarSettingsSection;
+  /** The current theme, for the Theme setting. Defaults to "system" */
+  theme?: CalendarTheme;
+  /** Adds the Theme setting (Auto, Light mode, Dark mode) */
+  onThemeChange?: (theme: CalendarTheme) => void;
+  /** Adds the Time format setting; the current clock is the provider's `hourCycle` */
+  onHourCycleChange?: (hourCycle: HourCycle) => void;
+  /** Ids of the hidden calendars, for each calendar's show or hide button */
+  hiddenCalendarIds?: string[];
+  /** Adds a show or hide button to each calendar in an account's pane */
+  onHiddenCalendarIdsChange?: (hiddenCalendarIds: string[]) => void;
+  /** Adds "Add calendar account" under the accounts */
+  onAddCalendarAccount?: () => void;
+}
+
+/** What `CalendarApp` hands its `onAddCalendarAccount` */
+export interface CalendarAccountHelpers {
+  /**
+   * Opens a file picker and adds the picked .ics file's events as a new
+   * calendar named after the file (the same file again updates it), then
+   * shows its first event's period: what the live demo does
+   */
+  importIcsCalendar: () => void;
 }

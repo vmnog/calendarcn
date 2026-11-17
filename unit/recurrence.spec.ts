@@ -4,6 +4,7 @@ import { enUS } from "date-fns/locale";
 
 import type {
   DetailedCalendarEvent,
+  EventHistoryChange,
   RecurrenceRule,
 } from "../src/components/calendar-types";
 import {
@@ -14,10 +15,14 @@ import {
   describeRecurrenceRule,
   expandRecurringEvents,
   findEventOrOccurrence,
+  findEventSeries,
   findSeriesOccurrence,
   formatRRule,
   getAdjacentOccurrence,
   getOccurrenceRemoval,
+  getSeriesDeleteChanges,
+  getSeriesEditChanges,
+  getSeriesEditScopes,
   moveRecurrenceRule,
   parseRecurrence,
 } from "../src/lib/recurrence";
@@ -841,5 +846,429 @@ test.describe("createStandaloneCopy", () => {
       ...lunch,
       id: "copy",
     });
+  });
+});
+
+test.describe("series edit scopes", () => {
+  /** What the views draw for `seriesId` on `day` ("yyyy-MM-dd"), if anything */
+  function findDrawn(
+    events: DetailedCalendarEvent[],
+    day: string,
+    seriesId = "standup",
+  ): DetailedCalendarEvent | undefined {
+    const [year, month, date] = day.split("-").map(Number);
+    const start = new Date(year, month - 1, date);
+    const end = new Date(year, month - 1, date + 1);
+    return expandRecurringEvents(events, { start, end }).find(
+      (event) =>
+        (event.id === seriesId || event.seriesId === seriesId) &&
+        event.start >= start &&
+        event.start < end,
+    );
+  }
+  /** The same, failing the test when nothing is drawn */
+  function drawn(
+    events: DetailedCalendarEvent[],
+    day: string,
+    seriesId = "standup",
+  ): DetailedCalendarEvent {
+    const found = findDrawn(events, day, seriesId);
+    if (!found) throw new Error(`nothing drawn on ${day}`);
+    return found;
+  }
+  const created = (changes: EventHistoryChange<DetailedCalendarEvent>[]) =>
+    changes.flatMap((c) => (!c.before && c.after ? [c.after] : []));
+  const updated = (changes: EventHistoryChange<DetailedCalendarEvent>[]) =>
+    changes.flatMap((c) => (c.before && c.after ? [c.after] : []));
+  const deleted = (changes: EventHistoryChange<DetailedCalendarEvent>[]) =>
+    changes.flatMap((c) => (c.before && !c.after ? [c.before] : []));
+  const ids = (list: DetailedCalendarEvent[]) => list.map((e) => e.id);
+  function updatedAfter(
+    changes: EventHistoryChange<DetailedCalendarEvent>[],
+    id: string,
+  ): DetailedCalendarEvent {
+    const found = updated(changes).find((event) => event.id === id);
+    if (!found) throw new Error(`${id} wasn't updated`);
+    return found;
+  }
+  const later = (event: DetailedCalendarEvent, minutes: number) => ({
+    ...event,
+    start: new Date(event.start.getTime() + minutes * 60_000),
+    end: new Date(event.end.getTime() + minutes * 60_000),
+  });
+
+  /** Every day from Monday, June 1 2026, 9:00 to 9:30. Saturday is skipped */
+  const series: DetailedCalendarEvent = {
+    id: "standup",
+    title: "Standup",
+    start: new Date(2026, 5, 1, 9),
+    end: new Date(2026, 5, 1, 9, 30),
+    recurrenceRule: { frequency: "daily" },
+    excludedDates: [new Date(2026, 5, 6, 9)],
+  };
+  /** Thursday's date with a description of its own, at the series' time */
+  const noted = { ...drawn([series], "2026-06-04"), description: "Demo day" };
+  /** Friday's date, renamed and moved to 11:00 */
+  const moved = {
+    ...drawn([series], "2026-06-05"),
+    title: "Standup (moved)",
+    start: new Date(2026, 5, 5, 11),
+    end: new Date(2026, 5, 5, 11, 30),
+  };
+  const events = [series, noted, moved];
+  const monday = () => drawn(events, "2026-06-01");
+  const wednesday = () => drawn(events, "2026-06-03");
+
+  test("015 draws the first date as the series event and later dates as its occurrences", () => {
+    expect(monday().id).toBe("standup");
+    expect(monday().seriesId).toBeUndefined();
+    expect(wednesday().id).toBe("standup-2026-06-03");
+    expect(wednesday().seriesId).toBe("standup");
+    expect(local(wednesday().originalStart ?? null)).toBe("2026-06-03 09:00");
+  });
+
+  test("015 draws stored dates, skips excluded ones, and lets one replace the first date", () => {
+    expect(drawn(events, "2026-06-05").title).toBe("Standup (moved)");
+    expect(findDrawn(events, "2026-06-06")).toBeUndefined();
+    const kickoff: DetailedCalendarEvent = {
+      ...series,
+      id: "standup-2026-06-01",
+      seriesId: "standup",
+      originalStart: series.start,
+      excludedDates: undefined,
+      title: "Kickoff",
+    };
+    const range = {
+      start: new Date(2026, 5, 1),
+      end: new Date(2026, 5, 2),
+    };
+    expect(
+      expandRecurringEvents([series, kickoff], range).map((e) => e.title),
+    ).toEqual(["Kickoff"]);
+  });
+
+  test("a date's series: its seriesId's event, or the series event itself", () => {
+    expect(findEventSeries(events, wednesday())?.id).toBe("standup");
+    expect(findEventSeries(events, monday())?.id).toBe("standup");
+    const plain: DetailedCalendarEvent = {
+      id: "x",
+      title: "Plain",
+      start: series.start,
+      end: series.end,
+    };
+    expect(findEventSeries([plain], plain)).toBeNull();
+  });
+
+  test("the options: three on a later date, two on the first, fewer for a rule change", () => {
+    expect(
+      getSeriesEditScopes(events, wednesday(), later(wednesday(), 60)),
+    ).toEqual(["this", "following", "all"]);
+    expect(getSeriesEditScopes(events, monday(), later(monday(), 60))).toEqual([
+      "this",
+      "all",
+    ]);
+    const weekly = { recurrenceRule: { frequency: "weekly" as const } };
+    expect(
+      getSeriesEditScopes(events, wednesday(), { ...wednesday(), ...weekly }),
+    ).toEqual(["following", "all"]);
+    expect(
+      getSeriesEditScopes(events, monday(), { ...monday(), ...weekly }),
+    ).toEqual(["all"]);
+    expect(
+      getSeriesEditScopes(events, wednesday(), { ...wednesday() }),
+    ).toEqual([]);
+  });
+
+  test("This event stores a later date as an exception under its own id", () => {
+    const { changes, occurrenceId } = getSeriesEditChanges({
+      events,
+      before: wednesday(),
+      after: later(wednesday(), 60),
+      scope: "this",
+      newSeriesId: "unused",
+    });
+    expect(updated(changes)).toEqual([]);
+    expect(deleted(changes)).toEqual([]);
+    const [exception] = created(changes);
+    expect(exception.id).toBe("standup-2026-06-03");
+    expect(exception.seriesId).toBe("standup");
+    expect(local(exception.originalStart ?? null)).toBe("2026-06-03 09:00");
+    expect(local(exception.start)).toBe("2026-06-03 10:00");
+    expect(occurrenceId).toBe("standup-2026-06-03");
+  });
+
+  test("This event on the first date stores it apart and leaves the series as it is", () => {
+    const { changes, occurrenceId } = getSeriesEditChanges({
+      events,
+      before: monday(),
+      after: { ...later(monday(), 60), title: "Kickoff" },
+      scope: "this",
+      newSeriesId: "unused",
+    });
+    expect(updated(changes)).toEqual([]);
+    const [exception] = created(changes);
+    expect(exception.id).toBe("standup-2026-06-01");
+    expect(exception.seriesId).toBe("standup");
+    expect(local(exception.originalStart ?? null)).toBe("2026-06-01 09:00");
+    expect(local(exception.start)).toBe("2026-06-01 10:00");
+    expect(exception.title).toBe("Kickoff");
+    expect(occurrenceId).toBe("standup-2026-06-01");
+  });
+
+  test("This event on a stored date updates it in place", () => {
+    const friday = drawn(events, "2026-06-05");
+    const { changes } = getSeriesEditChanges({
+      events,
+      before: friday,
+      after: { ...friday, title: "Standup (late)" },
+      scope: "this",
+      newSeriesId: "unused",
+    });
+    expect(created(changes)).toEqual([]);
+    expect(updatedAfter(changes, "standup-2026-06-05").title).toBe(
+      "Standup (late)",
+    );
+  });
+
+  test("This and following ends the series the day before and starts a new one", () => {
+    const { changes, occurrenceId } = getSeriesEditChanges({
+      events,
+      before: wednesday(),
+      after: later(wednesday(), 60),
+      scope: "following",
+      newSeriesId: "standup-2",
+    });
+
+    // Reported removals first, then changes, then additions
+    const kinds = changes.map((c) =>
+      c.before && c.after ? "update" : c.after ? "create" : "delete",
+    );
+    expect(kinds).toEqual([
+      "delete",
+      "delete",
+      "update",
+      "create",
+      "create",
+      "create",
+    ]);
+
+    const old = updatedAfter(changes, "standup");
+    const end = old.recurrenceRule?.end;
+    expect(end?.type === "on" ? local(end.date) : null).toBe(
+      "2026-06-02 00:00",
+    );
+    expect(old.excludedDates ?? []).toEqual([]);
+
+    // The new series first, then the dates it takes over
+    expect(ids(created(changes))).toEqual([
+      "standup-2",
+      "standup-2-2026-06-04",
+      "standup-2-2026-06-05",
+    ]);
+    const [next, thursday, friday] = created(changes);
+    expect(local(next.start)).toBe("2026-06-03 10:00");
+    expect(local(next.end)).toBe("2026-06-03 10:30");
+    expect(next.seriesId).toBeUndefined();
+    expect(next.recurrenceRule?.frequency).toBe("daily");
+    expect((next.excludedDates ?? []).map(local)).toEqual(["2026-06-06 10:00"]);
+    // Kept the series' time: moves with it, keeps its description
+    expect(thursday.seriesId).toBe("standup-2");
+    expect(local(thursday.start)).toBe("2026-06-04 10:00");
+    expect(thursday.description).toBe("Demo day");
+    // Had its own time: keeps it, its place in the series moves
+    expect(local(friday.start)).toBe("2026-06-05 11:00");
+    expect(local(friday.originalStart ?? null)).toBe("2026-06-05 10:00");
+    expect(friday.title).toBe("Standup (moved)");
+
+    expect(ids(deleted(changes))).toEqual([
+      "standup-2026-06-04",
+      "standup-2026-06-05",
+    ]);
+    // The new series is drawn as itself on its first date
+    expect(occurrenceId).toBe("standup-2");
+  });
+
+  test("This and following keeps the count that is left", () => {
+    const counted: DetailedCalendarEvent = {
+      ...series,
+      recurrenceRule: { frequency: "daily", end: { type: "after", count: 10 } },
+      excludedDates: undefined,
+    };
+    const thursday = drawn([counted], "2026-06-04");
+    const { changes } = getSeriesEditChanges({
+      events: [counted],
+      before: thursday,
+      after: { ...thursday, title: "Daily sync" },
+      scope: "following",
+      newSeriesId: "standup-2",
+    });
+    const [next] = created(changes);
+    expect(next.recurrenceRule?.end).toEqual({ type: "after", count: 7 });
+    expect(next.title).toBe("Daily sync");
+  });
+
+  test("This and following on the first date acts as All events", () => {
+    const { changes } = getSeriesEditChanges({
+      events,
+      before: monday(),
+      after: { ...monday(), title: "Daily sync" },
+      scope: "following",
+      newSeriesId: "unused",
+    });
+    expect(created(changes)).toEqual([]);
+    const edited = updatedAfter(changes, "standup");
+    expect(edited.title).toBe("Daily sync");
+    expect(edited.recurrenceRule?.end).toBeUndefined();
+  });
+
+  test("All events moves the series, and the dates that kept its time", () => {
+    const { changes, occurrenceId } = getSeriesEditChanges({
+      events,
+      before: wednesday(),
+      after: { ...later(wednesday(), 60), end: new Date(2026, 5, 3, 10, 45) },
+      scope: "all",
+      newSeriesId: "unused",
+    });
+    expect(created(changes)).toEqual([]);
+    expect(deleted(changes)).toEqual([]);
+    const edited = updatedAfter(changes, "standup");
+    expect(local(edited.start)).toBe("2026-06-01 10:00");
+    expect(local(edited.end)).toBe("2026-06-01 10:45");
+    expect((edited.excludedDates ?? []).map(local)).toEqual([
+      "2026-06-06 10:00",
+    ]);
+    const thursday = updatedAfter(changes, "standup-2026-06-04");
+    expect(local(thursday.start)).toBe("2026-06-04 10:00");
+    expect(local(thursday.end)).toBe("2026-06-04 10:45");
+    const friday = updatedAfter(changes, "standup-2026-06-05");
+    expect(local(friday.start)).toBe("2026-06-05 11:00");
+    expect(local(friday.originalStart ?? null)).toBe("2026-06-05 10:00");
+    expect(occurrenceId).toBe("standup-2026-06-03");
+  });
+
+  test("All events renames the dates that kept the series' title", () => {
+    const { changes } = getSeriesEditChanges({
+      events,
+      before: wednesday(),
+      after: { ...wednesday(), title: "Daily sync" },
+      scope: "all",
+      newSeriesId: "unused",
+    });
+    expect(updatedAfter(changes, "standup").title).toBe("Daily sync");
+    expect(updatedAfter(changes, "standup-2026-06-04").title).toBe(
+      "Daily sync",
+    );
+    // Its own title stays, so nothing about it changed
+    expect(ids(updated(changes))).not.toContain("standup-2026-06-05");
+  });
+
+  test("All events on another day moves a weekly rule's days and drops the stored dates", () => {
+    const weekly: DetailedCalendarEvent = {
+      id: "w",
+      title: "Sync",
+      start: new Date(2026, 5, 1, 14),
+      end: new Date(2026, 5, 1, 15),
+      recurrenceRule: { frequency: "weekly", weekdays: [1, 3] },
+      excludedDates: [new Date(2026, 5, 3, 14)],
+    };
+    const notes = {
+      ...drawn([weekly], "2026-06-08", "w"),
+      title: "Sync (notes)",
+    };
+    const list = [weekly, notes];
+    const june10 = drawn(list, "2026-06-10", "w");
+    const { changes, occurrenceId } = getSeriesEditChanges({
+      events: list,
+      before: june10,
+      after: later(june10, 24 * 60),
+      scope: "all",
+      newSeriesId: "unused",
+    });
+    const shifted = updatedAfter(changes, "w");
+    expect(local(shifted.start)).toBe("2026-06-02 14:00");
+    expect(shifted.recurrenceRule?.weekdays).toEqual([2, 4]);
+    expect(shifted.excludedDates ?? []).toEqual([]);
+    expect(ids(deleted(changes))).toEqual(["w-2026-06-08"]);
+    expect(occurrenceId).toBe("w-2026-06-11");
+  });
+
+  test("Does not repeat for All events leaves one event and deletes the stored dates", () => {
+    const { changes, occurrenceId } = getSeriesEditChanges({
+      events,
+      before: wednesday(),
+      after: {
+        ...wednesday(),
+        recurrenceRule: undefined,
+        recurrence: undefined,
+      },
+      scope: "all",
+      newSeriesId: "unused",
+    });
+    const single = updatedAfter(changes, "standup");
+    expect(single.recurrenceRule).toBeUndefined();
+    expect(local(single.start)).toBe("2026-06-01 09:00");
+    expect(ids(deleted(changes)).sort()).toEqual([
+      "standup-2026-06-04",
+      "standup-2026-06-05",
+    ]);
+    expect(occurrenceId).toBeNull();
+  });
+
+  test("deleting This event excludes a later date and deletes its stored event", () => {
+    const changes = getSeriesDeleteChanges({
+      events,
+      event: drawn(events, "2026-06-05"),
+      scope: "this",
+    });
+    expect(created(changes)).toEqual([]);
+    expect(
+      (updatedAfter(changes, "standup").excludedDates ?? []).map(local),
+    ).toEqual(["2026-06-06 09:00", "2026-06-05 09:00"]);
+    expect(ids(deleted(changes))).toEqual(["standup-2026-06-05"]);
+  });
+
+  test("deleting This event on the first date excludes it and keeps the series", () => {
+    const changes = getSeriesDeleteChanges({
+      events,
+      event: monday(),
+      scope: "this",
+    });
+    expect(deleted(changes)).toEqual([]);
+    expect(
+      (updatedAfter(changes, "standup").excludedDates ?? []).map(local),
+    ).toEqual(["2026-06-06 09:00", "2026-06-01 09:00"]);
+  });
+
+  test("deleting This and following ends the series and deletes the later stored dates", () => {
+    const changes = getSeriesDeleteChanges({
+      events,
+      event: drawn(events, "2026-06-04"),
+      scope: "following",
+    });
+    const old = updatedAfter(changes, "standup");
+    const end = old.recurrenceRule?.end;
+    expect(end?.type === "on" ? local(end.date) : null).toBe(
+      "2026-06-03 00:00",
+    );
+    expect(old.excludedDates ?? []).toEqual([]);
+    expect(ids(deleted(changes))).toEqual([
+      "standup-2026-06-04",
+      "standup-2026-06-05",
+    ]);
+  });
+
+  test("deleting All events deletes the stored dates, then the series", () => {
+    const changes = getSeriesDeleteChanges({
+      events,
+      event: wednesday(),
+      scope: "all",
+    });
+    expect(created(changes)).toEqual([]);
+    expect(updated(changes)).toEqual([]);
+    expect(ids(deleted(changes))).toEqual([
+      "standup-2026-06-04",
+      "standup-2026-06-05",
+      "standup",
+    ]);
   });
 });

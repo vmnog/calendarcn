@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useCalendarConfig } from "./calendar-provider";
 import {
+  EVENT_DETAIL_ACCENT_BG_CLASS,
   EVENT_DETAIL_HOVER_BORDER_CLASS,
   EVENT_DETAIL_ICON_CLASS,
   EVENT_DETAIL_MENU_CLASS,
@@ -40,6 +41,7 @@ import {
   EVENT_DETAIL_SECONDARY_CLASS,
   EventDetailSection,
   EventDetailTooltip,
+  RadioDot,
   closeMenuOnEscape,
   stopEscapePropagation,
 } from "./event-detail-parts";
@@ -53,7 +55,11 @@ import {
   isSameRecurrenceRule,
   normalizeRecurrenceRule,
 } from "@/lib/recurrence";
-import { getEventTimeZone, getZonedDay } from "@/lib/time-zones";
+import {
+  fromDisplayEvent,
+  getEventTimeZone,
+  getZonedDay,
+} from "@/lib/time-zones";
 import type {
   DetailedCalendarEvent,
   EventDetailRecurrenceProps,
@@ -104,8 +110,8 @@ const MENU_DETAIL_CLASS = "text-[#7F7F7F]";
 const DIALOG_FIELD_CLASS =
   "rounded-md border border-[#E8E8E4] bg-transparent text-foreground outline-none focus-within:border-[#F5F5F5] focus-within:bg-[#F5F5F5] has-[:disabled]:text-[#C7C5C1] dark:border-[#303030] dark:focus-within:border-[#303030] dark:focus-within:bg-[#303030] dark:has-[:disabled]:text-[#595959]";
 
-/** Blue of the checked radio and the Done button, the same in both themes */
-const ACCENT_BG_CLASS = "bg-[#3A85D3] dark:bg-[#3A85D3]";
+/** Blue of the Done button, the same in both themes */
+const ACCENT_BG_CLASS = EVENT_DETAIL_ACCENT_BG_CLASS;
 
 /** Blue of a selected day in the custom dialog, softer than the button's */
 const SELECTED_DAY_CLASS =
@@ -317,23 +323,6 @@ function NumberField({ label, value, onChange, disabled }: NumberFieldProps) {
         </button>
       </span>
     </div>
-  );
-}
-
-/** A round radio, blue with a white dot when checked */
-function RadioDot({ checked }: { checked: boolean }) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "flex size-4 shrink-0 items-center justify-center rounded-full",
-        checked
-          ? ACCENT_BG_CLASS
-          : "border border-[#E8E8E4] bg-[#F5F5F5] dark:border-[#373737] dark:bg-[#303030]",
-      )}
-    >
-      {checked && <span className="size-1.5 rounded-full bg-white" />}
-    </span>
   );
 }
 
@@ -696,16 +685,18 @@ export function EventDetailRecurrence<
   onPrevious,
   onNext,
 }: EventDetailRecurrenceProps<TEvent>) {
-  const { locale } = useCalendarConfig();
+  const { locale, timeZone } = useCalendarConfig();
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [customOpen, setCustomOpen] = React.useState(false);
   /** Remounts the custom dialog on each open, so it starts from the current rule */
   const [customKey, setCustomKey] = React.useState(0);
 
-  // A rule counts its days in the event's zone
-  const start = getZonedDay(event.start, getEventTimeZone(event));
-  const rule = getEventRecurrenceRule(event);
+  // A rule counts its days in the event's zone, from its instant (the event
+  // reads on the calendar's clock)
+  const seriesEvent = fromDisplayEvent(event, timeZone);
+  const start = getZonedDay(seriesEvent.start, getEventTimeZone(seriesEvent));
+  const rule = getEventRecurrenceRule(seriesEvent);
   const repeats = Boolean(rule ?? event.recurrence);
   const label = getRecurrenceLabel(event, rule, start, locale);
 

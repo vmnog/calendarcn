@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Fragment,
   useCallback,
   useEffect,
   useId,
@@ -9,7 +10,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { addDays, format, isSameDay, isSameMonth, isWeekend } from "date-fns";
+import {
+  addDays,
+  format,
+  getWeek,
+  isSameDay,
+  isSameMonth,
+  isWeekend,
+} from "date-fns";
 import { CalendarCheckIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -26,21 +34,30 @@ import {
   EventContentSlot,
   useCalendar,
   useCalendarConfig,
+  useCalendarSeriesScope,
   useCalendarViewSync,
 } from "./calendar-provider";
 import {
+  EventSeriesScopeDialog,
+  SeriesChangeDot,
+} from "./event-series-scope-dialog";
+import {
+  DECLINED_EVENT_OUTLINE_CLASS,
+  DECLINED_EVENT_TEXT_CLASS,
   EVENT_FOCUS_RING_CLASS,
   eventColorStyles,
   getEventDetailsTriggerProps,
 } from "./calendar-event-item";
 import {
   AGENDA_DAYS,
+  filterDeclinedEvents,
   formatAgendaDayOfSpan,
   formatAgendaTime,
   formatFullDate,
   getAgendaDays,
   getEventLabel,
   getVisibleDays,
+  isDeclinedByViewer,
   resolveEventColor,
 } from "@/lib/event-utils";
 import { expandRecurringEvents } from "@/lib/recurrence";
@@ -156,6 +173,7 @@ export function AgendaView({
     currentDate,
     events,
     viewSettings,
+    weekStartsOn,
     selectedEventId,
     selectEvent,
     clearSelection,
@@ -163,11 +181,11 @@ export function AgendaView({
     goToDate,
     loading,
   } = useCalendar();
-  const { locale } = useCalendarConfig();
+  const { locale, timeZone } = useCalendarConfig();
   const { reportView, reportVisibleDays, closeEventPopover } =
     useCalendarViewSync();
   // `null` on the server and during hydration, so no day is marked as today
-  const today = useToday();
+  const today = useToday(timeZone);
   /**
    * Whether the provider navigates by the agenda's range. False for the
    * commit before it adopts this view (on mount, or right after a switch it
@@ -184,7 +202,7 @@ export function AgendaView({
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
-  const { showWeekends } = viewSettings;
+  const { showWeekends, showDeclinedEvents, showWeekNumbers } = viewSettings;
 
   // Tell the provider which view is on screen. `reportView` changes with the
   // provider's state, so this also re-checks after every switch. A layout
@@ -212,19 +230,38 @@ export function AgendaView({
     scrollContainerRef.current?.scrollTo({ top: 0 });
   }, [currentDate]);
 
+  const { previewEvents } = useCalendarSeriesScope();
   const listedDays = useMemo(() => {
-    // A repeating event is listed under each of its dates in the range
-    const occurrences = expandRecurringEvents(events, {
-      start: rangeStart,
-      end: addDays(rangeEnd, 1),
-    });
+    // A repeating event is listed under each of its dates in the range, a
+    // change to a repeating event's date that waits shows on that date, and
+    // the events the viewer declined are listed only while they're shown
+    const occurrences = filterDeclinedEvents(
+      previewEvents(
+        expandRecurringEvents(
+          events,
+          { start: rangeStart, end: addDays(rangeEnd, 1) },
+          timeZone,
+        ),
+      ),
+      showDeclinedEvents,
+    );
     const days = getAgendaDays(occurrences, currentDate, AGENDA_DAYS);
     return days.filter((day) => {
       if (!showWeekends && isWeekend(day.date)) return false;
       if (day.entries.length > 0) return true;
       return today !== null && isSameDay(day.date, today);
     });
-  }, [events, rangeStart, rangeEnd, currentDate, showWeekends, today]);
+  }, [
+    events,
+    rangeStart,
+    rangeEnd,
+    currentDate,
+    showWeekends,
+    showDeclinedEvents,
+    today,
+    timeZone,
+    previewEvents,
+  ]);
 
   const months = useMemo(() => groupByMonth(listedDays), [listedDays]);
   const hasEvents = listedDays.some((day) => day.entries.length > 0);
@@ -339,14 +376,32 @@ export function AgendaView({
                 >
                   {format(month.date, "MMMM yyyy", { locale })}
                 </div>
-                {month.days.map((day) => (
-                  <AgendaDayGroup
-                    key={day.date.toISOString()}
-                    day={day}
-                    isToday={today !== null && isSameDay(day.date, today)}
-                    renderRow={renderRow}
-                  />
-                ))}
+                {month.days.map((day, index) => {
+                  const weekNumber = getWeek(day.date, {
+                    weekStartsOn,
+                    locale,
+                  });
+                  const previous = month.days[index - 1];
+                  // Each week's first listed day, and each month's first
+                  const startsWeek =
+                    !previous ||
+                    getWeek(previous.date, { weekStartsOn, locale }) !==
+                      weekNumber;
+                  return (
+                    <Fragment key={day.date.toISOString()}>
+                      {showWeekNumbers && startsWeek && (
+                        <div className="px-3 pt-2 text-xxs font-medium text-muted-foreground @xl/agenda:px-6">
+                          Week {weekNumber}
+                        </div>
+                      )}
+                      <AgendaDayGroup
+                        day={day}
+                        isToday={today !== null && isSameDay(day.date, today)}
+                        renderRow={renderRow}
+                      />
+                    </Fragment>
+                  );
+                })}
               </div>
             ))
           ) : (
@@ -366,6 +421,8 @@ export function AgendaView({
           />
         )}
       </div>
+      {/* Asks "This event / This and following / All events" for a change to a repeating event's date */}
+      <EventSeriesScopeDialog />
     </CalendarPopoverBoundaryProvider>
   );
 }
@@ -427,8 +484,9 @@ function AgendaDayGroup({ day, isToday, renderRow }: AgendaDayGroupProps) {
  * re-renders as the clock ticks.
  */
 function AgendaTodayRows({ day, renderRow }: AgendaTodayRowsProps) {
+  const { timeZone } = useCalendarConfig();
   // `null` on the server and during hydration: no line until then
-  const now = useNow();
+  const now = useNow(timeZone);
 
   if (day.entries.length === 0) {
     return (
@@ -479,17 +537,20 @@ function AgendaEventRow({
   onPopoverExpand,
 }: AgendaEventRowProps) {
   const { event } = entry;
-  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = eventColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
-  const eventIsPast = useIsPast(event.end);
+  const eventIsPast = useIsPast(event.end, timeZone);
   // Every field is optional: plain events read as details without any
   const { location }: DetailedCalendarEvent = event;
   const timeLabel = formatAgendaTime(entry, hourCycle, locale);
   const dayOfSpan = formatAgendaDayOfSpan(entry);
   const label = getEventLabel(event, hourCycle, locale);
   const details = [location, dayOfSpan].filter(Boolean).join(" · ");
+  /** Declined by the viewer: an outline only, struck-through text */
+  const isDeclined = isDeclinedByViewer(event);
+  const showsDeclined = isDeclined && !isSelected;
   /** The row: its details popover opens below it */
   const rowRef = useRef<HTMLDivElement>(null);
   /** The row's details popover, for the row's `aria-controls` */
@@ -514,7 +575,11 @@ function AgendaEventRow({
 
   const secondaryTextClass = isSelected
     ? "text-white/85"
-    : cn(styles.text, "opacity-80 dark:text-white/70 dark:opacity-100");
+    : cn(
+        styles.text,
+        "opacity-80 dark:text-white/70 dark:opacity-100",
+        showsDeclined && DECLINED_EVENT_TEXT_CLASS,
+      );
 
   return (
     // The row stays first, so opening the details keeps this element (and
@@ -540,6 +605,7 @@ function AgendaEventRow({
           "focus:outline-none",
           EVENT_FOCUS_RING_CLASS,
           isSelected ? styles.border : cn(styles.bg, styles.bgHover),
+          showsDeclined && cn(DECLINED_EVENT_OUTLINE_CLASS, "bg-transparent"),
           eventIsPast && !isSelected && "opacity-60",
         )}
       >
@@ -550,6 +616,7 @@ function AgendaEventRow({
           className={cn(
             "w-1 shrink-0",
             !isSelected &&
+              !isDeclined &&
               cn(styles.border, "dark:bg-white dark:mix-blend-overlay"),
           )}
         />
@@ -578,8 +645,11 @@ function AgendaEventRow({
                   isSelected
                     ? "text-white"
                     : cn(styles.text, "dark:text-white/90"),
+                  isDeclined && "line-through",
+                  showsDeclined && DECLINED_EVENT_TEXT_CLASS,
                 )}
               >
+                <SeriesChangeDot eventId={event.id} />
                 {event.title}
               </span>
               <span

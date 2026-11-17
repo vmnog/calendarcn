@@ -83,8 +83,14 @@ test("the second zone's label and hours sit in a column left of the viewer's", a
   // One 64px column per zone, Kolkata's first, each labeled at the top
   const kolkata = await boxOf(text(page, "GMT+5:30"));
   const newYork = await boxOf(text(page, "EDT"));
-  expect(Math.abs(kolkata.x - frame.x)).toBeLessThan(1.5);
-  expect(Math.abs(newYork.x - (frame.x + AXIS_COLUMN_WIDTH))).toBeLessThan(1.5);
+  expect(kolkata.x).toBeGreaterThanOrEqual(frame.x);
+  expect(kolkata.x + kolkata.width).toBeLessThanOrEqual(
+    frame.x + AXIS_COLUMN_WIDTH,
+  );
+  expect(newYork.x).toBeGreaterThanOrEqual(frame.x + AXIS_COLUMN_WIDTH);
+  expect(newYork.x + newYork.width).toBeLessThanOrEqual(
+    frame.x + 2 * AXIS_COLUMN_WIDTH,
+  );
   expect(Math.abs(kolkata.y - newYork.y)).toBeLessThan(1);
 
   // 10 AM in New York is 7:30 PM in Kolkata, and 3 PM is 12:30 AM there

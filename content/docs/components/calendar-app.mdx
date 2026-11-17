@@ -119,6 +119,7 @@ const [events, setEvents] = React.useState<DetailedCalendarEvent[]>([]);
 - `calendars` fill the sidebar's calendar list and the details' calendar picker; an event without its own `color` takes its calendar's.
 - The eye beside a calendar in the sidebar hides its events: they leave every view and the event search, and come back when it's shown again. An event created on a hidden calendar, or moved to one, shows that calendar again.
 - `contacts` and `rooms` are who and what the details' participants field invites. `conferenceProviders` fill its Conferencing menu, and `locationSuggestions` its location field.
+- `contacts` are also who you can meet with: the sidebar's "Meet with...", <Kbd>F</Kbd> and <Kbd>P</Kbd> add them, and `contactEvents` holds their events, by email, to draw beside yours. See [Meeting with people](/docs/components/calendar-core#meeting-with-people).
 - `createEvent` builds the event a click on an empty slot creates, `onEventCreate`, `onEventUpdate` and `onEventSelect` report single changes, and `onVisibleRangeChange` with `loading` loads events by range: see [Loading Events](/docs/loading-events).
 
 ### .ics files
@@ -126,6 +127,24 @@ const [events, setEvents] = React.useState<DetailedCalendarEvent[]>([]);
 The command menu's "Import .ics file..." reads a file with [`parseIcs()`](/docs/import-export), adds its events and goes to the first one. An event whose id is already there is replaced, so importing the same file again updates it. Controlled or not, the new list comes back through `onEventsChange`, and `onEventsImport` gets only the imported events, to save them.
 
 "Export .ics file" writes every event, those of hidden calendars included, with [`toIcs()`](/docs/import-export#export-events) and downloads it as `exportFileName`, with `exportCalendarName` as the calendar's name.
+
+### Settings and accounts
+
+The account and app controls show only when you turn them on, as the live demo does:
+
+```tsx
+<CalendarApp
+  defaultEvents={events}
+  settingsDialog
+  onAddCalendarAccount={({ importIcsCalendar }) => importIcsCalendar()}
+  onSupport={() => window.open(ISSUES_URL, "_blank")}
+  onAbout={() => router.push("/docs")}
+/>
+```
+
+- `settingsDialog` turns on the [Calendar Settings](/docs/components/calendar-settings) dialog: <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> and "Go to settings" open it, and "Manage calendar accounts" opens it on the calendars. Its theme setting switches next-themes' theme, and its time format the clock every view shows. For settings of your own, pass `onOpenSettings` instead.
+- `onAddCalendarAccount` adds "Add calendar account" to the sidebar, the command menu and the settings. Connect an account your way, or call `importIcsCalendar()`, which opens a file picker and adds the file's events as a calendar named after the file, then shows the first one. The same file again updates that calendar.
+- `onSupport` and `onAbout` add "Support & feedback" and "About CalendarCN" to the command menu.
 
 ### Your own buttons
 
@@ -166,22 +185,28 @@ From 768px up, while the details sidebar is closed, a selected event shows its d
 
 ## Keyboard shortcuts
 
-`CalendarApp` turns on the calendar's single-key [shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>Y</Kbd>, <Kbd>A</Kbd>…) and the app's own:
+`CalendarApp` turns on the calendar's single-key [shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>Y</Kbd>, <Kbd>A</Kbd>, <Kbd>C</Kbd>…) and the app's own:
 
-| Action                            | Shortcut                                      |
-| --------------------------------- | --------------------------------------------- |
-| Command menu                      | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> |
-| Toggle the calendar sidebar       | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> |
-| Toggle the details sidebar        | <Kbd>/</Kbd>                                  |
-| Cycle theme (system, light, dark) | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
-| Settings, with `onOpenSettings`   | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
-| Mark open times to share          | <Kbd>S</Kbd>                                  |
+| Action                                              | Shortcut                                      |
+| --------------------------------------------------- | --------------------------------------------- |
+| Command menu                                        | <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> |
+| Toggle the calendar sidebar                         | <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> |
+| Toggle the details sidebar                          | <Kbd>/</Kbd>                                  |
+| Cycle theme (system, light, dark)                   | <KbdGroup><Kbd>⇧</Kbd><Kbd>M</Kbd></KbdGroup> |
+| Settings, with `settingsDialog` or `onOpenSettings` | <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
+| Go to date                                          | <Kbd>.</Kbd>                                  |
+| All keyboard shortcuts, in the details sidebar      | <Kbd>?</Kbd>                                  |
+| Meet with...                                        | <Kbd>F</Kbd>                                  |
+| Show teammate calendar...                           | <Kbd>P</Kbd>                                  |
+| Mark open times to share                            | <Kbd>S</Kbd>                                  |
 
 They listen on the whole page. Pass `shortcuts={false}` to turn them all off.
 
+Press <Kbd>.</Kbd> to open the command menu on Go to date: type a date ("tomorrow", "next friday", "dec 25", "in 2 weeks") and press <Kbd>Enter</Kbd> to show it in the current view. Press <Kbd>?</Kbd> to see every shortcut the app handles in the details sidebar, grouped as Notion Calendar groups them, with a field to find one by name or key. The command menu's "Search events" opens the details sidebar's event search with the field focused, and text typed in the menu offers "Search events for “…”".
+
 ## Not built yet
 
-The app draws a few of Notion Calendar's controls that don't work yet. Each is disabled and marked "Soon": the sidebar's "Meet with..." field and "Add calendar account", and the view settings the current view doesn't read. The [roadmap](/docs/roadmap) lists them all.
+The app draws a few of Notion Calendar's commands that don't work yet, disabled and marked "Soon". The [roadmap](/docs/roadmap) lists them all.
 
 ## Parts
 
@@ -193,6 +218,8 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
 - [Time Grid](/docs/components/time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) and [Agenda View](/docs/components/agenda-view): the views.
 - [Details Sidebar](/docs/components/details-sidebar): the right sidebar, with the [Event Details](/docs/components/event-details).
 - [Command Menu](/docs/components/command-menu): the <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu.
+- [Calendar Settings](/docs/components/calendar-settings): the settings dialog.
+- [People Picker](/docs/components/people-picker): the <Kbd>F</Kbd> and <Kbd>P</Kbd> dialog, to meet with someone or show a teammate's calendar.
 - [Calendar Toaster](/docs/components/calendar-toaster): the toasts after a delete, cut or copy, with Undo.
 - [Scheduling](/docs/components/scheduling): marking open times and copying them as text, and scheduling links through `onCreateSchedulingLink`.
 - [Sidebar Overlay](/docs/components/sidebar-overlay): both sidebars as sheets on narrow screens, and their colors.
@@ -236,10 +263,35 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
         "Calendar name written into the exported .ics. Google Calendar and Apple Calendar show it.",
     },
     {
+      name: "settingsDialog",
+      type: "boolean",
+      default: "false",
+      description:
+        'Turns on the built-in [Calendar Settings](/docs/components/calendar-settings) dialog: ⌘, (Ctrl+, elsewhere) and "Go to settings" open it, and "Manage calendar accounts" opens it on the calendars. It wins over `onOpenSettings`.',
+    },
+    {
       name: "onOpenSettings",
       type: "() => void",
       description:
-        "Called on ⌘, (Ctrl+, elsewhere). Without it, the key is left to the browser.",
+        'Called on ⌘, (Ctrl+, elsewhere) and "Go to settings", for settings of your own. Without it or `settingsDialog`, the key is left to the browser.',
+    },
+    {
+      name: "onAddCalendarAccount",
+      type: "(helpers: { importIcsCalendar: () => void }) => void",
+      description:
+        'Adds "Add calendar account" to the sidebar, the command menu and the settings. `importIcsCalendar()` adds an .ics file as a new calendar, as the live demo does.',
+    },
+    {
+      name: "onSupport",
+      type: "() => void",
+      description:
+        'Adds "Support & feedback" to the command menu, e.g. to open your issue tracker.',
+    },
+    {
+      name: "onAbout",
+      type: "() => void",
+      description:
+        'Adds "About CalendarCN" to the command menu, e.g. to open your docs.',
     },
     {
       name: "onCreateSchedulingLink",
@@ -266,7 +318,7 @@ The app draws a few of Notion Calendar's controls that don't work yet. Each is d
       type: "boolean",
       default: "true",
       description:
-        "Whether the keyboard shortcuts are on: the calendar's single keys and the app's ⌘K, ⌘/, / and ⇧M. They listen on `window`.",
+        "Whether the keyboard shortcuts are on: the calendar's single keys and the app's ⌘K, ⌘/, /, ⇧M, . and ?. They listen on `window`.",
     },
     {
       name: "className",

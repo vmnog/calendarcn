@@ -77,7 +77,7 @@ The [Calendar](/docs/components/calendar) block takes every `CalendarProvider` p
 
 ## The range
 
-`start` is midnight at the beginning of the first visible day, and `end` is midnight after the last one, so `end` is exclusive. Both are in the viewer's time zone.
+`start` is midnight at the beginning of the first visible day, and `end` is midnight after the last one, so `end` is exclusive. Both are in the viewer's time zone. With `timeZone` on the provider, they are the instants those midnights fall on in that zone.
 
 | View   | Range                                                                   | Example, week of Thursday Jun 4 2026 |
 | ------ | ----------------------------------------------------------------------- | ------------------------------------ |
@@ -87,7 +87,7 @@ The [Calendar](/docs/components/calendar) block takes every `CalendarProvider` p
 | Agenda | The 30 days it lists, from its first day                                | Jun 4 → Jul 4                        |
 | Year   | The whole year, January 1 to the next January 1                         | Jan 1 2026 → Jan 1 2027              |
 
-When month view hides weekends, the range starts and ends on the first and last weekday it shows. The setting doesn't change the other views' range: day and week views always show weekends, and the agenda only leaves weekend days out of its list.
+When weekends are hidden, day and week view report the weekdays they draw: a week runs from Monday to Friday, so the range ends on Saturday's midnight. Month view's range starts and ends on the first and last weekday it shows. The agenda's range keeps its weekend days; it only leaves them out of its list.
 
 An event belongs in the range when it starts before `end` and ends after `start`:
 

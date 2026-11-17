@@ -26,6 +26,7 @@ src/
 │   ├── calendar-toaster.tsx # CalendarToaster — toasts after delete, cut and copy
 │   ├── scheduling-provider.tsx # SchedulingProvider + useScheduling — marking open times, scheduling links
 │   ├── availability-*.tsx # Scheduling's grid layer (time grid) and panel + hint pill (details sidebar)
+│   ├── calendar-settings.tsx # CalendarSettingsDialog — Notion's settings: view, time format, theme, accounts
 │   ├── event-detail-<section>.tsx # One file per details panel section (time, timezone, recurrence, participants…)
 │   ├── event-detail-parts.tsx # Details panel building blocks: rows, groups, class constants, menu helpers
 │   ├── calendar-sidebar.tsx # Left sidebar: mini-calendar, calendar-list, theme toggle
@@ -44,6 +45,8 @@ src/
     ├── timezone-label.ts # Short time zone labels ("GMT-3 Sao Paulo")
     ├── mock-events.ts    # Sample data
     ├── time-input.ts     # Time menu options, typed times and durations, date parsing
+    ├── date-query.ts     # Go to date: typed dates ("next friday", "dec 25") to a day
+    ├── keyboard-shortcuts.ts # The full shortcut list: every key, grouped as Notion Calendar's
     └── utils.ts          # cn() helper
 ```
 

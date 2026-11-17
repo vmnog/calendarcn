@@ -2,6 +2,8 @@ import { isSameDay } from "date-fns";
 
 import { getTimeZoneCity } from "@/lib/timezone-label";
 import type {
+  CalendarEvent,
+  CalendarTimeZones,
   DetailedCalendarEvent,
   TimeZoneOption,
 } from "@/components/calendar-types";
@@ -67,6 +69,24 @@ const labelTimeZoneCache = new Map<string, string | undefined>();
 
 /** Whether the runtime knows each zone name `isKnownTimeZone` has checked */
 const knownTimeZoneCache = new Map<string, boolean>();
+
+/**
+ * Each event's copy on a zone's clock (`toDisplayEvent`), by event, so an
+ * unchanged event keeps the same copy from one render to the next
+ */
+const displayEventCache = new WeakMap<
+  CalendarEvent,
+  { timeZone: string; event: CalendarEvent }
+>();
+
+/**
+ * The event each copy `toDisplayEvent` made came from, so
+ * `fromDisplayEvent` gives back the exact instants of an unchanged copy
+ */
+const storedEventCache = new WeakMap<
+  CalendarEvent,
+  { timeZone: string; event: CalendarEvent }
+>();
 
 function getFormatter(
   timeZone: string,
@@ -291,9 +311,24 @@ export function normalizeSearchText(text: string): string {
 }
 
 /**
+ * The offset an offset-like query names, in minutes: "+9", "GMT+9",
+ * "utc-3", "−03:00", "+5:30". `null` for any other text.
+ */
+export function parseOffsetQuery(query: string): number | null {
+  const match =
+    /^(?:gmt|utc)?\s*([+\-\u2212])\s*(\d{1,2})(?::?(\d{2}))?$/i.exec(
+      query.trim(),
+    );
+  if (!match) return null;
+  const minutes = Number(match[2]) * 60 + Number(match[3] ?? 0);
+  return match[1] === "+" ? minutes : -minutes;
+}
+
+/**
  * Zones whose name, city or IANA id contains `query`, ignoring case and
- * accents. Zones matching their city come first, then their name, then
- * their id; each group keeps the list's order.
+ * accents, or whose offset it names ("+9", "GMT-3", "+05:30"). Zones at
+ * that offset come first, then the ones matching their city, their name,
+ * then their id; each group keeps the list's order.
  */
 export function searchTimeZones(
   options: TimeZoneOption[],
@@ -301,12 +336,16 @@ export function searchTimeZones(
 ): TimeZoneOption[] {
   const needle = normalizeSearchText(query.trim());
   if (!needle) return options;
+  const offset = parseOffsetQuery(query);
 
+  const byOffset: TimeZoneOption[] = [];
   const byCity: TimeZoneOption[] = [];
   const byName: TimeZoneOption[] = [];
   const byId: TimeZoneOption[] = [];
   for (const option of options) {
-    if (normalizeSearchText(option.city).includes(needle)) {
+    if (offset !== null && option.offsetMinutes === offset) {
+      byOffset.push(option);
+    } else if (normalizeSearchText(option.city).includes(needle)) {
       byCity.push(option);
     } else if (normalizeSearchText(option.name).includes(needle)) {
       byName.push(option);
@@ -314,7 +353,7 @@ export function searchTimeZones(
       byId.push(option);
     }
   }
-  return [...byCity, ...byName, ...byId];
+  return [...byOffset, ...byCity, ...byName, ...byId];
 }
 
 /**
@@ -362,6 +401,152 @@ function fromWallClock(wallClock: number, timeZone: string, near: Date): Date {
   const corrected =
     wallClock - getTimeZoneOffsetMinutes(new Date(guess), timeZone) * 60_000;
   return new Date(corrected);
+}
+
+/**
+ * `date` as a calendar drawn in `timeZone` shows it: a Date whose local time
+ * (`getHours()`, date-fns `format`) reads the clock in `timeZone` at that
+ * instant, so 9 PM in Tokyo comes back as 9 PM local in any viewer's zone.
+ * `date` itself without a zone. A time the viewer's own clocks skip can't be
+ * a local time: it comes back an hour later.
+ */
+export function toZonedWallClock(date: Date, timeZone?: string): Date {
+  if (!timeZone) return date;
+  const wallClock = new Date(getWallClock(date, timeZone));
+  return new Date(
+    wallClock.getUTCFullYear(),
+    wallClock.getUTCMonth(),
+    wallClock.getUTCDate(),
+    wallClock.getUTCHours(),
+    wallClock.getUTCMinutes(),
+    wallClock.getUTCSeconds(),
+    wallClock.getUTCMilliseconds(),
+  );
+}
+
+/**
+ * The instant a clock in `timeZone` reads the local time of `date`: the
+ * inverse of `toZonedWallClock`. A time the zone's clocks skip lands after
+ * the gap (1:30 AM on a spring-forward night is 2:30 AM), and one they show
+ * twice is the first of the two, as `new Date(...)` does with local times.
+ * `date` itself without a zone.
+ */
+export function fromZonedWallClock(date: Date, timeZone?: string): Date {
+  if (!timeZone) return date;
+  const wallClock = Date.UTC(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+    date.getMilliseconds(),
+  );
+  // The offsets a day before and a day after: each one that reads back as
+  // `wallClock` gives an instant (both, when the time happens twice)
+  const offsetBefore = getTimeZoneOffsetMinutes(
+    new Date(wallClock - DAY_MS),
+    timeZone,
+  );
+  const offsetAfter = getTimeZoneOffsetMinutes(
+    new Date(wallClock + DAY_MS),
+    timeZone,
+  );
+  const instants = [offsetBefore, offsetAfter]
+    .map((offset) => wallClock - offset * 60_000)
+    .filter(
+      (instant) => getWallClock(new Date(instant), timeZone) === wallClock,
+    );
+  if (instants.length > 0) return new Date(Math.min(...instants));
+  // Skipped: read with the offset from before the change, which lands after
+  // the gap
+  return new Date(wallClock - offsetBefore * 60_000);
+}
+
+/**
+ * The current time on a clock in `timeZone`, as `toZonedWallClock` gives it:
+ * "now" and "today" for a calendar drawn in that zone. The current time
+ * itself without a zone.
+ */
+export function getZonedNow(timeZone?: string): Date {
+  return toZonedWallClock(new Date(), timeZone);
+}
+
+/**
+ * An event as a calendar drawn in `timeZone` draws it: a timed event's
+ * `start` and `end` as `toZonedWallClock` gives them. All-day events are
+ * calendar dates already, so they come back as they are, as does every
+ * event when `timeZone` is unset. The same event object gives back the same
+ * copy, so don't change an event in place.
+ */
+export function toDisplayEvent<TEvent extends CalendarEvent>(
+  event: TEvent,
+  timeZone?: string,
+): TEvent {
+  if (!timeZone || event.isAllDay) return event;
+  const cached = displayEventCache.get(event);
+  // Built from this same object, so it is a `TEvent`
+  if (cached?.timeZone === timeZone) return cached.event as TEvent;
+  const shown: TEvent = {
+    ...event,
+    start: toZonedWallClock(event.start, timeZone),
+    end: toZonedWallClock(event.end, timeZone),
+  };
+  displayEventCache.set(event, { timeZone, event: shown });
+  storedEventCache.set(shown, { timeZone, event });
+  return shown;
+}
+
+/**
+ * The event to store after a calendar drawn in `timeZone` changed it: the
+ * inverse of `toDisplayEvent`. A copy `toDisplayEvent` made and nothing
+ * changed gives back the event it came from. Otherwise a timed event's
+ * `start` and `end` go back to instants (`fromZonedWallClock`), and a time
+ * that still reads as it did in `toDisplayEvent(storedEvent)` keeps the
+ * stored instant, so a time the zone's clocks show twice, or one the
+ * viewer's clocks skip, survives an edit of another field. All-day events
+ * keep their calendar dates. The event itself when `timeZone` is unset.
+ */
+export function fromDisplayEvent<TEvent extends CalendarEvent>(
+  shownEvent: TEvent,
+  timeZone?: string,
+  storedEvent?: TEvent,
+): TEvent {
+  if (!timeZone || shownEvent.isAllDay) return shownEvent;
+  const source = storedEventCache.get(shownEvent);
+  // Made from that same object, so it is a `TEvent`
+  if (source?.timeZone === timeZone) return source.event as TEvent;
+  // An all-day event's dates aren't instants: map a switch to timed in full
+  const before = storedEvent && !storedEvent.isAllDay ? storedEvent : undefined;
+  const shownBefore = before ? toDisplayEvent(before, timeZone) : undefined;
+  const toInstant = (field: "start" | "end"): Date => {
+    if (
+      before &&
+      shownBefore &&
+      shownBefore[field].getTime() === shownEvent[field].getTime()
+    ) {
+      return before[field];
+    }
+    return fromZonedWallClock(shownEvent[field], timeZone);
+  };
+  return { ...shownEvent, start: toInstant("start"), end: toInstant("end") };
+}
+
+/**
+ * A range on the calendar's clock (a `NewEventRange`, a `VisibleRange`) as
+ * instants: what `createEvent` and `onVisibleRangeChange` get. The range
+ * itself when `timeZone` is unset.
+ */
+export function fromDisplayRange<TRange extends { start: Date; end: Date }>(
+  range: TRange,
+  timeZone?: string,
+): TRange {
+  if (!timeZone) return range;
+  return {
+    ...range,
+    start: fromZonedWallClock(range.start, timeZone),
+    end: fromZonedWallClock(range.end, timeZone),
+  };
 }
 
 /**
@@ -451,4 +636,94 @@ export function getSecondaryTimeAxisInstant(
     SECONDARY_TIME_AXIS_HOUR * HOUR_MS,
     timeZone,
   );
+}
+
+/**
+ * Adds an additional zone, as the left-most column, as Notion Calendar's
+ * "Show additional time zones" does. A zone already shown stays where it is.
+ */
+export function addTimeZone(
+  zones: CalendarTimeZones,
+  timeZone: string,
+): CalendarTimeZones {
+  if (zones.primary === timeZone || zones.secondary.includes(timeZone)) {
+    return zones;
+  }
+  return { ...zones, secondary: [timeZone, ...zones.secondary] };
+}
+
+/**
+ * Removes a zone ("Remove time zone from list"). Removing the primary one
+ * makes the additional zone next to it primary; the only zone left stays.
+ */
+export function removeTimeZone(
+  zones: CalendarTimeZones,
+  timeZone: string,
+): CalendarTimeZones {
+  if (zones.primary !== timeZone) {
+    return {
+      ...zones,
+      secondary: zones.secondary.filter((zone) => zone !== timeZone),
+    };
+  }
+  const nextPrimary = zones.secondary[zones.secondary.length - 1];
+  if (!nextPrimary) return zones;
+  return { primary: nextPrimary, secondary: zones.secondary.slice(0, -1) };
+}
+
+/**
+ * Makes a zone primary ("Make time zone primary", or "Add as primary time
+ * zone" after travelling): it moves next to the days, the old primary zone
+ * becomes the additional zone closest to it, and the others shift left.
+ */
+export function makeTimeZonePrimary(
+  zones: CalendarTimeZones,
+  timeZone: string,
+): CalendarTimeZones {
+  if (zones.primary === timeZone) return zones;
+  const others = zones.secondary.filter((zone) => zone !== timeZone);
+  return {
+    primary: timeZone,
+    secondary: zones.primary ? [...others, zones.primary] : others,
+  };
+}
+
+/**
+ * Makes the primary zone an additional one ("Make time zone secondary"):
+ * the additional zone closest to it becomes primary. With no additional
+ * zone, nothing changes.
+ */
+export function makeTimeZoneSecondary(
+  zones: CalendarTimeZones,
+): CalendarTimeZones {
+  const closest = zones.secondary[zones.secondary.length - 1];
+  if (!closest) return zones;
+  return makeTimeZonePrimary(zones, closest);
+}
+
+/**
+ * Puts another zone in a zone's place ("Change time zone"). An additional
+ * zone already shown elsewhere moves there; changing one to the primary
+ * zone removes it.
+ */
+export function replaceTimeZone(
+  zones: CalendarTimeZones,
+  timeZone: string,
+  replacement: string,
+): CalendarTimeZones {
+  if (timeZone === replacement) return zones;
+  const secondary = zones.secondary
+    .filter((zone) => zone !== replacement)
+    .map((zone) => (zone === timeZone ? replacement : zone));
+  if (zones.primary === timeZone) {
+    return { primary: replacement, secondary };
+  }
+  // The primary zone is already shown: the changed column goes
+  if (zones.primary === replacement) {
+    return {
+      ...zones,
+      secondary: zones.secondary.filter((zone) => zone !== timeZone),
+    };
+  }
+  return { ...zones, secondary };
 }

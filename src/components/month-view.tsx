@@ -24,6 +24,7 @@ import { useVerticalScroll } from "@/hooks/use-vertical-scroll";
 import { useEventKeyboard } from "@/hooks/use-event-keyboard";
 import {
   MONTH_VIEW_ROWS,
+  filterDeclinedEvents,
   generateConsecutiveWeeks,
   generateWeekRow,
   parseCellDate,
@@ -42,8 +43,10 @@ import { CalendarLoadingBar } from "./calendar-loading-bar";
 import {
   useCalendar,
   useCalendarConfig,
+  useCalendarSeriesScope,
   useCalendarViewSync,
 } from "./calendar-provider";
+import { EventSeriesScopeDialog } from "./event-series-scope-dialog";
 import type { CalendarEvent } from "./calendar-types";
 import type { MonthViewProps } from "./week-view-types";
 import type { MonthWeekRow } from "@/lib/event-utils";
@@ -80,7 +83,7 @@ export function MonthView({
     showDay,
     loading,
   } = useCalendar();
-  const { locale } = useCalendarConfig();
+  const { locale, timeZone } = useCalendarConfig();
   const {
     reportView,
     reportDisplayMonth,
@@ -97,7 +100,7 @@ export function MonthView({
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   const selectedEventId = selectedEvent?.id;
-  const { showWeekends, showWeekNumbers } = viewSettings;
+  const { showWeekends, showWeekNumbers, showDeclinedEvents } = viewSettings;
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
@@ -304,13 +307,29 @@ export function MonthView({
     ),
     1,
   ).getTime();
+  const { previewEvents } = useCalendarSeriesScope();
+  // A change to a repeating event's date that waits shows on that date, and
+  // the events the viewer declined only while they're shown
   const expandedEvents = useMemo(
     () =>
-      expandRecurringEvents(events, {
-        start: new Date(rangeStartTime),
-        end: new Date(rangeEndTime),
-      }),
-    [events, rangeStartTime, rangeEndTime],
+      filterDeclinedEvents(
+        previewEvents(
+          expandRecurringEvents(
+            events,
+            { start: new Date(rangeStartTime), end: new Date(rangeEndTime) },
+            timeZone,
+          ),
+        ),
+        showDeclinedEvents,
+      ),
+    [
+      events,
+      rangeStartTime,
+      rangeEndTime,
+      timeZone,
+      previewEvents,
+      showDeclinedEvents,
+    ],
   );
 
   // Base offset hides the top buffer; scrollOffset + slideOffset shift within
@@ -478,6 +497,8 @@ export function MonthView({
             document.body,
           )}
       </div>
+      {/* Asks "This event / This and following / All events" for a change to a repeating event's date */}
+      <EventSeriesScopeDialog />
     </CalendarPopoverBoundaryProvider>
   );
 }

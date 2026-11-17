@@ -37,7 +37,7 @@ Rendered on its own, it sets the provider's view to `"agenda"` and starts on tod
 - An event that spans several days shows under each of them with "Day 2 of 3". A timed one reads "From 4 PM" on its first day, "All day" in between and "Until 1 PM" on its last.
 - Click an event, or press <Kbd>Enter</Kbd> on it, to select it and open the same details popover as the other views, below the row. [`renderEventDetails`](/docs/components/event-details#custom-details) replaces its body. Right-click opens the event's context menu.
 - [`renderEventContent`](/docs/components/calendar-core#custom-event-content) draws the inside of each row, with `placement: "agenda"`.
-- Times follow the provider's `hourCycle`, and day and month names its `locale`. Hiding weekends in the view settings hides their days here too.
+- Times follow the provider's `hourCycle`, and day and month names its `locale`. Hiding weekends in the view settings hides their days here too. With week numbers on, "Week 23" marks where each week starts, and with declined events hidden the events you declined aren't listed.
 - Rows stack the title over the time on narrow screens, and line up time, title and location in columns once the agenda is wider than 36rem. It's a container query, so it follows the agenda's own width.
 - Past events are faded. A friendly empty state shows when no event falls in the 30 days.
 - Move a focused event a day with <KbdGroup><Kbd>Alt</Kbd><Kbd>←</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>→</Kbd></KbdGroup>, or a `snapMinutes` step with <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> / <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>. See [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility).

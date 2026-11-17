@@ -49,6 +49,8 @@ export function CalendarSidebarDemo() {
       defaultEvents={initialEvents}
       defaultNumberOfDays={3}
       calendars={CALENDARS}
+      // The mini calendar's week numbers follow this setting
+      defaultViewSettings={{ showWeekNumbers: true }}
     >
       {/* The inline sidebar is position: fixed; the transform keeps it in this frame */}
       <SidebarProvider className="h-full min-h-0 [transform:translateZ(0)]">
