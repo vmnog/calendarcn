@@ -19,8 +19,16 @@ interface UseCalendarShortcutsOptions {
   onCycleTheme?: () => void;
   /** Cmd+, / Ctrl+,, even from inside a text field: opens the settings */
   onOpenSettings?: () => void;
+  /** .: opens Go to date (the demo's command menu, on its date field) */
+  onGoToDate?: () => void;
+  /** ?: shows the full keyboard shortcut list */
+  onShowShortcuts?: () => void;
   /** Z: opens a picker to travel to a time zone ("Travel to time zone...") */
   onTravelToTimeZone?: () => void;
+  /** F: opens "Meet with..." */
+  onMeetWith?: () => void;
+  /** P: opens "Show teammate calendar..." */
+  onShowTeammateCalendar?: () => void;
 }
 
 /** App actions some keys trigger. A key is claimed only when its action is given */
@@ -36,6 +44,10 @@ type CalendarShortcutActions = Pick<
   | "setNumberOfDays"
   | "clearSelection"
   | "toggleWeekends"
+  | "zoomHoursIn"
+  | "zoomHoursOut"
+  | "resetHourHeight"
+  | "addEventAtNextSlot"
   | "travelTimeZone"
   | "travelToTimeZone"
 >;
@@ -52,8 +64,13 @@ type EditShortcutActions = Pick<
   | "redo"
   | "canUndo"
   | "canRedo"
+  | "selectAllVisible"
 > & {
-  /** The selected event's id, or `null` when none (or a missing one) is selected */
+  /**
+   * The id the event keys act on: the selected event's, or the first of
+   * several selected (an action on one of them acts on them all). `null`
+   * when none (or a missing one) is selected
+   */
   selectedEventId: string | null;
   /** Whether a cut or copied event waits to be pasted */
   hasCopiedEvent: boolean;
@@ -66,6 +83,16 @@ type ShortcutActions = CalendarShortcutActions &
 
 /** Keys 2-9: show that many days */
 const NUMBER_OF_DAYS_KEY = /^[2-9]$/;
+
+/**
+ * Shift+Cmd with these keys zooms the hours, by `KeyboardEvent.code`: Shift
+ * turns their `key` into ">", "<" and ")" on most layouts
+ */
+const HOUR_ZOOM_CODES = {
+  in: "Period",
+  out: "Comma",
+  reset: "Digit0",
+} as const;
 
 /** Tags of the form fields that take key presses themselves */
 const TYPING_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
@@ -120,6 +147,11 @@ function handleEditShortcut(
   if (isCommand && !e.shiftKey && key === "v") {
     return actions.hasCopiedEvent && run(actions.pasteEvent);
   }
+  // Notion Calendar's "Select all visible": outside a field, Cmd+A selects
+  // the events on screen rather than the page's text
+  if (isCommand && !e.shiftKey && key === "a") {
+    return run(actions.selectAllVisible);
+  }
   if (!selectedEventId) return false;
   if (!isCommand && (e.key === "Delete" || e.key === "Backspace")) {
     return run(() => actions.deleteEvent(selectedEventId));
@@ -153,7 +185,9 @@ function handleAppShortcut(
 
   if (isCommand && e.key === "k") return run(actions.onToggleCommandMenu);
   if (e.metaKey && e.key === "/") return run(actions.onToggleSidebar);
-  if (isCommand && e.key === ",") return run(actions.onOpenSettings);
+  if (isCommand && !e.shiftKey && e.key === ",") {
+    return run(actions.onOpenSettings);
+  }
 
   // Single keys only from here: they'd be typed into a text field
   if (isTypingTarget(e.target)) return false;
@@ -164,8 +198,13 @@ function handleAppShortcut(
   if (e.key === "M" && e.shiftKey && !isCommand) {
     return run(actions.onCycleTheme);
   }
-  if ((e.key === "z" || e.key === "Z") && !isCommand && !e.altKey) {
-    return run(actions.onTravelToTimeZone);
+  if (isCommand || e.altKey) return false;
+  if (e.key === ".") return run(actions.onGoToDate);
+  if (e.key === "?") return run(actions.onShowShortcuts);
+  if (e.key === "z" || e.key === "Z") return run(actions.onTravelToTimeZone);
+  if (e.key === "f" || e.key === "F") return run(actions.onMeetWith);
+  if (e.key === "p" || e.key === "P") {
+    return run(actions.onShowTeammateCalendar);
   }
   return false;
 }
@@ -202,6 +241,20 @@ function handleShortcut(
     e.preventDefault();
     actions.toggleWeekends();
     return;
+  }
+
+  // Shift+Cmd+. / , / 0: taller hours, shorter hours, the default height
+  if (isCommand && e.shiftKey && !e.altKey) {
+    const zoom = {
+      [HOUR_ZOOM_CODES.in]: actions.zoomHoursIn,
+      [HOUR_ZOOM_CODES.out]: actions.zoomHoursOut,
+      [HOUR_ZOOM_CODES.reset]: actions.resetHourHeight,
+    }[e.code];
+    if (zoom) {
+      e.preventDefault();
+      zoom();
+      return;
+    }
   }
 
   // Single keys only: Cmd+K, Ctrl+D, Alt+ArrowLeft and the like belong to the
@@ -257,6 +310,12 @@ function handleShortcut(
     return;
   }
 
+  if (e.key === "c" || e.key === "C") {
+    e.preventDefault();
+    actions.addEventAtNextSlot();
+    return;
+  }
+
   // Cmd+A / Ctrl+A never get here, so they still select all
   if (e.key === "a" || e.key === "A") {
     e.preventDefault();
@@ -271,21 +330,27 @@ function handleShortcut(
  * - J / ArrowLeft, K / ArrowRight: previous / next period
  * - D or 1: day view, W or 0: week view, M: month view, Y: year view, A: agenda
  * - 2-9: number of days
+ * - C: create an event at the next half hour (`addEventAtNextSlot`)
  * - Escape: clear the selection, or with nothing selected travel back home
  * - Delete / Backspace: delete the selected event
  * - Cmd+X, Cmd+C, Cmd+D: cut, copy, duplicate the selected event; Cmd+V:
  *   paste it at the slot under the mouse (Ctrl on Windows and Linux)
  * - Cmd+Z / Shift+Cmd+Z: undo / redo
+ * - Cmd+A: select every event on screen ("Select all visible"); with
+ *   several selected, the event keys act on all of them
  * - Shift+Cmd+E (Ctrl on Windows and Linux): show or hide weekends
+ * - Shift+Cmd+. / Shift+Cmd+, / Shift+Cmd+0: zoom the hours in, out, or back
+ *   to the default height
  *
  * Other presses with Cmd, Ctrl or Alt are left alone, and an event key with
  * nothing to act on is too.
  *
  * The live demo's app keys come on with their actions: Cmd+K
  * (`onToggleCommandMenu`), Cmd+/ (`onToggleSidebar`), / (`onToggleContextPanel`),
- * Shift+M (`onCycleTheme`), Cmd+, (`onOpenSettings`) and Z
- * (`onTravelToTimeZone`). They're checked
- * first, and one that runs stops the event from reaching later listeners.
+ * Shift+M (`onCycleTheme`), Cmd+, (`onOpenSettings`), . (`onGoToDate`), ?
+ * (`onShowShortcuts`), Z (`onTravelToTimeZone`), F (`onMeetWith`) and P
+ * (`onShowTeammateCalendar`). They're checked first, and one that runs stops
+ * the event from reaching later listeners.
  *
  * Key presses in inputs, textareas, selects and editable content are ignored
  * (except Escape, Cmd+K and Cmd+,), and the event keys also during an IME
@@ -301,7 +366,11 @@ export function useCalendarShortcuts({
   onToggleContextPanel,
   onCycleTheme,
   onOpenSettings,
+  onGoToDate,
+  onShowShortcuts,
   onTravelToTimeZone,
+  onMeetWith,
+  onShowTeammateCalendar,
 }: UseCalendarShortcutsOptions = {}) {
   const {
     goToToday,
@@ -311,7 +380,13 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    zoomHoursIn,
+    zoomHoursOut,
+    resetHourHeight,
+    addEventAtNextSlot,
     selectedEvent,
+    selectedEventIds,
+    selectAllVisible,
     deleteEvent,
     duplicateEvent,
     copyEvent,
@@ -325,7 +400,7 @@ export function useCalendarShortcuts({
     travelToTimeZone,
   } = useCalendar();
   const eventActions = useCalendarEventActions();
-  const selectedEventId = selectedEvent?.id ?? null;
+  const selectedEventId = selectedEvent?.id ?? selectedEventIds[0] ?? null;
   const hasCopiedEvent = eventActions?.hasCopiedEvent ?? false;
 
   /** Latest actions, read by the window listener */
@@ -337,6 +412,10 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    zoomHoursIn,
+    zoomHoursOut,
+    resetHourHeight,
+    addEventAtNextSlot,
     selectedEventId,
     hasCopiedEvent,
     deleteEvent,
@@ -348,14 +427,19 @@ export function useCalendarShortcuts({
     redo,
     canUndo,
     canRedo,
+    selectAllVisible,
     onToggleCommandMenu,
     onToggleSidebar,
     onToggleContextPanel,
     onCycleTheme,
     onOpenSettings,
+    onGoToDate,
+    onShowShortcuts,
     onTravelToTimeZone,
     travelTimeZone,
     travelToTimeZone,
+    onMeetWith,
+    onShowTeammateCalendar,
   });
 
   React.useEffect(() => {
@@ -367,6 +451,10 @@ export function useCalendarShortcuts({
       setNumberOfDays,
       clearSelection,
       toggleWeekends,
+      zoomHoursIn,
+      zoomHoursOut,
+      resetHourHeight,
+      addEventAtNextSlot,
       selectedEventId,
       hasCopiedEvent,
       deleteEvent,
@@ -378,14 +466,19 @@ export function useCalendarShortcuts({
       redo,
       canUndo,
       canRedo,
+      selectAllVisible,
       onToggleCommandMenu,
       onToggleSidebar,
       onToggleContextPanel,
       onCycleTheme,
       onOpenSettings,
+      onGoToDate,
+      onShowShortcuts,
       onTravelToTimeZone,
       travelTimeZone,
       travelToTimeZone,
+      onMeetWith,
+      onShowTeammateCalendar,
     };
   }, [
     goToToday,
@@ -395,6 +488,10 @@ export function useCalendarShortcuts({
     setNumberOfDays,
     clearSelection,
     toggleWeekends,
+    zoomHoursIn,
+    zoomHoursOut,
+    resetHourHeight,
+    addEventAtNextSlot,
     selectedEventId,
     hasCopiedEvent,
     deleteEvent,
@@ -406,14 +503,19 @@ export function useCalendarShortcuts({
     redo,
     canUndo,
     canRedo,
+    selectAllVisible,
     onToggleCommandMenu,
     onToggleSidebar,
     onToggleContextPanel,
     onCycleTheme,
     onOpenSettings,
+    onGoToDate,
+    onShowShortcuts,
     onTravelToTimeZone,
     travelTimeZone,
     travelToTimeZone,
+    onMeetWith,
+    onShowTeammateCalendar,
   ]);
 
   React.useEffect(() => {

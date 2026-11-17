@@ -17,6 +17,7 @@ import {
   describeEventTime,
   filterShownEvents,
   generateWeekRow,
+  getEventChangeSummary,
   getEventsForDay,
   getKeyboardEventChange,
   getNewEventRange,
@@ -534,5 +535,58 @@ test.describe("countEventsByDay", () => {
 
   test("no events counts nothing", () => {
     expect(countEventsByDay([], range).size).toBe(0);
+  });
+});
+
+test.describe("event change summary", () => {
+  const options = { hourCycle: 12 as const, locale: enUS, calendars: [] };
+  const thursday: DetailedCalendarEvent = {
+    id: "critique",
+    title: "Design Critique",
+    start: new Date(2026, 5, 4, 14),
+    end: new Date(2026, 5, 4, 15, 30),
+  };
+  const moveBy = (event: DetailedCalendarEvent, minutes: number) => ({
+    ...event,
+    start: new Date(event.start.getTime() + minutes * 60_000),
+    end: new Date(event.end.getTime() + minutes * 60_000),
+  });
+
+  test("a move within the day is one Time row", () => {
+    expect(
+      getEventChangeSummary(thursday, moveBy(thursday, 60), options),
+    ).toEqual([{ label: "Time", after: "3–4:30 PM", before: "2–3:30 PM" }]);
+  });
+
+  test("a move to another day shows the dates", () => {
+    expect(
+      getEventChangeSummary(thursday, moveBy(thursday, 24 * 60), options),
+    ).toEqual([
+      {
+        label: "Time",
+        after: "Fri Jun 5, 2–3:30 PM",
+        before: "Thu Jun 4, 2–3:30 PM",
+      },
+    ]);
+  });
+
+  test("rows come in the details' order, and a field without text shows its label", () => {
+    const after: DetailedCalendarEvent = {
+      ...thursday,
+      title: "Design Sync",
+      recurrenceRule: { frequency: "daily" },
+      participants: [{ email: "sam@example.com" }],
+    };
+    expect(getEventChangeSummary(thursday, after, options)).toEqual([
+      { label: "Title", after: "Design Sync", before: "Design Critique" },
+      { label: "Repeat", after: "Every day", before: "Does not repeat" },
+      { label: "Participants", after: null, before: null },
+    ]);
+  });
+
+  test("no change, no rows", () => {
+    expect(getEventChangeSummary(thursday, { ...thursday }, options)).toEqual(
+      [],
+    );
   });
 });

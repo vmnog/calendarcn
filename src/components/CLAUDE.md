@@ -13,6 +13,8 @@ All React components for CalendarCN. Split into:
 - `calendar-event-*` / `event-*` — event interactions
 - `calendar-app.tsx` — `CalendarApp`, the live demo as one block: both sidebars, header, views, command menu, theme, .ics import/export and shortcuts. `src/app/page.tsx` only passes it data
 - `calendar-toaster.tsx` — `CalendarToaster`, Notion Calendar's toasts after a delete, cut or copy, drawn from the provider's notice (`useCalendarNotice()`)
+- `scheduling-provider.tsx` — `SchedulingProvider` / `useScheduling()` / `useSchedulingShortcuts()`: marking open times and scheduling links. `availability-layer.tsx` draws the marked times in `TimeGrid`; `availability-panel.tsx` is the context panel's scheduling panel and the hint pill. Everything reading `useScheduling()` leaves scheduling out when it returns `null`
+- `calendar-settings.tsx` — `CalendarSettingsDialog`, Notion Calendar's settings dialog: General (view settings, time format, theme) and each calendar account; each setting shows only when something can change it
 - `calendar-sidebar.tsx` — the left sidebar (`CalendarSidebar`): `mini-calendar.tsx`, `calendar-list.tsx`, `theme-toggle.tsx`
 - `details-sidebar.tsx` — the right context panel (`DetailsSidebar`): details, search, shortcuts
 - `sidebar-overlay.tsx` — both sidebars as a sheet on narrow screens, and `CALENDAR_SIDEBAR_COLORS_CLASS`, which maps `--sidebar-*` to the `--calendar-sidebar-*` tokens
@@ -26,6 +28,8 @@ All React components for CalendarCN. Split into:
 ### View Sync
 
 Every view reports what it draws with `useCalendarViewSync().reportView(...)` from a layout effect (TimeGrid: its `view` and fixed `numberOfDays`; MonthView: `"month"`; AgendaView: `"agenda"`). The provider adopts it while `view` is uncontrolled and undoes switches the mounted view doesn't follow (full rule in the `CalendarProvider` JSDoc). For the commit before the provider adopts a view, `isProviderInSync` is false: skip slide animations and `reportVisibleDays` / `reportDisplayMonth` then, since the date change is the adoption, not navigation. A new view must follow the same pattern.
+
+Every view also passes its expanded events through `useCalendarSeriesScope().previewEvents` and renders `<EventSeriesScopeDialog />` once, after its root element and inside `CalendarPopoverBoundaryProvider` (inside the root, the dialog's clicks would bubble through React to the view's handlers). Default event content puts `<SeriesChangeDot eventId={event.id} />` before the title.
 
 ### Event Color Styling
 
@@ -48,6 +52,7 @@ Follow the strict z-index scale. If you add a new layer, check it doesn't confli
 
 - Events: `0–2` (column index)
 - Selected: `20`
+- Scheduling's marking layer (`AvailabilityLayer`): `22`
 - Placeholder: `25`
 - Dragging: `30`
 - Toast (`CalendarToaster`): `40`

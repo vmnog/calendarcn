@@ -24,6 +24,7 @@ import {
 import type {
   CalendarEvent,
   DetailedCalendarEvent,
+  EventHistoryChange,
   FormatRRuleOptions,
   NormalizedRecurrenceRule,
   RecurrenceEnd,
@@ -31,6 +32,10 @@ import type {
   RecurrenceLabel,
   RecurrenceRule,
   RecurrenceWeekday,
+  SeriesDeleteOptions,
+  SeriesEditOptions,
+  SeriesEditResult,
+  SeriesEditScope,
   SeriesOccurrence,
   VisibleRange,
   WeekStartsOn,
@@ -1315,6 +1320,610 @@ export function applyRecurringEdit<TEvent extends SeriesEvent>(
   );
   if (moved === rule) return edited;
   return { ...edited, recurrenceRule: moved };
+}
+
+/**
+ * Event fields a series change handles on its own (identity, timing, rule)
+ * rather than copying them field by field
+ */
+const SERIES_OWN_FIELDS = new Set([
+  "id",
+  "start",
+  "end",
+  "isAllDay",
+  "timeZone",
+  "timezone",
+  "recurrenceRule",
+  "recurrence",
+  "excludedDates",
+  "seriesId",
+  "originalStart",
+]);
+
+/** An event's fields by name, to compare and copy them one by one */
+function getFieldRecord(event: CalendarEvent): Record<string, unknown> {
+  return event as unknown as Record<string, unknown>;
+}
+
+/** Whether two field values are equal: dates by time, the rest by their JSON */
+function isSameFieldValue(a: unknown, b: unknown): boolean {
+  if (a instanceof Date && b instanceof Date) {
+    return a.getTime() === b.getTime();
+  }
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** Whether two events hold the same value in every field */
+function isSameFields(a: CalendarEvent, b: CalendarEvent): boolean {
+  const left = getFieldRecord(a);
+  const right = getFieldRecord(b);
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  return [...keys].every((key) => isSameFieldValue(left[key], right[key]));
+}
+
+/** Whether two events repeat by the same rule, or both don't repeat */
+function isSameEventRule(a: SeriesEvent, b: SeriesEvent): boolean {
+  const left = getExpandableRule(a);
+  const right = getExpandableRule(b);
+  if (!left || !right) return !left && !right && a.recurrence === b.recurrence;
+  return isSameRecurrenceRule(
+    left,
+    right,
+    getZonedDay(a.start, getRuleTimeZone(a)),
+  );
+}
+
+/** The fields `after` changed from `before`, other than a series' own ones */
+function getChangedFields<TEvent extends SeriesEvent>(
+  before: TEvent,
+  after: TEvent,
+): Record<string, unknown> {
+  const left = getFieldRecord(before);
+  const right = getFieldRecord(after);
+  const changed: Record<string, unknown> = {};
+  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+  for (const key of keys) {
+    if (SERIES_OWN_FIELDS.has(key)) continue;
+    if (isSameFieldValue(left[key], right[key])) continue;
+    changed[key] = right[key];
+  }
+  return changed;
+}
+
+/** `target` with each changed field copied on, where it still had the series' old value */
+function copyChangedFields<TEvent extends SeriesEvent>(
+  target: TEvent,
+  oldSeries: TEvent,
+  changed: Record<string, unknown>,
+): TEvent {
+  const own = getFieldRecord(target);
+  const old = getFieldRecord(oldSeries);
+  const result: Record<string, unknown> = { ...own };
+  for (const [key, value] of Object.entries(changed)) {
+    if (isSameFieldValue(own[key], old[key])) result[key] = value;
+  }
+  return result as unknown as TEvent;
+}
+
+/** How many days of a series come before `day` */
+function countOccurrencesBefore(
+  rule: RecurrenceRule,
+  firstDay: Date,
+  day: Date,
+): number {
+  const target = toDayNumber(day);
+  let count = 0;
+  walkOccurrenceDays(rule, firstDay, (occurrenceDay) => {
+    if (toDayNumber(occurrenceDay) >= target) return false;
+    count++;
+    return true;
+  });
+  return count;
+}
+
+/** Whether a series whose first day is `firstDay` has a date on `day` */
+function isOccurrenceDay(
+  rule: RecurrenceRule,
+  firstDay: Date,
+  day: Date,
+): boolean {
+  const target = toDayNumber(day);
+  let found = false;
+  walkOccurrenceDays(rule, firstDay, (occurrenceDay) => {
+    const dayNumber = toDayNumber(occurrenceDay);
+    found = dayNumber === target;
+    return dayNumber < target;
+  });
+  return found;
+}
+
+/** The id the views draw a series' date on `day` under: the series' own on its first day */
+function getDrawnId(seriesId: string, firstDay: Date, day: Date): string {
+  if (toDayNumber(day) === toDayNumber(firstDay)) return seriesId;
+  return getOccurrenceId(seriesId, day);
+}
+
+/**
+ * The same changes with each `index` set to the event's place in `events`
+ * as the changes before it leave the list: where a removed or changed
+ * event is, and the end for an added one, as `applyEventChanges` and
+ * `invertEventChanges` read them
+ */
+function withIndexes<TEvent extends CalendarEvent>(
+  events: TEvent[],
+  changes: EventHistoryChange<TEvent>[],
+): EventHistoryChange<TEvent>[] {
+  let list = events;
+  return changes.map((change) => {
+    const { before, after } = change;
+    if (!before && after) {
+      const index = list.length;
+      list = [...list, after];
+      return { before, after, index };
+    }
+    const id = before?.id ?? "";
+    const index = list.findIndex((event) => event.id === id);
+    list = after
+      ? list.map((event) => (event.id === id ? after : event))
+      : list.filter((event) => event.id !== id);
+    return { before, after, index };
+  });
+}
+
+/**
+ * One set of changes, in the order they are reported: the removals, then
+ * the changes, then the additions. Each `before` is the stored object
+ */
+function toChanges<TEvent extends CalendarEvent>(
+  events: TEvent[],
+  deleted: TEvent[],
+  updated: { before: TEvent; after: TEvent }[],
+  created: TEvent[],
+): EventHistoryChange<TEvent>[] {
+  return withIndexes(events, [
+    ...deleted.map((before) => ({ before, after: null, index: 0 })),
+    ...updated.map(({ before, after }) => ({ before, after, index: 0 })),
+    ...created.map((after) => ({ before: null, after, index: 0 })),
+  ]);
+}
+
+/** The stored event `event` is a date of, by id, from a map of the stored events */
+function findStoredSeries<TEvent extends SeriesEvent>(
+  byId: Map<string, TEvent>,
+  event: TEvent,
+): TEvent | null {
+  const series = getSeries(byId, event);
+  return series ? (byId.get(series.id) ?? null) : null;
+}
+
+/**
+ * The stored series event `event` is a date of: the event its `seriesId`
+ * names, the series an ADR-004 copy was made from, or for the series'
+ * first date the series event itself. `null` for an event that doesn't
+ * repeat.
+ */
+export function findEventSeries<TEvent extends DetailedCalendarEvent>(
+  events: TEvent[],
+  event: TEvent,
+): TEvent | null {
+  return findStoredSeries(
+    new Map(events.map((other) => [other.id, other])),
+    event,
+  );
+}
+
+/** A series' stored dates other than its own event, in list order */
+function getSeriesExceptions<TEvent extends SeriesEvent>(
+  events: TEvent[],
+  series: TEvent,
+): TEvent[] {
+  const byId = new Map(events.map((event) => [event.id, event]));
+  return events.filter(
+    (event) =>
+      event.id !== series.id && findStoredSeries(byId, event) === series,
+  );
+}
+
+/** Whether `event` stands for its series' first date */
+function isFirstSeriesDate(series: SeriesEvent, event: SeriesEvent): boolean {
+  const timeZone = getRuleTimeZone(series);
+  return (
+    toDayNumber(getOccurrenceDay(series, event, timeZone)) ===
+    toDayNumber(getZonedDay(series.start, timeZone))
+  );
+}
+
+/**
+ * Which events a change to a date of a repeating series can apply to, in
+ * order, as Notion Calendar offers them: "this", "following" and "all".
+ * The first date leaves out "following", which would be "all", and a
+ * change to the repeat rule leaves out "this". Empty when nothing changed
+ * or `before` doesn't repeat.
+ */
+export function getSeriesEditScopes<TEvent extends DetailedCalendarEvent>(
+  events: TEvent[],
+  before: TEvent,
+  after: TEvent,
+): SeriesEditScope[] {
+  const series = findEventSeries(events, before);
+  if (!series) return [];
+  const ruleChanged = !isSameEventRule(before, after);
+  if (!ruleChanged) {
+    const left = {
+      ...before,
+      recurrenceRule: undefined,
+      recurrence: undefined,
+    };
+    const right = {
+      ...after,
+      recurrenceRule: undefined,
+      recurrence: undefined,
+    };
+    if (isSameFields(left, right)) return [];
+  }
+  const scopes: SeriesEditScope[] = [];
+  if (!ruleChanged) scopes.push("this");
+  if (!isFirstSeriesDate(series, before)) scopes.push("following");
+  scopes.push("all");
+  return scopes;
+}
+
+/**
+ * Which events deleting a date of a repeating series can remove: "this",
+ * "following" (not on the series' first date) and "all". Empty for an
+ * event that doesn't repeat.
+ */
+export function getSeriesDeleteScopes<TEvent extends DetailedCalendarEvent>(
+  events: TEvent[],
+  event: TEvent,
+): SeriesEditScope[] {
+  const series = findEventSeries(events, event);
+  if (!series) return [];
+  if (isFirstSeriesDate(series, event)) return ["this", "all"];
+  return ["this", "following", "all"];
+}
+
+/**
+ * The changes an edit of one date of a repeating series makes, for the
+ * option picked: "this" stores the date as an exception, "following" ends
+ * the series the day before and starts a new one with the change, and
+ * "all" changes the series (and the exceptions that kept its values).
+ * Moving dates to another day, or changing the rule, all-day or zone,
+ * drops the affected exceptions and excluded dates. Days are counted in
+ * the series' zone. The changes come in report order: removals, changes,
+ * additions.
+ */
+export function getSeriesEditChanges<TEvent extends DetailedCalendarEvent>({
+  events,
+  before,
+  after,
+  scope,
+  newSeriesId,
+}: SeriesEditOptions<TEvent>): SeriesEditResult<TEvent> {
+  const series = findEventSeries(events, before);
+  if (!series) {
+    const stored = events.find((event) => event.id === after.id);
+    return {
+      changes: stored
+        ? toChanges(events, [], [{ before: stored, after }], [])
+        : toChanges(events, [], [], [after]),
+      occurrenceId: after.id,
+    };
+  }
+
+  const zone = getRuleTimeZone(series);
+  const day = getOccurrenceDay(series, before, zone);
+  const firstDay = getZonedDay(series.start, zone);
+  const isFirst = toDayNumber(day) === toDayNumber(firstDay);
+  const originalStart = isFirst
+    ? series.start
+    : (before.originalStart ??
+      fromZonedDayTime(day, getZonedTimeOfDay(series.start, zone), zone));
+  const exceptions = getSeriesExceptions(events, series);
+  const stored = exceptions.find((event) => event.id === before.id);
+
+  if (scope === "this") {
+    const exception: TEvent = {
+      ...after,
+      id: stored?.id ?? getOccurrenceId(series.id, day),
+      seriesId: series.id,
+      originalStart,
+      excludedDates: undefined,
+    };
+    return {
+      changes: stored
+        ? toChanges(events, [], [{ before: stored, after: exception }], [])
+        : toChanges(events, [], [], [exception]),
+      occurrenceId: exception.id,
+    };
+  }
+
+  // "This and following" from the first date is every date
+  const isAll = scope === "all" || isFirst;
+
+  const ruleChanged = !isSameEventRule(before, after);
+  const dayDelta =
+    toDayNumber(getZonedDay(after.start, zone)) -
+    toDayNumber(getZonedDay(before.start, zone));
+  const timingChanged =
+    before.start.getTime() !== after.start.getTime() ||
+    before.end.getTime() !== after.end.getTime();
+  const timeOfDay = getZonedTimeOfDay(after.start, zone);
+  const duration = after.end.getTime() - after.start.getTime();
+  const allDayDays = differenceInCalendarDays(after.end, after.start);
+  const seriesDuration = series.end.getTime() - series.start.getTime();
+  const isStructural =
+    ruleChanged ||
+    dayDelta !== 0 ||
+    Boolean(before.isAllDay) !== Boolean(after.isAllDay) ||
+    getRuleTimeZone(before) !== getRuleTimeZone(after);
+  const changed = getChangedFields(before, after);
+
+  // The rule the changed dates repeat by
+  const seriesRule = getExpandableRule(series);
+  const rule = ruleChanged
+    ? getExpandableRule(after)
+    : seriesRule && moveRecurrenceRule(seriesRule, day, addDays(day, dayDelta));
+  const ruleFields: Pick<
+    DetailedCalendarEvent,
+    "recurrenceRule" | "recurrence"
+  > =
+    ruleChanged || dayDelta !== 0
+      ? { recurrenceRule: rule ?? undefined, recurrence: undefined }
+      : {
+          recurrenceRule: series.recurrenceRule,
+          recurrence: series.recurrence,
+        };
+
+  /** A date's start moved as the edited date moved: same day shift, new time */
+  const moveStart = (date: Date): Date =>
+    timingChanged
+      ? fromZonedDayTime(
+          addDays(getZonedDay(date, zone), dayDelta),
+          timeOfDay,
+          zone,
+        )
+      : date;
+  /** The end of a date starting at `start`, with the edited date's length */
+  const endFrom = (start: Date): Date => {
+    if (after.isAllDay) return addDays(start, allDayDays);
+    return new Date(
+      start.getTime() + (timingChanged ? duration : seriesDuration),
+    );
+  };
+  /** An excluded date or original start on its day, at the new time of day */
+  const rebaseDate = (date: Date): Date =>
+    timingChanged
+      ? fromZonedDayTime(getZonedDay(date, zone), timeOfDay, zone)
+      : date;
+  /** A kept exception under `seriesId` and `id`, with the change applied */
+  const rebaseException = (
+    exception: TEvent,
+    seriesId: string,
+    id: string,
+  ): TEvent => {
+    const exceptionStart = exception.originalStart ?? exception.start;
+    const nextOriginalStart = rebaseDate(exceptionStart);
+    const rebased: TEvent = {
+      ...copyChangedFields(exception, series, changed),
+      id,
+      seriesId,
+      originalStart: nextOriginalStart,
+    };
+    if (exception.id === before.id) {
+      return { ...rebased, start: after.start, end: after.end };
+    }
+    const keptSeriesTiming =
+      exception.start.getTime() === exceptionStart.getTime() &&
+      exception.end.getTime() - exception.start.getTime() === seriesDuration;
+    if (!keptSeriesTiming) return rebased;
+    return {
+      ...rebased,
+      start: nextOriginalStart,
+      end: new Date(nextOriginalStart.getTime() + duration),
+    };
+  };
+  const timingFields = {
+    isAllDay: after.isAllDay,
+    timeZone: after.timeZone,
+    timezone: after.timezone,
+  };
+
+  if (isAll) {
+    const start = moveStart(series.start);
+    const nextSeries: TEvent = {
+      ...series,
+      ...changed,
+      ...timingFields,
+      ...ruleFields,
+      start,
+      end: endFrom(start),
+      excludedDates: isStructural
+        ? undefined
+        : series.excludedDates?.map(rebaseDate),
+    };
+    const updated = [{ before: series, after: nextSeries }];
+    const deleted: TEvent[] = [];
+    for (const exception of exceptions) {
+      if (isStructural) {
+        deleted.push(exception);
+        continue;
+      }
+      const rebased = rebaseException(
+        exception,
+        exception.seriesId ?? series.id,
+        exception.id,
+      );
+      if (!isSameFields(rebased, exception)) {
+        updated.push({ before: exception, after: rebased });
+      }
+    }
+    let occurrenceId: string | null = null;
+    if (!rule) {
+      occurrenceId = isFirst ? series.id : null;
+    } else {
+      const newDay = addDays(day, dayDelta);
+      const newFirstDay = addDays(firstDay, dayDelta);
+      if (isOccurrenceDay(rule, newFirstDay, newDay)) {
+        occurrenceId = getDrawnId(series.id, newFirstDay, newDay);
+      }
+    }
+    return {
+      changes: toChanges(events, deleted, updated, []),
+      occurrenceId,
+    };
+  }
+
+  // This and following: the old series ends the day before
+  const dayNumber = toDayNumber(day);
+  const isFromDay = (date: Date) =>
+    toDayNumber(getZonedDay(date, zone)) >= dayNumber;
+  const oldRule = seriesRule ?? { frequency: "daily" as const };
+  const keptExcluded = (series.excludedDates ?? []).filter(
+    (date) => !isFromDay(date),
+  );
+  const endedSeries: TEvent = {
+    ...series,
+    recurrenceRule: {
+      ...oldRule,
+      end: { type: "on", date: addDays(day, -1) },
+    },
+    recurrence: undefined,
+    excludedDates: keptExcluded.length > 0 ? keptExcluded : undefined,
+  };
+
+  let nextRule = rule;
+  if (!ruleChanged && rule && oldRule.end?.type === "after") {
+    nextRule = {
+      ...rule,
+      end: {
+        type: "after",
+        count:
+          oldRule.end.count - countOccurrencesBefore(oldRule, firstDay, day),
+      },
+    };
+  }
+  const newStart = moveStart(originalStart);
+  const newExcluded = isStructural
+    ? undefined
+    : (series.excludedDates ?? []).filter(isFromDay).map(rebaseDate);
+  const newSeries: TEvent = {
+    ...series,
+    ...changed,
+    ...timingFields,
+    id: newSeriesId,
+    seriesId: undefined,
+    originalStart: undefined,
+    start: newStart,
+    end: endFrom(newStart),
+    recurrenceRule: nextRule ?? undefined,
+    recurrence: undefined,
+    excludedDates:
+      newExcluded && newExcluded.length > 0 ? newExcluded : undefined,
+  };
+
+  const following = exceptions.filter((exception) =>
+    isFromDay(exception.originalStart ?? exception.start),
+  );
+  const moved = isStructural
+    ? []
+    : following.map((exception) =>
+        rebaseException(
+          exception,
+          newSeriesId,
+          getOccurrenceId(
+            newSeriesId,
+            getZonedDay(exception.originalStart ?? exception.start, zone),
+          ),
+        ),
+      );
+  return {
+    changes: toChanges(
+      events,
+      following,
+      [{ before: series, after: endedSeries }],
+      [newSeries, ...moved],
+    ),
+    occurrenceId: newSeriesId,
+  };
+}
+
+/**
+ * The changes deleting a date of a repeating series makes, for the option
+ * picked: "this" adds its start to the series' `excludedDates` (and deletes
+ * its stored exception), "following" ends the series the day before and
+ * deletes the later exceptions, and "all" deletes the exceptions, then the
+ * series. An event that doesn't repeat is deleted as it is.
+ */
+export function getSeriesDeleteChanges<TEvent extends DetailedCalendarEvent>({
+  events,
+  event,
+  scope,
+}: SeriesDeleteOptions<TEvent>): EventHistoryChange<TEvent>[] {
+  const series = findEventSeries(events, event);
+  if (!series) {
+    const stored = events.find((other) => other.id === event.id);
+    return stored ? toChanges(events, [stored], [], []) : [];
+  }
+  const exceptions = getSeriesExceptions(events, series);
+  const zone = getRuleTimeZone(series);
+  const day = getOccurrenceDay(series, event, zone);
+  const isFirst =
+    toDayNumber(day) === toDayNumber(getZonedDay(series.start, zone));
+
+  if (scope === "all" || (scope === "following" && isFirst)) {
+    return toChanges(events, [...exceptions, series], [], []);
+  }
+
+  const dayNumber = toDayNumber(day);
+  if (scope === "this") {
+    const originalStart = isFirst
+      ? series.start
+      : (event.originalStart ??
+        fromZonedDayTime(day, getZonedTimeOfDay(series.start, zone), zone));
+    const isExcluded = (series.excludedDates ?? []).some(
+      (date) => toDayNumber(getZonedDay(date, zone)) === dayNumber,
+    );
+    const excluded: TEvent = isExcluded
+      ? series
+      : {
+          ...series,
+          excludedDates: [...(series.excludedDates ?? []), originalStart],
+        };
+    const stored = exceptions.find((other) => other.id === event.id);
+    return toChanges(
+      events,
+      stored ? [stored] : [],
+      isExcluded ? [] : [{ before: series, after: excluded }],
+      [],
+    );
+  }
+
+  // This and following
+  const isFromDay = (date: Date) =>
+    toDayNumber(getZonedDay(date, zone)) >= dayNumber;
+  const oldRule = getExpandableRule(series) ?? { frequency: "daily" as const };
+  const keptExcluded = (series.excludedDates ?? []).filter(
+    (date) => !isFromDay(date),
+  );
+  const endedSeries: TEvent = {
+    ...series,
+    recurrenceRule: {
+      ...oldRule,
+      end: { type: "on", date: addDays(day, -1) },
+    },
+    recurrence: undefined,
+    excludedDates: keptExcluded.length > 0 ? keptExcluded : undefined,
+  };
+  const following = exceptions.filter((exception) =>
+    isFromDay(exception.originalStart ?? exception.start),
+  );
+  return toChanges(
+    events,
+    following,
+    [{ before: series, after: endedSeries }],
+    [],
+  );
 }
 
 /**

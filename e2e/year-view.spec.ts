@@ -4,6 +4,7 @@ import type { Locator, Page } from "@playwright/test";
 import {
   CURRENT_WEEK_LABEL,
   FROZEN_NOW,
+  answerThisEvent,
   boxOf,
   calendarEvent,
   expectHeader,
@@ -231,6 +232,7 @@ test.describe("desktop", () => {
   }) => {
     await calendarEvent(page, "Launch Review").click();
     await page.keyboard.press("Delete");
+    await answerThisEvent(page, "Delete event");
     await page.keyboard.press("y");
     await expectHeader(page, "2026");
 

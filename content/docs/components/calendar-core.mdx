@@ -68,6 +68,12 @@ Undo and redo report what they change like any other change: the full list throu
 
 A step applies only while its events are the very objects the calendar left in `events`. Replace one from outside, by reloading your events from a server for example, and the steps that touch it can't be undone: `canUndo` turns false and the key goes back to the browser, so an undo never overwrites a newer version. Keep the objects you get in `onEventsChange`, as `useState` does, and undo keeps working. Changes your app makes to `events` itself, like an import, are not steps.
 
+### Selecting several events
+
+As in Notion Calendar, Shift-click or <Kbd>⌘</Kbd>-click (Ctrl-click on Windows and Linux) on an event adds it to the selection, and on a selected one takes it out. <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup> (`selectAllVisible`) selects every event on the dates on screen. <Kbd>Esc</Kbd>, a click on empty space or a plain click on one event clears the rest. Several selected events are drawn selected but show no details, as in Notion Calendar, and `selectedEventIds` lists them.
+
+On one of them, delete, cut, copy, duplicate and paste act on them all, from the keyboard, the right-click menu or `deleteEvent`, `cutEvent`, `copyEvent` and `duplicateEvent`, each as one undo step. The toasts read "2 events deleted" and "2 events cut" with Undo, and "2 events copied to clipboard". Pasted events keep their distance from the earliest of them, which lands where a single paste would. Dragging one of them, or moving it with <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>, moves them all by as much; resizing changes that event alone. A date of a repeating event among them changes alone, as its own event: an action on several events never asks which events of the series it applies to. With `timeZone` set, a moved group's events all move by the same time. Selecting other events while a change to a repeating date waits asks about that change first.
+
 ### Notices
 
 After a delete, a cut or a copy, the provider keeps a notice worded like Notion Calendar's toasts: "Event deleted" with the event's title and an undo, "Event cut" with an undo, "Event copied to clipboard" with the title. [Calendar Toaster](/docs/components/calendar-toaster) shows it; without one, nothing shows. `useCalendarNotice()` returns it, to show with a toast library of your own, and `showNotice` adds notices of yours. A notice's undo takes back that action and nothing else, so the notice closes as soon as another change is the latest, and its undo is there exactly while `canUndo` is.
@@ -81,15 +87,52 @@ Without `date` or `defaultDate`, the calendar starts on today's period. The serv
 An event with a `recurrenceRule` (or an RRULE in `recurrence`) is one event in `events`, and every view draws it on each date its rule gives, as does the details sidebar's search. The views generate those occurrences for the dates on screen with `expandRecurringEvents()`; they are never added to `events`, so `useCalendar().events`, `onEventsChange` and the .ics export hold each series once.
 
 - An occurrence's id is the series' id and its date, `launch-2026-06-20`. Selecting it, `selectedEvent` and the details' series arrows work as for any event.
-- Editing an occurrence (drag, resize, the keyboard or the details) changes that date only. It is added to your events with `seriesId` (the series' id) and `originalStart` (the start it had), through `onEventCreate` and `onEventsChange`, and drawn in place of the generated one. Later edits to it go through `onEventUpdate`. A new repeat rule takes it out of the series, to repeat on its own from its date.
-- Editing the series' own event, its first date, changes the series: every occurrence you haven't stored follows it.
-- Delete and Cut on one date leave it out of the series: its start is added to the series event's `excludedDates` (reported through `onEventUpdate`), and a stored date goes with it. The series' own event deletes the whole series. Undo and redo treat each as one step: the first edit of a generated date is a create, so undoing it brings the generated date back.
+- Editing or deleting one date (drag, resize, the keyboard, the right-click menu or the details) asks which events it applies to: see [Editing a repeating event](#editing-a-repeating-event). **This event** changes that date only. It is added to your events with `seriesId` (the series' id) and `originalStart` (the start it had), through `onEventCreate` and `onEventsChange`, and drawn in place of the generated one. Later edits to it go through `onEventUpdate`.
+- Cut on one date, and Delete with **This event**, leave it out of the series: its start is added to the series event's `excludedDates` (reported through `onEventUpdate`), and a stored date goes with it. Cut on the series' own event cuts the whole series. Undo and redo treat each as one step: the first edit of a generated date is a create, so undoing it brings the generated date back.
 - Duplicate and Paste on a date of a repeating event add a single event on that date: the copy has no `seriesId`, `originalStart`, `recurrenceRule`, `recurrence` or `excludedDates`, so it doesn't repeat and the series keeps its dates.
 - `excludedDates` leaves dates out, like an .ics `EXDATE`.
 - Occurrences keep the series' clock time in its `timeZone` when the clocks change. An all-day series keeps whole days.
 - `recurrence` written as display text ("Every week on Thu") is a label only: draw those occurrences as events of your own.
 
 When you load events by range ([Loading Events](/docs/loading-events)), include the repeating events whose series reaches into the range, even when their first date is earlier.
+
+### Editing a repeating event
+
+A change to one date of a repeating event asks which events it applies to, as Notion Calendar does: **This event**, **This and following events** or **All events** (on the series' first date, only this event or all events; a repeat rule change, only the following or all events). A drag, a resize, an <Kbd>Alt</Kbd> arrow move or a change from the right-click menu asks at once. A change in the details waits: the date shows it on the calendar with a dot before its title, and the question comes when you leave the event, listing what changed. **Save event** applies it, **Discard change** drops it, **Continue editing** goes back to it, and so does <Kbd>Esc</Kbd>. A delete asks the same way, with **Delete event** and **Cancel**.
+
+- **This event** stores the date as an event of its own (with `seriesId` and `originalStart`), or, for a delete, adds its start to the series' `excludedDates`.
+- **This and following events** ends the series the day before (its `end` becomes that date) and starts a new series event, with a new id, from this date. A series that ends after a number of times keeps the count that's left. Later dates stored on their own move to the new series.
+- **All events** changes the series event. A new time moves every date; dates with a time of their own keep it. Deleting all events deletes the series and its stored dates.
+
+When a date moves to another day, or the repeat rule changes, the stored dates and excluded dates it affects are removed: their days are no longer in the series.
+
+Each answer is one undo step. `onEventsChange` gets the full list once, then `onEventDelete`, `onEventUpdate` and `onEventCreate` get each event the answer removed, changed or added, in that order, so a new series reaches your server before its dates. A change that waits is never reported. After an answer, a toast says what happened: Event deleted, All events deleted (both with Undo) or Event updated.
+
+The views render the question with `EventSeriesScopeDialog` (`@/components/event-series-scope-dialog`). In a layout without them, render it once inside the provider; without it, a change applies to that date only (a repeat rule change, to that date and the following ones). To skip the question in your own code, pass the answer: `updateEvent(event, "all")` or `deleteEvent(event.id, "this")`. Custom details should change events with `editEvent(event)`, which waits like the built-in details. `getSeriesEditChanges()` and `getSeriesDeleteChanges()` from `@/lib/recurrence` return the same changes without a provider.
+
+## View settings
+
+`viewSettings` holds the view dropdown's three settings, and every view reads them: `showWeekends`, `showDeclinedEvents` and `showWeekNumbers`. Start with your own through `defaultViewSettings`, and flip them with `toggleWeekends`, `toggleDeclinedEvents` and `toggleWeekNumbers`, or let the [view switcher](/docs/components/calendar-header#calendarviewswitcher) and the [Command Menu](/docs/components/command-menu) do it.
+
+- **Who you are among the participants.** An event is declined when your participant answered "declined": the one with `self: true` (Google Calendar's flag), or, without one, the one whose email is the event's `calendarEmail`. `isDeclinedByViewer(event)` says whether an event is, and `filterDeclinedEvents(events, showDeclinedEvents)` drops them while they're hidden, for a view of your own.
+- **Days without the weekend.** With weekends hidden, `getShownDays()`, `addShownDays()` and `countShownDaysBetween()` count weekdays instead of days, and `getFirstShownDay()` moves a Saturday or Sunday to Monday. `getVisibleDays()`, `getPeriodStart()` and `getVisibleDayCount()` take the setting as their last argument.
+
+## Hour size
+
+The day and week views' hours fill the screen by default, at least 48px an hour. `hourHeight` on `CalendarProvider` sets another size, in pixels, and `null` goes back to the default. It lives in the provider so the [Command Menu](/docs/components/command-menu), the keys and your own controls all change the same size:
+
+- `zoomHoursIn()` and `zoomHoursOut()` step through `HOUR_HEIGHT_STEPS` (24, 32, 40, 48, 64, 80, 96, 128 and 160px), from the size on screen. `resetHourHeight()` goes back to the default. `useCalendarShortcuts()` runs them on <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>.</Kbd></KbdGroup>, <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> and <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>0</Kbd></KbdGroup>, Notion Calendar's keys.
+- Zooming keeps the time in the middle of the screen where it was. Dragging, resizing, creating, the current-time line and horizontal scrolling work at every size.
+- The size isn't stored. To keep it across visits, save `onHourHeightChange`'s value and pass it back as `defaultHourHeight` (or control `hourHeight`).
+
+```tsx
+// Your app's state: load it from wherever you keep preferences
+const [hourHeight, setHourHeight] = React.useState<number | null>(null);
+
+<CalendarProvider hourHeight={hourHeight} onHourHeightChange={setHourHeight}>
+  <WeekView />
+</CalendarProvider>;
+```
 
 ## Configuration
 
@@ -152,6 +195,33 @@ Notion Calendar's "Travel to time zone" draws the calendar in another zone for a
 - The x on the travel label, "Travel back home" in its menu, and <Kbd>Esc</Kbd> with no event selected (with `useCalendarShortcuts()`) travel back. "Add as primary time zone" and "Add as secondary time zone" keep the zone.
 - Travelling isn't saved: a reload starts at home.
 
+## Meeting with people
+
+`contacts` are also the people you can meet with, as in Notion Calendar's "Meet with...". `useCalendarPeople()` reads and changes who that is:
+
+- **Meeting with someone** (`meetWith`, `addMeetWith`): their events are drawn in the day and week views behind yours, hatched in their color with their initial, and the times when you and everyone you meet with are free are highlighted, inside `workingHours` (9 AM to 5 PM, Monday to Friday by default) and at least 30 minutes long. An event created by clicking an empty slot meanwhile invites them: they're added to its `participants`, waiting for an answer, with the event's calendar account (`calendarEmail`) as the organizer.
+- **Showing a teammate's calendar** (`teammates`, `addTeammate`): their events are drawn the same way, without a meeting: no free time, no invitations.
+
+Their events come from `contactEvents`, keyed by email. Load them when someone is added (`onMeetWithChange`, `onTeammatesChange`) and when the dates on screen change (`onVisibleRangeChange`). From Google Calendar's free/busy API, which gives busy times without titles, pass an event titled "Busy" for each one. Repeating events work as yours do, and with [`timeZone`](#time-zone) or while travelling, their events and the working hours read on the calendar's clock, as yours do. All-day and multi-day events aren't drawn (an all-day event marked `status: "busy"` still takes the day out of the free time), and month, year and agenda views leave other people's events out.
+
+```tsx
+const [meetWith, setMeetWith] = React.useState<string[]>([]);
+const contactEvents = useFreeBusy(meetWith, visibleRange); // your loader
+
+<CalendarProvider
+  defaultEvents={events}
+  contacts={contacts}
+  meetWith={meetWith}
+  onMeetWithChange={setMeetWith}
+  contactEvents={contactEvents}
+>
+  <CalendarSidebar />
+  <WeekView />
+</CalendarProvider>;
+```
+
+The [Calendar Sidebar](/docs/components/calendar-sidebar)'s "Meet with..." field and the [People Picker](/docs/components/people-picker) (F and P in [Calendar App](/docs/components/calendar-app)) add people; your own controls can call `addMeetWith`, `addTeammate` and the rest. `getSharedFreeTime(calendars, days, options)` in `lib/free-busy.ts` computes the highlighted free time, to list it elsewhere: it counts an event as busy unless it's marked `status: "free"`, the calendar's owner declined it, or it's all-day (unless marked busy).
+
 ## Custom event content
 
 <ComponentPreview name="custom-event-content-demo" />
@@ -212,7 +282,7 @@ interface Meeting extends CalendarEvent {
       name: "onEventsChange",
       type: "(events: TEvent[]) => void",
       description:
-        "Called with the full next list whenever events change: drag, resize, create, an edit in the details, delete, duplicate, cut, paste, undo and redo. A repeating event stays one event; an edited occurrence is added as its own.",
+        "Called with the full next list whenever events change: drag, resize, create, an edit in the details, delete, duplicate, cut, paste, undo and redo, and once for each answer to the [repeating event question](#editing-a-repeating-event). A repeating event stays one event; an edited occurrence is added as its own.",
     },
     {
       name: "view",
@@ -250,8 +320,20 @@ interface Meeting extends CalendarEvent {
     {
       name: "weekStartsOn",
       type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
+      description:
+        "Day the week starts on, 0 for Sunday to 6 for Saturday (controlled). Every view and the mini calendar follow it.",
+    },
+    {
+      name: "defaultWeekStartsOn",
+      type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
       default: "0",
-      description: "Day the week starts on, 0 for Sunday to 6 for Saturday.",
+      description:
+        'Initial week start when `weekStartsOn` is not controlled. "Start week on..." in the command menu changes it.',
+    },
+    {
+      name: "onWeekStartsOnChange",
+      type: "(weekStartsOn: WeekStartsOn) => void",
+      description: "Called when the week start changes.",
     },
     {
       name: "numberOfDays",
@@ -270,6 +352,24 @@ interface Meeting extends CalendarEvent {
       name: "onNumberOfDaysChange",
       type: "(numberOfDays: number) => void",
       description: "Called when the number of days changes.",
+    },
+    {
+      name: "hourHeight",
+      type: "number | null",
+      description:
+        "Height of an hour in the day and week views, in pixels (controlled). `null` is the default size, which fills the screen with the visible hours, at least 48px an hour. See [Hour size](#hour-size).",
+    },
+    {
+      name: "defaultHourHeight",
+      type: "number | null",
+      default: "null",
+      description: "Initial hour height when `hourHeight` is not controlled.",
+    },
+    {
+      name: "onHourHeightChange",
+      type: "(hourHeight: number | null) => void",
+      description:
+        "Called when the hour height changes: zooming in or out, or back to the default size. Store it to keep the size across visits.",
     },
     {
       name: "defaultViewSettings",
@@ -392,6 +492,58 @@ interface Meeting extends CalendarEvent {
         "Places the details' location field lists under the typed text while typing.",
     },
     {
+      name: "meetWith",
+      type: "string[]",
+      description:
+        "Emails of the people you're meeting with (controlled): their events are drawn beside yours, the free time you share is highlighted, and an event created meanwhile invites them. See [Meeting with people](#meeting-with-people).",
+    },
+    {
+      name: "defaultMeetWith",
+      type: "string[]",
+      default: "[]",
+      description:
+        "People met with at first when `meetWith` is not controlled.",
+    },
+    {
+      name: "onMeetWithChange",
+      type: "(meetWith: string[]) => void",
+      description:
+        "Called with the new emails when someone is added to or taken out of the meeting.",
+    },
+    {
+      name: "teammates",
+      type: "string[]",
+      description:
+        'Emails of the teammates whose calendars show beside yours (controlled), as "Show teammate calendar..." adds them.',
+    },
+    {
+      name: "defaultTeammates",
+      type: "string[]",
+      default: "[]",
+      description:
+        "Teammates shown at first when `teammates` is not controlled.",
+    },
+    {
+      name: "onTeammatesChange",
+      type: "(teammates: string[]) => void",
+      description:
+        "Called with the new emails when a teammate's calendar is shown or hidden.",
+    },
+    {
+      name: "contactEvents",
+      type: "Record<string, DetailedCalendarEvent[]>",
+      default: "{}",
+      description:
+        "Other people's events by email, drawn while you meet with them or show their calendar. Load them when someone is added or the dates on screen change.",
+    },
+    {
+      name: "workingHours",
+      type: "WorkingHours",
+      default: "9 AM to 5 PM, Monday to Friday",
+      description:
+        "Days and hours, on the calendar's clock (its `timeZone`, else the viewer's), the free time you share with the people you meet with is looked for in.",
+    },
+    {
       name: "createEvent",
       type: "(range: NewEventRange) => TEvent | null",
       description:
@@ -401,13 +553,13 @@ interface Meeting extends CalendarEvent {
       name: "onEventCreate",
       type: "(event: TEvent) => void",
       description:
-        "Called after an event is added: one created by clicking an empty slot, a duplicate or a paste, an occurrence of a repeating event stored on its first edit (with `seriesId` and `originalStart`), or one `undo` or `redo` brings back.",
+        "Called after an event is added: one created by clicking an empty slot, a duplicate or a paste, an occurrence of a repeating event stored on its first edit (with `seriesId` and `originalStart`), the new series that **This and following events** starts and the dates it takes over, or one `undo` or `redo` brings back.",
     },
     {
       name: "onEventUpdate",
       type: "(event: TEvent) => void",
       description:
-        "Called after an event changes: drag, resize, keyboard move, an edit in the details, or `undo` and `redo` changing it back.",
+        "Called after an event changes: drag, resize, keyboard move, an edit in the details, a series and its dates an answer to the [repeating event question](#editing-a-repeating-event) changes, or `undo` and `redo` changing it back.",
     },
     {
       name: "onEventDelete",
@@ -489,10 +641,16 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       description: "Days the week view shows.",
     },
     {
+      name: "hourHeight",
+      type: "number | null",
+      description:
+        "Height of an hour in the day and week views, in pixels, or `null` at the default size, which fills the screen.",
+    },
+    {
       name: "viewSettings",
       type: "ViewSettings",
       description:
-        "`showWeekends`, `showDeclinedEvents` and `showWeekNumbers`.",
+        "`showWeekends`, `showDeclinedEvents` and `showWeekNumbers`, which every view reads. See [Calendar Header](/docs/components/calendar-header#calendarviewswitcher).",
     },
     {
       name: "visibleDays",
@@ -520,7 +678,14 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     {
       name: "selectedEventId",
       type: "string | null",
-      description: "ID of the selected event.",
+      description:
+        "ID of the selected event. `null` while several are selected: `selectedEventIds` lists them, and none shows its details.",
+    },
+    {
+      name: "selectedEventIds",
+      type: "string[]",
+      description:
+        "IDs of every selected event, in the order they were picked: the one `selectedEventId` names, or several. Empty when nothing is selected.",
     },
     {
       name: "selectedEvent",
@@ -624,6 +789,30 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       description: "Sets how many days the week view shows.",
     },
     {
+      name: "setWeekStartsOn",
+      type: "(weekStartsOn: WeekStartsOn) => void",
+      description:
+        "Starts the week on another day. A full week or month on screen moves to the week that starts on that day around its middle, so most of the same dates stay.",
+    },
+    {
+      name: "zoomHoursIn",
+      type: "() => void",
+      description:
+        "Makes the hours one step taller (`HOUR_HEIGHT_STEPS`), up to 160px.",
+    },
+    {
+      name: "zoomHoursOut",
+      type: "() => void",
+      description:
+        "Makes the hours one step shorter (`HOUR_HEIGHT_STEPS`), down to 24px.",
+    },
+    {
+      name: "resetHourHeight",
+      type: "() => void",
+      description:
+        "Goes back to the default hour size, which fills the screen.",
+    },
+    {
       name: "selectEvent",
       type: "(eventId: string) => void",
       description: "Selects an event, which opens its popover.",
@@ -634,6 +823,24 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       description: "Clears the selection and closes the popover.",
     },
     {
+      name: "setSelectedEventIds",
+      type: "(eventIds: string[]) => void",
+      description:
+        "Selects these events: none clears the selection, one selects it as `selectEvent` does, several select them together.",
+    },
+    {
+      name: "toggleEventSelection",
+      type: "(eventId: string) => void",
+      description:
+        "Adds an event to the selection, or takes it out: what Shift- and Cmd-click do.",
+    },
+    {
+      name: "selectAllVisible",
+      type: "() => void",
+      description:
+        "Selects every event on the dates on screen, scrolled-out hours too (Notion Calendar's Select all visible, ⌘A). Does nothing in year view.",
+    },
+    {
       name: "addEventFromRange",
       type: "(range: NewEventRange) => void",
       description:
@@ -641,15 +848,21 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     },
     {
       name: "updateEvent",
+      type: "(event: TEvent, scope?: SeriesEditScope) => void",
+      description:
+        'Replaces the event with the same id. For a date of a repeating event, a view first asks which events the change applies to; `scope` (`"this"`, `"following"` or `"all"`) applies it without asking. A generated occurrence changed with `"this"` is added instead, through `onEventCreate`: see [Repeating events](#repeating-events).',
+    },
+    {
+      name: "editEvent",
       type: "(event: TEvent) => void",
       description:
-        "Replaces the event with the same id. A generated occurrence of a repeating event is added instead, through `onEventCreate`: see [Repeating events](#repeating-events).",
+        "Changes the event the way the details do: a selected date of a repeating event waits, marked with a dot, and asks once it is left. Other events change at once.",
     },
     {
       name: "deleteEvent",
-      type: "(eventId: string) => void",
+      type: "(eventId: string, scope?: SeriesEditScope) => void",
       description:
-        "Deletes the event through `onEventsChange` and `onEventDelete`, and clears the selection when it was selected. Undoable.",
+        'Deletes the event through `onEventsChange` and `onEventDelete`, and clears the selection when it was selected. Undoable. For a date of a repeating event, a view first asks which events to delete; `scope` (`"this"`, `"following"` or `"all"`) deletes them without asking.',
     },
     {
       name: "duplicateEvent",
@@ -701,13 +914,14 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     {
       name: "toggleWeekends",
       type: "() => void",
-      description: "Shows or hides weekend columns.",
+      description:
+        "Shows or hides the weekend in every view. Hiding it in day view, or with fewer than 7 days, moves a Saturday or Sunday on screen to Monday.",
     },
     {
       name: "toggleDeclinedEvents",
       type: "() => void",
       description:
-        "Flips `viewSettings.showDeclinedEvents`. The views don't filter by it yet.",
+        "Shows or hides the events you declined (see `isDeclinedByViewer`). Hiding them clears the selection when the selected event is one.",
     },
     {
       name: "toggleWeekNumbers",
@@ -719,6 +933,18 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
       type: "(date: Date) => void",
       description:
         "Opens the week containing `date` and briefly highlights that day.",
+    },
+    {
+      name: "navigateToDate",
+      type: "(date: Date) => void",
+      description:
+        "Shows the period that contains `date` in the current view, as Go to date in the [Command Menu](/docs/components/command-menu) does, and briefly highlights that day in the day and week views.",
+    },
+    {
+      name: "addEventAtNextSlot",
+      type: "() => void",
+      description:
+        "Creates an hour-long event at the next half hour, as Notion Calendar's <Kbd>C</Kbd> does: on today when it's on screen, else on the day Go to date just highlighted, else on the first day shown. Goes through `createEvent`, selects the event and focuses its title. Undoable.",
     },
   ]}
 />
@@ -797,6 +1023,74 @@ Returns the resolved settings of the nearest provider. Outside a provider it ret
       name: "locationSuggestions",
       type: "LocationSuggestion[]",
       description: "Places the location field suggests.",
+    },
+  ]}
+/>
+
+### useCalendarPeople()
+
+Returns who you meet with and which teammates show, their events, and the actions that change them. Outside a provider nobody shows, and the actions do nothing. Emails are compared without case, and a list never holds one twice.
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "contacts",
+      type: "EventContact[]",
+      description: "The provider's `contacts`: the people you can add.",
+    },
+    {
+      name: "meetWith",
+      type: "string[]",
+      description:
+        "Emails of the people you're meeting with, in the order added.",
+    },
+    {
+      name: "teammates",
+      type: "string[]",
+      description: "Emails of the teammates whose calendars show.",
+    },
+    {
+      name: "shownPeople",
+      type: "CalendarPerson[]",
+      description:
+        "Everyone whose events are drawn: the people you meet with, then the teammates not among them, each with the color their events take.",
+    },
+    {
+      name: "addMeetWith",
+      type: "(email: string) => void",
+      description: "Adds someone to the meeting.",
+    },
+    {
+      name: "removeMeetWith",
+      type: "(email: string) => void",
+      description: "Takes someone out of the meeting.",
+    },
+    {
+      name: "clearMeetWith",
+      type: "() => void",
+      description: "Ends the meeting: nobody is met with anymore.",
+    },
+    {
+      name: "addTeammate",
+      type: "(email: string) => void",
+      description: "Shows a teammate's calendar.",
+    },
+    {
+      name: "removeTeammate",
+      type: "(email: string) => void",
+      description: "Hides a teammate's calendar again.",
+    },
+    {
+      name: "getPersonEvents",
+      type: "(email: string) => DetailedCalendarEvent[]",
+      description:
+        "A person's events from `contactEvents`, or an empty list when it has none for them.",
+    },
+    {
+      name: "workingHours",
+      type: "WorkingHours",
+      description: "The provider's `workingHours`, or the default.",
     },
   ]}
 />
@@ -1110,21 +1404,51 @@ Exported from `@/lib/recurrence`. The views and the provider use them, so a view
   rows={[
     {
       name: "expandRecurringEvents",
-      type: "(events, range: VisibleRange) => TEvent[]",
+      type: "(events, range: VisibleRange, timeZone?: string) => TEvent[]",
       description:
-        "What to draw for the dates in `range`: events that don't repeat as they are, and each repeating event's occurrences that overlap the range, its first date as the event itself. At most `MAX_OCCURRENCES_PER_RANGE` (1000) per series.",
+        "What to draw for the dates in `range`: events that don't repeat as they are, and each repeating event's occurrences that overlap the range, its first date as the event itself. At most `MAX_OCCURRENCES_PER_RANGE` (1000) per series. With the calendar's `timeZone` (`useCalendarConfig().timeZone`), `events`, `range` and the events returned read on that zone's clock, as `useCalendar()` hands them out; each series still repeats in its own zone.",
     },
     {
       name: "findEventOrOccurrence",
-      type: "(events, id) => TEvent | null",
+      type: "(events, id, timeZone?: string) => TEvent | null",
       description:
-        "The stored event with that id, else the generated occurrence it names (`launch-2026-06-20`), else `null`.",
+        "The stored event with that id, else the generated occurrence it names (`launch-2026-06-20`), else `null`. With the calendar's `timeZone`, `events` and the event returned read on that zone's clock.",
     },
     {
       name: "applyRecurringEdit",
       type: "(events, previous, edited) => TEvent",
       description:
-        "The event to store for an edit, as `updateEvent` does it: an occurrence keeps `seriesId` and `originalStart` unless its rule changed, and the series' event moved to another day takes its rule along.",
+        "The event to store for an edit of one event: an occurrence keeps `seriesId` and `originalStart` unless its rule changed, and the series' event moved to another day takes its rule along.",
+    },
+    {
+      name: "findEventSeries",
+      type: "(events, event) => TEvent | null",
+      description:
+        "The stored series event a drawn date belongs to (the event itself on its first date), or `null` for an event that doesn't repeat.",
+    },
+    {
+      name: "getSeriesEditScopes",
+      type: "(events, before, after) => SeriesEditScope[]",
+      description:
+        'The options the question offers for a change: `["this", "following", "all"]`, without `"following"` on the first date and without `"this"` for a repeat rule change. Empty when nothing changed or the event doesn\'t repeat.',
+    },
+    {
+      name: "getSeriesDeleteScopes",
+      type: "(events, event) => SeriesEditScope[]",
+      description:
+        'The options for deleting a date: `["this", "all"]` on the first date, else all three.',
+    },
+    {
+      name: "getSeriesEditChanges",
+      type: "(options: SeriesEditOptions) => SeriesEditResult",
+      description:
+        "What an answer changes: the deletes, updates and creates to apply and report as one undo step, in that order, and the id the changed date is drawn under afterwards.",
+    },
+    {
+      name: "getSeriesDeleteChanges",
+      type: "(options: SeriesDeleteOptions) => EventHistoryChange[]",
+      description:
+        "What deleting a date with an option changes, in the same order.",
     },
   ]}
 />
@@ -1153,8 +1477,47 @@ An entry of the `contacts` prop.
       description:
         "Listed on focus, before typing, with a history icon, as a recently invited contact.",
     },
+    {
+      name: "color",
+      type: "EventColor",
+      description:
+        "Color their events are drawn in while you meet with them or show their calendar. Defaults to one picked from their place in `contacts`.",
+    },
   ]}
 />
+
+### WorkingHours
+
+The `workingHours` prop: when the free time you share with the people you meet with is looked for, on the calendar's clock (its `timeZone`, else the viewer's).
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "days",
+      type: "(0 | 1 | 2 | 3 | 4 | 5 | 6)[]",
+      required: true,
+      description:
+        "Days of the week they apply to, 0 (Sunday) to 6 (Saturday).",
+    },
+    {
+      name: "startHour",
+      type: "number",
+      required: true,
+      description: "Hour (0-23) they start at.",
+    },
+    {
+      name: "endHour",
+      type: "number",
+      required: true,
+      description: "Hour (1-24) they end at, after `startHour`.",
+    },
+  ]}
+/>
+
+### CalendarPerson
+
+An entry of `useCalendarPeople().shownPeople`: an `EventContact` (a bare `{ email }` for an address not in `contacts`) whose `color` is always set, to the contact's own or the one picked for them.
 
 ### ConferenceProviderOption
 

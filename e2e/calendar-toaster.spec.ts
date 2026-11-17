@@ -3,6 +3,7 @@ import type { Page } from "@playwright/test";
 
 import {
   FROZEN_NOW,
+  answerThisEvent,
   boxOf,
   calendarEvent,
   calendarHeader,
@@ -57,6 +58,8 @@ test.describe("the toasts", () => {
     const event = calendarEvent(page, "Launch Review");
     await event.click({ button: "right" });
     await page.getByRole("button", { name: "Delete", exact: true }).click();
+    // Launch Review repeats: its question's first option, This event
+    await answerThisEvent(page, "Delete event");
     await expect(event).toHaveCount(0);
 
     await expect(toast(page)).toContainText("Event deleted");
@@ -146,6 +149,7 @@ test.describe("the toasts", () => {
   }) => {
     await calendarEvent(page, "Launch Review").click({ button: "right" });
     await page.getByRole("button", { name: "Delete", exact: true }).click();
+    await answerThisEvent(page, "Delete event");
     await expect(toast(page)).toContainText("Event deleted");
 
     const sprint = calendarEvent(page, "Sprint Planning");
@@ -173,6 +177,7 @@ test.describe("the toasts", () => {
   test("a newer toast replaces the last one", async ({ page }) => {
     await calendarEvent(page, "Launch Review").click();
     await page.keyboard.press("Backspace");
+    await answerThisEvent(page, "Delete event");
     await calendarEvent(page, "Quick Sync").click();
     await page.keyboard.press("Backspace");
 

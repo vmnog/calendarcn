@@ -28,8 +28,22 @@ export type HourCycle = 12 | 24;
  * View settings for display preferences (toggleable from the view dropdown)
  */
 export interface ViewSettings {
+  /**
+   * Whether the views draw Saturday and Sunday. Off, day and week view show
+   * weekdays only and step over the weekend, a full week shows Monday to
+   * Friday, and month and year view drop their weekend columns
+   */
   showWeekends: boolean;
+  /**
+   * Whether the views draw events the viewer declined (see
+   * `EventParticipant.self`), struck through on a dashed outline
+   */
   showDeclinedEvents: boolean;
+  /**
+   * Whether week numbers show: beside the title in day and week view, at
+   * each week's start in the agenda, and beside the weeks of month and year
+   * view
+   */
   showWeekNumbers: boolean;
 }
 
@@ -241,6 +255,14 @@ export interface EventParticipant {
   organizer?: boolean;
   /** Whether their attendance is optional */
   optional?: boolean;
+  /**
+   * Whether this participant is the viewer, the person whose calendar shows
+   * the event (Google Calendar's `self`). Their `response` is the viewer's:
+   * a "declined" one marks the event declined (see `showDeclinedEvents`).
+   * Without it, the participant whose email is the event's `calendarEmail`
+   * is the viewer.
+   */
+  self?: boolean;
 }
 
 /**
@@ -299,6 +321,71 @@ export interface EventContact {
    * typing, with a history icon
    */
   recent?: boolean;
+  /**
+   * Color their events are drawn in while their calendar shows ("Meet
+   * with...", "Show teammate calendar..."). Defaults to one picked from
+   * their place in `contacts`
+   */
+  color?: EventColor;
+}
+
+/**
+ * A person whose calendar shows beside yours, as `useCalendarPeople()`
+ * lists them: their contact, with the color their events are drawn in
+ */
+export interface CalendarPerson extends EventContact {
+  /** Color of their events: the contact's own `color`, or one picked for them */
+  color: EventColor;
+}
+
+/**
+ * What picking someone in the people picker does: meet with them ("Meet
+ * with...", F) or show their calendar ("Show teammate calendar...", P)
+ */
+export type PeoplePickerMode = "meet-with" | "teammate";
+
+/**
+ * Someone else's event as the time grid draws it beside yours: their event,
+ * with an id of its own (`person:<email>:<event id>`) and the person it
+ * belongs to. Never editable.
+ */
+export interface PersonCalendarEvent extends DetailedCalendarEvent {
+  /** The person whose calendar it comes from */
+  calendarPerson: CalendarPerson;
+}
+
+/**
+ * The people whose calendars show beside yours, returned by
+ * `useCalendarPeople()`: the ones you meet with ("Meet with...") and your
+ * teammates ("Show teammate calendar..."). Both lists hold emails, kept in
+ * the order they were added; an email is never in a list twice.
+ */
+export interface CalendarPeopleValue {
+  /** People "Meet with..." and "Show teammate calendar..." offer: the provider's `contacts` */
+  contacts: EventContact[];
+  /** Emails of the people you're meeting with */
+  meetWith: string[];
+  /** Emails of the teammates whose calendars show */
+  teammates: string[];
+  /** The people you're meeting with, then the teammates not among them */
+  shownPeople: CalendarPerson[];
+  /** Adds someone to the meeting. Does nothing when they are in it already */
+  addMeetWith: (email: string) => void;
+  /** Takes someone out of the meeting */
+  removeMeetWith: (email: string) => void;
+  /** Ends the meeting: nobody is met with anymore */
+  clearMeetWith: () => void;
+  /** Shows a teammate's calendar. Does nothing when it shows already */
+  addTeammate: (email: string) => void;
+  /** Hides a teammate's calendar again */
+  removeTeammate: (email: string) => void;
+  /**
+   * A person's events, from the provider's `contactEvents` (an empty list
+   * when it has none for them)
+   */
+  getPersonEvents: (email: string) => DetailedCalendarEvent[];
+  /** Days and hours the free times everyone shares are looked in */
+  workingHours: WorkingHours;
 }
 
 /**
@@ -671,6 +758,29 @@ export interface VisibleRange {
 }
 
 /**
+ * A stretch of time, `end` exclusive: a busy time, or free time everyone
+ * shares while meeting with people
+ */
+export interface TimeSpan {
+  start: Date;
+  end: Date;
+}
+
+/**
+ * Days and hours, on the calendar's clock (its `timeZone`, else the
+ * viewer's), the free times everyone shares are looked for in while meeting
+ * with people
+ */
+export interface WorkingHours {
+  /** Days of the week they apply to, 0 (Sunday) to 6 (Saturday) */
+  days: RecurrenceWeekday[];
+  /** Hour (0-23) they start at */
+  startHour: number;
+  /** Hour (1-24) they end at, after `startHour` */
+  endHour: number;
+}
+
+/**
  * Where `pasteEvent()` puts the next paste: the time slot (day and week
  * view) or the day (month view) a view last had the mouse over
  */
@@ -728,6 +838,97 @@ export interface EventHistory<TEvent extends CalendarEvent = CalendarEvent> {
 }
 
 /**
+ * Which events of a repeating series a change to one of its dates applies
+ * to: "this" date, the "following" ones (it and every one after it, which
+ * splits the series) or "all" of them
+ */
+export type SeriesEditScope = "this" | "following" | "all";
+
+/**
+ * Options of `getSeriesEditChanges`
+ */
+export interface SeriesEditOptions<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> {
+  /** The stored events: series, their exceptions and one-off events */
+  events: TEvent[];
+  /** The date as the views drew it, before the change */
+  before: TEvent;
+  /** The date with the change applied */
+  after: TEvent;
+  /** Which events of the series the change applies to */
+  scope: SeriesEditScope;
+  /** Id of the series "following" starts */
+  newSeriesId: string;
+}
+
+/**
+ * What `getSeriesEditChanges` returns
+ */
+export interface SeriesEditResult<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> {
+  /** The changes to apply and record as one undo step, in report order */
+  changes: EventHistoryChange<TEvent>[];
+  /**
+   * Id the views draw the changed date under afterwards, so it stays
+   * selected, or `null` when the change leaves no date on its day
+   */
+  occurrenceId: string | null;
+}
+
+/**
+ * Options of `getSeriesDeleteChanges`
+ */
+export interface SeriesDeleteOptions<
+  TEvent extends DetailedCalendarEvent = DetailedCalendarEvent,
+> {
+  /** The stored events: series, their exceptions and one-off events */
+  events: TEvent[];
+  /** The date to delete, as the views drew it */
+  event: TEvent;
+  /** Which events of the series to delete */
+  scope: SeriesEditScope;
+}
+
+/**
+ * One line of the edit question's summary: a field, its new value and its
+ * old one. A field the summary can't show as text (participants, links,
+ * ...) has `null` values and shows its label alone.
+ */
+export interface EventChangeSummaryRow {
+  /** "Time", "Title", "Repeat", ... */
+  label: string;
+  /** The new value, or `null` */
+  after: string | null;
+  /** The old value, struck through, or `null` */
+  before: string | null;
+}
+
+/**
+ * The question `EventSeriesScopeDialog` asks while a change to a repeating
+ * event's date waits for its answer
+ */
+export interface SeriesScopeQuestion {
+  /** Whether a change ("update") or a delete waits */
+  action: "update" | "delete";
+  /** The event's title before the change, quoted in the question */
+  title: string;
+  /** The options, in order, the first selected. See `getSeriesEditScopes` */
+  scopes: SeriesEditScope[];
+  /** What changed, for the edit question. Empty for a delete */
+  summary: EventChangeSummaryRow[];
+}
+
+/**
+ * An answer to the series scope question: save or delete with the chosen
+ * option, or one of the other buttons
+ */
+export type SeriesScopeAnswer =
+  | { action: "save" | "delete"; scope: SeriesEditScope }
+  | { action: "discard" | "continue" | "cancel" };
+
+/**
  * A short message the calendar shows after an action, as Notion Calendar's
  * toasts do: "Event deleted", "Event cut", "Event copied to clipboard".
  * `CalendarToaster` draws it; `useCalendarNotice()` returns it.
@@ -760,6 +961,104 @@ export interface CalendarNoticeValue {
   showNotice: (notice: CalendarNoticeInput) => void;
   /** Closes the notice with this id. Does nothing once a newer one replaced it */
   dismissNotice: (id: number) => void;
+}
+
+/**
+ * A stretch of time marked as open while scheduling: one block on the time
+ * grid and one time in the text that gets copied. It starts and ends on the
+ * same day (an end at midnight is the end of that day).
+ */
+export interface AvailabilityRange {
+  /** Stays the same while the range is moved or resized */
+  id: string;
+  start: Date;
+  end: Date;
+}
+
+/** Notion Calendar's two kinds of scheduling link */
+export type SchedulingLinkKind = "recurring" | "one-off";
+
+/**
+ * What a scheduling link is asked for with: the app creates the booking page
+ * (CalendarCN has no backend for it) from these.
+ */
+export interface SchedulingLinkRequest {
+  kind: SchedulingLinkKind;
+  /** Length of the meeting people book, in minutes: the scheduling panel's duration */
+  durationMinutes: number;
+  /**
+   * The open times marked on the calendar, merged and in order, for a
+   * one-off link. Empty for a recurring link, whose weekly hours your app
+   * asks for
+   */
+  ranges: AvailabilityRange[];
+  /** IANA zone the times were picked in: the viewer's */
+  timeZone: string;
+}
+
+/** What scheduling is picking open times for */
+export type SchedulingPurpose = "share" | "one-off-link";
+
+/** Options of `formatAvailabilityText()` */
+export interface AvailabilityTextOptions {
+  /** Length of the meeting asked for, in minutes ("Would 30 min ...") */
+  durationMinutes: number;
+  hourCycle: HourCycle;
+  /** Day, month and AM/PM names */
+  locale: Locale;
+  /** Now: times on its day and the next read "today" and "tomorrow". Defaults to the current time */
+  now?: Date;
+  /** A booking page, added after the times ("You can just let me know or confirm here: ...") */
+  link?: string;
+}
+
+/** What `useScheduling()` returns inside a `SchedulingProvider` */
+export interface SchedulingContextValue {
+  /** Whether open times are being marked on the day and week views */
+  isPicking: boolean;
+  /** What the times are for: copying them as text, or a one-off scheduling link */
+  purpose: SchedulingPurpose;
+  /** The marked times, merged and in order */
+  ranges: AvailabilityRange[];
+  /** Id of the marked time selected on the grid (Delete removes it), or `null` */
+  selectedRangeId: string | null;
+  /** Length of the meeting asked for, in minutes. 30 at first */
+  durationMinutes: number;
+  /** The text "Copy" puts on the clipboard; empty while no time is marked */
+  text: string;
+  /** Whether the app creates scheduling links (it passed `onCreateSchedulingLink`) */
+  canCreateLinks: boolean;
+  /**
+   * Starts marking open times, from none, in the week view when the
+   * calendar is in month, year or agenda view. Clears the event selection
+   */
+  startPicking: (purpose?: SchedulingPurpose) => void;
+  /**
+   * Stops marking and drops the marked times, changing no event. No event
+   * is left selected, as when marking starts
+   */
+  cancelPicking: () => void;
+  /** Marks a time, merged with the marked times it overlaps or touches */
+  addRange: (range: Omit<AvailabilityRange, "id">) => void;
+  /** Moves or resizes a marked time */
+  updateRange: (range: AvailabilityRange) => void;
+  /** Removes a marked time, with an Undo toast */
+  removeRange: (id: string) => void;
+  /** Selects a marked time, or none with `null` */
+  selectRange: (id: string | null) => void;
+  setDurationMinutes: (minutes: number) => void;
+  /** Copies `text` to the clipboard and confirms it with a toast. Resolves to whether it was copied */
+  copyText: () => Promise<boolean>;
+  /** "Copy" in the panel: copies `text`, then stops marking once it's copied */
+  copyAndFinish: () => Promise<void>;
+  /**
+   * Starts a scheduling link: a recurring one goes straight to the app's
+   * `onCreateSchedulingLink`, a one-off one marks times first. Does nothing
+   * without `onCreateSchedulingLink`
+   */
+  createSchedulingLink: (kind: SchedulingLinkKind) => void;
+  /** "Create" of a one-off link: hands the marked times to the app and stops marking */
+  finishSchedulingLink: () => void;
 }
 
 /**
@@ -999,9 +1298,10 @@ interface CalendarProviderBaseProps<
   defaultEvents?: TEvent[];
   /**
    * Called with the full next list whenever events change (drag, resize,
-   * create, edit, delete, duplicate, cut, paste, undo, redo). A repeating
-   * event stays one event in it; an edited occurrence is added as an event of
-   * its own
+   * create, edit, delete, duplicate, cut, paste, undo, redo, or the events
+   * an answer to the series scope question changes). A repeating event
+   * stays one event in it; an edited occurrence is added as an event of its
+   * own
    */
   onEventsChange?: (events: TEvent[]) => void;
   /** Active view (controlled) */
@@ -1022,12 +1322,30 @@ interface CalendarProviderBaseProps<
   defaultDate?: Date;
   /** Called when the displayed date changes (navigation or scroll) */
   onDateChange?: (date: Date) => void;
-  /** Day the week starts on. Defaults to 0 (Sunday) */
+  /**
+   * Day the week starts on, 0 (Sunday) to 6 (controlled). Every view and the
+   * mini calendar follow it
+   */
   weekStartsOn?: WeekStartsOn;
+  /** Initial week start when `weekStartsOn` is not controlled. Defaults to 0 (Sunday) */
+  defaultWeekStartsOn?: WeekStartsOn;
+  /** Called when the week start changes ("Start week on..." in the command menu) */
+  onWeekStartsOnChange?: (weekStartsOn: WeekStartsOn) => void;
+  /**
+   * Height of an hour in the day and week views, in pixels (controlled).
+   * `null` fills the screen with the visible hours, at least 48px an hour.
+   * Zooming steps through `HOUR_HEIGHT_STEPS`
+   */
+  hourHeight?: number | null;
+  /** Initial hour height when `hourHeight` is not controlled. Defaults to `null` (fill the screen) */
+  defaultHourHeight?: number | null;
+  /** Called when the hour height changes (zooming in or out, or back to the default) */
+  onHourHeightChange?: (hourHeight: number | null) => void;
   /**
    * Number of days the week view shows (controlled). Below 7, the columns
    * start on the current day and prev/next move by that many days; from 7
    * up they start on the week's first day and prev/next move by a week.
+   * With weekends hidden they count weekdays, and 7 shows the week's five.
    */
   numberOfDays?: number;
   /** Initial number of days when `numberOfDays` is not controlled. Defaults to 7 */
@@ -1132,15 +1450,49 @@ interface CalendarProviderBaseProps<
    */
   locationSuggestions?: LocationSuggestion[];
   /**
+   * Emails of the people you're meeting with (controlled): "Meet with..."
+   * draws their events beside yours in day and week view, highlights the
+   * times you're all free, and an event created meanwhile invites them
+   */
+  meetWith?: string[];
+  /** People met with at first when `meetWith` is not controlled. Defaults to none */
+  defaultMeetWith?: string[];
+  /** Called with the new emails when someone is added to or taken out of the meeting */
+  onMeetWithChange?: (meetWith: string[]) => void;
+  /**
+   * Emails of the teammates whose calendars show beside yours in day and
+   * week view (controlled), as "Show teammate calendar..." adds them
+   */
+  teammates?: string[];
+  /** Teammates shown at first when `teammates` is not controlled. Defaults to none */
+  defaultTeammates?: string[];
+  /** Called with the new emails when a teammate's calendar is shown or hidden */
+  onTeammatesChange?: (teammates: string[]) => void;
+  /**
+   * Other people's events by email, drawn while you meet with them or show
+   * their calendar. Load them when `onMeetWithChange`, `onTeammatesChange`
+   * or `onVisibleRangeChange` fires, from Google Calendar's free/busy for
+   * example (an event titled "Busy" per busy time). Defaults to none
+   */
+  contactEvents?: Record<string, DetailedCalendarEvent[]>;
+  /**
+   * Days and hours, on the calendar's clock (`timeZone`, else the
+   * viewer's), the free times you and the people you meet with share are
+   * looked for in. Defaults to 9 AM to 5 PM, Monday to Friday
+   */
+  workingHours?: WorkingHours;
+  /**
    * Called after an event is added: one created by clicking an empty slot,
    * a duplicate or a paste, an occurrence of a repeating event stored on its
-   * first edit (with `seriesId` and `originalStart`), or one `undo` or `redo`
-   * brings back
+   * first edit (with `seriesId` and `originalStart`), a new series that
+   * "This and following events" starts and the dates it takes over, or one
+   * `undo` or `redo` brings back
    */
   onEventCreate?: (event: TEvent) => void;
   /**
    * Called after an event is changed (drag, resize, an edit in the details,
-   * or `undo` or `redo` changing it back)
+   * a series an answer to the scope question changes, or `undo` or `redo`
+   * changing it back)
    */
   onEventUpdate?: (event: TEvent) => void;
   /**
@@ -1194,6 +1546,11 @@ export interface CalendarContextValue<
   weekStartsOn: WeekStartsOn;
   /** Number of days the week view shows */
   numberOfDays: number;
+  /**
+   * Height of an hour in the day and week views, in pixels, or `null` while
+   * the hours fill the screen (the default size)
+   */
+  hourHeight: number | null;
   /** Display preferences toggled from the view menu */
   viewSettings: ViewSettings;
   /**
@@ -1209,16 +1566,27 @@ export interface CalendarContextValue<
   displayMonth: Date | null;
   /**
    * Dates the view draws (end exclusive): the visible days in day and week
-   * view, the whole six-week grid in month view, trimmed to the first and
-   * last weekday when month view hides weekends. Follows settled
+   * view (from the first weekday to the last while weekends are hidden), the
+   * whole six-week grid in month view, trimmed to the first and last weekday
+   * when it hides weekends. Follows settled
    * navigation, so a horizontal scroll moves it once it snaps. Year view
    * spans its year, January 1 to the next January 1.
    */
   visibleRange: VisibleRange;
   /** Whether the provider's `loading` prop is set */
   loading: boolean;
-  /** ID of the selected event, or `null` */
+  /**
+   * ID of the selected event, or `null`. Also `null` while several events
+   * are selected: then `selectedEventIds` lists them, and no event shows
+   * its details
+   */
   selectedEventId: string | null;
+  /**
+   * IDs of every selected event, in the order they were selected: the one
+   * `selectedEventId` names, or the several picked with Shift- or Cmd-click
+   * and "Select all visible". Empty when nothing is selected
+   */
+  selectedEventIds: string[];
   /**
    * The selected event: a stored one, or the generated occurrence its id
    * names. `null` when nothing (or a missing event) is selected
@@ -1288,26 +1656,57 @@ export interface CalendarContextValue<
   switchView: (view: ViewType) => void;
   /** Sets how many days the week view shows */
   setNumberOfDays: (numberOfDays: number) => void;
-  /** Selects an event */
+  /** Selects an event, alone */
   selectEvent: (eventId: string) => void;
   /** Clears the selection (closes the event popover) */
   clearSelection: () => void;
+  /**
+   * Selects these events: none clears the selection, one selects it as
+   * `selectEvent` does, several select them together
+   */
+  setSelectedEventIds: (eventIds: string[]) => void;
+  /**
+   * Adds an event to the selection, or takes it out when it is in it: what
+   * Shift- and Cmd-click on an event do
+   */
+  toggleEventSelection: (eventId: string) => void;
+  /**
+   * Selects every event on the dates on screen (Notion Calendar's "Select
+   * all visible", Cmd+A). Does nothing in year view, which draws no events
+   */
+  selectAllVisible: () => void;
   /**
    * Creates an event for a clicked slot via `createEvent`, selects it and
    * focuses its title
    */
   addEventFromRange: (range: NewEventRange) => void;
   /**
-   * Replaces the event with the same id. A generated occurrence of a
-   * repeating event (not in `events`) is added instead, as the stored event
-   * for its date, through `onEventsChange` and `onEventCreate`
+   * Replaces the event with the same id. For a date of a repeating event, a
+   * mounted view first asks which events the change applies to ("This
+   * event", "This and following events" or "All events"); pass `scope` to
+   * apply it without asking. A scope the change doesn't allow (like "this"
+   * for a repeat rule change) applies as the first one it does. Moving one
+   * of several selected events moves them all by as much, as one undo step,
+   * without asking.
    */
-  updateEvent: (event: TEvent) => void;
+  updateEvent: (event: TEvent, scope?: SeriesEditScope) => void;
+  /**
+   * Changes the event the way a field of the event details does. A date of
+   * a repeating event, while selected, keeps the change pending: drawn with
+   * a dot before its title, and asked about once the event is left. Any
+   * other event changes at once, as with `updateEvent`.
+   */
+  editEvent: (event: TEvent) => void;
   /**
    * Deletes the event through `onEventsChange` and `onEventDelete`, and
-   * clears the selection when it was selected. Undoable
+   * clears the selection when it was selected. Undoable. For a date of a
+   * repeating event, a mounted view first asks which events to delete;
+   * pass `scope` to delete without asking. On one of several selected
+   * events, deleting, duplicating, copying and cutting act on all of them,
+   * as one undo step, and a repeating event's date among them goes alone,
+   * without asking
    */
-  deleteEvent: (eventId: string) => void;
+  deleteEvent: (eventId: string, scope?: SeriesEditScope) => void;
   /**
    * Adds a copy of the event at the same time, with a new id from
    * `crypto.randomUUID()`, through `onEventsChange` and `onEventCreate`, and
@@ -1342,12 +1741,70 @@ export interface CalendarContextValue<
   canUndo: boolean;
   /** Whether `redo` has a step to do again. Any new change clears them */
   canRedo: boolean;
-  /** Toggles weekend columns */
+  /**
+   * Starts the week on another day. A full week or month on screen moves to
+   * the week that starts on it, around the same dates
+   */
+  setWeekStartsOn: (weekStartsOn: WeekStartsOn) => void;
+  /** Makes the hours taller by one step of `HOUR_HEIGHT_STEPS`, up to the largest */
+  zoomHoursIn: () => void;
+  /** Makes the hours shorter by one step of `HOUR_HEIGHT_STEPS`, down to the smallest */
+  zoomHoursOut: () => void;
+  /** Goes back to the default hour height, which fills the screen */
+  resetHourHeight: () => void;
+  /**
+   * Shows or hides the weekend. Hiding it in day view, or in a week view
+   * shorter than a week, moves a Saturday or Sunday on screen to Monday
+   */
   toggleWeekends: () => void;
-  /** Flips `viewSettings.showDeclinedEvents`. No view filters by it yet */
+  /**
+   * Shows or hides the events the viewer declined. Hiding them clears the
+   * selection when the selected event is one
+   */
   toggleDeclinedEvents: () => void;
-  /** Toggles week numbers */
+  /** Shows or hides week numbers */
   toggleWeekNumbers: () => void;
   /** Opens the week containing `date` and briefly highlights that day */
   showDay: (date: Date) => void;
+  /**
+   * Shows the period that contains `date` in the current view, as Go to
+   * date does, and briefly highlights that day in the day and week views
+   */
+  navigateToDate: (date: Date) => void;
+  /**
+   * Creates an event at the next half hour, as Notion Calendar's C key and
+   * "Create event..." do: today when it's on screen, else the day last
+   * highlighted, else the first day shown. One hour long (cut at the end of
+   * the visible hours), through `createEvent`, selected with its title
+   * focused. Undoable
+   */
+  addEventAtNextSlot: () => void;
 }
+
+/**
+ * A keyboard shortcut in a list of them, as the details sidebar's full
+ * shortcut list shows it
+ */
+export interface KeyboardShortcut {
+  /** What the keys do, e.g. "Go to today" */
+  label: string;
+  /** Keys pressed together, each shown as a key cap: ["⌘", "K"] */
+  keys: string[];
+  /** Other keys that do the same, each listed after "or": [["1"]] beside D */
+  alternativeKeys?: string[][];
+  /** More words the list's find field matches, besides the label and keys */
+  keywords?: string[];
+}
+
+/**
+ * A titled group of keyboard shortcuts. `sections` hold the ones that act on
+ * something, under a heading of their own ("With a selected event...")
+ */
+export interface KeyboardShortcutGroup {
+  heading: string;
+  shortcuts: KeyboardShortcut[];
+  sections?: KeyboardShortcutGroup[];
+}
+
+/** A color theme: the system's, or light or dark */
+export type CalendarTheme = "system" | "light" | "dark";

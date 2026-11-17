@@ -10,6 +10,7 @@ import {
   DEMO_CONTACTS,
   DEMO_LOCATION_SUGGESTIONS,
   DEMO_ROOMS,
+  generateContactEvents,
   generateMockEvents,
 } from "@/lib/mock-events"
 
@@ -21,6 +22,8 @@ import {
 export default function CalendarAppPage() {
   // The app reads its initial events once, so create them once
   const [initialEvents] = React.useState(() => generateMockEvents())
+  // The sample teammates' weeks, for "Meet with..." and the teammate calendars
+  const [contactEvents] = React.useState(() => generateContactEvents())
 
   return (
     <ThemeProvider
@@ -34,6 +37,7 @@ export default function CalendarAppPage() {
         defaultViewSettings={{ showWeekNumbers: true }}
         calendars={DEMO_CALENDARS}
         contacts={DEMO_CONTACTS}
+        contactEvents={contactEvents}
         rooms={DEMO_ROOMS}
         conferenceProviders={DEMO_CONFERENCE_PROVIDERS}
         locationSuggestions={DEMO_LOCATION_SUGGESTIONS}

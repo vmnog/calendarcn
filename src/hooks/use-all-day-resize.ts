@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { addDays } from "date-fns";
+import { addDays, differenceInCalendarDays } from "date-fns";
 
 import {
   isPrimaryPress,
@@ -242,13 +242,16 @@ export function useAllDayResize({
       let newStart = event.start;
       let newEnd = event.end;
 
+      const currentDays = daysRef.current;
       if (resize.edge === "move") {
-        const daysMoved =
-          resize.currentStartColumn - resize.originalStartColumn;
+        // The columns' own dates: a hidden weekend between them counts
+        const fromDay = currentDays[resize.originalStartColumn];
+        const toDay = currentDays[resize.currentStartColumn];
+        if (!fromDay || !toDay) return;
+        const daysMoved = differenceInCalendarDays(toDay, fromDay);
         newStart = addDays(event.start, daysMoved);
         newEnd = addDays(event.end, daysMoved);
       } else {
-        const currentDays = daysRef.current;
         const startDay = currentDays[resize.currentStartColumn];
         const endDay = currentDays[resize.currentEndColumn];
         if (!startDay || !endDay) return;
