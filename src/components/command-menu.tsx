@@ -18,9 +18,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { TimeZoneList } from "@/components/time-zone-list";
 import { NUMBER_OF_DAYS_OPTIONS } from "@/lib/event-utils";
-
+import {
+  addTimeZone,
+  getViewerTimeZone,
+  makeTimeZonePrimary,
+  removeTimeZone,
+} from "@/lib/time-zones";
 import type { WeekStartsOn } from "@/components/calendar-types";
+import type { TimeZoneCommand } from "@/components/week-view-types";
 
 /** Reusable "Soon" badge for unimplemented command items */
 const SOON_BADGE = (
@@ -41,24 +48,23 @@ const DIALOG_CLASS =
 const COMMAND_CLASS =
   "**:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5";
 
-/** A second list the menu shows in place of the commands, as Notion Calendar's does */
-type MenuPage = "week-start" | "number-of-days";
+/** Each time zone command's label, which its list's input shows too */
+const TIME_ZONE_COMMAND_LABELS: Record<TimeZoneCommand, string> = {
+  travel: "Travel to time zone...",
+  add: "Show additional time zones...",
+  primary: "Make time zone primary...",
+  hide: "Hide time zone...",
+};
 
-/** One command of the menu */
-interface MenuCommand {
-  label: string;
-  /** Shortcut keys shown on the right, e.g. ["⌘", "/"] */
-  keys?: string[];
-  /** Runs the command once the menu has closed. Missing when the app doesn't offer it */
-  run?: () => void;
-  /** Opens a second list to pick from instead of running */
-  page?: MenuPage;
-  /** Not built yet: listed disabled with a "Soon" badge, only with `showComingSoon` */
-  soon?: boolean;
-}
+/**
+ * A list the menu shows in place of the commands, as Notion Calendar's does:
+ * a time zone command's zones, the days a week can start on, or day counts
+ */
+type MenuPage = TimeZoneCommand | "week-start" | "number-of-days";
 
-/** What a second list says in its search field, as Notion Calendar words it */
+/** What each list says in the input, as Notion Calendar words it */
 const PAGE_PLACEHOLDERS: Record<MenuPage, string> = {
+  ...TIME_ZONE_COMMAND_LABELS,
   "week-start": "Start week on...",
   "number-of-days": "Set number of displayed days...",
 };
@@ -76,6 +82,24 @@ const WEEK_START_CHOICES: Array<{ day: WeekStartsOn; label: string }> = [
   { day: 6, label: "Saturdays" },
   { day: 0, label: "Sundays" },
 ];
+
+/** Whether a list is a time zone command's, which searches its zones itself */
+function isTimeZoneCommand(page: MenuPage | null): page is TimeZoneCommand {
+  return page !== null && page in TIME_ZONE_COMMAND_LABELS;
+}
+
+/** One command of the menu */
+interface MenuCommand {
+  label: string;
+  /** Shortcut keys shown on the right, e.g. ["⌘", "/"] */
+  keys?: string[];
+  /** Runs the command once the menu has closed. Missing when the app doesn't offer it */
+  run?: () => void;
+  /** Not built yet: listed disabled with a "Soon" badge, only with `showComingSoon` */
+  soon?: boolean;
+  /** Runs with the menu still open: it lists what to pick next in its place */
+  keepsOpen?: boolean;
+}
 
 /** A titled group of commands */
 interface MenuGroup {
@@ -103,13 +127,21 @@ interface CommandMenuProps {
    * disabled with a "Soon" badge, as the live demo does
    */
   showComingSoon?: boolean;
+  /**
+   * Opens the menu on a time zone command's list instead of the commands,
+   * e.g. `"travel"` for the Z key
+   */
+  timeZoneCommand?: TimeZoneCommand;
 }
 
 /**
- * The live demo's ⌘K menu. Going to today, previous and next, and the views
- * come from `useCalendar()`, so it goes inside `CalendarProvider`. Commands
- * that belong to your app (panels, theme, .ics files) show only when you pass
- * their callback. Open it with `useCalendarShortcuts({ onToggleCommandMenu })`.
+ * The live demo's ⌘K menu. Going to today, previous and next, the views, the
+ * week start, the day count, the hour size and the time zones come from
+ * `useCalendar()`, so it goes inside `CalendarProvider`. A time zone command,
+ * "Start week on..." and "Set number of displayed days..." list their choices
+ * in the menu's place. Commands that belong to your app (panels, theme, .ics
+ * files) show only when you pass their callback. Open it with
+ * `useCalendarShortcuts({ onToggleCommandMenu })`.
  */
 export function CommandMenu({
   open,
@@ -120,6 +152,7 @@ export function CommandMenu({
   onImportIcs,
   onExportIcs,
   showComingSoon = false,
+  timeZoneCommand,
 }: CommandMenuProps) {
   const {
     goToToday,
@@ -132,23 +165,29 @@ export function CommandMenu({
     zoomHoursIn,
     zoomHoursOut,
     resetHourHeight,
+    timeZones,
+    changeTimeZones,
+    travelToTimeZone,
   } = useCalendar();
-  /** The search field, focused again when a second list opens */
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  /** The second list on screen, or `null` for the commands */
+  /** The list shown in place of the commands, or `null` for the commands */
   const [page, setPage] = React.useState<MenuPage | null>(null);
-  const [search, setSearch] = React.useState("");
+  /** Text typed in the input, for the commands or a list */
+  const [query, setQuery] = React.useState("");
+  /** The input, focused again when a list replaces the commands */
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  // Each opening starts on the commands, or on the list `timeZoneCommand`
+  // names. Adjusted while rendering, so the first frame is already right
   const [wasOpen, setWasOpen] = React.useState(open);
-
-  // Every opening starts on the commands, with an empty search. Adjusted
-  // while rendering, so a reopened menu never flashes the old list.
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
-      setPage(null);
-      setSearch("");
+      setPage(timeZoneCommand ?? null);
+      setQuery("");
     }
   }
+  /** The time zone command whose zones are listed, if one is */
+  const zoneCommand = isTimeZoneCommand(page) ? page : null;
+  const hasOtherZones = timeZones.secondary.length > 0;
 
   const runCommand = React.useCallback(
     (command: () => void) => {
@@ -158,35 +197,40 @@ export function CommandMenu({
     [onOpenChange],
   );
 
-  const openPage = React.useCallback((next: MenuPage) => {
+  /** Shows a list in place of the commands, with an empty search */
+  const openPage = (next: MenuPage) => {
     setPage(next);
-    setSearch("");
-  }, []);
+    setQuery("");
+  };
 
-  // A click on a command takes focus from the search field: give it back,
-  // so typing filters the second list
+  // A click on a command that opens a list takes the focus: give it back to
+  // the input, so typing searches the list
   React.useEffect(() => {
     if (page) inputRef.current?.focus();
   }, [page]);
 
-  /** Opens the command's second list, or runs it */
-  const selectCommand = (command: MenuCommand) => {
-    if (command.page) {
-      openPage(command.page);
+  /** Runs the open time zone command on the zone picked */
+  const pickZone = (zone: string) => {
+    if (zoneCommand === "travel") {
+      runCommand(() => travelToTimeZone(zone));
       return;
     }
-    if (command.run) runCommand(command.run);
+    const change = {
+      add: addTimeZone,
+      primary: makeTimeZonePrimary,
+      hide: removeTimeZone,
+    }[zoneCommand ?? "add"];
+    runCommand(() => changeTimeZones((zones) => change(zones, zone)));
   };
 
-  /** Backspace in an empty search goes back from a second list */
-  const handleKeyDown = React.useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key !== "Backspace" || search !== "" || page === null) return;
-      e.preventDefault();
-      setPage(null);
-    },
-    [search, page],
-  );
+  /** The zones "Hide time zone..." and "Make time zone primary..." list */
+  const listedZones = (() => {
+    if (zoneCommand === "primary") return [...timeZones.secondary].reverse();
+    if (zoneCommand !== "hide") return undefined;
+    // The primary zone first, then the others from the closest
+    const primary = timeZones.primary ?? getViewerTimeZone();
+    return [primary, ...[...timeZones.secondary].reverse()];
+  })();
 
   const groups: MenuGroup[] = [
     {
@@ -214,8 +258,28 @@ export function CommandMenu({
     {
       heading: "Time zones",
       commands: [
-        { label: "Travel to time zone...", soon: true },
-        { label: "Show additional time zones...", soon: true },
+        {
+          label: TIME_ZONE_COMMAND_LABELS.travel,
+          keys: ["Z"],
+          keepsOpen: true,
+          run: () => openPage("travel"),
+        },
+        {
+          label: TIME_ZONE_COMMAND_LABELS.add,
+          keepsOpen: true,
+          run: () => openPage("add"),
+        },
+        // Only with more than one zone, as in Notion Calendar
+        {
+          label: TIME_ZONE_COMMAND_LABELS.primary,
+          keepsOpen: true,
+          run: hasOtherZones ? () => openPage("primary") : undefined,
+        },
+        {
+          label: TIME_ZONE_COMMAND_LABELS.hide,
+          keepsOpen: true,
+          run: hasOtherZones ? () => openPage("hide") : undefined,
+        },
       ],
     },
     {
@@ -228,7 +292,11 @@ export function CommandMenu({
     {
       heading: "View",
       commands: [
-        { label: "Start week on...", page: "week-start" },
+        {
+          label: PAGE_PLACEHOLDERS["week-start"],
+          keepsOpen: true,
+          run: () => openPage("week-start"),
+        },
         {
           label: "Display day view",
           keys: ["D"],
@@ -254,7 +322,11 @@ export function CommandMenu({
           keys: ["A"],
           run: () => switchView("agenda"),
         },
-        { label: "Set number of displayed days...", page: "number-of-days" },
+        {
+          label: PAGE_PLACEHOLDERS["number-of-days"],
+          keepsOpen: true,
+          run: () => openPage("number-of-days"),
+        },
         { label: "Select all visible", soon: true },
         {
           label: "Default hour size",
@@ -323,15 +395,29 @@ export function CommandMenu({
         <DialogDescription className="sr-only">
           Search for a command to run...
         </DialogDescription>
-        <Command className={COMMAND_CLASS} onKeyDown={handleKeyDown}>
+        <Command className={COMMAND_CLASS} shouldFilter={zoneCommand === null}>
           <CommandInput
             ref={inputRef}
             placeholder={page ? PAGE_PLACEHOLDERS[page] : "Type a command..."}
-            value={search}
-            onValueChange={setSearch}
+            value={query}
+            onValueChange={setQuery}
+            onKeyDown={(e) => {
+              // Backspace in an empty list search goes back to the commands
+              if (e.key !== "Backspace" || !page || query) return;
+              e.preventDefault();
+              setPage(null);
+            }}
           />
           <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
+            {zoneCommand ? (
+              <TimeZoneList
+                query={query}
+                onSelect={pickZone}
+                timeZones={listedZones}
+              />
+            ) : (
+              <CommandEmpty>No results found.</CommandEmpty>
+            )}
             {page === "week-start" &&
               WEEK_START_CHOICES.filter(({ day }) => day !== weekStartsOn).map(
                 ({ day, label }) => (
@@ -354,37 +440,38 @@ export function CommandMenu({
                   {count}
                 </CommandItem>
               ))}
-            {page === null &&
-              groups.map((group) => {
-                const commands = group.commands.filter((command) =>
-                  command.soon
-                    ? showComingSoon
-                    : command.run !== undefined || command.page !== undefined,
-                );
-                if (commands.length === 0) return null;
+            {(page ? [] : groups).map((group) => {
+              const commands = group.commands.filter((command) =>
+                command.soon ? showComingSoon : command.run !== undefined,
+              );
+              if (commands.length === 0) return null;
 
-                return (
-                  <CommandGroup key={group.heading} heading={group.heading}>
-                    {commands.map((command) => (
-                      <CommandItem
-                        key={command.label}
-                        disabled={command.soon}
-                        onSelect={() => selectCommand(command)}
-                      >
-                        {command.label}
-                        {command.soon && SOON_BADGE}
-                        {command.keys && (
-                          <KbdGroup className="ml-auto">
-                            {command.keys.map((key) => (
-                              <Kbd key={key}>{key}</Kbd>
-                            ))}
-                          </KbdGroup>
-                        )}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                );
-              })}
+              return (
+                <CommandGroup key={group.heading} heading={group.heading}>
+                  {commands.map(({ label, keys, run, soon, keepsOpen }) => (
+                    <CommandItem
+                      key={label}
+                      disabled={soon}
+                      onSelect={
+                        run
+                          ? () => (keepsOpen ? run() : runCommand(run))
+                          : undefined
+                      }
+                    >
+                      {label}
+                      {soon && SOON_BADGE}
+                      {keys && (
+                        <KbdGroup className="ml-auto">
+                          {keys.map((key) => (
+                            <Kbd key={key}>{key}</Kbd>
+                          ))}
+                        </KbdGroup>
+                      )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              );
+            })}
           </CommandList>
 
           <div className="border-t px-3 py-2 flex items-center gap-4 text-xs text-muted-foreground">

@@ -109,11 +109,11 @@ export function MonthViewEventBar({
   onResizePointerDown,
   className,
 }: MonthViewEventBarProps) {
-  const { calendars, hourCycle, locale } = useCalendarConfig();
+  const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
   const color = resolveEventColor(event, calendars);
   const styles = barColorStyles[color];
   // `false` on the server and during hydration, so the markup matches
-  const eventIsPast = useIsPast(event.end);
+  const eventIsPast = useIsPast(event.end, timeZone);
 
   function handleClick(e: React.MouseEvent) {
     e.stopPropagation();
