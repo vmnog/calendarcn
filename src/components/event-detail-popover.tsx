@@ -26,6 +26,7 @@ import {
   useCalendarEventActions,
   useCalendarRenderSlots,
   useCalendarSeries,
+  useCalendarSeriesScope,
 } from "./calendar-provider";
 import { useEventTitleFocus } from "./event-title-focus-context";
 import type { CalendarEvent, EventPopoverAnchor } from "./week-view-types";
@@ -144,6 +145,7 @@ export function EventDetailPopover({
   const { pendingEventId, clearPending } = useEventTitleFocus();
   const { renderEventDetails } = useCalendarRenderSlots();
   const series = useCalendarSeries();
+  const { editEvent } = useCalendarSeriesScope();
   const eventActions = useCalendarEventActions();
   const panelRef = React.useRef<HTMLDivElement>(null);
   /** Just created by click-to-create: its title should be focused */
@@ -317,7 +319,15 @@ export function EventDetailPopover({
       ) : (
         <EventDetailPanel
           event={event}
-          onEventChange={onEventChange}
+          // A selected date of a repeating event holds its changes until it
+          // is left, then asks which events they apply to
+          onEventChange={
+            onEventChange &&
+            ((changed) =>
+              editEvent(changed, (edited) =>
+                onEventChange(edited as typeof changed),
+              ))
+          }
           onPrevWeek={
             previousInSeries
               ? () => series.showSeriesOccurrence(previousInSeries)

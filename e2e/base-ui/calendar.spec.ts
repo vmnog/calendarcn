@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
-import { FROZEN_NOW, boxOf, calendarEvent } from "../helpers";
+import { FROZEN_NOW, answerThisEvent, boxOf, calendarEvent } from "../helpers";
 
 /**
  * The registry installed in a shadcn/ui project set up with Base UI
@@ -221,6 +221,12 @@ test("the time zone and repeat rows edit the event", async ({ page }) => {
   await recurrence
     .getByRole("button", { name: "Go to next event in this series" })
     .click();
+  // The custom rule changed a repeating event, so it waited until the event
+  // was left: on its first date, a new rule can only go to all events
+  const question = page.getByRole("dialog", { name: /^Edit repeat event/ });
+  await expect(question.getByRole("radio")).toHaveText(["All events"]);
+  await question.getByRole("button", { name: "Save event" }).click();
+  await expect(question).toHaveCount(0);
   await expect(details.getByTestId("event-start-date")).toHaveValue(
     "Mon Jun 8",
   );
@@ -252,20 +258,26 @@ test("an occurrence is reported to onEventCreate when it is first edited", async
   // Stepping to it adds nothing: the occurrence is generated from the rule
   await expect(created).toHaveText("");
 
-  // Its first edit stores it, under the id that names its date
+  // Its first edit waits until the event is left, then "This event" stores
+  // it, under the id that names its date
   const title = details.getByPlaceholder("Title");
   await title.fill("Standup (moved)");
   await title.press("Enter");
+  await expect(created).toHaveText("");
+  await page.keyboard.press("Escape");
+  await answerThisEvent(page, "Save event");
   await expect(created).toHaveText("standup-2026-06-11");
-  await expect(
-    page.getByRole("button", {
-      name: /^Standup \(moved\), .*Thursday, June 11$/,
-    }),
-  ).toBeVisible();
+  const moved = page.getByRole("button", {
+    name: /^Standup \(moved\), .*Thursday, June 11$/,
+  });
+  await expect(moved).toBeVisible();
 
   // A second edit updates it: nothing new is reported
+  await moved.click();
   await title.fill("Standup (moved again)");
   await title.press("Enter");
+  await page.keyboard.press("Escape");
+  await answerThisEvent(page, "Save event");
   await expect(
     page.getByRole("button", { name: /^Standup \(moved again\), / }),
   ).toBeVisible();

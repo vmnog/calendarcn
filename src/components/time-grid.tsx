@@ -1,20 +1,19 @@
 "use client";
 
-import {
-  addDays,
-  differenceInCalendarDays,
-  eachDayOfInterval,
-  format,
-  isSameDay,
-} from "date-fns";
+import { addDays, format, isSameDay } from "date-fns";
 import type { Locale } from "date-fns";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import {
+  WEEKDAYS_PER_WEEK,
+  addShownDays,
+  countShownDaysBetween,
+  filterDeclinedEvents,
   formatHourLabel,
   formatTimeOfDayLabel,
   getPeriodStart,
+  getShownDays,
   getVisibleDayCount,
   getWeekViewStepDays,
   isMultiDayEvent,
@@ -46,8 +45,10 @@ import type {
 import {
   useCalendar,
   useCalendarConfig,
+  useCalendarSeriesScope,
   useCalendarViewSync,
 } from "./calendar-provider";
+import { EventSeriesScopeDialog } from "./event-series-scope-dialog";
 import { WeekViewAllDayRow } from "./week-view-all-day-row";
 import { CalendarDayHeaders } from "./calendar-day-headers";
 import { WeekViewGrid } from "./week-view-grid";
@@ -96,19 +97,22 @@ const BUFFER_STEP_BY_VIEW: Record<TimeGridView, number> = {
 /** Days the day view moves when a drag or resize is held at its side edge */
 const DAY_VIEW_EDGE_NAV_DAYS = 7;
 
+/** Days in a week: a drag held at the edge of a full week moves this far */
+const DAYS_PER_WEEK = 7;
+
 /**
- * Generates an array of WeekDay objects starting from the given date.
+ * Generates `count` WeekDay objects from the given date: consecutive days,
+ * or weekdays only while weekends are hidden.
  * Note: isToday is added separately from the shared `useToday` clock, so it
  * stays correct across midnight and is never computed on the server
  */
 function generateWeekDays(
   startDate: Date,
   count: number,
+  showWeekends: boolean,
   locale: Locale,
 ): Omit<WeekDay, "isToday">[] {
-  const end = addDays(startDate, count - 1);
-
-  return eachDayOfInterval({ start: startDate, end }).map((date) => ({
+  return getShownDays(startDate, count, showWeekends).map((date) => ({
     date,
     dayName: format(date, "EEE", { locale }),
     dayNumber: date.getDate(),
@@ -117,23 +121,21 @@ function generateWeekDays(
 
 /**
  * Generates an extended array of days including buffer days on both sides
- * for smooth horizontal scroll transitions
+ * for smooth horizontal scroll transitions. While weekends are hidden, the
+ * buffer holds weekdays too, so scrolling steps over the weekend.
  */
 function generateBufferedDays(
   startDate: Date,
   bufferDays: number,
   visibleDays: number,
+  showWeekends: boolean,
   locale: Locale,
 ): Omit<WeekDay, "isToday">[] {
-  const bufferStart = addDays(startDate, -bufferDays);
-  const bufferEnd = addDays(startDate, visibleDays + bufferDays - 1);
-
-  return eachDayOfInterval({ start: bufferStart, end: bufferEnd }).map(
-    (date) => ({
-      date,
-      dayName: format(date, "EEE", { locale }),
-      dayNumber: date.getDate(),
-    }),
+  return generateWeekDays(
+    addShownDays(startDate, -bufferDays, showWeekends),
+    visibleDays + bufferDays * 2,
+    showWeekends,
+    locale,
   );
 }
 
@@ -202,6 +204,7 @@ export function TimeGrid({
     view: providerView,
     currentDate,
     events,
+    viewSettings,
     selectedEvent,
     highlightedDate,
     selectEvent,
@@ -233,6 +236,7 @@ export function TimeGrid({
     reportHourHeight,
   } = useCalendarViewSync();
   const numberOfDays = numberOfDaysProp ?? providerNumberOfDays;
+  const { showWeekends, showDeclinedEvents } = viewSettings;
   /** Day columns this grid pins the provider to (none in day view) */
   const fixedNumberOfDays = view === "week" ? numberOfDaysProp : undefined;
   /**
@@ -247,7 +251,7 @@ export function TimeGrid({
   // `null` on the server and during hydration. On the calendar's clock
   const today = useToday(timeZone);
   const selectedEventId = selectedEvent?.id;
-  const VISIBLE_DAYS = getVisibleDayCount(view, numberOfDays);
+  const VISIBLE_DAYS = getVisibleDayCount(view, numberOfDays, showWeekends);
   const visibleHourCount = dayEndHour - dayStartHour;
   /**
    * Zones of the columns left of the calendar's own: the additional ones,
@@ -267,9 +271,14 @@ export function TimeGrid({
   );
   /** Width of the time axis: one column per zone */
   const timeAxisWidth = TIME_AXIS_WIDTH * (extraZones.length + 1);
-  // A drag held at the grid's side edge moves by one prev/next step
-  const edgeNavigationDays =
+  // A drag held at the grid's side edge moves by one prev/next step, in
+  // columns: a week is its five weekdays while weekends are hidden
+  const edgeNavigationStep =
     view === "day" ? DAY_VIEW_EDGE_NAV_DAYS : getWeekViewStepDays(numberOfDays);
+  const edgeNavigationDays =
+    !showWeekends && edgeNavigationStep === DAYS_PER_WEEK
+      ? WEEKDAYS_PER_WEEK
+      : edgeNavigationStep;
   const BUFFER_DAYS = BUFFER_DAYS_BY_VIEW[view];
   const BUFFER_STEP = BUFFER_STEP_BY_VIEW[view];
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -279,8 +288,8 @@ export function TimeGrid({
 
   // Visible days starting from currentDate
   const baseDays = React.useMemo(
-    () => generateWeekDays(currentDate, VISIBLE_DAYS, locale),
-    [currentDate, VISIBLE_DAYS, locale],
+    () => generateWeekDays(currentDate, VISIBLE_DAYS, showWeekends, locale),
+    [currentDate, VISIBLE_DAYS, showWeekends, locale],
   );
 
   const days = withIsToday(baseDays, today);
@@ -462,19 +471,20 @@ export function TimeGrid({
     reportView({ view, numberOfDays: fixedNumberOfDays });
   }, [view, fixedNumberOfDays, reportView]);
 
+  // Both move by columns: over the weekend while it is hidden
   const handleNavigate = React.useCallback(
     (daysDelta: number) => {
       scrollNavigatedRef.current = true;
-      goToDate(addDays(currentDate, daysDelta));
+      goToDate(addShownDays(currentDate, daysDelta, showWeekends));
     },
-    [currentDate, goToDate],
+    [currentDate, showWeekends, goToDate],
   );
 
   const handleDragNavigate = React.useCallback(
     (daysDelta: number) => {
-      goToDate(addDays(currentDate, daysDelta));
+      goToDate(addShownDays(currentDate, daysDelta, showWeekends));
     },
-    [currentDate, goToDate],
+    [currentDate, showWeekends, goToDate],
   );
 
   const handleEventClick = React.useCallback(
@@ -537,13 +547,13 @@ export function TimeGrid({
   // these would be the days of the date it is moving away from.
   React.useEffect(() => {
     if (!isProviderInSync) return;
-    const start = addDays(currentDate, scrollDaysDelta);
-    const end = addDays(start, VISIBLE_DAYS - 1);
-    reportVisibleDays(eachDayOfInterval({ start, end }));
+    const start = addShownDays(currentDate, scrollDaysDelta, showWeekends);
+    reportVisibleDays(getShownDays(start, VISIBLE_DAYS, showWeekends));
   }, [
     isProviderInSync,
     currentDate,
     scrollDaysDelta,
+    showWeekends,
     reportVisibleDays,
     VISIBLE_DAYS,
   ]);
@@ -560,8 +570,14 @@ export function TimeGrid({
   // Extended buffered days for scroll (grows dynamically with scroll distance)
   const bufferedBaseDays = React.useMemo(
     () =>
-      generateBufferedDays(currentDate, dynamicBuffer, VISIBLE_DAYS, locale),
-    [currentDate, dynamicBuffer, VISIBLE_DAYS, locale],
+      generateBufferedDays(
+        currentDate,
+        dynamicBuffer,
+        VISIBLE_DAYS,
+        showWeekends,
+        locale,
+      ),
+    [currentDate, dynamicBuffer, VISIBLE_DAYS, showWeekends, locale],
   );
 
   const bufferedDays = withIsToday(bufferedBaseDays, today);
@@ -578,14 +594,29 @@ export function TimeGrid({
     bufferedDayDates[bufferedDayDates.length - 1],
     1,
   ).getTime();
+  const { previewEvents } = useCalendarSeriesScope();
+  // A change to a repeating event's date that waits shows on that date, and
+  // the events the viewer declined only while they're shown
   const displayedEvents = React.useMemo(
     () =>
-      expandRecurringEvents(
-        events,
-        { start: new Date(bufferStartTime), end: new Date(bufferEndTime) },
-        timeZone,
+      filterDeclinedEvents(
+        previewEvents(
+          expandRecurringEvents(
+            events,
+            { start: new Date(bufferStartTime), end: new Date(bufferEndTime) },
+            timeZone,
+          ),
+        ),
+        showDeclinedEvents,
       ),
-    [events, bufferStartTime, bufferEndTime, timeZone],
+    [
+      events,
+      bufferStartTime,
+      bufferEndTime,
+      timeZone,
+      previewEvents,
+      showDeclinedEvents,
+    ],
   );
   const displayedAllDayEvents = React.useMemo(
     () => displayedEvents.filter((e) => e.isAllDay || isMultiDayEvent(e)),
@@ -621,7 +652,8 @@ export function TimeGrid({
     }
 
     const prevDate = prevDateRef.current;
-    const daysDiff = differenceInCalendarDays(currentDate, prevDate);
+    // In columns: Friday to Monday is one while weekends are hidden
+    const daysDiff = countShownDaysBetween(prevDate, currentDate, showWeekends);
     prevDateRef.current = currentDate;
 
     if (daysDiff === 0) return;
@@ -630,7 +662,7 @@ export function TimeGrid({
     if (!wasProviderInSync || !isProviderInSync) return;
 
     triggerSlideAnimation(daysDiff);
-  }, [currentDate, isProviderInSync, triggerSlideAnimation]);
+  }, [currentDate, isProviderInSync, showWeekends, triggerSlideAnimation]);
 
   // The base translateX centers on the visible days (skip dynamicBuffer columns)
   const baseTranslateX = -(dynamicBuffer * dayColumnWidth);
@@ -654,8 +686,10 @@ export function TimeGrid({
 
   const revealDay = React.useCallback(
     (date: Date) =>
-      goToDate(getPeriodStart(date, view, weekStartsOn, numberOfDays)),
-    [goToDate, view, weekStartsOn, numberOfDays],
+      goToDate(
+        getPeriodStart(date, view, weekStartsOn, numberOfDays, showWeekends),
+      ),
+    [goToDate, view, weekStartsOn, numberOfDays, showWeekends],
   );
 
   /** The slot under the mouse: where the next paste goes */
@@ -819,6 +853,8 @@ export function TimeGrid({
           </div>
         </div>
       </div>
+      {/* Asks "This event / This and following / All events" for a change to a repeating event's date */}
+      <EventSeriesScopeDialog />
     </CalendarPopoverBoundaryProvider>
   );
 }

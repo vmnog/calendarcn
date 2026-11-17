@@ -4,8 +4,7 @@ import { openCalendar } from "./helpers";
 
 /**
  * Controls that are drawn but not built yet. Each is disabled or replaced by
- * a "Soon" badge: the
- * view settings the current view doesn't read, the sidebar's scheduling row,
+ * a "Soon" badge: the sidebar's scheduling row,
  * "Meet with..." field and "Add calendar account", and the listed shortcuts nothing handles. Shift+Cmd+D is left to the
  * browser.
  */
@@ -14,70 +13,27 @@ test.beforeEach(async ({ page }) => {
   await openCalendar(page);
 });
 
-test("week view marks every view setting as not built", async ({ page }) => {
-  await page.getByRole("button", { name: "Week", exact: true }).click();
-  await page.getByRole("menuitem", { name: "View settings" }).click();
+test("no view setting is marked Soon, in any view", async ({ page }) => {
+  for (const [key, label] of [
+    ["d", "Day"],
+    ["w", "Week"],
+    ["m", "Month"],
+    ["y", "Year"],
+    ["a", "Agenda"],
+  ]) {
+    await page.keyboard.press(key);
+    await page.getByRole("button", { name: label, exact: true }).click();
+    await page.getByRole("menuitem", { name: "View settings" }).click();
 
-  for (const setting of ["Weekends", "Declined events", "Week numbers"]) {
-    const item = page.getByRole("menuitemcheckbox", {
-      name: `${setting} Soon`,
-      exact: true,
-    });
-    await expect(item).toBeDisabled();
-    await expect(item).toHaveCSS("opacity", "1");
-  }
-});
-
-test("month view keeps the two settings it reads", async ({ page }) => {
-  await page.keyboard.press("m");
-  await page.getByRole("button", { name: "Month", exact: true }).click();
-  await page.getByRole("menuitem", { name: "View settings" }).click();
-
-  await expect(
-    page.getByRole("menuitemcheckbox", { name: /^Weekends(?!.*Soon)/ }),
-  ).toBeEnabled();
-  await expect(
-    page.getByRole("menuitemcheckbox", { name: "Week numbers", exact: true }),
-  ).toBeEnabled();
-  await expect(
-    page.getByRole("menuitemcheckbox", {
-      name: "Declined events Soon",
-      exact: true,
-    }),
-  ).toBeDisabled();
-});
-
-test("agenda view keeps weekends and marks week numbers", async ({ page }) => {
-  await page.keyboard.press("a");
-  await page.getByRole("button", { name: "Agenda", exact: true }).click();
-  await page.getByRole("menuitem", { name: "View settings" }).click();
-
-  await expect(
-    page.getByRole("menuitemcheckbox", { name: /^Weekends(?!.*Soon)/ }),
-  ).toBeEnabled();
-  await expect(
-    page.getByRole("menuitemcheckbox", {
-      name: "Week numbers Soon",
-      exact: true,
-    }),
-  ).toBeDisabled();
-});
-
-test("year view keeps week numbers and marks weekends", async ({ page }) => {
-  await page.keyboard.press("y");
-  await page.getByRole("button", { name: "Year", exact: true }).click();
-  await page.getByRole("menuitem", { name: "View settings" }).click();
-
-  await expect(
-    page.getByRole("menuitemcheckbox", { name: "Week numbers", exact: true }),
-  ).toBeEnabled();
-  for (const setting of ["Weekends", "Declined events"]) {
-    await expect(
-      page.getByRole("menuitemcheckbox", {
-        name: `${setting} Soon`,
-        exact: true,
-      }),
-    ).toBeDisabled();
+    for (const setting of ["Weekends", "Declined events", "Week numbers"]) {
+      const item = page.getByRole("menuitemcheckbox", {
+        name: new RegExp(`^${setting}`),
+      });
+      await expect(item, `${setting} in ${label} view`).toBeEnabled();
+      await expect(item).not.toContainText("Soon");
+    }
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
   }
 });
 
@@ -134,15 +90,13 @@ test("the useful shortcuts mark the ones nothing handles", async ({ page }) => {
   const row = (label: string) =>
     page.getByText(label, { exact: true }).locator("xpath=..");
 
-  for (const label of [
-    "Menu bar calendar",
-    "Show teammate calendar",
-    "Go to date",
-    "All keyboard shortcuts",
-  ]) {
+  for (const label of ["Menu bar calendar", "Show teammate calendar"]) {
     await expect(row(label).getByText("Soon", { exact: true })).toBeVisible();
   }
   await expect(row("Command menu").getByText("Soon")).toHaveCount(0);
+  for (const label of ["Go to date", "All keyboard shortcuts"]) {
+    await expect(row(label).getByText("Soon")).toHaveCount(0);
+  }
   await expect(row("Toggle sidebar")).toContainText("⌘");
   await expect(row("Toggle sidebar")).toContainText("/");
 });

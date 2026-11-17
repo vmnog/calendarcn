@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import {
+  answerThisEvent,
   detailFields,
   detailTitle,
   dragBy,
@@ -142,6 +143,10 @@ test("editing one date changes only that date, and the export writes it as an ed
   await expect(launchReview(page, "June 20")).toHaveAccessibleName(
     /2:00 PM to 3:30 PM/,
   );
+  // The change waits until the event is left; then the question asks
+  await fields.startTime.blur();
+  await page.keyboard.press("Escape");
+  await answerThisEvent(page, "Save event");
 
   // The other dates keep the series' time
   await page.getByRole("button", { name: "Today", exact: true }).click();
@@ -175,6 +180,7 @@ test("dragging one date moves only that date", async ({ page }) => {
     dy: -(await hourHeight(page)),
     offsetY: 20,
   });
+  await answerThisEvent(page, "Save event");
   await expect(launchReview(page, "June 20")).toHaveAccessibleName(
     /9:00 AM to 10:30 AM/,
   );
@@ -189,6 +195,7 @@ test("the keyboard moves the date it is focused on", async ({ page }) => {
   await nextWeeks(page, 2);
   await launchReview(page, "June 20").focus();
   await page.keyboard.press("Alt+ArrowDown");
+  await answerThisEvent(page, "Save event");
   await expect(launchReview(page, "June 20")).toHaveAccessibleName(
     /10:15 AM to 11:45 AM/,
   );
@@ -271,6 +278,7 @@ test("undo takes an edited date back to its generated time, and redo edits it ag
     dy: -(await hourHeight(page)),
     offsetY: 20,
   });
+  await answerThisEvent(page, "Save event");
   await expect(launchReview(page, "June 20")).toHaveAccessibleName(
     /9:00 AM to 10:30 AM/,
   );
@@ -297,6 +305,7 @@ test("deleting one date leaves the others, and undo brings it back", async ({
   await nextWeeks(page, 2);
   await launchReview(page, "June 20").click();
   await page.keyboard.press("Delete");
+  await answerThisEvent(page, "Delete event");
   await expect(launchReview(page, "June 20")).toHaveCount(0);
   // The date after it stays
   await nextWeeks(page, 2);
@@ -361,6 +370,7 @@ test("deleting a generated date shows Event deleted, and its Undo brings the dat
   await nextWeeks(page, 2);
   await launchReview(page, "June 20").click();
   await page.keyboard.press("Delete");
+  await answerThisEvent(page, "Delete event");
   await expect(launchReview(page, "June 20")).toHaveCount(0);
 
   const toast = page

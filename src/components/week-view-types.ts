@@ -37,6 +37,13 @@ export type {
   NormalizedRecurrenceRule,
   FormatRRuleOptions,
   SeriesOccurrence,
+  SeriesEditScope,
+  SeriesEditOptions,
+  SeriesEditResult,
+  SeriesDeleteOptions,
+  EventChangeSummaryRow,
+  SeriesScopeQuestion,
+  SeriesScopeAnswer,
   TimeZoneOption,
   CalendarTimeZones,
   ParticipantResponse,
@@ -78,6 +85,8 @@ export type {
   CalendarRenderSlots,
   CalendarProviderProps,
   CalendarContextValue,
+  KeyboardShortcut,
+  KeyboardShortcutGroup,
 } from "./calendar-types";
 
 /** A rectangle in viewport pixels that a popover is placed beside */
@@ -210,6 +219,26 @@ export interface CalendarToasterProps {
 }
 
 /**
+ * A page of the command menu: its list of commands, or the date field "Go
+ * to date..." opens
+ */
+export type CommandMenuPage = "commands" | "go-to-date";
+
+/** What an app can open in the details sidebar, through its `actionsRef` */
+export interface DetailsSidebarActions {
+  /**
+   * Opens the panel on event search with `query` typed in (empty by
+   * default) and focuses the field. A selected event is deselected
+   */
+  searchEvents: (query?: string) => void;
+  /**
+   * Opens the panel on the full keyboard shortcut list and focuses its find
+   * field. A selected event is deselected
+   */
+  showAllShortcuts: () => void;
+}
+
+/**
  * Props for the Calendar block: everything CalendarProvider takes (events,
  * view, date, configuration, render slots), plus options for its toolbar
  * and views. `children` render inside the provider, after the calendar.
@@ -270,7 +299,8 @@ export type CalendarAppProps = CalendarProviderProps<DetailedCalendarEvent> & {
   showComingSoon?: boolean;
   /**
    * Whether the keyboard shortcuts (the calendar's single keys, plus Cmd+K,
-   * Cmd+/, / and Shift+M) are on. They listen on `window`. Defaults to true
+   * Cmd+/, /, Shift+M, . and ?) are on. They listen on `window`. Defaults to
+   * true
    */
   shortcuts?: boolean;
   /**
