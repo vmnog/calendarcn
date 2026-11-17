@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useIsPast } from "@/hooks/use-now";
 import { isPrimaryPress } from "@/hooks/use-pointer-gesture";
 import { EventContentSlot, useCalendarConfig } from "./calendar-provider";
+import { SeriesChangeDot } from "./event-series-scope-dialog";
 import {
   DECLINED_EVENT_OUTLINE_CLASS,
   DECLINED_EVENT_TEXT_CLASS,
@@ -275,6 +276,7 @@ export function MonthViewEventBar({
               showsDeclined && DECLINED_EVENT_TEXT_CLASS,
             )}
           >
+            <SeriesChangeDot eventId={event.id} />
             {event.title}
           </span>
         }

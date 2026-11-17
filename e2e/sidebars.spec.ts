@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
-import { calendarEvent, openCalendar } from "./helpers";
+import { answerThisEvent, calendarEvent, openCalendar } from "./helpers";
 
 /**
  * The demo's two sidebars: the calendar sidebar on the left (mini calendar,
@@ -113,6 +113,8 @@ test.describe("wide screens", () => {
     await calendarEvent(page, "Launch Review").click({ button: "right" });
     await page.getByRole("button", { name: "Block on calendar" }).hover();
     await page.getByRole("button", { name: "Family", exact: true }).click();
+    // Launch Review repeats: its question's first option, This event
+    await answerThisEvent(page, "Save event");
 
     await expect(calendarEvent(page, "Launch Review")).toBeVisible();
     await expect(calendarEvent(page, "Weekend in Hudson Valley")).toBeVisible();

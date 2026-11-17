@@ -81,15 +81,28 @@ Without `date` or `defaultDate`, the calendar starts on today's period. The serv
 An event with a `recurrenceRule` (or an RRULE in `recurrence`) is one event in `events`, and every view draws it on each date its rule gives, as does the details sidebar's search. The views generate those occurrences for the dates on screen with `expandRecurringEvents()`; they are never added to `events`, so `useCalendar().events`, `onEventsChange` and the .ics export hold each series once.
 
 - An occurrence's id is the series' id and its date, `launch-2026-06-20`. Selecting it, `selectedEvent` and the details' series arrows work as for any event.
-- Editing an occurrence (drag, resize, the keyboard or the details) changes that date only. It is added to your events with `seriesId` (the series' id) and `originalStart` (the start it had), through `onEventCreate` and `onEventsChange`, and drawn in place of the generated one. Later edits to it go through `onEventUpdate`. A new repeat rule takes it out of the series, to repeat on its own from its date.
-- Editing the series' own event, its first date, changes the series: every occurrence you haven't stored follows it.
-- Delete and Cut on one date leave it out of the series: its start is added to the series event's `excludedDates` (reported through `onEventUpdate`), and a stored date goes with it. The series' own event deletes the whole series. Undo and redo treat each as one step: the first edit of a generated date is a create, so undoing it brings the generated date back.
+- Editing or deleting one date (drag, resize, the keyboard, the right-click menu or the details) asks which events it applies to: see [Editing a repeating event](#editing-a-repeating-event). **This event** changes that date only. It is added to your events with `seriesId` (the series' id) and `originalStart` (the start it had), through `onEventCreate` and `onEventsChange`, and drawn in place of the generated one. Later edits to it go through `onEventUpdate`.
+- Cut on one date, and Delete with **This event**, leave it out of the series: its start is added to the series event's `excludedDates` (reported through `onEventUpdate`), and a stored date goes with it. Cut on the series' own event cuts the whole series. Undo and redo treat each as one step: the first edit of a generated date is a create, so undoing it brings the generated date back.
 - Duplicate and Paste on a date of a repeating event add a single event on that date: the copy has no `seriesId`, `originalStart`, `recurrenceRule`, `recurrence` or `excludedDates`, so it doesn't repeat and the series keeps its dates.
 - `excludedDates` leaves dates out, like an .ics `EXDATE`.
 - Occurrences keep the series' clock time in its `timeZone` when the clocks change. An all-day series keeps whole days.
 - `recurrence` written as display text ("Every week on Thu") is a label only: draw those occurrences as events of your own.
 
 When you load events by range ([Loading Events](/docs/loading-events)), include the repeating events whose series reaches into the range, even when their first date is earlier.
+
+### Editing a repeating event
+
+A change to one date of a repeating event asks which events it applies to, as Notion Calendar does: **This event**, **This and following events** or **All events** (on the series' first date, only this event or all events; a repeat rule change, only the following or all events). A drag, a resize, an <Kbd>Alt</Kbd> arrow move or a change from the right-click menu asks at once. A change in the details waits: the date shows it on the calendar with a dot before its title, and the question comes when you leave the event, listing what changed. **Save event** applies it, **Discard change** drops it, **Continue editing** goes back to it, and so does <Kbd>Esc</Kbd>. A delete asks the same way, with **Delete event** and **Cancel**.
+
+- **This event** stores the date as an event of its own (with `seriesId` and `originalStart`), or, for a delete, adds its start to the series' `excludedDates`.
+- **This and following events** ends the series the day before (its `end` becomes that date) and starts a new series event, with a new id, from this date. A series that ends after a number of times keeps the count that's left. Later dates stored on their own move to the new series.
+- **All events** changes the series event. A new time moves every date; dates with a time of their own keep it. Deleting all events deletes the series and its stored dates.
+
+When a date moves to another day, or the repeat rule changes, the stored dates and excluded dates it affects are removed: their days are no longer in the series.
+
+Each answer is one undo step. `onEventsChange` gets the full list once, then `onEventDelete`, `onEventUpdate` and `onEventCreate` get each event the answer removed, changed or added, in that order, so a new series reaches your server before its dates. A change that waits is never reported. After an answer, a toast says what happened: Event deleted, All events deleted (both with Undo) or Event updated.
+
+The views render the question with `EventSeriesScopeDialog` (`@/components/event-series-scope-dialog`). In a layout without them, render it once inside the provider; without it, a change applies to that date only (a repeat rule change, to that date and the following ones). To skip the question in your own code, pass the answer: `updateEvent(event, "all")` or `deleteEvent(event.id, "this")`. Custom details should change events with `editEvent(event)`, which waits like the built-in details. `getSeriesEditChanges()` and `getSeriesDeleteChanges()` from `@/lib/recurrence` return the same changes without a provider.
 
 ## View settings
 
@@ -219,7 +232,7 @@ interface Meeting extends CalendarEvent {
       name: "onEventsChange",
       type: "(events: TEvent[]) => void",
       description:
-        "Called with the full next list whenever events change: drag, resize, create, an edit in the details, delete, duplicate, cut, paste, undo and redo. A repeating event stays one event; an edited occurrence is added as its own.",
+        "Called with the full next list whenever events change: drag, resize, create, an edit in the details, delete, duplicate, cut, paste, undo and redo, and once for each answer to the [repeating event question](#editing-a-repeating-event). A repeating event stays one event; an edited occurrence is added as its own.",
     },
     {
       name: "view",
@@ -408,13 +421,13 @@ interface Meeting extends CalendarEvent {
       name: "onEventCreate",
       type: "(event: TEvent) => void",
       description:
-        "Called after an event is added: one created by clicking an empty slot, a duplicate or a paste, an occurrence of a repeating event stored on its first edit (with `seriesId` and `originalStart`), or one `undo` or `redo` brings back.",
+        "Called after an event is added: one created by clicking an empty slot, a duplicate or a paste, an occurrence of a repeating event stored on its first edit (with `seriesId` and `originalStart`), the new series that **This and following events** starts and the dates it takes over, or one `undo` or `redo` brings back.",
     },
     {
       name: "onEventUpdate",
       type: "(event: TEvent) => void",
       description:
-        "Called after an event changes: drag, resize, keyboard move, an edit in the details, or `undo` and `redo` changing it back.",
+        "Called after an event changes: drag, resize, keyboard move, an edit in the details, a series and its dates an answer to the [repeating event question](#editing-a-repeating-event) changes, or `undo` and `redo` changing it back.",
     },
     {
       name: "onEventDelete",
@@ -648,15 +661,21 @@ Returns the state and actions of the nearest `CalendarProvider`. Pass your event
     },
     {
       name: "updateEvent",
+      type: "(event: TEvent, scope?: SeriesEditScope) => void",
+      description:
+        'Replaces the event with the same id. For a date of a repeating event, a view first asks which events the change applies to; `scope` (`"this"`, `"following"` or `"all"`) applies it without asking. A generated occurrence changed with `"this"` is added instead, through `onEventCreate`: see [Repeating events](#repeating-events).',
+    },
+    {
+      name: "editEvent",
       type: "(event: TEvent) => void",
       description:
-        "Replaces the event with the same id. A generated occurrence of a repeating event is added instead, through `onEventCreate`: see [Repeating events](#repeating-events).",
+        "Changes the event the way the details do: a selected date of a repeating event waits, marked with a dot, and asks once it is left. Other events change at once.",
     },
     {
       name: "deleteEvent",
-      type: "(eventId: string) => void",
+      type: "(eventId: string, scope?: SeriesEditScope) => void",
       description:
-        "Deletes the event through `onEventsChange` and `onEventDelete`, and clears the selection when it was selected. Undoable.",
+        'Deletes the event through `onEventsChange` and `onEventDelete`, and clears the selection when it was selected. Undoable. For a date of a repeating event, a view first asks which events to delete; `scope` (`"this"`, `"following"` or `"all"`) deletes them without asking.',
     },
     {
       name: "duplicateEvent",
@@ -1130,21 +1149,51 @@ Exported from `@/lib/recurrence`. The views and the provider use them, so a view
   rows={[
     {
       name: "expandRecurringEvents",
-      type: "(events, range: VisibleRange) => TEvent[]",
+      type: "(events, range: VisibleRange, timeZone?: string) => TEvent[]",
       description:
-        "What to draw for the dates in `range`: events that don't repeat as they are, and each repeating event's occurrences that overlap the range, its first date as the event itself. At most `MAX_OCCURRENCES_PER_RANGE` (1000) per series.",
+        "What to draw for the dates in `range`: events that don't repeat as they are, and each repeating event's occurrences that overlap the range, its first date as the event itself. At most `MAX_OCCURRENCES_PER_RANGE` (1000) per series. With the calendar's `timeZone` (`useCalendarConfig().timeZone`), `events`, `range` and the events returned read on that zone's clock, as `useCalendar()` hands them out; each series still repeats in its own zone.",
     },
     {
       name: "findEventOrOccurrence",
-      type: "(events, id) => TEvent | null",
+      type: "(events, id, timeZone?: string) => TEvent | null",
       description:
-        "The stored event with that id, else the generated occurrence it names (`launch-2026-06-20`), else `null`.",
+        "The stored event with that id, else the generated occurrence it names (`launch-2026-06-20`), else `null`. With the calendar's `timeZone`, `events` and the event returned read on that zone's clock.",
     },
     {
       name: "applyRecurringEdit",
       type: "(events, previous, edited) => TEvent",
       description:
-        "The event to store for an edit, as `updateEvent` does it: an occurrence keeps `seriesId` and `originalStart` unless its rule changed, and the series' event moved to another day takes its rule along.",
+        "The event to store for an edit of one event: an occurrence keeps `seriesId` and `originalStart` unless its rule changed, and the series' event moved to another day takes its rule along.",
+    },
+    {
+      name: "findEventSeries",
+      type: "(events, event) => TEvent | null",
+      description:
+        "The stored series event a drawn date belongs to (the event itself on its first date), or `null` for an event that doesn't repeat.",
+    },
+    {
+      name: "getSeriesEditScopes",
+      type: "(events, before, after) => SeriesEditScope[]",
+      description:
+        'The options the question offers for a change: `["this", "following", "all"]`, without `"following"` on the first date and without `"this"` for a repeat rule change. Empty when nothing changed or the event doesn\'t repeat.',
+    },
+    {
+      name: "getSeriesDeleteScopes",
+      type: "(events, event) => SeriesEditScope[]",
+      description:
+        'The options for deleting a date: `["this", "all"]` on the first date, else all three.',
+    },
+    {
+      name: "getSeriesEditChanges",
+      type: "(options: SeriesEditOptions) => SeriesEditResult",
+      description:
+        "What an answer changes: the deletes, updates and creates to apply and report as one undo step, in that order, and the id the changed date is drawn under afterwards.",
+    },
+    {
+      name: "getSeriesDeleteChanges",
+      type: "(options: SeriesDeleteOptions) => EventHistoryChange[]",
+      description:
+        "What deleting a date with an option changes, in the same order.",
     },
   ]}
 />

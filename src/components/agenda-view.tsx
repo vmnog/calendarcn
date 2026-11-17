@@ -34,8 +34,13 @@ import {
   EventContentSlot,
   useCalendar,
   useCalendarConfig,
+  useCalendarSeriesScope,
   useCalendarViewSync,
 } from "./calendar-provider";
+import {
+  EventSeriesScopeDialog,
+  SeriesChangeDot,
+} from "./event-series-scope-dialog";
 import {
   DECLINED_EVENT_OUTLINE_CLASS,
   DECLINED_EVENT_TEXT_CLASS,
@@ -225,14 +230,18 @@ export function AgendaView({
     scrollContainerRef.current?.scrollTo({ top: 0 });
   }, [currentDate]);
 
+  const { previewEvents } = useCalendarSeriesScope();
   const listedDays = useMemo(() => {
-    // A repeating event is listed under each of its dates in the range,
-    // and the events the viewer declined only while they're shown
+    // A repeating event is listed under each of its dates in the range, a
+    // change to a repeating event's date that waits shows on that date, and
+    // the events the viewer declined are listed only while they're shown
     const occurrences = filterDeclinedEvents(
-      expandRecurringEvents(
-        events,
-        { start: rangeStart, end: addDays(rangeEnd, 1) },
-        timeZone,
+      previewEvents(
+        expandRecurringEvents(
+          events,
+          { start: rangeStart, end: addDays(rangeEnd, 1) },
+          timeZone,
+        ),
       ),
       showDeclinedEvents,
     );
@@ -251,6 +260,7 @@ export function AgendaView({
     showDeclinedEvents,
     today,
     timeZone,
+    previewEvents,
   ]);
 
   const months = useMemo(() => groupByMonth(listedDays), [listedDays]);
@@ -411,6 +421,8 @@ export function AgendaView({
           />
         )}
       </div>
+      {/* Asks "This event / This and following / All events" for a change to a repeating event's date */}
+      <EventSeriesScopeDialog />
     </CalendarPopoverBoundaryProvider>
   );
 }
@@ -637,6 +649,7 @@ function AgendaEventRow({
                   showsDeclined && DECLINED_EVENT_TEXT_CLASS,
                 )}
               >
+                <SeriesChangeDot eventId={event.id} />
                 {event.title}
               </span>
               <span

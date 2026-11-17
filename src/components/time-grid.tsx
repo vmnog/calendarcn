@@ -45,8 +45,10 @@ import type {
 import {
   useCalendar,
   useCalendarConfig,
+  useCalendarSeriesScope,
   useCalendarViewSync,
 } from "./calendar-provider";
+import { EventSeriesScopeDialog } from "./event-series-scope-dialog";
 import { WeekViewAllDayRow } from "./week-view-all-day-row";
 import { CalendarDayHeaders } from "./calendar-day-headers";
 import { WeekViewGrid } from "./week-view-grid";
@@ -558,18 +560,29 @@ export function TimeGrid({
     bufferedDayDates[bufferedDayDates.length - 1],
     1,
   ).getTime();
-  // Without the events the viewer declined while they're hidden
+  const { previewEvents } = useCalendarSeriesScope();
+  // A change to a repeating event's date that waits shows on that date, and
+  // the events the viewer declined only while they're shown
   const displayedEvents = React.useMemo(
     () =>
       filterDeclinedEvents(
-        expandRecurringEvents(
-          events,
-          { start: new Date(bufferStartTime), end: new Date(bufferEndTime) },
-          timeZone,
+        previewEvents(
+          expandRecurringEvents(
+            events,
+            { start: new Date(bufferStartTime), end: new Date(bufferEndTime) },
+            timeZone,
+          ),
         ),
         showDeclinedEvents,
       ),
-    [events, bufferStartTime, bufferEndTime, timeZone, showDeclinedEvents],
+    [
+      events,
+      bufferStartTime,
+      bufferEndTime,
+      timeZone,
+      previewEvents,
+      showDeclinedEvents,
+    ],
   );
   const displayedAllDayEvents = React.useMemo(
     () => displayedEvents.filter((e) => e.isAllDay || isMultiDayEvent(e)),
@@ -806,6 +819,8 @@ export function TimeGrid({
           </div>
         </div>
       </div>
+      {/* Asks "This event / This and following / All events" for a change to a repeating event's date */}
+      <EventSeriesScopeDialog />
     </CalendarPopoverBoundaryProvider>
   );
 }

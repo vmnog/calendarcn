@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import {
+  answerThisEvent,
   boxOf,
   calendarEvent,
   detailFields,
@@ -65,6 +66,8 @@ test("Delete in the right-click menu removes the event, and Cmd+Z brings it back
   const event = calendarEvent(page, "Launch Review");
   await event.click({ button: "right" });
   await page.getByRole("button", { name: "Delete", exact: true }).click();
+  // Launch Review repeats: its question's first option, This event
+  await answerThisEvent(page, "Delete event");
   await expect(event).toHaveCount(0);
   await expect(announcement(page)).toHaveText("Deleted Launch Review");
 
@@ -88,6 +91,7 @@ test("Backspace and Delete remove the selected event and close its details", asy
 
   await calendarEvent(page, "Launch Review").click();
   await page.keyboard.press("Delete");
+  await answerThisEvent(page, "Delete event");
   await expect(calendarEvent(page, "Launch Review")).toHaveCount(0);
 });
 
