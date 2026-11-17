@@ -30,8 +30,10 @@ export function WeekViewTimeIndicator({
   timeAxisWidth = BADGE_COLUMN_WIDTH,
   className,
 }: WeekViewTimeIndicatorProps) {
-  const currentTime = useNow();
-  const { dayStartHour, dayEndHour, hourCycle, locale } = useCalendarConfig();
+  const { dayStartHour, dayEndHour, hourCycle, locale, timeZone } =
+    useCalendarConfig();
+  // On the calendar's clock, like the hour rows
+  const currentTime = useNow(timeZone);
 
   // Check if today is visible in the current week
   const isTodayVisible = days.some((day) => day.isToday);

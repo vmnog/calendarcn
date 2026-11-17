@@ -127,10 +127,10 @@ function YearViewDayButton({
 export function YearView({ onDayClick, className }: YearViewProps) {
   const { currentDate, events, viewSettings, weekStartsOn, showDay, loading } =
     useCalendar();
-  const { locale } = useCalendarConfig();
+  const { locale, timeZone } = useCalendarConfig();
   const { reportView } = useCalendarViewSync();
   // `null` on the server and during hydration, so no day is marked as today
-  const today = useToday();
+  const today = useToday(timeZone);
   /** The scrolling months, searched for a day's button by its date */
   const monthsRef = useRef<HTMLDivElement | null>(null);
 
@@ -150,8 +150,11 @@ export function YearView({ onDayClick, className }: YearViewProps) {
     const range = { start, end: addYears(start, 1) };
     // Repeating events count on each of their dates (ADR-007), generated
     // for the year and never stored, as month view draws them
-    return countEventsByDay(expandRecurringEvents(events, range), range);
-  }, [events, yearStartTime]);
+    return countEventsByDay(
+      expandRecurringEvents(events, range, timeZone),
+      range,
+    );
+  }, [events, yearStartTime, timeZone]);
 
   const modifiers = useMemo(
     () => ({
