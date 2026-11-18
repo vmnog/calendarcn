@@ -2,6 +2,7 @@
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "command-menu",
   "title": "Command Menu",
+  "author": "vmnog <https://vmnog.com>",
   "description": "The live demo's ⌘K menu: create an event, go to a typed date, today, previous/next, the views and the time zones, plus your app's panel, search, shortcut, theme and .ics commands.",
   "registryDependencies": [
     "@calendarcn/calendar-core",
@@ -31,5 +32,9 @@
       "background-color": "rgb(0 0 0 / 0.3)"
     }
   },
+  "categories": [
+    "calendar",
+    "navigation"
+  ],
   "type": "registry:component"
 }

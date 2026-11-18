@@ -3,27 +3,16 @@ title: Installation
 description: Add CalendarCN to your project with the shadcn CLI.
 ---
 
-<Steps>
-<Step>
-
-### Set up shadcn/ui
-
-CalendarCN builds on shadcn/ui and Tailwind CSS 4. It works with both component libraries shadcn/ui offers, Base UI and Radix. In a new project, pick either one when you set up shadcn/ui:
+In a project that has [shadcn/ui](https://ui.shadcn.com/docs/installation), one command adds the full calendar:
 
 ```npm
-npx shadcn init -b base
+npx shadcn@latest add @calendarcn/calendar
 ```
 
-Use `-b radix` for Radix instead.
+The CLI copies the files into your components, hooks and lib folders, installs their npm dependencies and the shadcn/ui components they use, and adds the calendar's color tokens to your CSS file. Then [render it](#render-it). New to shadcn/ui, or want only some of the pieces? Follow the [steps](#step-by-step) below.
 
-Projects already on a Radix style (`new-york`, `radix-nova` and the other `radix-*` presets) or a Base UI style (`base-nova` and the other `base-*` presets) are ready. See the [shadcn/ui installation guide](https://ui.shadcn.com/docs/installation) for frameworks other than Next.js.
-
-</Step>
-<Step>
-
-### Add the registry
-
-Add the `@calendarcn` namespace to `registries` in your `components.json`. The registry is served from this site:
+<Callout title="No registry to add">
+  The CLI finds `@calendarcn` in shadcn's [registry directory](https://ui.shadcn.com/docs/registry/registry-index) and writes it under `registries` in your `components.json` during the first `add`. Add it yourself in two cases: with a shadcn CLI older than 3.7.0, which can't read the directory, and before the first `add` if you use the [shadcn MCP server](/docs/ai#shadcn-mcp-server), which only knows the registries in `components.json`. `npx shadcn@latest registry add @calendarcn` writes the same entry:
 
 ```json title="components.json"
 {
@@ -33,30 +22,61 @@ Add the `@calendarcn` namespace to `registries` in your `components.json`. The r
 }
 ```
 
+</Callout>
+
+## Requirements
+
+|                       | What CalendarCN needs                                                                                                                                                                                                                                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Tailwind CSS**      | 4. The calendar's CSS uses `@utility`, which Tailwind CSS 3 doesn't have.                                                                                                                                                                                                                                                                         |
+| **React**             | 19. React 18 isn't supported: the calendar renders and drags there, but its files fail the type check, and React 18 ignores the `inert` attribute that keeps the days off screen out of the tab order.                                                                                                                                            |
+| **Framework**         | Next.js or Vite. No file imports from `next`, so the other frameworks shadcn/ui sets up (TanStack Start, React Router, Astro, Laravel) should work, but they aren't tested.                                                                                                                                                                       |
+| **shadcn/ui**         | Base UI or Radix. Both are tested on every pull request.                                                                                                                                                                                                                                                                                          |
+| **shadcn CLI**        | 3.7.0 or newer finds the registry by itself, and `npx shadcn@latest` always is. With an older one, add the `registries` entry above first.                                                                                                                                                                                                        |
+| **TypeScript**        | `strict` passes. `noUncheckedIndexedAccess` doesn't: turn it off for the project the calendar's files are in.                                                                                                                                                                                                                                     |
+| **Monorepo**          | Works with shadcn's [monorepo](https://ui.shadcn.com/docs/monorepo) template. Run `add` in the app (`apps/web`): the calendar's files go to the app, and the shadcn/ui components and the color tokens to `packages/ui`. The template turns on `noUncheckedIndexedAccess`, so set it to `false` in the app's `tsconfig.json`. See the note below. |
+| **Server components** | The calendar's components are client components (`"use client"`), so they work in a Next.js App Router project. The calendar draws in the browser only: see [Server rendering](/docs/components/calendar-core#server-rendering).                                                                                                                  |
+| **react-day-picker**  | 9 or 10, installed for you. The full calendar gets 10, the version the shadcn/ui `calendar` component asks for. Adding `year-view` or `mini-calendar` by itself installs 9, also over a 10 that's already there. Both work.                                                                                                                       |
+
+Checked on November 17, 2026 by installing `@calendarcn/calendar` with shadcn 4.23.0 into new projects, then type-checking, building and dragging an event in each: Next.js 16.4 on Base UI and on Radix, Vite 8, and the monorepo template, all with React 19.3 and Tailwind CSS 4.3.
+
+In a monorepo, the CLI adds the npm packages (`date-fns`, `@floating-ui/react-dom`, `react-day-picker` and `cmdk`) to `packages/ui/package.json`, while the calendar's files that import them are in the app. npm workspaces resolve them from the root. If your package manager doesn't, add `date-fns` and `@floating-ui/react-dom` to the app's `package.json` too.
+
+## Step by step
+
+<Steps>
+<Step>
+
+### Set up shadcn/ui
+
+CalendarCN builds on shadcn/ui and Tailwind CSS 4. It works with both component libraries shadcn/ui offers, Base UI and Radix. In a new project, pick either one when you set up shadcn/ui:
+
+```npm
+npx shadcn@latest init -b base
+```
+
+Use `-b radix` for Radix instead.
+
+Projects already on a Radix style (`new-york`, `radix-nova` and the other `radix-*` presets) or a Base UI style (`base-nova` and the other `base-*` presets) are ready. See the [shadcn/ui installation guide](https://ui.shadcn.com/docs/installation) for frameworks other than Next.js.
+
 </Step>
 <Step>
 
 ### Add components
 
-Add the full calendar:
+Add the full calendar with the command at the top of this page. Or the whole [live demo](/), sidebars and command menu included:
 
 ```npm
-npx shadcn add @calendarcn/calendar
-```
-
-Or the whole [live demo](/), sidebars and command menu included:
-
-```npm
-npx shadcn add @calendarcn/calendar-app
+npx shadcn@latest add @calendarcn/calendar-app
 ```
 
 Or only the pieces you need, like the week view:
 
 ```npm
-npx shadcn add @calendarcn/week-view
+npx shadcn@latest add @calendarcn/week-view
 ```
 
-The CLI copies the files into your components, hooks and lib folders, installs their npm dependencies and the shadcn/ui components they use, and adds the calendar's color tokens to your CSS file.
+[Registry items](#registry-items) lists them all.
 
 </Step>
 <Step>
@@ -100,10 +120,19 @@ The calendar fills its parent's height, so give the parent one. It renders in th
 </Step>
 </Steps>
 
+<Callout title="The D key in a new shadcn/ui project">
+  The projects `shadcn init` creates come with a `ThemeProvider`
+  (`components/theme-provider.tsx`) that switches between light and dark when
+  you press <Kbd>D</Kbd>. <Kbd>D</Kbd> is also the calendar's day view shortcut,
+  so one press does both. Remove `<ThemeHotkey />` from that file, or [change
+  the calendar's
+  shortcuts](/docs/keyboard-shortcuts#use-them-in-your-own-calendar).
+</Callout>
+
 <Callout title="Next.js Cache Components">
-  With `cacheComponents` on (the default for new Next.js 16 apps), `new Date()`
-  can't run while a page prerenders. Create date-based events in an effect or an
-  event handler, or load them from your API, as above.
+  With `cacheComponents: true` in your `next.config.ts` (a new project doesn't
+  set it), `new Date()` can't run while a page prerenders. Create date-based
+  events in an effect or an event handler, or load them from your API, as above.
 </Callout>
 
 ## Registry items
@@ -125,6 +154,7 @@ The calendar fills its parent's height, so give the parent one. It renders in th
 | `@calendarcn/sample-data`          | The live demo's events, calendars, contacts, rooms and places, and the docs examples' week of events. See [Sample Data](/docs/sample-data).                                                                                                                                                                                                                 |
 | `@calendarcn/calendar-header`      | The live demo's header: month and year with the period on screen, view switcher, today, previous/next and panel toggles. Also its parts, for a header of your own.                                                                                                                                                                                          |
 | `@calendarcn/command-menu`         | The live demo's ⌘K menu: today, previous/next and the views, plus your app's panel, theme and .ics commands.                                                                                                                                                                                                                                                |
+| `@calendarcn/calendar-toaster`     | Notion Calendar's toasts after a delete, a cut or a copy, with Undo. See [Calendar Toaster](/docs/components/calendar-toaster).                                                                                                                                                                                                                             |
 | `@calendarcn/calendar-settings`    | Notion Calendar's settings dialog: the calendar view, time format and theme, and each account's calendars.                                                                                                                                                                                                                                                  |
 | `@calendarcn/people-picker`        | The dialog <Kbd>F</Kbd> and <Kbd>P</Kbd> open: search your contacts to meet with someone or show a teammate's calendar. See [People Picker](/docs/components/people-picker).                                                                                                                                                                                |
 | `@calendarcn/calendar-sidebar`     | The demo's left sidebar: mini calendar, scheduling, "Meet with...", calendar list and theme toggle, inline or as an overlay.                                                                                                                                                                                                                                |
@@ -134,7 +164,7 @@ The calendar fills its parent's height, so give the parent one. It renders in th
 | `@calendarcn/details-sidebar`      | The demo's right context panel: the selected event's details, event search and useful shortcuts.                                                                                                                                                                                                                                                            |
 | `@calendarcn/sidebar-overlay`      | A sidebar as a modal sheet on narrow screens, and the sidebars' color tokens.                                                                                                                                                                                                                                                                               |
 
-Each item pulls in the ones it builds on, so `calendar` installs all of them except `day-view` and `week-view`, which it doesn't need (it renders the time grid directly), `ics`, which you add to import or export .ics files, `conference-providers` and `sample-data`, which you add to try the calendar with the live demo's services and data, `command-menu`, `people-picker`, and the sidebars, which you add around it. `calendar-sidebar` installs the mini calendar, calendar list, theme toggle and sidebar overlay. `calendar-app` installs everything the live demo uses, `ics`, `conference-providers`, `sample-data`, `command-menu`, `people-picker`, `calendar-settings` and both sidebars included.
+Each item pulls in the ones it builds on, so `calendar` installs all of them except `day-view` and `week-view`, which it doesn't need (it renders the time grid directly), `ics`, which you add to import or export .ics files, `conference-providers` and `sample-data`, which you add to try the calendar with the live demo's services and data, and `command-menu`, `people-picker`, `calendar-toaster`, `calendar-settings` and the sidebars, which you add around it. `calendar-sidebar` installs the mini calendar, calendar list, theme toggle and sidebar overlay. `calendar-app` installs everything the live demo uses, `ics`, `conference-providers`, `sample-data`, `command-menu`, `people-picker`, `calendar-toaster`, `calendar-settings` and both sidebars included.
 
 ## Updating
 
