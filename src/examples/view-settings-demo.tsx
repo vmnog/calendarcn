@@ -39,7 +39,7 @@ function Settings() {
   } = useCalendar();
 
   return (
-    <div className="flex h-12 shrink-0 items-center gap-5 border-b px-3 text-sm">
+    <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-5 gap-y-2 border-b px-3 py-2 text-sm">
       <label className="flex items-center gap-2">
         <Switch
           checked={viewSettings.showWeekends}

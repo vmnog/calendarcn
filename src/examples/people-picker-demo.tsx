@@ -32,7 +32,7 @@ export function PeoplePickerDemo() {
       defaultNumberOfDays={5}
     >
       <div className="flex h-[600px] flex-col">
-        <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
+        <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-2 border-b px-3 py-2">
           <Button
             variant="outline"
             size="sm"

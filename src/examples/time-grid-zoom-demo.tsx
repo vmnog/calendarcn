@@ -32,7 +32,7 @@ function ZoomControls() {
 
   return (
     <div className="flex h-12 shrink-0 items-center gap-1 border-b px-3">
-      <p className="flex-1 text-sm text-muted-foreground tabular-nums">
+      <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground tabular-nums">
         {hourHeight === null
           ? "Hours fill the grid"
           : `${hourHeight}px an hour`}

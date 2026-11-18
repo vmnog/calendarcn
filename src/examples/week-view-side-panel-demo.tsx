@@ -15,12 +15,15 @@ export function WeekViewSidePanelDemo() {
 
   return (
     <CalendarProvider defaultEvents={initialEvents} defaultNumberOfDays={4}>
-      <div className="flex h-[600px]">
-        <div className="min-w-0 flex-1">
-          {/* No popover beside the event: the panel shows the selection */}
-          <WeekView scrollToHour={8} showEventPopover={false} />
+      {/* The panel sits beside the view when there's room, below it otherwise */}
+      <div className="@container h-[600px]">
+        <div className="flex h-full flex-col @lg:flex-row">
+          <div className="min-h-0 min-w-0 flex-1">
+            {/* No popover beside the event: the panel shows the selection */}
+            <WeekView scrollToHour={8} showEventPopover={false} />
+          </div>
+          <SidePanel />
         </div>
-        <SidePanel />
       </div>
     </CalendarProvider>
   );
@@ -33,14 +36,14 @@ function SidePanel() {
 
   if (!selectedEvent) {
     return (
-      <aside className="w-56 shrink-0 border-l p-4 text-sm text-muted-foreground">
+      <aside className="h-40 shrink-0 border-t p-4 text-sm text-muted-foreground @lg:h-auto @lg:w-56 @lg:border-t-0 @lg:border-l">
         Click an event to see it here.
       </aside>
     );
   }
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col gap-3 border-l p-4 text-sm">
+    <aside className="flex h-40 shrink-0 flex-col gap-3 border-t p-4 text-sm @lg:h-auto @lg:w-56 @lg:border-t-0 @lg:border-l">
       <input
         aria-label="Title"
         placeholder="Title"

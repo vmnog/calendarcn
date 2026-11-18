@@ -15,12 +15,15 @@ export function YearViewDayEventsDemo() {
 
   return (
     <CalendarProvider defaultView="year" defaultEvents={initialEvents}>
-      <div className="flex h-[600px]">
-        <div className="min-w-0 flex-1">
-          {/* `onDayClick` replaces the default, which opens the day's week */}
-          <YearView onDayClick={setPickedDay} />
+      {/* The list sits beside the year when there's room, below it otherwise */}
+      <div className="@container h-[600px]">
+        <div className="flex h-full flex-col @lg:flex-row">
+          <div className="min-h-0 min-w-0 flex-1">
+            {/* `onDayClick` replaces the default, which opens the day's week */}
+            <YearView onDayClick={setPickedDay} />
+          </div>
+          <DayEvents day={pickedDay} />
         </div>
-        <DayEvents day={pickedDay} />
       </div>
     </CalendarProvider>
   );
@@ -36,7 +39,7 @@ function DayEvents({ day }: { day: Date | null }) {
     : [];
 
   return (
-    <aside className="w-48 shrink-0 overflow-y-auto border-l p-3 text-sm">
+    <aside className="h-36 shrink-0 overflow-y-auto border-t p-3 text-sm @lg:h-auto @lg:w-48 @lg:border-t-0 @lg:border-l">
       <h3 className="font-semibold">
         {day ? format(day, "EEEE, MMM d") : "Pick a day"}
       </h3>

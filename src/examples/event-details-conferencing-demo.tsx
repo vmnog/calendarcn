@@ -51,7 +51,7 @@ export function EventDetailsConferencingDemo() {
   return (
     // Without `conferenceProviders` the Conferencing row is hidden
     <CalendarProvider conferenceProviders={CONFERENCE_PROVIDERS}>
-      <div className="flex h-full items-start justify-center overflow-y-auto bg-muted/40 p-6">
+      <div className="flex h-full items-start justify-center overflow-y-auto bg-muted/40 p-4">
         <div className="w-[320px] shrink-0 overflow-hidden rounded-lg bg-popover shadow-sm ring-1 ring-black/5 dark:shadow-none dark:ring-white/10">
           <EventDetailPanel event={event} onEventChange={setEvent} />
         </div>

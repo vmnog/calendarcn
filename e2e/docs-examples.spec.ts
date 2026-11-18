@@ -309,7 +309,7 @@ test("your own buttons beside the calendar switch its view", async ({
   await openPage(page, "calendar");
   const frame = await showExample(page, "calendar-buttons-demo");
 
-  // The panel's own view buttons: the toolbar's switcher is a menu
+  // The bar's own view buttons: the toolbar's switcher is a menu
   await frame.getByRole("button", { name: "month", exact: true }).click();
   await expect(frame.locator('[data-date="2026-06-04"]')).toBeVisible();
 

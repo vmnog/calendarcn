@@ -40,7 +40,7 @@ export function EventDetailsSectionsDemo() {
   return (
     // The provider supplies the contacts the participants field suggests
     <CalendarProvider contacts={CONTACTS}>
-      <div className="flex h-full items-start justify-center overflow-y-auto bg-muted/40 p-6">
+      <div className="flex h-full items-start justify-center overflow-y-auto bg-muted/40 p-4">
         <div className="w-[320px] shrink-0 rounded-lg bg-popover shadow-sm ring-1 ring-black/5 dark:shadow-none dark:ring-white/10">
           <h3 className="px-4 pt-3 text-sm font-semibold">{event.title}</h3>
           <WhenAndWho event={event} onEventChange={setEvent} />

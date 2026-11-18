@@ -24,21 +24,24 @@ export function SchedulingPanelDemo() {
         // The meeting length the text asks for: "Would 45 min ..."
         defaultDurationMinutes={45}
       >
-        <div className="flex h-[600px]">
-          <div className="min-w-0 flex-1">
-            <WeekView scrollToHour={8} />
+        {/* The panel sits beside the view when there's room, below it otherwise */}
+        <div className="@container h-[600px]">
+          <div className="flex h-full flex-col @2xl:flex-row">
+            <div className="min-h-0 min-w-0 flex-1">
+              <WeekView scrollToHour={8} />
+            </div>
+            <aside
+              className={cn(
+                // The panel is drawn in the calendar sidebars' colors
+                CALENDAR_SIDEBAR_COLORS_CLASS,
+                "flex h-64 shrink-0 flex-col border-t bg-sidebar text-sidebar-foreground @2xl:h-auto @2xl:w-[309px] @2xl:border-t-0 @2xl:border-l",
+              )}
+            >
+              {/* Renders nothing until times are being marked */}
+              <AvailabilityPanel />
+              <StartScheduling />
+            </aside>
           </div>
-          <aside
-            className={cn(
-              // The panel is drawn in the calendar sidebars' colors
-              CALENDAR_SIDEBAR_COLORS_CLASS,
-              "flex w-[309px] shrink-0 flex-col border-l bg-sidebar text-sidebar-foreground",
-            )}
-          >
-            {/* Renders nothing until times are being marked */}
-            <AvailabilityPanel />
-            <StartScheduling />
-          </aside>
         </div>
       </SchedulingProvider>
     </CalendarProvider>

@@ -17,10 +17,11 @@ export function CalendarButtonsDemo() {
   const [initialEvents] = React.useState(() => createSampleEvents(new Date()));
 
   return (
-    <div className="flex h-[600px]">
+    <div className="flex h-[600px] flex-col">
       <Calendar
         defaultEvents={initialEvents}
-        className="min-w-0 flex-1"
+        // The calendar takes the height the bar under it leaves
+        className="h-auto flex-1"
         // Several calendars share this docs page, so the single-key shortcuts stay off
         shortcuts={false}
       >
@@ -37,8 +38,7 @@ function QuickJump() {
     useCalendar();
 
   return (
-    <aside className="flex w-40 shrink-0 flex-col gap-1.5 border-l p-3">
-      <p className="text-xs font-medium text-muted-foreground">Jump to</p>
+    <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-t p-2">
       <Button variant="outline" size="sm" onClick={goToToday}>
         Today
       </Button>
@@ -49,21 +49,20 @@ function QuickJump() {
       >
         A month ahead
       </Button>
-      <p className="mt-3 text-xs font-medium text-muted-foreground">View</p>
       {VIEWS.map((option) => (
         <Button
           key={option}
           variant={view === option ? "secondary" : "ghost"}
           size="sm"
-          className="justify-start capitalize"
+          className="capitalize"
           onClick={() => switchView(option)}
         >
           {option}
         </Button>
       ))}
-      <p className="mt-auto text-xs text-muted-foreground tabular-nums">
+      <p className="ml-auto text-xs text-muted-foreground tabular-nums">
         From {format(currentDate, "MMM d, yyyy")}
       </p>
-    </aside>
+    </div>
   );
 }
