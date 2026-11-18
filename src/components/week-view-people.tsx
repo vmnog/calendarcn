@@ -131,8 +131,8 @@ interface FreeTimeBlockProps {
 
 /**
  * A stretch of free time everyone shares, under the events of a day column:
- * a soft green band labelled "Free". It lets clicks through to the column,
- * so clicking it creates an event there.
+ * a soft green band labelled "Free". It lets the pointer through to the
+ * column, so a double-click or a drag on it creates an event there.
  */
 export function FreeTimeBlock({ span, hourHeight }: FreeTimeBlockProps) {
   const { dayStartHour, dayEndHour, hourCycle, locale } = useCalendarConfig();

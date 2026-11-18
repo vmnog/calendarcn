@@ -89,23 +89,29 @@ test("the agenda starts on the calendar's today", async ({ page }) => {
   );
 });
 
-test("a click creates the event at that row's time in the calendar's zone", async ({
+test("a double-click creates the event at that row's time in the calendar's zone", async ({
   page,
 }) => {
-  // Monday June 8 is free at 3 PM in Tokyo; click a few minutes past the line
+  // Monday June 8 is free at 3 PM in Tokyo; double-click just past the line
   await text(page, "3 PM").scrollIntoViewIfNeeded();
   const monday = await boxOf(text(page, "8"));
   const threePm = await boxOf(text(page, "3 PM"));
-  await page.mouse.click(
-    monday.x + monday.width / 2,
-    centerY(threePm) + (await hourHeight(page)) / 6,
-  );
+  await page.mouse.dblclick(monday.x + monday.width / 2, centerY(threePm) + 3);
 
-  await expect(exampleEvent(page, "New event")).toHaveAccessibleName(
-    "New event, 3:00 PM to 4:00 PM, Monday, June 8",
+  // A draft on the calendar's clock, not stored yet. Naming it saves it
+  const title = page
+    .getByRole("dialog", { name: "Event details" })
+    .getByPlaceholder("Title");
+  await expect(title).toBeFocused();
+  await expect(stored(page, "Review")).toHaveCount(0);
+  await page.keyboard.type("Review");
+  await page.keyboard.press("Enter");
+
+  await expect(exampleEvent(page, "Review")).toHaveAccessibleName(
+    "Review, 3:00 PM to 3:30 PM, Monday, June 8",
   );
   // The app stores the instant: 3 PM in Tokyo is 2 AM in New York
-  await expect(stored(page, "New event")).toHaveText("New event, Mon 2:00 AM");
+  await expect(stored(page, "Review")).toHaveText("Review, Mon 2:00 AM");
 });
 
 test("a dragged event moves the instant the app stores", async ({ page }) => {

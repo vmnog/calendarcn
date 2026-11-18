@@ -120,7 +120,7 @@ const [events, setEvents] = React.useState<DetailedCalendarEvent[]>([]);
 - The eye beside a calendar in the sidebar hides its events: they leave every view and the event search, and come back when it's shown again. An event created on a hidden calendar, or moved to one, shows that calendar again.
 - `contacts` and `rooms` are who and what the details' participants field invites. `conferenceProviders` fill its Conferencing menu, and `locationSuggestions` its location field.
 - `contacts` are also who you can meet with: the sidebar's "Meet with...", <Kbd>F</Kbd> and <Kbd>P</Kbd> add them, and `contactEvents` holds their events, by email, to draw beside yours. See [Meeting with people](/docs/components/calendar-core#meeting-with-people).
-- `createEvent` builds the event a click on an empty slot creates, `onEventCreate`, `onEventUpdate` and `onEventSelect` report single changes, and `onVisibleRangeChange` with `loading` loads events by range: see [Loading Events](/docs/loading-events).
+- `createEvent` builds the event a double-click or a drag on empty space starts (see [Creating events](/docs/components/calendar-core#creating-events)), `onEventCreate`, `onEventUpdate` and `onEventSelect` report single changes, and `onVisibleRangeChange` with `loading` loads events by range: see [Loading Events](/docs/loading-events).
 
 ### .ics files
 

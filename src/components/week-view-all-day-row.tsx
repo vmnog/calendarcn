@@ -5,9 +5,14 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { isSameDay } from "date-fns";
 import { useCallback } from "react";
-import { calculateAllDayEventRows } from "@/lib/event-utils";
+import { useDoubleClick } from "@/hooks/use-double-click";
+import {
+  calculateAllDayEventRows,
+  getAllDayEventRange,
+} from "@/lib/event-utils";
 import { AllDayEventItem } from "./calendar-event-item";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
+import { AllDayEventDraft } from "./event-draft";
 import type {
   CalendarEvent,
   EventItemPopoverProps,
@@ -17,15 +22,23 @@ import type {
 const ALL_DAY_EVENT_HEIGHT = 24;
 const ALL_DAY_ROW_GAP = 2;
 
+/** Events in the row, and anything else that takes its own presses */
+const ALL_DAY_ROW_TARGET_SELECTOR = "[data-event-id], button, [role=button]";
+
 /**
  * All-day row for displaying all-day events
- * Shows "All-day" label on the left with day columns
+ * Shows "All-day" label on the left with day columns. Its empty space
+ * creates all-day events the way Notion Calendar does: a double-click on a
+ * day starts one there (`onEventCreate`) and a press that drags across days
+ * draws one over them (`onEventDrawPointerDown`).
  */
 export function WeekViewAllDayRow({
   days,
   allDayEvents = [],
   onEventClick,
   selectedEventId,
+  onEventCreate,
+  onEventDrawPointerDown,
   scrollStyle,
   allDayResizeState,
   onAllDayResizePointerDown,
@@ -65,6 +78,38 @@ export function WeekViewAllDayRow({
   const isMoveDrag =
     allDayResizeState?.isResizing && allDayResizeState.edge === "move";
 
+  const isDoubleClick = useDoubleClick();
+
+  /** The day whose column a press or click on the row's empty space is in */
+  const getEmptyDayAt = (e: React.MouseEvent<HTMLDivElement>): Date | null => {
+    if (!(e.target instanceof Element)) return null;
+    if (e.target.closest(ALL_DAY_ROW_TARGET_SELECTOR)) return null;
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return null;
+    const index = Math.floor(
+      ((e.clientX - rect.left) / rect.width) * days.length,
+    );
+    return days[index]?.date ?? null;
+  };
+
+  /** A press on empty space may become a drag that draws an all-day event */
+  const handleRowPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!onEventDrawPointerDown) return;
+    const day = getEmptyDayAt(e);
+    if (day) onEventDrawPointerDown(e, day);
+  };
+
+  /**
+   * A double-click on a day's empty space creates an all-day event there.
+   * A single click is left to bubble, so the view clears the selection.
+   */
+  const handleRowClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const day = getEmptyDayAt(e);
+    if (!day || !isDoubleClick(e) || !onEventCreate) return;
+    e.stopPropagation();
+    onEventCreate(getAllDayEventRange(day));
+  };
+
   return (
     <div
       className={cn(
@@ -85,7 +130,12 @@ export function WeekViewAllDayRow({
       {/* Day columns for all-day events - wrapped for scroll sync */}
       <div className="min-w-0 flex-1 overflow-clip">
         <div ref={allDayScrollContentRef} style={scrollStyle}>
-          <div className="relative" style={{ minHeight: `${contentHeight}px` }}>
+          <div
+            className="relative select-none"
+            style={{ minHeight: `${contentHeight}px` }}
+            onPointerDown={handleRowPointerDown}
+            onClick={handleRowClick}
+          >
             {/* Background grid */}
             <div
               aria-hidden
@@ -109,6 +159,13 @@ export function WeekViewAllDayRow({
                 );
               })}
             </div>
+
+            {/* The all-day event being created, under the events: its days, tinted */}
+            <AllDayEventDraft
+              days={days}
+              visibleStartIndex={visibleStartIndex}
+              visibleCount={visibleCount}
+            />
 
             {/* Events */}
             <div className="relative py-1 px-0.5">

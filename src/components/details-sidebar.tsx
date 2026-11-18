@@ -214,8 +214,10 @@ export function DetailsSidebar({
   const {
     events,
     selectedEvent,
+    eventDraft,
     clearSelection,
     editEvent,
+    updateEventDraft,
     previousInSeries,
     nextInSeries,
     showSeriesOccurrence,
@@ -511,6 +513,11 @@ export function DetailsSidebar({
           <EventDetailPanel
             event={selectedEvent}
             onEventChange={editEvent}
+            // An event being created: typing its title previews it, and
+            // its first edit saves it
+            onTitlePreview={
+              eventDraft?.id === selectedEvent.id ? updateEventDraft : undefined
+            }
             onPrevWeek={onPrevWeek}
             onNextWeek={onNextWeek}
             {...getEventActions(selectedEvent.id)}

@@ -5,6 +5,7 @@ import {
   CURRENT_WEEK_LABEL,
   calendarEvent,
   detailTitle,
+  draftTint,
   expectHeader,
   openCalendar,
 } from "./helpers";
@@ -170,26 +171,61 @@ test("text typed in the command menu searches events for it", async ({
   ).toBeVisible();
 });
 
-test("C creates an event at the next half hour, and undo removes it", async ({
+test("C starts a draft at the next half hour, saved once it is named, and undo removes it", async ({
   page,
 }) => {
   await page.keyboard.press("c");
 
-  const created = calendarEvent(page, "New event");
-  await expect(created).toHaveAccessibleName(
-    "New event, 8:00 AM to 9:00 AM, Thursday, June 4",
+  // A draft drawn as an event from the start, as Notion Calendar's C draws
+  // it: untitled, half an hour long, with its title focused
+  const draft = calendarEvent(page, "Untitled event");
+  await expect(draft).toHaveAccessibleName(
+    "Untitled event, 8:00 AM to 8:30 AM, Thursday, June 4",
   );
+  await expect(draft).toHaveAttribute("aria-pressed", "true");
+  await expect(draftTint(page)).toHaveCount(0);
   await expect(detailTitle(page)).toBeFocused();
-  await expect(detailTitle(page)).toHaveValue("New event");
+  await expect(detailTitle(page)).toHaveValue("");
 
-  // Enter keeps the title and leaves the field; then undo the create
+  // Naming it saves it; then undo the create
+  await page.keyboard.type("Quick call");
   await page.keyboard.press("Enter");
   await expect(detailTitle(page)).not.toBeFocused();
+  const created = calendarEvent(page, "Quick call");
+  await expect(created).toHaveAccessibleName(
+    "Quick call, 8:00 AM to 8:30 AM, Thursday, June 4",
+  );
   await page.keyboard.press("ControlOrMeta+z");
   await expect(created).toHaveCount(0);
 });
 
-test("Create event... in the command menu creates one, title focused", async ({
+test("Escape, twice, throws C's draft away", async ({ page }) => {
+  await page.keyboard.press("c");
+  const draft = calendarEvent(page, "Untitled event");
+  await expect(draft).toBeVisible();
+  await expect(detailTitle(page)).toBeFocused();
+
+  // Once to leave the title, once more for the draft
+  await page.keyboard.press("Escape");
+  await expect(draft).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(draft).toHaveCount(0);
+  await expect(detailTitle(page)).toHaveCount(0);
+});
+
+test("C in month view starts an all-day draft on today", async ({ page }) => {
+  await page.keyboard.press("m");
+  await expectHeader(page, "June 2026");
+  await page.keyboard.press("c");
+
+  await expect(calendarEvent(page, "Untitled event")).toHaveAccessibleName(
+    "Untitled event, all day, Thursday, June 4",
+  );
+  await expect(detailTitle(page)).toBeFocused();
+  await expect(page.getByRole("switch", { name: "All-day" })).toBeChecked();
+});
+
+test("Create event... in the command menu starts a draft, title focused", async ({
   page,
 }) => {
   // On another week, the event goes on its first day
@@ -202,15 +238,15 @@ test("Create event... in the command menu creates one, title focused", async ({
     .fill("create event");
   await page.keyboard.press("Enter");
 
-  await expect(calendarEvent(page, "New event")).toHaveAccessibleName(
-    "New event, 8:00 AM to 9:00 AM, Sunday, June 7",
+  await expect(calendarEvent(page, "Untitled event")).toHaveAccessibleName(
+    "Untitled event, 8:00 AM to 8:30 AM, Sunday, June 7",
   );
   await expect(detailTitle(page)).toBeFocused();
   await page.keyboard.type("Planning");
   await expect(calendarEvent(page, "Planning")).toBeVisible();
 });
 
-test("C after Go to date creates the event on the day gone to", async ({
+test("C after Go to date starts the draft on the day gone to", async ({
   page,
 }) => {
   await page.keyboard.press(".");
@@ -219,8 +255,8 @@ test("C after Go to date creates the event on the day gone to", async ({
   await expectHeader(page, "June 2026 Week 25");
 
   await page.keyboard.press("c");
-  await expect(calendarEvent(page, "New event")).toHaveAccessibleName(
-    "New event, 8:00 AM to 9:00 AM, Wednesday, June 17",
+  await expect(calendarEvent(page, "Untitled event")).toHaveAccessibleName(
+    "Untitled event, 8:00 AM to 8:30 AM, Wednesday, June 17",
   );
 });
 

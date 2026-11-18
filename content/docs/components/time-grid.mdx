@@ -18,7 +18,7 @@ The time grid lays out days as columns and hours as rows. [Day View](/docs/compo
 - Overlapping events placed side by side.
 - Drag an event to move it, including to another day. The grid scrolls when you reach its edge.
 - Drag the top or bottom edge of an event to resize it.
-- Click an empty slot to create an event.
+- Double-click an empty slot to create an event, or press and drag to draw one, as in Notion Calendar. The all-day row does the same for all-day events. See [Creating events](/docs/components/calendar-core#creating-events).
 - Visible hours, snap step and clock come from [`CalendarProvider`](/docs/components/calendar-core#calendarprovider): `dayStartHour`, `dayEndHour`, `snapMinutes` and `hourCycle`.
 - Additional time zones' hours beside the time axis, from the provider's [`secondaryTimeZones`](/docs/components/calendar-core#additional-time-zones). Each zone's label opens Notion Calendar's menu for it (change, make primary or secondary, remove), and the "+" left of "All-day" adds one.
 - The calendar's own zone, [`timeZone`](/docs/components/calendar-core#time-zone), labels the time axis, and a zone travelled to is filled in the primary color with an x that travels back home.

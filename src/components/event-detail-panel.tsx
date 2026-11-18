@@ -96,6 +96,15 @@ interface EventDetailPanelProps<
   onDelete?: () => void;
   /** Extra action buttons rendered in the header row (after the "..." menu). */
   headerActions?: React.ReactNode;
+  /**
+   * Set while `event` is a draft that isn't stored yet. Called with every
+   * keystroke in the title, to preview it without saving; `onEventChange`
+   * then saves the draft: on Enter in the title, when focus leaves a title
+   * that changed, or on any other field's first edit. Escape restores the
+   * title and saves nothing. The "..." menu is hidden: there is nothing
+   * stored to cut, copy or delete.
+   */
+  onTitlePreview?: (event: TEvent) => void;
   /** When true, focuses and selects the title input once (e.g. for a just-created event). */
   autoFocusTitle?: boolean;
   /** Called after the title input was auto-focused, so the request is not repeated. */
@@ -261,6 +270,7 @@ export function EventDetailPanel<
   onDuplicate,
   onDelete,
   headerActions,
+  onTitlePreview,
   autoFocusTitle,
   onTitleAutoFocused,
 }: EventDetailPanelProps<TEvent>) {
@@ -311,17 +321,30 @@ export function EventDetailPanel<
       : onEventChange;
 
   const titleRef = React.useRef<HTMLInputElement>(null);
+  /** Shows a title as it is typed: on the draft, or on the stored event */
+  const previewTitle = onTitlePreview ?? onEventChange;
   const title = useInlineEdit({
     inputRef: titleRef,
     value: event.title,
-    onInput: (text) => onEventChange?.({ ...event, title: text }),
-    onRestore: (text) => onEventChange?.({ ...event, title: text }),
-    onCommit: (text) => {
+    onInput: (text) => previewTitle?.({ ...event, title: text }),
+    onRestore: (text) => previewTitle?.({ ...event, title: text }),
+    onCommit: (text, { textOnFocus, isEnter }) => {
       const trimmed = text.trim();
       // Only spaces: back to the title from before editing. Deleting the
       // whole title still clears it.
       if (text && !trimmed) return null;
-      if (trimmed !== text) onEventChange?.({ ...event, title: trimmed });
+      if (!onTitlePreview) {
+        if (trimmed !== text) onEventChange?.({ ...event, title: trimmed });
+        return trimmed;
+      }
+      // A draft: leaving a title that was changed saves it, and so does
+      // Enter on one that has a title. An untouched, untitled draft stays
+      // a draft, as in Notion Calendar.
+      if (trimmed !== textOnFocus.trim() || (isEnter && trimmed !== "")) {
+        onEventChange?.({ ...event, title: trimmed });
+        return trimmed;
+      }
+      if (trimmed !== text) onTitlePreview({ ...event, title: trimmed });
       return trimmed;
     },
   });
@@ -455,81 +478,84 @@ export function EventDetailPanel<
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex items-center gap-0.5">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="More actions"
-                className={cn(
-                  "size-7",
-                  EVENT_DETAIL_ICON_BUTTON_CLASS,
-                  EVENT_DETAIL_SECONDARY_CLASS,
-                )}
-              >
-                <MoreHorizontal className="size-[18px]" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              side="left"
-              className={cn("min-w-[180px]", EVENT_DETAIL_MENU_CLASS)}
-              onKeyDown={stopEscapePropagation}
-            >
-              <DropdownMenuItem
-                disabled={!onCut}
-                aria-keyshortcuts={EVENT_ACTION_KEYS.cut.aria}
-                className={EVENT_DETAIL_MENU_ITEM_CLASS}
-                onClick={onCut}
-              >
-                <SquareDashed className="size-3.5" />
-                Cut
-                <DropdownMenuShortcut aria-hidden className="text-white/40">
-                  {EVENT_ACTION_KEYS.cut.label}
-                </DropdownMenuShortcut>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!onCopy}
-                aria-keyshortcuts={EVENT_ACTION_KEYS.copy.aria}
-                className={EVENT_DETAIL_MENU_ITEM_CLASS}
-                onClick={onCopy}
-              >
-                <TabletSmartphone className="size-3.5" />
-                Copy
-                <DropdownMenuShortcut aria-hidden className="text-white/40">
-                  {EVENT_ACTION_KEYS.copy.label}
-                </DropdownMenuShortcut>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!onDuplicate}
-                aria-keyshortcuts={EVENT_ACTION_KEYS.duplicate.aria}
-                className={EVENT_DETAIL_MENU_ITEM_CLASS}
-                onClick={onDuplicate}
-              >
-                <Copy className="size-3.5" />
-                Duplicate
-                <DropdownMenuShortcut aria-hidden className="text-white/40">
-                  {EVENT_ACTION_KEYS.duplicate.label}
-                </DropdownMenuShortcut>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-[#303030]" />
-              <DropdownMenuItem
-                disabled={!onDelete}
-                aria-keyshortcuts={EVENT_ACTION_KEYS.delete.aria}
-                className="text-xs text-[#E56458] focus:!bg-[#DE5551] focus:!text-white focus:[&>svg]:!text-white focus:[&>[data-slot=dropdown-menu-shortcut]]:!text-white"
-                onClick={onDelete}
-              >
-                <Trash2 className="size-3.5 text-[#E56458]" />
-                Delete
-                <DropdownMenuShortcut
-                  aria-hidden
-                  className="text-white/40 tracking-normal"
+          {/* A draft isn't stored: nothing to cut, copy, duplicate or delete */}
+          {!onTitlePreview && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="More actions"
+                  className={cn(
+                    "size-7",
+                    EVENT_DETAIL_ICON_BUTTON_CLASS,
+                    EVENT_DETAIL_SECONDARY_CLASS,
+                  )}
                 >
-                  {EVENT_ACTION_KEYS.delete.label}
-                </DropdownMenuShortcut>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <MoreHorizontal className="size-[18px]" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                side="left"
+                className={cn("min-w-[180px]", EVENT_DETAIL_MENU_CLASS)}
+                onKeyDown={stopEscapePropagation}
+              >
+                <DropdownMenuItem
+                  disabled={!onCut}
+                  aria-keyshortcuts={EVENT_ACTION_KEYS.cut.aria}
+                  className={EVENT_DETAIL_MENU_ITEM_CLASS}
+                  onClick={onCut}
+                >
+                  <SquareDashed className="size-3.5" />
+                  Cut
+                  <DropdownMenuShortcut aria-hidden className="text-white/40">
+                    {EVENT_ACTION_KEYS.cut.label}
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!onCopy}
+                  aria-keyshortcuts={EVENT_ACTION_KEYS.copy.aria}
+                  className={EVENT_DETAIL_MENU_ITEM_CLASS}
+                  onClick={onCopy}
+                >
+                  <TabletSmartphone className="size-3.5" />
+                  Copy
+                  <DropdownMenuShortcut aria-hidden className="text-white/40">
+                    {EVENT_ACTION_KEYS.copy.label}
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!onDuplicate}
+                  aria-keyshortcuts={EVENT_ACTION_KEYS.duplicate.aria}
+                  className={EVENT_DETAIL_MENU_ITEM_CLASS}
+                  onClick={onDuplicate}
+                >
+                  <Copy className="size-3.5" />
+                  Duplicate
+                  <DropdownMenuShortcut aria-hidden className="text-white/40">
+                    {EVENT_ACTION_KEYS.duplicate.label}
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[#303030]" />
+                <DropdownMenuItem
+                  disabled={!onDelete}
+                  aria-keyshortcuts={EVENT_ACTION_KEYS.delete.aria}
+                  className="text-xs text-[#E56458] focus:!bg-[#DE5551] focus:!text-white focus:[&>svg]:!text-white focus:[&>[data-slot=dropdown-menu-shortcut]]:!text-white"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="size-3.5 text-[#E56458]" />
+                  Delete
+                  <DropdownMenuShortcut
+                    aria-hidden
+                    className="text-white/40 tracking-normal"
+                  >
+                    {EVENT_ACTION_KEYS.delete.label}
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {headerActions}
         </div>
       </div>
@@ -541,6 +567,9 @@ export function EventDetailPanel<
           {...title.inputProps}
           type="text"
           placeholder="Title"
+          // The details popover finds the title by this: a draft's title
+          // takes Escape before the popover does
+          data-event-title=""
           readOnly={!onEventChange}
           className={cn(
             "h-[35px] px-[7px] placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",

@@ -20,6 +20,12 @@ interface PopoverDismissOptions {
   /** Called on Escape, before `onDismiss` */
   onEscape: () => void;
   onDismiss: () => void;
+  /**
+   * Whether an Escape is left to the focused element instead of closing the
+   * popover: a field that takes the key back for itself first, like a
+   * draft's title. Checked on each Escape.
+   */
+  isEscapeHandledInside?: () => boolean;
 }
 
 /** Spread on the panel, so the hook sees events from its React tree */
@@ -43,9 +49,11 @@ export function usePopoverDismiss({
   triggerRef,
   onEscape,
   onDismiss,
+  isEscapeHandledInside,
 }: PopoverDismissOptions): PopoverDismissHandlers {
   const onEscapeRef = React.useRef(onEscape);
   const onDismissRef = React.useRef(onDismiss);
+  const isEscapeHandledInsideRef = React.useRef(isEscapeHandledInside);
   /**
    * The native pointerdown and focusin events that went through the panel's
    * React tree. The document listeners look their own event up here, which
@@ -64,7 +72,8 @@ export function usePopoverDismiss({
   React.useEffect(() => {
     onEscapeRef.current = onEscape;
     onDismissRef.current = onDismiss;
-  }, [onEscape, onDismiss]);
+    isEscapeHandledInsideRef.current = isEscapeHandledInside;
+  }, [onEscape, onDismiss, isEscapeHandledInside]);
 
   React.useEffect(() => {
     /**
@@ -92,6 +101,7 @@ export function usePopoverDismiss({
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape" || hasOpenLayer()) return;
+      if (isEscapeHandledInsideRef.current?.()) return;
       // Marks the Escape as taken, as Radix layers do: a Radix dialog the
       // calendar sits in then leaves it to the details and stays open
       e.preventDefault();

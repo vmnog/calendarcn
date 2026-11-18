@@ -78,7 +78,7 @@ useCalendarShortcuts({
 
 ### Create event
 
-"Create event..." (<Kbd>C</Kbd> outside the menu) creates an hour-long event at the next half hour, as Notion Calendar does: on today when it's on screen, else on the first day shown (`addEventAtNextSlot`). It goes through your `createEvent`, so undo and the details work as for a clicked slot, and the new event's title is focused.
+"Create event..." (<Kbd>C</Kbd> outside the menu) starts a new event at the next half hour, as Notion Calendar does: on today when it's on screen, else on the first day shown (`addEventAtNextSlot`), all-day in month view. It goes through your `createEvent` and is a [draft](/docs/components/calendar-core#creating-events) with its title focused: its first edit saves it, and undo and the details then work as for any new event.
 
 ### Second lists
 

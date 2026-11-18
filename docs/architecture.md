@@ -74,13 +74,32 @@ User interaction → Hook (drag/resize) → onEventChange callback → CalendarP
 
 For a date of a repeating event, `updateEvent` and `deleteEvent` first ask which events the change applies to (`EventSeriesScopeDialog`, which every view renders); the details' `editEvent` holds the change, drawn on that date only, until the event is left. The answer becomes one set of changes (`getSeriesEditChanges` / `getSeriesDeleteChanges` in `recurrence.ts`), applied, reported and undone together. [ADR-009](decisions/009-series-edit-scopes.md) has the rules.
 
+### Creating Events
+
+New events start as a draft, the way Notion Calendar starts them. The provider holds it apart from `events` (`eventDraft` in `useCalendar()`): it only counts while it is the selected event, so every path that moves the selection settles it. A draft that was edited (a title typed into it) is saved; an untouched one is dropped.
+
+```
+Double-click or drag on empty space → use-double-click / use-event-draw / use-day-range-draw
+  → drawEventDraft(range, "start" | "move" | "end") → provider draft (selected, title focused on "end")
+  → first edit: updateEvent(draft) → events + onEventCreate + one undo step
+```
+
+1. A double-click on empty space (two clicks within 350 ms and 5 px, `use-double-click.ts`) starts a draft `defaultEventDuration` long at the nearest `snapMinutes` step (`getClickedEventRange()`), or an all-day one in the all-day row and month view.
+2. A press that moves 4 px draws one instead: `use-event-draw.ts` on the time grid (`getDrawnEventRange()`: anchor to pointer, up or down, across day columns), `use-day-range-draw.ts` over whole days in the all-day row and month view. Touch draws from a long press. Escape or `pointercancel` mid-drag calls `clearSelection()`.
+3. The views draw the draft through `event-draft.tsx`. While nothing is typed into it, it is a tinted range (`TimeGridEventDraft`, `AllDayEventDraft`, the month cells). Its first title keystroke, or `startEventDraft()` from code, makes it an event among `drawnEvents`, which the views draw and their drag hooks commit from in place of `events`.
+4. `EventDetailPanel` gets `onTitlePreview` for a draft: title keystrokes go to `updateEventDraft()`, and `onEventChange` (the provider's `editEvent`) saves it on Enter, on blur of a changed title, or on any other field's first edit. Escape restores the title and saves nothing.
+5. With the details in a popover, `EventDraftPopover` hosts them at view level, beside the draft's range, and keeps hosting them after the save while the event stays selected (`useCalendarEventDraft()`), so the popover never remounts under a field that is being typed into.
+6. While you meet with people ("Meet with..."), the draft is built with them in its `participants` (`withMeetingParticipants()` in the provider). They are there from the start, so they don't count as an edit: an untouched draft is still dropped. The shared free time is worked out from the stored events, so a draft takes none until it is saved.
+7. The selection can hold several events (`setSelectedEventIds`). The draft is settled before any change of selection, and one that is thrown away is left out of the new selection, so Shift-clicking an event with an untouched draft open selects that event alone. A new draft is always selected alone.
+8. While scheduling marks open times (`useScheduling()?.isPicking`), `TimeGrid` passes no create handlers to the grid or the all-day row: presses on empty space mark times. Starting and leaving that mode call `clearSelection()`, which settles the draft.
+
 ### Repeating Events
 
 A repeating event (`recurrenceRule`, or an RRULE in `recurrence`) is one event in the provider's `events`. Each view expands it for the dates it draws with `expandRecurringEvents()` (`src/lib/recurrence.ts`): the time grid over its buffered days, month view over its buffered rows, the agenda over its 30 days, and the details sidebar's search over a year either side of today. Occurrences get the id `<seriesId>-<yyyy-MM-dd>`, `seriesId` and `originalStart`, and are never stored. `selectedEvent` resolves such an id with `findEventOrOccurrence()`. The first edit of an occurrence reaches `updateEvent` with an id `events` doesn't have: the provider adds it as a stored event (`applyRecurringEdit()` decides what is stored) and reports it through `onEventCreate`. The drag and resize hooks receive the stored events and commit an occurrence from the copy the gesture started with. [ADR-007](decisions/007-repeating-events-are-expanded.md) has the rules.
 
 ### Undo History
 
-The provider records each change it makes itself (a click-create, every `updateEvent`, delete, cut, duplicate, paste) as a step of `{ before, after, index }` changes, one per event (`src/lib/event-history.ts`). `undo()` applies a step's inverse to the current events and `redo()` the step again, both through `onEventsChange` and one `onEventCreate`, `onEventUpdate` or `onEventDelete` per event. A step applies only while each event it touches is the very object it left (`canApplyEventChanges`), so events the app replaced from outside (a reload) are never overwritten by an old undo. Edits to one event less than a second apart merge into one step; 100 steps are kept. Copy, the series arrows' occurrence copies and changes the app makes itself are not steps.
+The provider records each change it makes itself (a saved draft, every `updateEvent`, delete, cut, duplicate, paste) as a step of `{ before, after, index }` changes, one per event (`src/lib/event-history.ts`). `undo()` applies a step's inverse to the current events and `redo()` the step again, both through `onEventsChange` and one `onEventCreate`, `onEventUpdate` or `onEventDelete` per event. A step applies only while each event it touches is the very object it left (`canApplyEventChanges`), so events the app replaced from outside (a reload) are never overwritten by an old undo. Edits to one event less than a second apart merge into one step; 100 steps are kept. Copy, the series arrows' occurrence copies and changes the app makes itself are not steps.
 
 ### Selecting several events
 
@@ -147,6 +166,9 @@ Renders a single event segment. Handles:
 | `use-pointer-gesture.ts`    | Starts every drag and resize: at once for mouse and pen, after a long press for touch                                             |
 | `use-event-drag.ts`         | Drags a timed event across time and days (ref-based state, snap-to-grid, auto-scroll)                                             |
 | `use-event-resize.ts`       | Resizes a timed event from its top or bottom edge (anchor model, edge flipping)                                                   |
+| `use-event-draw.ts`         | Draws a new event on the time grid by pressing empty space and dragging                                                           |
+| `use-day-range-draw.ts`     | Draws a new all-day event over days in the all-day row and the month grid                                                         |
+| `use-double-click.ts`       | Tells a double-click on empty space (it creates an event) from two single clicks                                                  |
 | `use-all-day-resize.ts`     | Resizes an all-day event's span in the all-day row                                                                                |
 | `use-month-event-drag.ts`   | Drags an event to another day in the month grid                                                                                   |
 | `use-month-event-resize.ts` | Resizes an event's span in the month grid                                                                                         |

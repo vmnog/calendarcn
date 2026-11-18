@@ -1,6 +1,16 @@
 import * as React from "react";
 
 /**
+ * How a commit came about, passed to `onCommit`
+ */
+export interface InlineEditCommit {
+  /** Text the field held when it gained focus */
+  textOnFocus: string;
+  /** Whether Enter committed it, rather than focus leaving the field */
+  isEnter: boolean;
+}
+
+/**
  * Options for `useInlineEdit`
  */
 export interface UseInlineEditOptions {
@@ -12,7 +22,7 @@ export interface UseInlineEditOptions {
    * Commits the typed text on blur or Enter. Returns the text to show
    * afterwards, or `null` to reject it and restore the text from focus.
    */
-  onCommit: (text: string) => string | null;
+  onCommit: (text: string, commit: InlineEditCommit) => string | null;
   /** Called on every keystroke, e.g. to preview a title on the calendar */
   onInput?: (text: string) => void;
   /**
@@ -60,6 +70,8 @@ export function useInlineEdit({
   const [text, setText] = React.useState(value);
   /** Set by Escape so the blur that follows doesn't commit */
   const escapePressedRef = React.useRef(false);
+  /** Set by Enter so the blur that follows knows Enter committed */
+  const enterPressedRef = React.useRef(false);
   /** Text when the field gained focus, restored on Escape or a rejected commit */
   const valueOnFocusRef = React.useRef(value);
 
@@ -85,7 +97,12 @@ export function useInlineEdit({
       escapePressedRef.current = false;
       return;
     }
-    const committed = onCommit(text);
+    const isEnter = enterPressedRef.current;
+    enterPressedRef.current = false;
+    const committed = onCommit(text, {
+      textOnFocus: valueOnFocusRef.current,
+      isEnter,
+    });
     if (committed !== null) {
       setText(committed);
       return;
@@ -101,7 +118,10 @@ export function useInlineEdit({
         // (Safari reports it as keyCode 229, with isComposing already false)
         if (e.nativeEvent.isComposing || e.keyCode === 229) return;
         e.preventDefault();
+        enterPressedRef.current = true;
         inputRef.current?.blur();
+        // Nothing to blur (the field lost focus already): don't mark the next one
+        enterPressedRef.current = false;
         return;
       }
       if (e.key !== "Escape") return;

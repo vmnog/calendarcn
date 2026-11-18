@@ -167,12 +167,12 @@ test.describe("wide screens", () => {
     await expect(search).toBeFocused();
     await expect(search).toHaveValue("launch");
 
-    // Create event... focuses the new event's title
+    // Create event... starts a draft, untitled, with its title focused
     await page.keyboard.press("ControlOrMeta+k");
     await menu.getByPlaceholder("Type a command...").fill("create event");
     await page.keyboard.press("Enter");
     await expect(detailTitle(page)).toBeFocused();
-    await expect(detailTitle(page)).toHaveValue("New event");
+    await expect(detailTitle(page)).toHaveValue("");
   });
 
   test("imports and exports .ics files from the command menu", async ({

@@ -17,7 +17,12 @@ const WEEK: VisibleRange = {
 };
 
 /** The grid's settings, as the provider's defaults */
-const CONFIG = { snapMinutes: 15, dayStartHour: 0, dayEndHour: 24 };
+const CONFIG = {
+  snapMinutes: 15,
+  defaultEventDuration: 30,
+  dayStartHour: 0,
+  dayEndHour: 24,
+};
 
 /** A range as "EEE HH:mm–HH:mm" */
 function formatRange({ start, end }: { start: Date; end: Date }): string {
@@ -56,19 +61,19 @@ test("the day: the one Go to date flashed, else today, else the first day shown"
   ).toEqual(firstDay);
 });
 
-test("the time rounds up to the next half hour, an hour long", () => {
+test("the time rounds up to the next half hour, the default length long", () => {
   const day = new Date(2026, 5, 4);
   expect(
     formatRange(getNextSlotEventRange(day, new Date(2026, 5, 4, 8, 0), CONFIG)),
-  ).toBe("Thu Jun 4 08:00–09:00");
+  ).toBe("Thu Jun 4 08:00–08:30");
   expect(
     formatRange(getNextSlotEventRange(day, new Date(2026, 5, 4, 8, 1), CONFIG)),
-  ).toBe("Thu Jun 4 08:30–09:30");
+  ).toBe("Thu Jun 4 08:30–09:00");
   expect(
     formatRange(
       getNextSlotEventRange(day, new Date(2026, 5, 4, 14, 45), CONFIG),
     ),
-  ).toBe("Thu Jun 4 15:00–16:00");
+  ).toBe("Thu Jun 4 15:00–15:30");
   // The time of day applies to the day given, not to now's
   expect(
     formatRange(
@@ -78,18 +83,18 @@ test("the time rounds up to the next half hour, an hour long", () => {
         CONFIG,
       ),
     ),
-  ).toBe("Sun Jun 7 10:30–11:30");
+  ).toBe("Sun Jun 7 10:30–11:00");
 });
 
 test("late at night the event stays inside the day and the visible hours", () => {
   const day = new Date(2026, 5, 4);
-  // 11:40 PM rounds to midnight: the day's last hour instead, ending with
-  // the day as a click on 11 PM does
+  // 11:40 PM rounds to midnight: the day's last half hour instead, ending
+  // with the day as a double-click on 11:45 PM does
   expect(
     formatRange(
       getNextSlotEventRange(day, new Date(2026, 5, 4, 23, 40), CONFIG),
     ),
-  ).toBe("Thu Jun 4 23:00–23:59");
+  ).toBe("Thu Jun 4 23:30–00:00");
   // A grid that ends at 6 PM
   expect(
     formatRange(
@@ -99,5 +104,5 @@ test("late at night the event stays inside the day and the visible hours", () =>
         dayEndHour: 18,
       }),
     ),
-  ).toBe("Thu Jun 4 17:00–18:00");
+  ).toBe("Thu Jun 4 17:30–18:00");
 });

@@ -28,7 +28,7 @@ export function ConfigDemo() {
       // Only working hours: the grid runs from 08:00 to 20:00
       dayStartHour={8}
       dayEndHour={20}
-      // Drag, resize and click-to-create move in 30-minute steps
+      // Drag, resize and new events move in 30-minute steps
       snapMinutes={30}
     >
       <WeekView />

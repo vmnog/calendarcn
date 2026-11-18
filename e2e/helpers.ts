@@ -87,6 +87,33 @@ export async function hourHeight(page: Page): Promise<number> {
 }
 
 /**
+ * A point in the week grid: the column of the header day `dayNumber`, at
+ * `minutes` past the hour line labelled `hourLabel`
+ */
+export async function slotPoint(
+  page: Page,
+  dayNumber: number,
+  hourLabel: string,
+  minutes = 0,
+): Promise<{ x: number; y: number }> {
+  const main = page.getByRole("main");
+  const day = await boxOf(main.getByText(String(dayNumber), { exact: true }));
+  const hour = await boxOf(main.getByText(hourLabel, { exact: true }));
+  return {
+    x: day.x + day.width / 2,
+    y: hour.y + hour.height / 2 + ((await hourHeight(page)) * minutes) / 60,
+  };
+}
+
+/**
+ * The tinted range of an event being created that nothing was typed into
+ * yet. One element per day column, all-day row or month cell it covers.
+ */
+export function draftTint(page: Page): Locator {
+  return page.locator('[data-slot="event-draft"]');
+}
+
+/**
  * Horizontal distance between two day columns in week view, measured between
  * their header day numbers (unique within the rendered three weeks).
  */

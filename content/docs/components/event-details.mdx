@@ -23,14 +23,23 @@ export function EventSidebar() {
 }
 ```
 
-To show the selected event of a calendar in a side panel, read it from `useCalendar()` and turn the popover off on the view:
+To show the selected event of a calendar in a side panel, read it from `useCalendar()` and turn the popover off on the view. Pass `onTitlePreview` while the selected event is the [draft](/docs/components/calendar-core#creating-events), so typing its title previews it and the first edit saves it:
 
 ```tsx
 function SidePanel() {
-  const { selectedEvent, editEvent } = useCalendar<DetailedCalendarEvent>();
+  const { selectedEvent, eventDraft, editEvent, updateEventDraft } =
+    useCalendar<DetailedCalendarEvent>();
   if (!selectedEvent) return null;
 
-  return <EventDetailPanel event={selectedEvent} onEventChange={editEvent} />;
+  return (
+    <EventDetailPanel
+      event={selectedEvent}
+      onEventChange={editEvent}
+      onTitlePreview={
+        eventDraft?.id === selectedEvent.id ? updateEventDraft : undefined
+      }
+    />
+  );
 }
 
 <CalendarProvider defaultEvents={events}>
@@ -181,7 +190,7 @@ An image file works too: `icon: <img src="/logos/zoom.svg" alt="" className="siz
 
 <ComponentPreview name="custom-event-details-demo" />
 
-Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. It gets the selected event, a `close` function and `isNew`, which is true right after the event was created by clicking an empty slot, so you can focus its title. Render a component from it when you need hooks: `useCalendar()` to save edits, `useCalendarConfig()` to format times like the calendar does.
+Pass `renderEventDetails` to `CalendarProvider` to replace the popover's body. It gets the selected event, a `close` function and `isNew`, which is true right after the event was created, so you can focus its title. A new event is a draft until its first edit: `updateEvent()` from `useCalendar()` saves it, and `updateEventDraft()` previews a change without saving. See [Creating events](/docs/components/calendar-core#creating-events). Render a component from it when you need hooks: `useCalendar()` to save edits, `useCalendarConfig()` to format times like the calendar does.
 
 Change events with `editEvent` from `useCalendar()` rather than `updateEvent`: on a date of a repeating event it holds each change until the event is left, then asks once, as the built-in details do. The example above does that for the title and the color.
 
@@ -267,6 +276,12 @@ export function CompactDetails({
       description: 'Extra buttons in the header row, after the "..." menu.',
     },
     {
+      name: "onTitlePreview",
+      type: "(event: TEvent) => void",
+      description:
+        "Set while the event is a draft that isn't stored yet, like `eventDraft` from `useCalendar()`. Called on every keystroke in the title instead of `onEventChange`, which then saves the draft: on Enter in a title, when focus leaves a title that changed, or on any other field's first edit. Escape takes the title back and saves nothing. Hides the \"...\" menu.",
+    },
+    {
       name: "autoFocusTitle",
       type: "boolean",
       description:
@@ -334,7 +349,7 @@ Passed to `renderEventDetails` on `CalendarProvider`.
       name: "isNew",
       type: "boolean",
       description:
-        "Whether the event was just created by clicking an empty slot, so its title should be focused. True on the first render after creation only.",
+        "Whether the event was just created, as a draft or by `addEventFromRange`, so its title should be focused. True on the first render after creation only.",
     },
   ]}
 />

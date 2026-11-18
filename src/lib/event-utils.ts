@@ -36,6 +36,7 @@ import type {
   EventParticipant,
   EventReminder,
   HourCycle,
+  NewEventRange,
   PositionedEvent,
   ViewType,
   VisibleRange,
@@ -86,8 +87,15 @@ export function resolveEventColor(
   return calendar?.color ?? DEFAULT_EVENT_COLOR;
 }
 
-/** Duration in minutes of an event created by clicking an empty time slot */
+/** Length in minutes of the slot `getNewEventRange` returns for a point on a day column */
 export const NEW_EVENT_DURATION_MINUTES = 60;
+
+/**
+ * Length in minutes of an event created by double-clicking an empty slot
+ * when the provider's `defaultEventDuration` is not set: Notion Calendar's
+ * default
+ */
+export const DEFAULT_EVENT_DURATION_MINUTES = 30;
 
 /** Minutes in a full day: the bottom edge of the time grid, on the clock */
 const MINUTES_PER_DAY = 24 * 60;
@@ -181,9 +189,9 @@ function atMinutesOfDay(day: Date, minutes: number): Date {
 }
 
 /**
- * Returns the start/end of a new event created by clicking a day column at
- * `minutesFromMidnight`. The start snaps down to the `snapMinutes` slot that
- * contains the click, so the new event always covers the clicked point.
+ * Returns the start/end of the slot at `minutesFromMidnight` on a day
+ * column: where a paste lands. The start snaps down to the `snapMinutes`
+ * slot that contains the point, so the slot always covers it.
  * Near the end of the visible hours the start is clamped to the last full
  * event length, and near midnight the end is capped at the end of the day,
  * so the new event's end stays on the day that was clicked.
@@ -214,6 +222,165 @@ export function getNewEventRange(
   return { start, end: endOfDay(start) };
 }
 
+/** A point on the time grid: a day column and the minutes since its midnight */
+export interface TimeGridPoint {
+  /** The column's day */
+  day: Date;
+  /** Minutes since that day's midnight, by the clock; not snapped */
+  minutes: number;
+}
+
+/** The config a new event's range is worked out from */
+type NewEventRangeConfig = Pick<
+  CalendarConfig,
+  "snapMinutes" | "dayStartHour" | "dayEndHour" | "defaultEventDuration"
+>;
+
+/**
+ * Returns the start/end of an event created by double-clicking a day column
+ * at `minutesFromMidnight`. As in Notion Calendar, the start snaps to the
+ * nearest `snapMinutes` step and the event is `defaultEventDuration` long.
+ * Near the end of the visible hours the start is pulled back so the whole
+ * event fits, and the end never leaves the day that was clicked.
+ */
+export function getClickedEventRange(
+  day: Date,
+  minutesFromMidnight: number,
+  {
+    snapMinutes,
+    dayStartHour,
+    dayEndHour,
+    defaultEventDuration,
+  }: NewEventRangeConfig,
+): NewEventRange {
+  const visibleStart = dayStartHour * 60;
+  const visibleEnd = dayEndHour * 60;
+  // Never longer than the visible hours, never shorter than one step
+  const duration = Math.max(
+    snapMinutes,
+    Math.min(defaultEventDuration, visibleEnd - visibleStart),
+  );
+  const startMinutes = Math.max(
+    visibleStart,
+    Math.min(
+      snapToGrid(minutesFromMidnight, snapMinutes),
+      visibleEnd - duration,
+    ),
+  );
+  const start = atMinutesOfDay(day, startMinutes);
+  const clockEnd = atMinutesOfDay(day, startMinutes + duration);
+  // Inside the hour the clocks skip, both land on the same time
+  const end = clockEnd > start ? clockEnd : addMinutes(start, duration);
+  return { start, end };
+}
+
+/**
+ * Returns the start/end of an event drawn by pressing the time grid at
+ * `anchor` and dragging to `pointer`. Both ends snap to the nearest
+ * `snapMinutes` step and stay inside the visible hours. The anchor stays
+ * put: dragging up, or back to an earlier day, moves the start instead of
+ * the end. A drag onto another day column spans the days between. On one
+ * day the range is at least one step long, on the side the pointer is on.
+ */
+export function getDrawnEventRange(
+  anchor: TimeGridPoint,
+  pointer: TimeGridPoint,
+  {
+    snapMinutes,
+    dayStartHour,
+    dayEndHour,
+  }: Pick<CalendarConfig, "snapMinutes" | "dayStartHour" | "dayEndHour">,
+): NewEventRange {
+  const visibleStart = dayStartHour * 60;
+  const visibleEnd = dayEndHour * 60;
+  const snap = (minutes: number) =>
+    Math.max(
+      visibleStart,
+      Math.min(snapToGrid(minutes, snapMinutes), visibleEnd),
+    );
+  const anchorMinutes = snap(anchor.minutes);
+  const pointerMinutes = snap(pointer.minutes);
+  const dayDelta = differenceInCalendarDays(pointer.day, anchor.day);
+
+  if (dayDelta > 0) {
+    return {
+      start: atMinutesOfDay(anchor.day, anchorMinutes),
+      end: atMinutesOfDay(pointer.day, pointerMinutes),
+    };
+  }
+  if (dayDelta < 0) {
+    return {
+      start: atMinutesOfDay(pointer.day, pointerMinutes),
+      end: atMinutesOfDay(anchor.day, anchorMinutes),
+    };
+  }
+
+  // One day: keep at least one step, without leaving the visible hours
+  const step = Math.min(snapMinutes, visibleEnd - visibleStart);
+  const isForward = pointer.minutes >= anchor.minutes;
+  let startMinutes = Math.min(anchorMinutes, pointerMinutes);
+  let endMinutes = Math.max(anchorMinutes, pointerMinutes);
+  if (endMinutes - startMinutes < step) {
+    if (isForward) endMinutes = startMinutes + step;
+    else startMinutes = endMinutes - step;
+  }
+  if (endMinutes > visibleEnd) {
+    endMinutes = visibleEnd;
+    startMinutes = visibleEnd - step;
+  }
+  if (startMinutes < visibleStart) {
+    startMinutes = visibleStart;
+    endMinutes = visibleStart + step;
+  }
+  const start = atMinutesOfDay(anchor.day, startMinutes);
+  const clockEnd = atMinutesOfDay(anchor.day, endMinutes);
+  // Inside the hour the clocks skip, both land on the same time
+  const end = clockEnd > start ? clockEnd : addMinutes(start, step);
+  return { start, end };
+}
+
+/**
+ * Where a timed range falls in a day column: `top` and `height` as
+ * percentages of the visible hours (`dayStartHour` to `dayEndHour`), clipped
+ * to them. `null` when the range doesn't reach that day's visible hours.
+ */
+export function getDaySegmentPosition(
+  range: Pick<CalendarEvent, "start" | "end">,
+  day: Date,
+  {
+    dayStartHour,
+    dayEndHour,
+  }: Pick<CalendarConfig, "dayStartHour" | "dayEndHour">,
+): { top: number; height: number } | null {
+  const visibleStart = dayStartHour * 60;
+  const visibleEnd = dayEndHour * 60;
+  const startMinutes = Math.max(
+    getMinutesOnDay(range.start, day),
+    visibleStart,
+  );
+  const endMinutes = Math.min(getMinutesOnDay(range.end, day), visibleEnd);
+  if (endMinutes <= startMinutes) return null;
+  const visibleMinutes = visibleEnd - visibleStart;
+  return {
+    top: ((startMinutes - visibleStart) / visibleMinutes) * 100,
+    height: ((endMinutes - startMinutes) / visibleMinutes) * 100,
+  };
+}
+
+/**
+ * Returns the whole-day range of an all-day event created on `anchorDay`,
+ * or drawn from it to `day` in either direction: midnight of the first day
+ * to midnight of the last, as all-day events are stored.
+ */
+export function getAllDayEventRange(
+  anchorDay: Date,
+  day: Date = anchorDay,
+): NewEventRange {
+  const first = startOfDay(anchorDay <= day ? anchorDay : day);
+  const last = startOfDay(anchorDay <= day ? day : anchorDay);
+  return { start: first, end: last, isAllDay: true };
+}
+
 /**
  * The day an event created from the keyboard (C, or "Create event...") goes
  * on, as in Notion Calendar: the day Go to date just highlighted, else today,
@@ -242,17 +409,17 @@ export const NEXT_SLOT_MINUTES = 30;
 /**
  * Returns the start/end of an event created from the keyboard (C, or
  * "Create event..."): on `day`, at `now`'s time of day rounded up to the
- * next half hour, an hour long, kept inside the visible hours and the day
- * like a clicked slot (`getNewEventRange`)
+ * next half hour, `defaultEventDuration` long, kept inside the visible hours
+ * and the day like a double-clicked slot (`getClickedEventRange`)
  */
 export function getNextSlotEventRange(
   day: Date,
   now: Date,
-  config: Pick<CalendarConfig, "snapMinutes" | "dayStartHour" | "dayEndHour">,
-): { start: Date; end: Date } {
+  config: NewEventRangeConfig,
+): NewEventRange {
   const minutes = now.getHours() * 60 + now.getMinutes();
   const nextSlot = Math.ceil(minutes / NEXT_SLOT_MINUTES) * NEXT_SLOT_MINUTES;
-  return getNewEventRange(day, nextSlot, config);
+  return getClickedEventRange(day, nextSlot, config);
 }
 
 /**
@@ -1249,7 +1416,10 @@ export function getCalendarHeaderInfo(
 // ---------------------------------------------------------------------------
 
 /** First and last day an event covers, at the start of each day */
-function getEventDayRange(event: CalendarEvent): { first: Date; last: Date } {
+export function getEventDayRange(event: CalendarEvent): {
+  first: Date;
+  last: Date;
+} {
   const first = startOfDay(event.start);
   // All-day events end on the start of their last day. A timed event that
   // ends at midnight doesn't reach into the day that starts then.
@@ -1653,7 +1823,19 @@ export function describeEventChange(
   return `Moved ${title} to ${startDate}, ${formatSpokenTime(next.start, hourCycle, locale)}`;
 }
 
-/** What to announce after an event was created ("Created New event, ...") */
+/**
+ * What to announce when a draft is drawn: "New event, 2:00 PM to 2:30 PM,
+ * Friday, June 5". It isn't created until its first edit saves it.
+ */
+export function describeEventDraft(
+  event: CalendarEvent,
+  hourCycle: HourCycle,
+  locale: Locale,
+): string {
+  return `New event, ${describeEventTime(event, hourCycle, locale)}`;
+}
+
+/** What to announce after an event was created ("Created Team sync, ...") */
 export function describeEventCreated(
   event: CalendarEvent,
   hourCycle: HourCycle,

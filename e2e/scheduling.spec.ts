@@ -110,7 +110,7 @@ test.describe("marking open times", () => {
     ).toHaveCount(0);
     await expect(page.getByText("Useful shortcuts")).toBeVisible();
 
-    // Clicking an empty slot creates an event again, and events open again
+    // Events open again
     await calendarEvent(page, "Architecture Review").click();
     await expect(detailTitle(page)).toHaveValue("Architecture Review");
   });

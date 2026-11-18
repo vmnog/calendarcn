@@ -71,6 +71,7 @@ export type {
   EventResizeState,
   AllDayResizeState,
   NewEventRange,
+  EventDrawPhase,
   PointerGestureStart,
   VisibleRange,
   EventPasteTarget,
@@ -110,6 +111,28 @@ export type {
 /** A rectangle in viewport pixels that a popover is placed beside */
 export interface PopoverAnchorRect {
   getBoundingClientRect: () => DOMRect;
+}
+
+/**
+ * Props of the draft layers the time grid and the all-day row draw over
+ * their day columns (TimeGridEventDraft, AllDayEventDraft)
+ */
+export interface EventDraftLayerProps {
+  /** The layer's day columns, scroll buffer included */
+  days: WeekDay[];
+  /** Index in `days` of the first on-screen column. Defaults to 0 */
+  visibleStartIndex?: number;
+  /** Number of on-screen columns. Defaults to all of `days` */
+  visibleCount?: number;
+}
+
+/**
+ * Props of the details popover a view keeps for the event being created
+ * (EventDraftPopover)
+ */
+export interface EventDraftPopoverProps {
+  /** Callback for the popover's expand button (hidden when absent) */
+  onExpand?: () => void;
 }
 
 /**
@@ -486,8 +509,19 @@ export interface WeekViewGridProps extends EventItemPopoverProps {
   onEventClick?: (event: CalendarEvent) => void;
   /** ID of the currently selected event */
   selectedEventId?: string;
-  /** Callback when an empty slot is clicked while no event is selected */
+  /**
+   * Callback when an empty slot is double-clicked: the range of a new
+   * event there, `defaultEventDuration` long
+   */
   onEventCreate?: (range: NewEventRange) => void;
+  /**
+   * Pointerdown handler for a day column's empty space: starts drawing a
+   * new event by dragging (`useEventDraw`)
+   */
+  onEventDrawPointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
+    columnDate: Date,
+  ) => void;
   /**
    * Called with the slot under the mouse as it moves over a day column,
    * events included: where `pasteEvent()` puts the next paste
@@ -562,6 +596,19 @@ export interface WeekViewTimeIndicatorProps {
 export interface WeekViewAllDayRowProps extends EventItemPopoverProps {
   /** Array of days to display */
   days: WeekDay[];
+  /**
+   * Callback when a day's empty space in the row is double-clicked: the
+   * whole-day range of a new all-day event
+   */
+  onEventCreate?: (range: NewEventRange) => void;
+  /**
+   * Pointerdown handler for a day's empty space in the row: starts drawing
+   * a new all-day event by dragging across days (`useDayRangeDraw`)
+   */
+  onEventDrawPointerDown?: (
+    e: React.PointerEvent<HTMLElement>,
+    day: Date,
+  ) => void;
   /** All-day events to display */
   allDayEvents?: CalendarEvent[];
   /** Optional click handler for events */

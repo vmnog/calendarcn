@@ -2,11 +2,11 @@ import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import {
-  boxOf,
   calendarEvent,
   detailTitle,
-  hourHeight,
+  draftTint,
   openCalendar,
+  slotPoint,
 } from "./helpers";
 
 /**
@@ -184,18 +184,12 @@ test("an event created while meeting invites the people met with", async ({
   await meetWith(page, "pri");
 
   // Thursday June 4 at 2 PM, inside the free time you share
-  const main = page.getByRole("main");
-  const thursday = await boxOf(main.getByText("4", { exact: true }));
-  const twoPm = await boxOf(main.getByText("2 PM", { exact: true }));
-  await page.mouse.click(
-    thursday.x + thursday.width / 2,
-    twoPm.y + twoPm.height / 2 + (await hourHeight(page)) / 6,
-  );
+  const slot = await slotPoint(page, 4, "2 PM");
+  await page.mouse.dblclick(slot.x, slot.y);
 
-  await expect(calendarEvent(page, "New event")).toHaveAccessibleName(
-    "New event, 2:00 PM to 3:00 PM, Thursday, June 4",
-  );
-  await expect(detailTitle(page)).toHaveValue("New event");
+  // The draft has them from the start, and nothing is stored yet
+  await expect(draftTint(page)).toHaveCount(1);
+  await expect(detailTitle(page)).toBeFocused();
   // The demo's new events are on you@example.com, which organizes
   const who = page.locator('[data-group="who"]');
   await expect(
@@ -204,6 +198,32 @@ test("an event created while meeting invites the people met with", async ({
   await expect(
     who.locator('[data-participant="you@example.com"]'),
   ).toContainText("Organizer");
+
+  // Naming it saves it, with them invited
+  await page.keyboard.type("Sync with Priya");
+  await page.keyboard.press("Enter");
+  await expect(calendarEvent(page, "Sync with Priya")).toHaveAccessibleName(
+    "Sync with Priya, 2:00 PM to 2:30 PM, Thursday, June 4",
+  );
+  await expect(
+    who.locator('[data-participant="priya@example.com"]'),
+  ).toContainText("Priya Shah");
+});
+
+test("a draft nothing was typed into is thrown away, though it invites people", async ({
+  page,
+}) => {
+  await meetWith(page, "pri");
+
+  const slot = await slotPoint(page, 4, "2 PM");
+  await page.mouse.dblclick(slot.x, slot.y);
+  await expect(draftTint(page)).toHaveCount(1);
+
+  // Inviting the people met with isn't an edit: a click elsewhere drops it
+  const elsewhere = await slotPoint(page, 2, "5 PM");
+  await page.mouse.click(elsewhere.x, elsewhere.y);
+  await expect(draftTint(page)).toHaveCount(0);
+  await expect(calendarEvent(page, "Untitled event")).toHaveCount(0);
 });
 
 test("F and the command menu's Meet with... open the people picker", async ({
