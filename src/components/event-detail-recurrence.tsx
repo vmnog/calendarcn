@@ -811,7 +811,7 @@ export function EventDetailRecurrence<
                   className={MENU_ITEM_CLASS}
                   onClick={() => applyRule(null)}
                 >
-                  <RefreshCwOff className="absolute left-2.5 size-3.5 text-calendar-menu-foreground/80" />
+                  <RefreshCwOff className="absolute left-2.5 size-3.5 text-calendar-menu-foreground opacity-80" />
                   Does not repeat
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-calendar-menu-border" />
@@ -824,7 +824,7 @@ export function EventDetailRecurrence<
                 onClick={() => applyRule(preset)}
               >
                 {index === checkedPreset && (
-                  <Check className="absolute left-2.5 size-3.5 text-calendar-menu-foreground/80" />
+                  <Check className="absolute left-2.5 size-3.5 text-calendar-menu-foreground opacity-80" />
                 )}
                 <span>
                   <RecurrenceText
@@ -839,7 +839,7 @@ export function EventDetailRecurrence<
                 className={MENU_ITEM_CLASS}
                 onClick={() => setMenuOpen(false)}
               >
-                <Check className="absolute left-2.5 size-3.5 text-calendar-menu-foreground/80" />
+                <Check className="absolute left-2.5 size-3.5 text-calendar-menu-foreground opacity-80" />
                 <span>
                   <RecurrenceText
                     label={label}
