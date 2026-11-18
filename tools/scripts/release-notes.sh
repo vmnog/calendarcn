@@ -25,7 +25,9 @@ SECTION="$(awk -v heading="## $HEADING" '
   found { print }
 ' "$CHANGELOG")"
 
-if [ -z "${SECTION//[[:space:]]/}" ]; then
+# grep, not "${SECTION//[[:space:]]/}": on a section the size of v0.1.0's,
+# macOS's bash 3.2 takes minutes to expand that
+if ! printf '%s' "$SECTION" | grep -q '[^[:space:]]'; then
   echo "No \"## $HEADING\" section with entries in $CHANGELOG" >&2
   exit 1
 fi

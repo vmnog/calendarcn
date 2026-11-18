@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-11-18, with v0.1.0)
 
 ## Context
 
@@ -29,7 +29,7 @@ The docs now have a Changelog page (`content/docs/changelog.mdx`), grouped by th
 
 The `release` skill (`.claude/skills/release/SKILL.md`) has the steps.
 
-### Pinning with versioned snapshots (proposed, not implemented)
+### Pinning with versioned snapshots
 
 An app picks where `@calendarcn/*` resolves in its `components.json`. Pointing that URL at a fixed version pins the item and everything it depends on, since every `@calendarcn/*` dependency resolves through the same URL. Two ways to serve one:
 
@@ -47,7 +47,7 @@ This costs nothing to build. Tested with shadcn 4.23 and a commit SHA in place o
 
 **B. Snapshots on the site.** The release copies `public/r` to `public/r/v<version>/`, served at `calendarcn.xyz/r/v<version>/{name}.json`. It keeps the URL on our domain and survives a repository rename, at about 900 KB per release in the repository and every deploy. `pnpm registry:build` and the CI staleness check would have to leave `public/r/v*` alone.
 
-Start with A: document it in the Updating guide once v0.1.0 is tagged. Move to B if people pin often or the raw URLs prove unreliable.
+Start with A. It is documented since v0.1.0, as "Stay on a version" on the Installation page (`content/docs/installation.mdx`), and was tested again on 2026-11-17 with shadcn 4.23.0 and a commit SHA in place of the tag. B is not built: move to it if people pin often or the raw URLs prove unreliable.
 
 ## Consequences
 
