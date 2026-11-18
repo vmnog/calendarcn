@@ -72,27 +72,7 @@ Add your own buttons to the footer, before the theme toggle, with `footerActions
 
 ### Hiding calendars
 
-The list's eye buttons hide and show calendars. Hiding only dims the row; to take a calendar's events off the views, give the provider only the shown events and merge its changes back into your full list. `filterShownEvents()` and `mergeShownEvents()` from `@/lib/event-utils` do both, and [Calendar App](/docs/components/calendar-app) does this for you:
-
-```tsx
-const [hiddenCalendarIds, setHiddenCalendarIds] = React.useState<string[]>([]);
-
-<CalendarProvider
-  events={filterShownEvents(events, hiddenCalendarIds)}
-  onEventsChange={(shown) =>
-    setEvents(mergeShownEvents(events, shown, hiddenCalendarIds))
-  }
-  calendars={calendars}
->
-  <SidebarProvider>
-    <CalendarSidebar
-      hiddenCalendarIds={hiddenCalendarIds}
-      onHiddenCalendarIdsChange={setHiddenCalendarIds}
-    />
-    {/* ... */}
-  </SidebarProvider>
-</CalendarProvider>;
-```
+The list's eye buttons hide and show calendars. Hiding only dims the row; to take a calendar's events off the views, give the provider only the shown events and merge its changes back into your full list. `filterShownEvents()` and `mergeShownEvents()` from `@/lib/event-utils` do both, and [Calendar App](/docs/components/calendar-app) does this for you. [Hide a calendar's events](#hide-a-calendars-events) is a live example.
 
 ### Meeting with people
 
@@ -103,6 +83,20 @@ Picking someone adds them to a "Meeting participants" section under the field: t
 ### Colors
 
 The sidebars bring Notion Calendar's colors as their own tokens, added to your CSS file on install: `--calendar-sidebar`, `--calendar-sidebar-foreground`, `--calendar-sidebar-muted-foreground`, `--calendar-sidebar-primary` and the rest of shadcn/ui's sidebar set, each with a `calendar-` prefix. Inside the sidebar they replace your `--sidebar-*` tokens, so the rest of your app keeps its own sidebar theme. Change them in your CSS to restyle both sidebars.
+
+## Examples
+
+### Meet with someone
+
+With `contacts` on the provider, the "Meet with..." field has people to offer, and the ones you meet with are listed under it.
+
+<ComponentPreview name="calendar-sidebar-meet-with-demo" height={600} />
+
+### Hide a calendar's events
+
+Hover a calendar in the list and click its eye: its events leave the view, and come back when you show it again.
+
+<ComponentPreview name="calendar-sidebar-hidden-calendars-demo" height={600} />
 
 ## Features
 

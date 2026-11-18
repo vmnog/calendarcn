@@ -31,6 +31,32 @@ export function YearPlan() {
 
 Set `defaultView="year"` (or control `view`) so the provider snaps the date, header and navigation to years: previous and next move a year, and `visibleRange` runs from January 1 to the next January 1. To switch between the year and the other views, see the [Calendar](/docs/components/calendar) example.
 
+## Examples
+
+### Your own toolbar
+
+Year View has no header of its own. In year view, `goToPrev()` and `goToNext()` from [`useCalendar()`](/docs/components/calendar-core#usecalendar) move a year.
+
+<ComponentPreview name="year-view-toolbar-demo" height={600} />
+
+### Open the clicked day
+
+`onDayClick` replaces what a click does. Here it switches to [Day View](/docs/components/day-view) on that day.
+
+<ComponentPreview name="year-view-day-click-demo" height={600} />
+
+### List the clicked day's events
+
+Keep the year on screen and show the day's events beside it.
+
+<ComponentPreview name="year-view-day-events-demo" height={600} />
+
+### Monday start and week numbers
+
+`defaultWeekStartsOn={1}` starts every month's weeks on Monday, and the `showWeekNumbers` [view setting](/docs/components/calendar-core#view-settings) numbers them.
+
+<ComponentPreview name="year-view-week-numbers-demo" height={600} />
+
 ## Features
 
 - A click on a day, or <Kbd>Enter</Kbd> or <Kbd>Space</Kbd> on a focused one, calls `showDay()`, which switches the provider to the week view and briefly highlights that day. Render [Week View](/docs/components/week-view) for it, as the Calendar block does, or pass `onDayClick` to do something else. With Year View alone and no `onDayClick`, the click has nothing to show.

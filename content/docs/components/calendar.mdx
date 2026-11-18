@@ -38,6 +38,32 @@ const [events, setEvents] = React.useState(initialEvents);
 
 The view switcher offers day, week, month, year and agenda, 2 to 9 days at a time, and the weekend, declined events and week number settings. The examples use `createSampleEvents()` from [Sample Data](/docs/sample-data) for their data; pass your own events instead.
 
+## Examples
+
+### Your own buttons
+
+`children` render inside the calendar's provider, so a panel of your own can read the calendar with [`useCalendar()`](/docs/components/calendar-core#usecalendar) and move it: here with `goToToday()`, `navigateToDate()` and `switchView()`.
+
+<ComponentPreview name="calendar-buttons-demo" height={600} />
+
+### Working hours
+
+Monday to Friday, from 8:00 to 18:00 on a 24-hour clock. Every [`CalendarProvider` setting](/docs/components/calendar-core#configuration) is a `Calendar` prop.
+
+<ComponentPreview name="calendar-working-hours-demo" height={600} />
+
+### Saving one change at a time
+
+`onEventCreate`, `onEventUpdate` and `onEventDelete` report each change once, which is where to call your server. The log under the calendar lists what would be sent.
+
+<ComponentPreview name="calendar-save-changes-demo" height={600} />
+
+### Inside a dialog
+
+The calendar in a shadcn/ui Dialog. Its event details open inside the dialog: see [In a dialog](#in-a-dialog).
+
+<ComponentPreview name="calendar-dialog-demo" height={240} />
+
 ## Build your own
 
 `Calendar` is a short file. Its toolbar is built from the [Calendar Header](/docs/components/calendar-header)'s parts, and that item's `CalendarHeader` is the live demo's fuller header, with panel toggles. For a header of your own, compose the parts yourself: the provider owns the state, your header reads it with `useCalendar()`, and the body renders whichever view the provider is on.
@@ -150,7 +176,7 @@ Every event is a button you can reach with <Kbd>Tab</Kbd>. The views only handle
 
 ## In a dialog
 
-The calendar works inside a shadcn/ui Dialog or Sheet. The event details then render inside the dialog rather than at the end of the page, so the dialog's focus trap and outside presses leave them alone. A dialog that clips or scrolls its content (`overflow-hidden`, `overflow-auto`) can clip the details too.
+The calendar works inside a shadcn/ui Dialog or Sheet, as [Inside a dialog](#inside-a-dialog) shows. The event details then render inside the dialog rather than at the end of the page, so the dialog's focus trap and outside presses leave them alone. A dialog that clips or scrolls its content (`overflow-hidden`, `overflow-auto`) can clip the details too.
 
 Pressing <Kbd>Esc</Kbd> closes the details first. A Radix dialog stays open. A Base UI dialog closes as well, unless you keep it open on an <Kbd>Esc</Kbd> the details already handled:
 

@@ -52,6 +52,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 If your app already has a next-themes provider, keep yours: the toggle only needs `useTheme()`.
 
+## Examples
+
+### In a tooltip
+
+The toggle forwards its ref and props to its button, so it works as a tooltip's trigger.
+
+<ComponentPreview name="theme-toggle-tooltip-demo" height={240} />
+
 ## Features
 
 - Server rendering shows the system icon until the page loads in the browser, where the stored theme is known, so the markup always matches.

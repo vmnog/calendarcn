@@ -28,6 +28,26 @@ export function Today() {
 }
 ```
 
+## Examples
+
+### A week strip
+
+Pick the day from a strip of your own: `currentDate` is the day on screen and `goToDate()` shows another.
+
+<ComponentPreview name="day-view-week-strip-demo" height={600} />
+
+### 5-minute steps
+
+`snapMinutes` sets the step that drag, resize and new events snap to, and `defaultEventDuration` the length of a double-clicked event.
+
+<ComponentPreview name="day-view-snap-demo" height={600} />
+
+### All-day events
+
+All-day events sit in a row above the hours, and one that spans several days runs past the edges of the day.
+
+<ComponentPreview name="day-view-all-day-demo" height={600} />
+
 ## API Reference
 
 ### DayView

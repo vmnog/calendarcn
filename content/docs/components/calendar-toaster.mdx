@@ -60,7 +60,21 @@ const { showNotice } = useCalendarNotice();
 showNotice({ message: "Event saved", title: event.title });
 ```
 
-A notice with `onUndo` gets an Undo button that calls it.
+A notice with `onUndo` gets an Undo button that calls it, as in [A notice of your own](#a-notice-of-your-own).
+
+## Examples
+
+### A notice of your own
+
+`showNotice()` from `useCalendarNotice()` shows your app's notice where the calendar shows its own, with an Undo button when you pass `onUndo`.
+
+<ComponentPreview name="calendar-toaster-notice-demo" height={600} />
+
+### Longer, and on the left
+
+`duration` sets how long a toast stays, and `className` moves it. Right-click an event and pick Delete to see one.
+
+<ComponentPreview name="calendar-toaster-duration-demo" height={600} />
 
 ## Accessibility
 
