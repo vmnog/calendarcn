@@ -14,7 +14,7 @@
       "type": "registry:component"
     }
   ],
-  "docs": "Day View: render <DayView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/day-view",
+  "docs": "Day View: render <DayView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/day-week-view#day-view",
   "categories": [
     "calendar",
     "views"

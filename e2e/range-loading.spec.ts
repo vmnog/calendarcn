@@ -9,7 +9,7 @@ import { FROZEN_NOW, boxOf } from "./helpers";
  * with its range as `data-start` / `data-end` (yyyy-MM-dd, end exclusive)
  * and its `data-status` ("loading", "loaded" or "cached").
  */
-const DOCS_PATH = "/docs/loading-events";
+const DOCS_PATH = "/docs/guides/loading-events";
 
 /** The live example inside the docs page */
 function demo(page: Page): Locator {

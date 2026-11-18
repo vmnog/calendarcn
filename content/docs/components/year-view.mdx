@@ -41,7 +41,7 @@ Year View has no header of its own. In year view, `goToPrev()` and `goToNext()` 
 
 ### Open the clicked day
 
-`onDayClick` replaces what a click does. Here it switches to [Day View](/docs/components/day-view) on that day.
+`onDayClick` replaces what a click does. Here it switches to [Day View](/docs/components/day-week-view#day-view) on that day.
 
 <ComponentPreview name="year-view-day-click-demo" height={600} />
 
@@ -59,7 +59,7 @@ Keep the year on screen and show the day's events beside it.
 
 ## Features
 
-- A click on a day, or <Kbd>Enter</Kbd> or <Kbd>Space</Kbd> on a focused one, calls `showDay()`, which switches the provider to the week view and briefly highlights that day. Render [Week View](/docs/components/week-view) for it, as the Calendar block does, or pass `onDayClick` to do something else. With Year View alone and no `onDayClick`, the click has nothing to show.
+- A click on a day, or <Kbd>Enter</Kbd> or <Kbd>Space</Kbd> on a focused one, calls `showDay()`, which switches the provider to the week view and briefly highlights that day. Render [Week View](/docs/components/day-week-view) for it, as the Calendar block does, or pass `onDayClick` to do something else. With Year View alone and no `onDayClick`, the click has nothing to show.
 - The arrow keys move between days, <Kbd>Page Up</Kbd> and <Kbd>Page Down</Kbd> by a month, <Kbd>Home</Kbd> and <Kbd>End</Kbd> to the ends of the week. They stop at the ends of the year. <Kbd>J</Kbd> and <Kbd>K</Kbd> change the year, and focus stays on the same day.
 - Each month is a grid named by its month and year, and each day a button named by its date, "today" and its number of events, such as "Thursday, June 4, today, 3 events".
 - The week start, the locale's month and weekday names, and week numbers come from the provider. With weekends hidden, each month drops its Saturday and Sunday columns, and the arrow keys, <Kbd>Home</Kbd> and <Kbd>End</Kbd> skip them.

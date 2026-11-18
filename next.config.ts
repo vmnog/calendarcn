@@ -21,7 +21,10 @@ const DOCS_REDIRECTS: { from: string; to: string }[] = [
     from: "/docs/components/time-grid",
     to: "/docs/components/day-week-view#time-grid",
   },
-  { from: "/docs/components/day-view", to: "/docs/components/day-week-view" },
+  {
+    from: "/docs/components/day-view",
+    to: "/docs/components/day-week-view#day-view",
+  },
   { from: "/docs/components/week-view", to: "/docs/components/day-week-view" },
   {
     from: "/docs/components/mini-calendar",

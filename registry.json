@@ -456,7 +456,7 @@
       "description": "One day on the time grid.",
       "author": "vmnog <https://vmnog.com>",
       "categories": ["calendar", "views"],
-      "docs": "Day View: render <DayView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/day-view",
+      "docs": "Day View: render <DayView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/day-week-view#day-view",
       "registryDependencies": ["@calendarcn/time-grid"],
       "files": [
         {
@@ -472,7 +472,7 @@
       "description": "A week, or any number of days, on the time grid.",
       "author": "vmnog <https://vmnog.com>",
       "categories": ["calendar", "views"],
-      "docs": "Week View: render <WeekView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/week-view",
+      "docs": "Week View: render <WeekView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/day-week-view",
       "registryDependencies": ["@calendarcn/time-grid"],
       "files": [
         {

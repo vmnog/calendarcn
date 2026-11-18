@@ -6,21 +6,17 @@ import type { Locator, Page } from "@playwright/test";
 import { FROZEN_NOW } from "./helpers";
 
 /**
- * The live examples on the component pages: every one renders, with its
+ * The live examples on the component pages and the guides: every one renders, with its
  * code, and no page logs an error. Then one interaction for a dozen of them,
  * each proving the point its example makes. Which examples a page must have
  * is checked without a browser in `unit/docs-examples.spec.ts`.
  */
 
-/** Folder of the component pages */
-const COMPONENT_PAGES_DIR = path.join(
-  __dirname,
-  "..",
-  "content/docs/components",
-);
+/** Folder of the docs pages */
+const DOCS_DIR = path.join(__dirname, "..", "content/docs");
 
-/** Path the component pages are served under */
-const COMPONENT_PAGES_URL = "/docs/components";
+/** The folders of `content/docs` whose pages show examples: components and guides */
+const EXAMPLE_PAGE_FOLDERS = ["components", "guides"];
 
 /** `<ComponentPreview name="…">` in a page's MDX */
 const PREVIEW_TAG = /<ComponentPreview\s+name="([^"]+)"/g;
@@ -45,26 +41,36 @@ const ANALYTICS_PATH = "/_vercel/";
  * reports that the markup didn't match (error 418) and draws it again.
  */
 const KNOWN_ERRORS: Record<string, RegExp> = {
-  "mini-calendar": /^Minified React error #418;/,
+  "calendar-sidebar": /^Minified React error #418;/,
 };
 
-/** A component page: its name (`week-view`) and the examples its MDX names, in order */
-interface ComponentPage {
+/**
+ * A component page or a guide: its name (`day-week-view`), its path and the
+ * examples its MDX names, in order
+ */
+interface ExamplePage {
   name: string;
+  url: string;
   examples: string[];
 }
 
-const PAGES: ComponentPage[] = readdirSync(COMPONENT_PAGES_DIR)
-  .filter((file) => file.endsWith(".mdx"))
-  .map((file) => ({
-    name: file.replace(/\.mdx$/, ""),
-    examples: Array.from(
-      readFileSync(path.join(COMPONENT_PAGES_DIR, file), "utf8").matchAll(
-        PREVIEW_TAG,
-      ),
-      (match) => match[1],
-    ),
-  }));
+const PAGES: ExamplePage[] = EXAMPLE_PAGE_FOLDERS.flatMap((folder) =>
+  readdirSync(path.join(DOCS_DIR, folder))
+    .filter((file) => file.endsWith(".mdx"))
+    .map((file) => {
+      const name = file.replace(/\.mdx$/, "");
+      return {
+        name,
+        url: `/docs/${folder}/${name}`,
+        examples: Array.from(
+          readFileSync(path.join(DOCS_DIR, folder, file), "utf8").matchAll(
+            PREVIEW_TAG,
+          ),
+          (match) => match[1],
+        ),
+      };
+    }),
+);
 
 /** Collects the page's console errors and uncaught exceptions */
 function collectErrors(page: Page): string[] {
@@ -78,10 +84,12 @@ function collectErrors(page: Page): string[] {
   return errors;
 }
 
-/** Opens a component page with the clock frozen at FROZEN_NOW */
+/** Opens a component page or a guide, by name, with the clock frozen at FROZEN_NOW */
 async function openPage(page: Page, name: string): Promise<void> {
+  const target = PAGES.find((entry) => entry.name === name);
+  if (!target) throw new Error(`No docs page named "${name}"`);
   await page.clock.setFixedTime(FROZEN_NOW);
-  await page.goto(`${COMPONENT_PAGES_URL}/${name}`);
+  await page.goto(target.url);
 }
 
 /** The frame an example renders in, scrolled into view */
@@ -157,11 +165,11 @@ for (const { name: pageName, examples } of PAGES) {
 test("an example below the first mounts when it nears the screen", async ({
   page,
 }) => {
-  await openPage(page, "week-view");
+  await openPage(page, "day-week-view");
   const top = page.locator('[data-example="week-view-demo"]');
   const last = page.locator('[data-example="week-view-side-panel-demo"]');
 
-  // The top example is there at load; the last one is a frame of the same
+  // The top example is there at load; a later one is a frame of the same
   // height with nothing in it yet, so the page doesn't move when it mounts
   await expect(exampleEvent(top, "Customer call")).toBeVisible();
   await expect(last).toBeEmpty();
@@ -174,7 +182,7 @@ test("an example below the first mounts when it nears the screen", async ({
 });
 
 test("the three-day example has three day columns", async ({ page }) => {
-  await openPage(page, "week-view");
+  await openPage(page, "day-week-view");
   const frame = await showExample(page, "week-view-three-days-demo");
 
   // The columns off screen, which sideways scrolling brings in, are inert
@@ -186,7 +194,7 @@ test("the three-day example has three day columns", async ({ page }) => {
 test("the weekdays example leaves Saturday and Sunday out", async ({
   page,
 }) => {
-  await openPage(page, "week-view");
+  await openPage(page, "day-week-view");
   const frame = await showExample(page, "week-view-weekdays-demo");
 
   const columns = frame.locator('[role="group"][aria-label]:not([inert])');
@@ -336,7 +344,7 @@ test("the calendar opens in a dialog, with its event details inside", async ({
 test("Share availability starts marking, and the pill cancels it", async ({
   page,
 }) => {
-  await openPage(page, "scheduling");
+  await openPage(page, "share-your-availability");
   const frame = await showExample(page, "scheduling-share-demo");
 
   await frame.getByRole("button", { name: "Share availability" }).click();
@@ -382,7 +390,7 @@ test("your app's command runs from the command menu", async ({ page }) => {
 test("a notice of your own shows in the toaster, with Undo", async ({
   page,
 }) => {
-  await openPage(page, "calendar-toaster");
+  await openPage(page, "undo-and-notices");
   const frame = await showExample(page, "calendar-toaster-notice-demo");
   const toaster = frame.getByRole("region", { name: "Notifications" });
 
@@ -397,7 +405,7 @@ test("a notice of your own shows in the toaster, with Undo", async ({
 test("picking someone in the people picker lists them in your own list", async ({
   page,
 }) => {
-  await openPage(page, "people-picker");
+  await openPage(page, "meet-with-people");
   const frame = await showExample(page, "people-picker-list-demo");
 
   // The meeting starts with Alex, from `defaultMeetWith`
@@ -427,7 +435,7 @@ test("the details sidebar searches from your own button", async ({ page }) => {
 });
 
 test("picking a day in the sheet closes it", async ({ page }) => {
-  await openPage(page, "sidebar-overlay");
+  await openPage(page, "calendar-sidebar");
   const frame = await showExample(page, "sidebar-overlay-picker-demo");
 
   await frame.getByRole("button", { name: "Pick a day" }).click();
