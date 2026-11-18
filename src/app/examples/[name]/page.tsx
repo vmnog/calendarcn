@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { FrameFocusGuard } from "@/components/docs/frame-focus-guard";
 import {
   FRAMED_EXAMPLES,
   isExampleName,
@@ -38,5 +39,10 @@ export default async function ExampleFramePage({
     notFound();
   }
 
-  return renderExample(name);
+  return (
+    <>
+      <FrameFocusGuard />
+      {renderExample(name)}
+    </>
+  );
 }

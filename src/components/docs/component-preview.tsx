@@ -13,6 +13,7 @@ import { PreviewFrame } from "@/components/docs/preview-frame";
 import { PreviewTab } from "@/components/docs/preview-tab";
 import { EXAMPLE_ITEMS } from "@/components/docs/example-items";
 import {
+  getExampleFrameCaption,
   getExampleFramePath,
   getExamplePath,
   isExampleName,
@@ -20,7 +21,7 @@ import {
   readExampleSource,
   renderExample,
 } from "@/components/docs/examples";
-import type { ExampleName } from "@/components/docs/examples";
+import type { FramedExampleName } from "@/components/docs/examples";
 import {
   buildExamplePrompt,
   indexDocsPages,
@@ -76,6 +77,11 @@ interface ComponentPreviewProps {
    * components that don't exist yet.
    */
   todo?: ReactNode;
+  /**
+   * Breaks out of the text column to the page's full content width
+   * (`.docs-wide` in `docs.css`), for the views that need room to read
+   */
+  wide?: boolean;
   className?: string;
 }
 
@@ -94,8 +100,11 @@ export async function ComponentPreview({
   name,
   height = DEFAULT_PREVIEW_HEIGHT,
   todo,
-  className,
+  wide = false,
+  className: classNameProp,
 }: ComponentPreviewProps) {
+  const className = cn(wide && "docs-wide", classNameProp);
+
   if (todo) {
     return (
       <PreviewTabs className={className}>
@@ -192,7 +201,7 @@ export async function ComponentPreview({
 }
 
 interface ExampleFrameProps {
-  name: ExampleName;
+  name: FramedExampleName;
 }
 
 /**
@@ -205,9 +214,7 @@ function ExampleFrame({ name }: ExampleFrameProps) {
   return (
     <div className="flex size-full flex-col">
       <div className="flex h-9 shrink-0 items-center justify-between gap-3 border-b px-3 text-xs text-fd-muted-foreground">
-        <span className="truncate">
-          A full-page block, in a frame as wide as this one.
-        </span>
+        <span className="truncate">{getExampleFrameCaption(name)}</span>
         <Link
           href={path}
           target="_blank"

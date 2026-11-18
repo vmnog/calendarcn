@@ -11,7 +11,8 @@ import { createSampleEvents } from "@/lib/sample-events";
 export function CommandMenuDemo() {
   // The provider reads its initial events once, so create them once
   const [initialEvents] = React.useState(() => createSampleEvents(new Date()));
-  const [open, setOpen] = React.useState(false);
+  // Starts open so the docs show the menu: start it closed in your app
+  const [open, setOpen] = React.useState(true);
 
   return (
     <CalendarProvider defaultEvents={initialEvents}>
