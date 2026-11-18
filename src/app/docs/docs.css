@@ -402,7 +402,8 @@ body:has(#nd-notebook-layout)
 
 /*
  * The drawer's close button lands exactly on the header button that opened it,
- * which sits below the announcement bar (`--fd-banner-height`).
+ * which sits below the part of the announcement bar still on screen
+ * (`--fd-banner-height`, kept in step with the scroll by `DocsAnnouncement`).
  */
 body:has(#nd-notebook-layout)
   #nd-sidebar-mobile
