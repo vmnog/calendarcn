@@ -258,7 +258,7 @@ function MeetWithField({ contacts, exclude, onPick }: MeetWithFieldProps) {
       <div
         // Filled with the sidebar's border color: half strength at rest, full
         // while focused. A dark theme fills it only while focused
-        className="flex items-center gap-2 rounded-sm bg-sidebar-border/48 px-2 py-1.5 has-[:focus]:bg-sidebar-border dark:bg-sidebar dark:has-[:focus]:bg-sidebar-accent"
+        className="flex items-center gap-2 rounded-sm bg-sidebar-border/50 px-2 py-1.5 has-[:focus]:bg-sidebar-border dark:bg-sidebar dark:has-[:focus]:bg-sidebar-accent"
         onClick={() => inputRef.current?.focus()}
       >
         <UserRound className="text-calendar-sidebar-muted-foreground size-4 shrink-0" />
