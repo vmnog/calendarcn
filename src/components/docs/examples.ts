@@ -209,10 +209,8 @@ const FRAME_CAPTIONS = {
     "A full-page block, in a frame as wide as this one.",
   "calendar-app-settings-demo":
     "A full-page block, in a frame as wide as this one.",
-  "command-menu-demo":
-    "The menu starts open here: click outside it, or press Escape in it, to close it.",
-  "calendar-settings-demo":
-    "The dialog starts open here: click outside it, or press Escape in it, to close it.",
+  "command-menu-demo": "Starts open. Click outside it to close it.",
+  "calendar-settings-demo": "Starts open. Click outside it to close it.",
 } satisfies Partial<Record<ExampleName, string>>;
 
 export type FramedExampleName = keyof typeof FRAME_CAPTIONS;

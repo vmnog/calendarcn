@@ -26,14 +26,23 @@ const HERO_FADE_MS = 200;
 /** Pause after the hero comes into view, before the cursor shows, in ms */
 const HERO_START_DELAY_MS = 500;
 
-/** How long the opened details stay with the cursor before it leaves, in ms */
-const HERO_LOOK_MS = 900;
+/**
+ * How long the opened details stay before the cursor leaves and closes them,
+ * in ms. The popover is taller than the hero, so it can't stay over the hint.
+ */
+const HERO_LOOK_MS = 1400;
 
 /** Height of the hero's calendar, in px */
 const HERO_HEIGHT = 520;
 
 /** Hour the grid starts scrolled to: the customer call and its target show */
 const HERO_SCROLL_HOUR = 11;
+
+/**
+ * Narrowest hero, in px, that opens the moved event's details: on a phone the
+ * popover is wider than the room beside the event, so the script skips it
+ */
+const HERO_DETAILS_MIN_WIDTH = 640;
 
 /** Share of the hero that must be on screen before the script plays */
 const HERO_VISIBLE_THRESHOLD = 0.5;
@@ -56,7 +65,8 @@ type HeroPhase = "waiting" | "playing" | "handed" | "touched";
 /**
  * The Introduction's opening: a week view that plays one move by itself
  * when it first scrolls into view (a cursor drags an event one day right
- * and one hour down, then opens its details) and hands over with a hint.
+ * and one hour down, opens its details and closes them) and hands over
+ * with a hint.
  * Pressing anywhere in it first stops the script and gives control at once.
  * Under reduced motion only the hint shows.
  */
@@ -130,7 +140,7 @@ export function PlayableHero() {
           data-hero-hint
           aria-hidden={phase !== "handed"}
           className={cn(
-            "rounded-full bg-fd-secondary px-3.5 py-1.5 text-sm text-fd-muted-foreground shadow-(--shadow-border)",
+            "rounded-2xl bg-fd-secondary px-3.5 py-1.5 text-center text-sm text-balance text-fd-muted-foreground shadow-(--shadow-border)",
             "transition-[opacity,translate,visibility] duration-200 ease-out motion-reduce:transition-none",
             phase === "handed"
               ? "visible translate-y-0 opacity-100"
@@ -160,18 +170,20 @@ interface HeroScriptProps {
  * mid-way cancels every animation before anything changed.
  */
 function HeroScript({ isPlaying, rootRef, cursorRef, onEnd }: HeroScriptProps) {
-  const { events, updateEvent, selectEvent } = useCalendar();
+  const { events, updateEvent, selectEvent, clearSelection } = useCalendar();
   const eventsRef = React.useRef(events);
   const updateEventRef = React.useRef(updateEvent);
   const selectEventRef = React.useRef(selectEvent);
+  const clearSelectionRef = React.useRef(clearSelection);
   const onEndRef = React.useRef(onEnd);
 
   React.useEffect(() => {
     eventsRef.current = events;
     updateEventRef.current = updateEvent;
     selectEventRef.current = selectEvent;
+    clearSelectionRef.current = clearSelection;
     onEndRef.current = onEnd;
-  }, [events, updateEvent, selectEvent, onEnd]);
+  }, [events, updateEvent, selectEvent, clearSelection, onEnd]);
 
   React.useEffect(() => {
     const root = rootRef.current;
@@ -275,17 +287,22 @@ function HeroScript({ isPlaying, rootRef, cursorRef, onEnd }: HeroScriptProps) {
         end: addHours(addDays(event.end, 1), 1),
       });
 
-      // 3. It lets go, and the event's details open
+      // 3. It lets go, and the event's details open and close again (not
+      // on a phone, where the popover has no room)
       await animate(
         cursor,
         [{ transform: at(dropped, 0.9) }, { transform: at(dropped) }],
         HERO_FADE_MS / 2,
       );
       if (isStopped) return;
-      selectEventRef.current(HERO_EVENT_ID);
-      await wait(HERO_LOOK_MS);
+      if (rootBox.width >= HERO_DETAILS_MIN_WIDTH) {
+        selectEventRef.current(HERO_EVENT_ID);
+        await wait(HERO_LOOK_MS);
+        if (isStopped) return;
+        clearSelectionRef.current();
+      }
 
-      // 4. The cursor leaves; the hint takes over
+      // 4. The cursor leaves, and the hint takes over
       await animate(
         cursor,
         [

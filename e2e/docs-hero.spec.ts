@@ -51,10 +51,19 @@ test("the hero drags an event a day right and opens it, then hands over", async 
   await expect(
     hero(page).locator('[data-event-id="sample-customer-call"]'),
   ).toHaveAccessibleName(/3:00 PM to 4:00 PM/);
-  // Its details open, and the hint takes over from the cursor
-  await expect(page.getByRole("dialog")).toContainText("Customer call");
+  // Its details open, then the hint takes over from the cursor
+  await expect(
+    page
+      .getByRole("dialog", { name: "Event details" })
+      .locator("input")
+      .first(),
+  ).toHaveValue("Customer call");
   await expect(hint(page)).toBeVisible({ timeout: SCRIPT_MS });
   await expect(hint(page)).toContainText("Your turn");
+  // The details close as the cursor leaves, so nothing covers the hint
+  await expect(page.getByRole("dialog", { name: "Event details" })).toHaveCount(
+    0,
+  );
 
   // The question map stays below the hero
   const heroBox = await hero(page).boundingBox();
