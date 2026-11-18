@@ -12,6 +12,8 @@ import {
 import { useCalendarSeriesScope } from "./calendar-provider";
 import {
   EVENT_DETAIL_ACCENT_BG_CLASS,
+  EVENT_DETAIL_DIALOG_BUTTON_CLASS,
+  EVENT_DETAIL_DIALOG_CLASS,
   EVENT_DETAIL_SECONDARY_CLASS,
   RadioDot,
 } from "./event-detail-parts";
@@ -35,15 +37,17 @@ const SERIES_SCOPE_TITLES: Record<SeriesScopeQuestion["action"], string> = {
 };
 
 /** A neutral button: Continue editing, Cancel */
-const NEUTRAL_BUTTON_CLASS =
-  "h-8 whitespace-nowrap rounded-md border border-[#E8E8E4] px-3 text-foreground hover:bg-[#F5F5F5] dark:border-[#373737] dark:bg-[#303030] dark:hover:bg-[#373737]";
+const NEUTRAL_BUTTON_CLASS = cn(
+  "h-8 whitespace-nowrap rounded-md px-3",
+  EVENT_DETAIL_DIALOG_BUTTON_CLASS,
+);
 
-/** A filled button: Save event in blue, Delete event in red */
+/** A filled button: Save event in the selection color, Delete event in the danger one */
 const FILLED_BUTTON_CLASS =
-  "h-8 whitespace-nowrap rounded-md px-3 text-white hover:brightness-110";
+  "h-8 whitespace-nowrap rounded-md px-3 hover:brightness-110";
 
-/** Red of Discard change and Delete event, the details' delete red */
-const DESTRUCTIVE_TEXT_CLASS = "text-[#E56458]";
+/** Color of Discard change and Delete event, the details' delete color */
+const DESTRUCTIVE_TEXT_CLASS = "text-calendar-danger";
 
 /** One line of the edit question's summary: the label, the new value, the old one struck */
 function SummaryRow({ row }: { row: EventChangeSummaryRow }) {
@@ -135,7 +139,10 @@ export function EventSeriesScopeDialog() {
         // Inside the event details as far as their popover and the views'
         // click handlers are concerned, so it doesn't close them
         data-calendar-popover=""
-        className="w-[420px] max-w-[calc(100vw-32px)] gap-4 rounded-xl border-[#E8E8E4] bg-white p-5 text-sm font-medium dark:border-[#303030] dark:bg-[#252525]"
+        className={cn(
+          "w-[420px] max-w-[calc(100vw-32px)] gap-4 rounded-xl p-5 text-sm font-medium",
+          EVENT_DETAIL_DIALOG_CLASS,
+        )}
         // Keys stay in the question: Escape must not deselect the event and
         // single-key shortcuts must not move the calendar behind it. Tab is
         // left to the dialog's focus trap
@@ -169,7 +176,7 @@ export function EventSeriesScopeDialog() {
           ))}
         </div>
         {!isDelete && summary.length > 0 && (
-          <div className="flex flex-col gap-2.5 border-t border-[#E8E8E4] pt-4 dark:border-[#373737]">
+          <div className="flex flex-col gap-2.5 border-t border-calendar-detail-hover-border pt-4">
             {summary.map((row) => (
               <SummaryRow key={row.label} row={row} />
             ))}
@@ -187,7 +194,10 @@ export function EventSeriesScopeDialog() {
             <button
               type="button"
               onClick={() => answer({ action: "delete", scope })}
-              className={cn(FILLED_BUTTON_CLASS, "bg-[#E56458]")}
+              className={cn(
+                FILLED_BUTTON_CLASS,
+                "bg-calendar-danger text-calendar-danger-foreground",
+              )}
             >
               Delete event
             </button>

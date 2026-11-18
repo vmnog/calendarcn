@@ -30,6 +30,7 @@ import {
   EVENT_DETAIL_ICON_CLASS,
   EVENT_DETAIL_INPUT_GROUP_CLASS,
   EVENT_DETAIL_MENU_CLASS,
+  EVENT_DETAIL_MENU_DANGER_CLASS,
   EVENT_DETAIL_MENU_ITEM_CLASS,
   EVENT_DETAIL_MENU_SECONDARY_CLASS,
   EVENT_DETAIL_PLACEHOLDER_CLASS,
@@ -88,23 +89,30 @@ const ROLE_LABELS = {
   optional: "Optional",
 } as const;
 
+/**
+ * A placeholder avatar (a guest's initial, a room's icon): the avatar color,
+ * a touch lighter at the top, with the color of what sits on it
+ */
+const AVATAR_CLASS =
+  "bg-gradient-to-b from-[color-mix(in_oklab,var(--calendar-avatar-foreground)_29%,var(--calendar-avatar))] to-calendar-avatar text-calendar-avatar-foreground";
+
 /** Badge on the avatar for each answer; "needs-action" shows none */
 const RESPONSE_BADGES: Record<
   Exclude<ParticipantResponse, "needs-action">,
   { className: string; label: string; icon: React.ReactNode }
 > = {
   accepted: {
-    className: "bg-[#4AC881]",
+    className: "bg-event-green-border text-event-foreground",
     label: "Accepted",
     icon: <Check className="size-[7px]" strokeWidth={4} />,
   },
   declined: {
-    className: "bg-[#E56458]",
+    className: "bg-calendar-danger text-calendar-danger-foreground",
     label: "Declined",
     icon: <X className="size-[7px]" strokeWidth={4} />,
   },
   tentative: {
-    className: "bg-[#9B9A97]",
+    className: "bg-event-gray-border text-event-foreground",
     label: "Maybe",
     icon: <span className="text-[7px] leading-none font-bold">?</span>,
   },
@@ -177,7 +185,9 @@ function ParticipantAvatar({ participant }: ParticipantAvatarProps) {
   return (
     <span className="relative flex size-5 shrink-0">
       <Avatar className="size-5">
-        <AvatarFallback className="bg-gradient-to-b from-[#C7C7C7] to-[#B1B1B1] text-[10px] font-semibold text-white">
+        <AvatarFallback
+          className={cn(AVATAR_CLASS, "text-[10px] font-semibold")}
+        >
           {getInitial(participant)}
         </AvatarFallback>
       </Avatar>
@@ -186,7 +196,7 @@ function ParticipantAvatar({ participant }: ParticipantAvatarProps) {
           role="img"
           aria-label={badge.label}
           className={cn(
-            "absolute -right-[3px] -bottom-[3px] flex size-[11px] items-center justify-center rounded-full text-white ring-[1.5px] ring-white dark:ring-[#191919]",
+            "absolute -right-[3px] -bottom-[3px] flex size-[11px] items-center justify-center rounded-full ring-[1.5px] ring-background",
             badge.className,
           )}
         >
@@ -264,7 +274,7 @@ function ParticipantActions({
             </DropdownMenuItem>
             {!participant.organizer && (
               <>
-                <DropdownMenuSeparator className="bg-[#303030]" />
+                <DropdownMenuSeparator className="bg-calendar-menu-border" />
                 <DropdownMenuItem
                   className={cn(EVENT_DETAIL_MENU_ITEM_CLASS, "text-sm")}
                   onClick={onToggleOptional}
@@ -276,10 +286,10 @@ function ParticipantActions({
             )}
             {onRemove && (
               <DropdownMenuItem
-                className="text-sm text-[#E56458] focus:!bg-[#DE5551] focus:!text-white focus:[&>svg]:!text-white"
+                className={cn("text-sm", EVENT_DETAIL_MENU_DANGER_CLASS)}
                 onClick={onRemove}
               >
-                <X className="size-4 text-[#E56458]" />
+                <X className="size-4 text-calendar-danger" />
                 Remove
               </DropdownMenuItem>
             )}
@@ -353,7 +363,12 @@ function RoomRow({ room, onRemove }: RoomRowProps) {
         description ? "min-h-[51px] py-1.5" : EVENT_DETAIL_ROW_HEIGHT_CLASS,
       )}
     >
-      <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-gradient-to-b from-[#C7C7C7] to-[#B1B1B1] text-white">
+      <span
+        className={cn(
+          "flex size-5 shrink-0 items-center justify-center rounded-sm",
+          AVATAR_CLASS,
+        )}
+      >
         <DoorOpen className="size-3" />
       </span>
       <div className="flex min-w-0 flex-1 flex-col leading-5">

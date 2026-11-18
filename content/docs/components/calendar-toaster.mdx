@@ -70,16 +70,17 @@ A notice with `onUndo` gets an Undo button that calls it.
 
 ## Colors
 
-The toast is dark in both themes, like the event menus:
+The toast wears the menus' tokens, so it follows your shadcn/ui theme: light on a light theme, dark on a dark one.
 
-| Part                | Light      | Dark       |
-| ------------------- | ---------- | ---------- |
-| Background          | `#252525`  | `#252525`  |
-| Border              | none       | `#303030`  |
-| Text                | `#F0F0F0`  | `#F0F0F0`  |
-| Title line and icon | white, 60% | white, 60% |
+| Part                | Token                                                 | Default                     |
+| ------------------- | ----------------------------------------------------- | --------------------------- |
+| Background          | `--calendar-menu`                                     | `var(--popover)`            |
+| Border, dark mode   | `--calendar-menu-border`                              | `var(--border)`             |
+| Text                | `--calendar-menu-foreground`                          | `var(--popover-foreground)` |
+| Title line and icon | `--calendar-menu-foreground`, at 60%                  | the same                    |
+| Undo and Close      | `--calendar-menu-foreground`, at 10% behind the label | the same                    |
 
-Change them in `components/calendar-toaster.tsx`.
+Set them in your CSS to restyle the toasts and the menus together ([Theming](/docs/theming#menus-and-toasts)). With the [Notion Calendar theme](/docs/theming#the-notion-calendar-theme) the toast is dark in both modes, as in the live demo.
 
 ## API Reference
 

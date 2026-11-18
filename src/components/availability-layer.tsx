@@ -10,7 +10,7 @@ import {
   suppressNextClick,
   usePointerGesture,
 } from "@/hooks/use-pointer-gesture";
-import { eventColorStyles } from "@/components/calendar-event-item";
+import { EVENT_COLOR_CLASSES } from "@/components/calendar-event-item";
 import { useCalendarConfig } from "@/components/calendar-provider";
 import { useScheduling } from "@/components/scheduling-provider";
 import {
@@ -18,7 +18,7 @@ import {
   formatAvailabilityTimeRange,
   getRangeMinutes,
 } from "@/lib/availability";
-import { formatFullDate } from "@/lib/event-utils";
+import { formatFullDate, getEventColorStyle } from "@/lib/event-utils";
 import type {
   AvailabilityRange,
   EventColor,
@@ -46,7 +46,7 @@ const LAYER_Z_CLASS = "z-[22]";
  * lines that let the events show through
  */
 const HATCH_CLASS =
-  "[--availability-hatch:rgb(55_53_47/0.13)] dark:[--availability-hatch:rgb(255_255_255/0.08)] bg-[repeating-linear-gradient(135deg,var(--availability-hatch)_0_1px,transparent_1px_7px)]";
+  "[--availability-hatch:color-mix(in_oklab,var(--foreground)_13%,transparent)] dark:[--availability-hatch:color-mix(in_oklab,var(--foreground)_10%,transparent)] bg-[repeating-linear-gradient(135deg,var(--availability-hatch)_0_1px,transparent_1px_7px)]";
 
 /** What a press on the layer does as the pointer moves */
 type PickMode = "create" | "move" | "resize-start" | "resize-end";
@@ -140,7 +140,8 @@ export function AvailabilityLayer({
   const firstMinute = dayStartHour * 60;
   const lastMinute = dayEndHour * 60;
   // Notion Calendar edges the marked times in the default calendar's color
-  const accent = eventColorStyles[calendars[0]?.color ?? DEFAULT_ACCENT_COLOR];
+  const accent = EVENT_COLOR_CLASSES;
+  const accentColor = calendars[0]?.color ?? DEFAULT_ACCENT_COLOR;
 
   /** Minutes of the day at a viewport Y position, unsnapped */
   const minutesAt = React.useCallback(
@@ -420,7 +421,10 @@ export function AvailabilityLayer({
         LAYER_Z_CLASS,
         className,
       )}
-      style={{ gridTemplateColumns: `repeat(${days.length}, 1fr)` }}
+      style={{
+        ...getEventColorStyle(accentColor),
+        gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+      }}
     >
       {days.map((day, dayIndex) => {
         const isOnScreen =

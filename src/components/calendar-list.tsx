@@ -6,7 +6,7 @@ import { ChevronRight, Eye, EyeOff, Rss } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { useCalendarConfig } from "@/components/calendar-provider";
-import type { CalendarInfo, EventColor } from "@/components/calendar-types";
+import type { CalendarInfo } from "@/components/calendar-types";
 import {
   Collapsible,
   CollapsibleContent,
@@ -21,18 +21,10 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { groupCalendarsByEmail } from "@/lib/event-utils";
+import { getEventColorStyle, groupCalendarsByEmail } from "@/lib/event-utils";
 
-/** Swatch color of each calendar color */
-const CALENDAR_SWATCH_CLASSES: Record<EventColor, string> = {
-  red: "bg-event-red",
-  orange: "bg-event-orange",
-  yellow: "bg-event-yellow",
-  green: "bg-event-green",
-  blue: "bg-event-blue",
-  purple: "bg-event-purple",
-  gray: "bg-event-gray",
-};
+/** A calendar's swatch: its color, set on the swatch with `getEventColorStyle()` */
+const CALENDAR_SWATCH_CLASS = "bg-event";
 
 /** Hidden calendars when the list owns them: none */
 const NO_HIDDEN_CALENDARS: string[] = [];
@@ -120,13 +112,14 @@ export function CalendarList({
                             <div
                               className={cn(
                                 "size-3 shrink-0 flex items-center justify-center rounded-xs",
-                                CALENDAR_SWATCH_CLASSES[calendar.color],
+                                CALENDAR_SWATCH_CLASS,
                                 !isVisible && "opacity-40",
                               )}
+                              style={getEventColorStyle(calendar.color)}
                             >
                               {/* Icon sizes are !important: some shadcn/ui styles size every svg in a menu button */}
                               {calendar.isSubscribed && (
-                                <Rss className="!size-2 text-white" />
+                                <Rss className="!size-2 text-event-foreground" />
                               )}
                             </div>
                             <span

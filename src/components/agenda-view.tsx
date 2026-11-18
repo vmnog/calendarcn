@@ -45,8 +45,8 @@ import {
 import {
   DECLINED_EVENT_OUTLINE_CLASS,
   DECLINED_EVENT_TEXT_CLASS,
+  EVENT_COLOR_CLASSES,
   EVENT_FOCUS_RING_CLASS,
-  eventColorStyles,
   getEventDetailsTriggerProps,
 } from "./calendar-event-item";
 import {
@@ -59,7 +59,7 @@ import {
   getEventLabel,
   getVisibleDays,
   isDeclinedByViewer,
-  resolveEventColor,
+  resolveEventColorStyle,
 } from "@/lib/event-utils";
 import { expandRecurringEvents } from "@/lib/recurrence";
 import type {
@@ -542,8 +542,8 @@ function AgendaEventRow({
   const isInSelection = useIsEventInSelection(event.id);
   const isSelected = isSelectedProp || isInSelection;
   const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
-  const color = resolveEventColor(event, calendars);
-  const styles = eventColorStyles[color];
+  const colorStyle = resolveEventColorStyle(event, calendars);
+  const styles = EVENT_COLOR_CLASSES;
   // `false` on the server and during hydration, so the markup matches
   const eventIsPast = useIsPast(event.end, timeZone);
   // Every field is optional: plain events read as details without any
@@ -578,10 +578,10 @@ function AgendaEventRow({
   }
 
   const secondaryTextClass = isSelected
-    ? "text-white/85"
+    ? "text-event-foreground/85"
     : cn(
         styles.text,
-        "opacity-80 dark:text-white/70 dark:opacity-100",
+        "opacity-80 dark:text-event-foreground/70 dark:opacity-100",
         showsDeclined && DECLINED_EVENT_TEXT_CLASS,
       );
 
@@ -612,6 +612,7 @@ function AgendaEventRow({
           showsDeclined && cn(DECLINED_EVENT_OUTLINE_CLASS, "bg-transparent"),
           eventIsPast && !isSelected && "opacity-60",
         )}
+        style={colorStyle}
       >
         {/* Color accent, merged into the background when selected (kept
               in place so the content doesn't shift) */}
@@ -621,7 +622,10 @@ function AgendaEventRow({
             "w-1 shrink-0",
             !isSelected &&
               !isDeclined &&
-              cn(styles.border, "dark:bg-white dark:mix-blend-overlay"),
+              cn(
+                styles.border,
+                "dark:bg-event-foreground dark:mix-blend-overlay",
+              ),
           )}
         />
         <EventContentSlot
@@ -647,8 +651,8 @@ function AgendaEventRow({
                   "col-span-2 truncate text-sm font-medium",
                   "@xl/agenda:col-span-1 @xl/agenda:col-start-2 @xl/agenda:row-start-1",
                   isSelected
-                    ? "text-white"
-                    : cn(styles.text, "dark:text-white/90"),
+                    ? "text-event-foreground"
+                    : cn(styles.text, "dark:text-event-foreground/90"),
                   isDeclined && "line-through",
                   showsDeclined && DECLINED_EVENT_TEXT_CLASS,
                 )}

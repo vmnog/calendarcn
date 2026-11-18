@@ -102,7 +102,7 @@ Picking someone adds them to a "Meeting participants" section under the field: t
 
 ### Colors
 
-The sidebars bring Notion Calendar's colors as their own tokens, added to your CSS file on install: `--calendar-sidebar`, `--calendar-sidebar-foreground`, `--calendar-sidebar-muted-foreground`, `--calendar-sidebar-primary` and the rest of shadcn/ui's sidebar set, each with a `calendar-` prefix. Inside the sidebar they replace your `--sidebar-*` tokens, so the rest of your app keeps its own sidebar theme. Change them in your CSS to restyle both sidebars.
+The sidebars have their own tokens, added to your CSS file on install: `--calendar-sidebar`, `--calendar-sidebar-foreground`, `--calendar-sidebar-muted-foreground`, `--calendar-sidebar-primary` and the rest of shadcn/ui's sidebar set, each with a `calendar-` prefix. Each defaults to your matching `--sidebar-*` token, so the sidebars look like the rest of your app's. Inside the sidebar they stand in for your `--sidebar-*` tokens, so setting them in your CSS restyles both calendar sidebars and leaves your app's own sidebar alone. [Theming](/docs/theming#sidebars) lists them, and the [Notion Calendar theme](/docs/theming#the-notion-calendar-theme) sets them to the live demo's greys.
 
 ## Features
 

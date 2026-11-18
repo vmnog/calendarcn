@@ -14,12 +14,14 @@ import { ControlledEventsDemo } from "@/examples/controlled-events-demo";
 import { CustomEventContentDemo } from "@/examples/custom-event-content-demo";
 import { CustomEventDetailsDemo } from "@/examples/custom-event-details-demo";
 import { DayViewDemo } from "@/examples/day-view-demo";
+import { EventColorDemo } from "@/examples/event-color-demo";
 import { EventDetailsDemo } from "@/examples/event-details-demo";
 import { IcsDemo } from "@/examples/ics-demo";
 import { MonthViewDemo } from "@/examples/month-view-demo";
 import { RangeLoadingDemo } from "@/examples/range-loading-demo";
 import { SampleDataDemo } from "@/examples/sample-data-demo";
 import { SecondaryTimeZoneDemo } from "@/examples/secondary-time-zone-demo";
+import { ThemingDemo } from "@/examples/theming-demo";
 import { TimeZoneDemo } from "@/examples/time-zone-demo";
 import { TimeGridDemo } from "@/examples/time-grid-demo";
 import { TypedEventsDemo } from "@/examples/typed-events-demo";
@@ -52,12 +54,14 @@ const EXAMPLES = {
   "custom-event-content-demo": CustomEventContentDemo,
   "custom-event-details-demo": CustomEventDetailsDemo,
   "day-view-demo": DayViewDemo,
+  "event-color-demo": EventColorDemo,
   "event-details-demo": EventDetailsDemo,
   "ics-demo": IcsDemo,
   "month-view-demo": MonthViewDemo,
   "range-loading-demo": RangeLoadingDemo,
   "sample-data-demo": SampleDataDemo,
   "secondary-time-zone-demo": SecondaryTimeZoneDemo,
+  "theming-demo": ThemingDemo,
   "time-zone-demo": TimeZoneDemo,
   "time-grid-demo": TimeGridDemo,
   "typed-events-demo": TypedEventsDemo,

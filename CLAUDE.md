@@ -88,7 +88,7 @@ Key files:
 - Hooks: `useCamelCase` in `use-kebab-case.ts`
 - Types/Interfaces: `PascalCase` (props: `ComponentNameProps`, state: `ComponentNameState`)
 - Constants: `ALL_CAPS_SNAKE`
-- Event color type: `EventColor` (union of string literals)
+- Event color type: `EventColor` (the seven names that ship, or any name an app's CSS backs with `--event-<name>*` variables)
 
 ### Import Order
 
@@ -107,8 +107,9 @@ Key files:
 
 - Tailwind utility classes for fixed styling
 - Inline `style={{}}` for computed layout (top, height, left, width in px/%)
-- CSS variables for colors (`globals.css` defines light/dark tokens)
-- `eventColorStyles[color]` map for event color variants
+- Every color is a CSS variable, used through its Tailwind utility (`bg-calendar-menu`, `text-event`). Never type a hex, an `rgb()`, `white` or `black` into a file the registry ships: `unit/color-literals.spec.ts` fails
+- The tokens and their defaults live in `registry.json` (`cssVars`); `theme-notion` and `globals.css` hold Notion Calendar's values, kept equal by `unit/theme-notion.spec.ts`. A new token goes in all three, and in `src/components/docs/theme-tokens.tsx`
+- Event colors: `EVENT_COLOR_CLASSES` (`calendar-event-item.tsx`) on an element that sets its color with `resolveEventColorStyle(event, calendars)` or `getEventColorStyle(color)` (`event-utils.ts`). Never a map from color name to class: a color can be any name
 - Z-index scale: events (0-2) → selected (20) → placeholder (25) → dragging (30) → toast (40) → portal (9999)
 
 ### Interactive Element Patterns (Detail Panel)
@@ -117,18 +118,27 @@ The event detail panel follows Notion Calendar's interaction patterns. Reuse the
 
 **Escape rule:** Escape closes the open menu and restores the value from before it opened; hovering a row only previews it. A value commits on Enter, on click, or on blur after typing or arrow keys. Unlike Notion, Escape never commits the highlighted item. Use `closeMenuOnEscape` / `stopEscapePropagation` from `event-detail-parts.tsx` so the key never reaches the global deselect.
 
-#### Color Tokens (hardcoded, not CSS variables)
+#### Color Tokens
 
-Every interactive color needs BOTH a light value and a `dark:` value. The dark values alone are near-black and break light mode (e.g. a focused input becomes unreadable).
+The details, menus and toasts read the calendar's own tokens. Each defaults to the app's shadcn/ui token that means the same, so a plain install wears the app's theme; the Notion Calendar theme (the live demo) sets the values below. Light and dark come from the token, so a class needs no `dark:` twin.
 
-| Role                      | Light                                                       | Dark                                                                  |
-| ------------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
-| Muted text / icons        | `text-[#C7C5C1]`                                            | `dark:text-[#595959]`                                                 |
-| Hover border              | `hover:border-[#E8E8E4]`                                    | `dark:hover:border-[#373737]`                                         |
-| Focus background          | `focus:bg-[#F5F5F5]` or `has-[:focus]:bg-[#F5F5F5]`         | `dark:focus:bg-[#242424]` or `dark:has-[:focus]:bg-[#242424]`         |
-| Focus border (matches bg) | `focus:border-[#F5F5F5]` or `has-[:focus]:border-[#F5F5F5]` | `dark:focus:border-[#242424]` or `dark:has-[:focus]:border-[#242424]` |
-| Dropdown open bg          | `bg-[#252525]` (menus are dark in both themes today)        | same                                                                  |
-| Dropdown border           | `border-[#303030]` (menus are dark in both themes today)    | same                                                                  |
+| Role                      | Utility                                                           | Notion light / dark   |
+| ------------------------- | ----------------------------------------------------------------- | --------------------- |
+| Text                      | `text-calendar-detail-foreground`                                 | `#32302C` / `#D4D4D4` |
+| Secondary text            | `text-calendar-detail-secondary`                                  | `#787774` / `#7F7F7F` |
+| Muted text / icons        | `text-calendar-detail-muted`                                      | `#C7C5C1` / `#595959` |
+| Placeholder               | `text-calendar-detail-placeholder`                                | `#ABABA9` / `#595959` |
+| Divider                   | `border-calendar-detail-border`                                   | `#EEEEEE` / `#262626` |
+| Hover border              | `hover:border-calendar-detail-hover-border`                       | `#E8E8E4` / `#373737` |
+| Focus background          | `focus:bg-calendar-detail-focus` or `has-[:focus]:bg-…`           | `#F5F5F5` / `#242424` |
+| Focus border (matches bg) | `focus:border-calendar-detail-focus` or `has-[:focus]:border-…`   | `#F5F5F5` / `#242424` |
+| Menu, toast, tooltip      | `bg-calendar-menu border-calendar-menu-border`                    | `#252525`, `#303030`  |
+| Menu text                 | `text-calendar-menu-foreground`, muted: `…-menu-muted-foreground` | `#FFFFFF`, `#848484`  |
+| Highlighted menu item     | `bg-calendar-menu-accent text-calendar-menu-accent-foreground`    | `#303030`, `#FFFFFF`  |
+| Checked, focus ring, Done | `bg-calendar-selection text-calendar-selection-foreground`        | `#3A85D3`, `#FFFFFF`  |
+| Delete, Remove            | `text-calendar-danger` (filled: `bg-…` + `…-danger-foreground`)   | `#E56458`, `#FFFFFF`  |
+
+A softer shade is the token at an opacity, not a new token: menu text is `text-calendar-menu-foreground/86` (`/80`, `/77`), a key hint `/40`, a past search result `text-calendar-detail-foreground/50`. Keep a `dark:` twin only where Notion's light and dark differ in structure, not just in color: the details' dialogs sit on the page's background in light and on the menu's surface in dark (`EVENT_DETAIL_DIALOG_CLASS` and the two constants beside it).
 
 #### Inline Editable Input Pattern
 
@@ -151,16 +161,17 @@ The time and date fields open a popover, so they use `useFieldPopover` from `src
 
 #### Editable Input Styling
 
-Use the class constants in `src/components/event-detail-parts.tsx` instead of writing the classes out. Each carries the light and `dark:` values from the table above.
+Use the class constants in `src/components/event-detail-parts.tsx` instead of writing the classes out. Each reads the tokens from the table above.
 
-| Element                                                     | Class                                                                                                                   |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Standalone input (the title)                                | `EVENT_DETAIL_INPUT_CLASS`                                                                                              |
-| Grouped input (icon + input, or arrow + input + label)      | `EVENT_DETAIL_INPUT_GROUP_CLASS` on the wrapper, `EVENT_DETAIL_GROUPED_INPUT_CLASS` on the input                        |
-| Dropdown trigger, clickable row                             | `EVENT_DETAIL_HOVER_BORDER_CLASS`                                                                                       |
-| Icon button (the "..." menu): hover border blends into fill | `EVENT_DETAIL_ICON_BUTTON_CLASS`                                                                                        |
-| Text, secondary text, muted icons, placeholders             | `EVENT_DETAIL_TEXT_CLASS`, `EVENT_DETAIL_SECONDARY_CLASS`, `EVENT_DETAIL_MUTED_CLASS`, `EVENT_DETAIL_PLACEHOLDER_CLASS` |
-| Menus                                                       | `EVENT_DETAIL_MENU_CLASS`, `EVENT_DETAIL_MENU_ITEM_CLASS`, `PANEL_MENU_*_CLASS`                                         |
+| Element                                                     | Class                                                                                                                                                 |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Standalone input (the title)                                | `EVENT_DETAIL_INPUT_CLASS`                                                                                                                            |
+| Grouped input (icon + input, or arrow + input + label)      | `EVENT_DETAIL_INPUT_GROUP_CLASS` on the wrapper, `EVENT_DETAIL_GROUPED_INPUT_CLASS` on the input                                                      |
+| Dropdown trigger, clickable row                             | `EVENT_DETAIL_HOVER_BORDER_CLASS`                                                                                                                     |
+| Icon button (the "..." menu): hover border blends into fill | `EVENT_DETAIL_ICON_BUTTON_CLASS`                                                                                                                      |
+| Text, secondary text, muted icons, placeholders             | `EVENT_DETAIL_TEXT_CLASS`, `EVENT_DETAIL_SECONDARY_CLASS`, `EVENT_DETAIL_MUTED_CLASS`, `EVENT_DETAIL_PLACEHOLDER_CLASS`                               |
+| Menus                                                       | `EVENT_DETAIL_MENU_CLASS`, `EVENT_DETAIL_MENU_ITEM_CLASS`, `EVENT_DETAIL_MENU_SHORTCUT_CLASS`, `EVENT_DETAIL_MENU_DANGER_CLASS`, `PANEL_MENU_*_CLASS` |
+| Small actions (remove, previous and next), dialogs          | `EVENT_DETAIL_ACTION_CLASS`, `EVENT_DETAIL_DIALOG_CLASS`, `EVENT_DETAIL_DIALOG_BUTTON_CLASS`, `EVENT_DETAIL_DIALOG_FILL_CLASS`                        |
 
 A grouped input's wrapper gets `onClick={() => inputRef.current?.focus()}` so clicking anywhere in it focuses the input.
 

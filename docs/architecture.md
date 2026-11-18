@@ -154,7 +154,7 @@ Renders the timed-event day columns inside TimeGrid's horizontally scrolling con
 
 Renders a single event segment. Handles:
 
-- Color styling via the `eventColorStyles[color]` map, where `color` comes from `resolveEventColor(event, calendars)`: the event's own color, then its calendar's, then blue
+- Color styling via `EVENT_COLOR_CLASSES` (`bg-event-bg`, `text-event`…), which read the variables `resolveEventColorStyle(event, calendars)` sets on the event's element: the event's own color, then its calendar's, then blue
 - Selection state (border highlight, elevated z-index)
 - Multi-day segment rendering (rounded corners per segment position)
 - Drag handle (pointerdown) and resize handles (top/bottom edges)
@@ -204,22 +204,13 @@ The timezone label follows the same pattern (`useTimeZoneLabel`). So do the addi
 
 ### Color System
 
-Colors are defined as CSS variables in `globals.css` with light/dark variants:
+Every color is a CSS variable; no shipped file types one in (`unit/color-literals.spec.ts` fails on a hex, an `rgb()` or a `white` / `black` utility). Three layers:
 
-```css
-:root {
-  --event-blue-bg: #dbeafe;
-  --event-blue-border: #3b82f6;
-  /* ... */
-}
-.dark {
-  --event-blue-bg: #1e3a5f;
-  --event-blue-border: #60a5fa;
-  /* ... */
-}
-```
+- **The app's shadcn/ui tokens** (`--background`, `--border`, `--popover`, `--primary`…) paint the views.
+- **The calendar's own tokens** (`--calendar-detail-*`, `--calendar-menu-*`, `--calendar-selection`, `--calendar-danger`, `--calendar-sidebar-*`…) paint the event details, menus, toasts and sidebars. Their defaults live in `registry.json` (`cssVars` of `calendar-core`, `sidebar-overlay` and `calendar-list`) and point at the shadcn/ui tokens, so a plain install wears the app's theme. Softer shades are a token at an opacity (`text-calendar-menu-foreground/80`), not another token.
+- **Event colors** (`--event-{color}`, `-bg`, `-border`, `-strong`, `-muted`): seven ship as fixed values. An event's element sets `--event`, `--event-bg`, `--event-border`, `--event-strong` and `--event-muted` from its color's variables with `resolveEventColorStyle()`, and the classes in `EVENT_COLOR_CLASSES` read those, so a color is any name an app's CSS backs.
 
-Components access event colors via the `eventColorStyles` map (`calendar-event-item.tsx`), never hardcoded. The details panel's own interactive colors are the one exception: they are hardcoded hex values with a light and a `dark:` variant, listed in `CLAUDE.md` under "Interactive Element Patterns".
+The live demo's look is the opt-in registry item `theme-notion`: Notion Calendar's value for every shadcn/ui token and every calendar and event token. `src/app/globals.css` holds the same values (`unit/theme-notion.spec.ts` compares them), which is why the demo looks as it always did. The CLI only registers a Tailwind color for a variable whose value is a literal color, so each item's `cssVars.theme` names a `--color-*` for its own variables.
 
 ### Z-Index Scale
 

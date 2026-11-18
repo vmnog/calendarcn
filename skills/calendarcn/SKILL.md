@@ -78,12 +78,12 @@ One view, inside a provider that owns the events:
 
 - **Render it from a client component.** `Calendar`, every view and `CalendarProvider` are client components. Put `"use client"` at the top of the file that renders the calendar. A page that only renders that file's component can stay a server component.
 - **Give its parent a height.** The calendar and each view fill their parent's height and have none of their own. Wrap them in an element with one, like `<div className="h-[600px]">`.
-- **An event needs `id`, `title`, `start` and `end`.** `start` and `end` are `Date` objects, not strings. `isAllDay` and `color` (`red`, `orange`, `yellow`, `green`, `blue`, `purple` or `gray`) are optional.
+- **An event needs `id`, `title`, `start` and `end`.** `start` and `end` are `Date` objects, not strings. `isAllDay` and `color` are optional: `red`, `orange`, `yellow`, `green`, `blue`, `purple` or `gray`, or a name of your own backed by `--event-<name>` CSS variables.
 - **Hold the events one way.** Pass `events` with `onEventsChange` when the app owns them, or `defaultEvents` when the calendar does. Not both. `events` without `onEventsChange` can't change, so every drag snaps back.
 - **`new Date()` fails the build only with Next.js Cache Components.** With `cacheComponents: true` in the Next.js config, `next build` fails on a `new Date()` that runs while a page prerenders, a client component's `useState` initializer included. The docs examples create their sample events that way. In such a project, wrap the component that calls it in `<Suspense>`, or create the events in an effect or an event handler, or load them from an API. Without `cacheComponents`, leave it as it is.
 - **Two files are named calendar.** `@/components/calendar` is CalendarCN's `Calendar`. `@/components/ui/calendar` is the shadcn/ui date picker, which the event details use. Import the first and keep the second.
 - **Views go inside a `CalendarProvider`.** `Calendar` and `CalendarApp` bring their own. `WeekView`, `DayView`, `MonthView`, `AgendaView`, `YearView`, `TimeGrid` and any component that calls `useCalendar()` need one around them.
-- **Don't edit the installed files to customize.** An update overwrites them. Use props, `renderEventContent`, `renderEventDetails`, your own components built on `useCalendar()`, and the `--event-{color}` CSS variables.
+- **Don't edit the installed files to customize.** An update overwrites them. Use props, `renderEventContent`, `renderEventDetails`, your own components built on `useCalendar()`, and the calendar's CSS variables (the `--calendar-*` tokens and the `--event-{color}` colors).
 
 ## Customize
 
@@ -93,7 +93,7 @@ Each is on a docs page. Reach for these before editing a copied file:
 - `renderEventContent` draws the inside of each event. See "Custom event content" in Calendar Core.
 - `renderEventDetails` replaces the body of the details popover. See "Custom details" in [Event Details](https://calendarcn.xyz/docs/components/event-details.md).
 - A header or toolbar of your own reads and changes the calendar with `useCalendar()`. See "Build your own" in [Calendar](https://calendarcn.xyz/docs/components/calendar.md).
-- Event colors are the CSS variables `--event-{color}`, `--event-{color}-bg` and `--event-{color}-border`, set in `:root` and `.dark`. See "Theming" in Calendar.
+- Every color is a CSS variable, set in `:root` and `.dark`. The `--calendar-*` tokens paint the details, menus, toasts and sidebars and default to the app's shadcn/ui theme; `--event-{color}`, `--event-{color}-bg` and `--event-{color}-border` paint events. `@calendarcn/theme-notion` adds Notion Calendar's look. See [Theming](https://calendarcn.xyz/docs/theming.md).
 - `shortcuts={false}` on `Calendar` turns off the single-key shortcuts. See [Keyboard shortcuts](https://calendarcn.xyz/docs/keyboard-shortcuts.md).
 
 ## Update

@@ -510,6 +510,13 @@ interface Meeting extends CalendarEvent {
         "Calendars the details panel's calendar picker offers, grouped by account `email`, and the event context menu under \"Block on calendar\" (hidden when the list is empty). Picking one moves the event with `moveEventToCalendar()`. An event without its own `color` is drawn in its calendar's.",
     },
     {
+      name: "eventColors",
+      type: "EventColor[]",
+      default: "the seven colors",
+      description:
+        "Colors the event color pickers offer, in order: the right-click menu's and the details' calendar menu's. Add [colors of your own](/docs/theming#add-an-event-color) beside the seven that ship.",
+    },
+    {
       name: "contacts",
       type: "EventContact[]",
       default: "[]",
@@ -1075,6 +1082,11 @@ Returns the resolved settings of the nearest provider. Outside a provider it ret
         "Calendars the calendar picker and the context menu offer. Pass them to `resolveEventColor(event, calendars)` to draw an event in the color the calendar does.",
     },
     {
+      name: "eventColors",
+      type: "readonly EventColor[]",
+      description: "Colors the event color pickers offer, in order.",
+    },
+    {
       name: "contacts",
       type: "EventContact[]",
       description: "People the participants field suggests.",
@@ -1265,9 +1277,9 @@ The fields the calendar needs to place and draw an event. [`DetailedCalendarEven
     },
     {
       name: "color",
-      type: '"red" | "orange" | "yellow" | "green" | "blue" | "purple" | "gray"',
+      type: '"red" | "orange" | "yellow" | "green" | "blue" | "purple" | "gray" | string',
       description:
-        "The event's own color, from the `--event-*` theme tokens. Without one it's drawn in its calendar's color (the `CalendarInfo` its `calendarId` names), else blue. `resolveEventColor(event, calendars)` from `@/lib/event-utils` returns the color an event is drawn in.",
+        "The event's own color: one of the seven that ship, or [a name of your own](/docs/theming#add-an-event-color) backed by `--event-<name>` CSS variables. Without one it's drawn in its calendar's color (the `CalendarInfo` its `calendarId` names), else blue. `resolveEventColor(event, calendars)` from `@/lib/event-utils` returns the color an event is drawn in.",
     },
   ]}
 />
@@ -1432,6 +1444,24 @@ Exported from `@/lib/event-utils`. The views, the details panel and the context 
       type: "(event, calendars) => EventColor",
       description:
         "The color an event is drawn in: its own `color`, else its calendar's, else `DEFAULT_EVENT_COLOR`.",
+    },
+    {
+      name: "resolveEventColorStyle",
+      type: "(event, calendars) => CSSProperties",
+      description:
+        "A `style` that sets an element's event color to the event's: `--event`, `--event-bg`, `--event-border`, `--event-strong` and `--event-muted`. `text-event`, `bg-event-bg` and `bg-event-border` on the element or inside it then paint with it.",
+    },
+    {
+      name: "getEventColorStyle",
+      type: "(color, fallback?) => CSSProperties",
+      description:
+        "The same for a color that isn't an event's, like a calendar's swatch. A name your CSS has no variables for takes `fallback`'s, then blue's.",
+    },
+    {
+      name: "EVENT_COLORS",
+      type: "readonly EventColor[]",
+      description:
+        "The seven colors that ship, in the pickers' order. Spread it into `eventColors` to add yours after them.",
     },
     {
       name: "DEFAULT_EVENT_COLOR",

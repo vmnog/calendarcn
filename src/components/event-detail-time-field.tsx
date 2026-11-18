@@ -10,6 +10,7 @@ import {
 } from "./event-detail-field-popover";
 import {
   EVENT_DETAIL_GROUPED_INPUT_CLASS,
+  EVENT_DETAIL_MENU_SHORTCUT_CLASS,
   EVENT_DETAIL_TEXT_CLASS,
 } from "./event-detail-parts";
 import type { EventDetailTimeFieldProps, TimeOption } from "./week-view-types";
@@ -17,8 +18,9 @@ import type { EventDetailTimeFieldProps, TimeOption } from "./week-view-types";
 /** The menu's options while it's closed: none are built */
 const NO_OPTIONS: TimeOption[] = [];
 
-/** Times of an all-day event: muted and inert (Notion: #B9B9B9 / #595959) */
-const ALL_DAY_TIME_CLASS = "text-[#B9B9B9] dark:text-[#595959]";
+/** Times of an all-day event: muted and inert, the placeholder color (softer on a light theme) */
+const ALL_DAY_TIME_CLASS =
+  "text-calendar-detail-placeholder/85 dark:text-calendar-detail-placeholder";
 
 /**
  * A time's text ("7:45 AM"): Notion Calendar sets a narrow no-break space
@@ -76,14 +78,17 @@ const TimeOptionRow = React.memo(function TimeOptionRow({
       data-index={index}
       className={cn(
         "h-[30.5px] cursor-default truncate rounded-[6px] px-1.5 leading-[30.5px] select-none",
-        highlighted && "bg-[#303030]",
+        highlighted &&
+          "bg-calendar-menu-accent text-calendar-menu-accent-foreground",
       )}
     >
       <span className={TIME_TEXT_CLASS}>{option.label}</span>
       {option.hint && (
         <>
           {" "}
-          <span className="text-white/40">{option.hint}</span>
+          <span className={EVENT_DETAIL_MENU_SHORTCUT_CLASS}>
+            {option.hint}
+          </span>
         </>
       )}
     </div>

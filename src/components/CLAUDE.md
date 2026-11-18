@@ -34,7 +34,7 @@ Every view also passes its expanded events through `useCalendarSeriesScope().pre
 
 ### Event Color Styling
 
-Never hardcode color classes. Always use the `eventColorStyles[color]` map from `calendar-event-item.tsx`. The map returns `{ bg, bgHover, border, borderLine, text }` CSS class strings.
+Never hardcode color classes, and never map a color name to a class: an event's color can be any name an app's CSS backs. Put `EVENT_COLOR_CLASSES` from `calendar-event-item.tsx` (`{ bg, bgHover, border, borderLine, text }`, plus `text-event-strong` and `text-event-muted` in month view) on an element that sets its color with `style={resolveEventColorStyle(event, calendars)}`, or `getEventColorStyle(color)` for a calendar's or a person's swatch (both in `src/lib/event-utils.ts`). Text on an event's color is `text-event-foreground`.
 
 ### Multi-Day Event Segments
 

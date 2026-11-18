@@ -61,6 +61,19 @@ The CLI copies the files into your components, hooks and lib folders, installs t
 </Step>
 <Step>
 
+### Add the Notion Calendar theme (optional)
+
+A plain install wears your app's own shadcn/ui theme: the calendar's color tokens point at yours. To get the [live demo](/)'s look instead, add its theme:
+
+```npm
+npx shadcn add @calendarcn/theme-notion
+```
+
+It writes Notion Calendar's colors over your shadcn/ui color tokens and the calendar's own, for light and dark mode, so your whole app takes the theme. It adds no files. [Theming](/docs/theming#the-notion-calendar-theme) lists what it changes.
+
+</Step>
+<Step>
+
 ### Render it
 
 ```tsx title="app/calendar/page.tsx"

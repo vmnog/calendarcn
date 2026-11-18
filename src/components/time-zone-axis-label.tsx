@@ -34,23 +34,23 @@ import {
 import { getTimeZoneCity } from "@/lib/timezone-label";
 import type { TimeZoneAxisLabelProps } from "./week-view-types";
 
-/** The dark menu surface the labels' menus share with the details' menus */
+/** The menu surface the labels' menus share with the details' menus */
 const MENU_CLASS = cn(
-  "rounded-lg p-0 shadow-lg text-[#CCCCCC]",
+  "rounded-lg p-0 shadow-lg text-calendar-menu-foreground/77",
   EVENT_DETAIL_MENU_CLASS,
 );
 
 /** A menu item: 32px tall, its highlight inset, as Notion Calendar's */
 const MENU_ITEM_CLASS =
-  "h-8 gap-2 rounded-md px-2 py-0 text-sm text-[#CCCCCC] data-[selected=true]:bg-[#303030] data-[selected=true]:text-[#F0F0F0] [&_svg]:text-[#8B8B8B]";
+  "h-8 gap-2 rounded-md px-2 py-0 text-sm text-calendar-menu-foreground/77 data-[selected=true]:bg-calendar-menu-accent data-[selected=true]:text-calendar-menu-accent-foreground/93 [&_svg]:text-calendar-menu-muted-foreground";
 
-/** "Remove time zone from list" and "Travel back home", in red */
+/** "Remove time zone from list" and "Travel back home", in the danger color */
 const MENU_ITEM_DESTRUCTIVE_CLASS =
-  "text-[#E56458] data-[selected=true]:text-[#E56458] [&_svg]:!text-[#E56458]";
+  "text-calendar-danger data-[selected=true]:text-calendar-danger [&_svg]:!text-calendar-danger";
 
 /** The search field at the top of a zone list */
 const SEARCH_INPUT_CLASS =
-  "h-9 w-full border-b border-[#303030] bg-transparent px-3 text-sm text-[#D4D4D4] outline-none placeholder:text-[#7F7F7F]";
+  "h-9 w-full border-b border-calendar-menu-border bg-transparent px-3 text-sm text-calendar-menu-foreground/80 outline-none placeholder:text-calendar-menu-muted-foreground";
 
 /** One action of a label's menu */
 interface LabelMenuItem {
@@ -276,7 +276,7 @@ export function TimeZoneAxisLabel({
           </span>
         )}
         {item.shortcut && (
-          <Kbd className="shrink-0 bg-white/10 text-[#8B8B8B]">
+          <Kbd className="shrink-0 bg-calendar-menu-foreground/10 text-calendar-menu-muted-foreground">
             {item.shortcut}
           </Kbd>
         )}
@@ -309,7 +309,7 @@ export function TimeZoneAxisLabel({
                 // Its own size: next to a text color in one class list,
                 // tailwind-merge would drop the custom `text-xxs`
                 "rounded-sm px-1 py-0.5 text-xxs leading-none outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                isTravel ? "hover:bg-white/15" : "hover:bg-accent",
+                isTravel ? "hover:bg-primary-foreground/15" : "hover:bg-accent",
                 open && !isTravel && "bg-accent",
               )}
             >
@@ -352,7 +352,7 @@ export function TimeZoneAxisLabel({
                 </CommandGroup>
                 {destructive.length > 0 && (
                   <>
-                    <div className="mx-1 my-[5px] h-px bg-[#303030]" />
+                    <div className="mx-1 my-[5px] h-px bg-calendar-menu-border" />
                     <CommandGroup className="p-0">
                       {destructive.map(renderItem)}
                     </CommandGroup>

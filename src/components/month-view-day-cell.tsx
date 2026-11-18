@@ -13,14 +13,14 @@ import type { Locale } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useDoubleClick } from "@/hooks/use-double-click";
 import { useToday } from "@/hooks/use-now";
-import type { CalendarEvent, EventColor } from "./calendar-types";
+import type { CalendarEvent } from "./calendar-types";
 import type { MonthCellSlot } from "@/lib/event-utils";
 import {
   formatCellDate,
   formatFullDate,
   getEventDayRange,
   isMultiDayEvent,
-  resolveEventColor,
+  resolveEventColorStyle,
 } from "@/lib/event-utils";
 import { EventDetailPopover } from "./event-detail-popover";
 import { getEventDetailsTriggerProps } from "./calendar-event-item";
@@ -88,16 +88,8 @@ function getMonthName(date: Date, locale: Locale): string {
   return format(date, "MMMM", { locale });
 }
 
-/** Border color for drag placeholder outline */
-const placeholderBorderStyles: Record<EventColor, string> = {
-  red: "border-event-red-border",
-  orange: "border-event-orange-border",
-  yellow: "border-event-yellow-border",
-  green: "border-event-green-border",
-  blue: "border-event-blue-border",
-  purple: "border-event-purple-border",
-  gray: "border-event-gray-border",
-};
+/** Border of a drag placeholder's outline, in the dragged event's color */
+const PLACEHOLDER_BORDER_CLASS = "border-event-border";
 
 export function MonthViewDayCell({
   date,
@@ -188,9 +180,9 @@ export function MonthViewDayCell({
     dragTargetDate &&
     dragEvent &&
     isSameDay(date, dragTargetDate);
-  const placeholderBorder = dragEvent
-    ? placeholderBorderStyles[resolveEventColor(dragEvent, calendars)]
-    : "border-event-blue-border";
+  const placeholderColorStyle = dragEvent
+    ? resolveEventColorStyle(dragEvent, calendars)
+    : undefined;
 
   // Calculate placeholder span for multi-day events
   const isMultiDay = dragEvent
@@ -262,8 +254,9 @@ export function MonthViewDayCell({
           data-slot={EVENT_DRAFT_SLOT}
           className={cn(
             "pointer-events-none absolute inset-0",
-            EVENT_DRAFT_TINT_CLASS[resolveEventColor(createdEvent, calendars)],
+            EVENT_DRAFT_TINT_CLASS,
           )}
+          style={resolveEventColorStyle(createdEvent, calendars)}
         />
       )}
       {/* Day number — right-aligned like Notion Calendar */}
@@ -298,9 +291,10 @@ export function MonthViewDayCell({
               aria-hidden
               className={cn(
                 "absolute top-0 left-0.5 right-0.5 h-5 rounded-sm border-2 pointer-events-none",
-                placeholderBorder,
+                PLACEHOLDER_BORDER_CLASS,
               )}
               style={{
+                ...placeholderColorStyle,
                 width: `calc(${placeholderSpan * 100}% - 4px)`,
                 zIndex: 30,
               }}
@@ -378,8 +372,9 @@ export function MonthViewDayCell({
             aria-hidden
             className={cn(
               "absolute inset-x-0.5 top-0 h-5 rounded-sm border-2 pointer-events-none z-30",
-              placeholderBorder,
+              PLACEHOLDER_BORDER_CLASS,
             )}
+            style={placeholderColorStyle}
           />
         )}
         {eventSlots.map((slot, index) => {

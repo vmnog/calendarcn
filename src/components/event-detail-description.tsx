@@ -264,7 +264,7 @@ export function EventDetailDescription<
             DESCRIPTION_BOX_CLASS,
             EVENT_DETAIL_INPUT_CLASS,
             EVENT_DETAIL_TEXT_CLASS,
-            "resize-none overflow-hidden placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",
+            "resize-none overflow-hidden placeholder:text-calendar-detail-placeholder",
           )}
         />
       </EventDetailSection>

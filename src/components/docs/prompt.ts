@@ -52,7 +52,8 @@ interface RegistryItem {
   description: string;
   dependencies?: string[];
   registryDependencies?: string[];
-  files: { path: string }[];
+  /** A theme item has none: it only writes CSS variables */
+  files?: { path: string }[];
 }
 
 /** Every item in the registry, by name */
@@ -66,7 +67,7 @@ const REGISTRY_ITEMS = new Map<string, RegistryItem>(
  */
 const FILE_OWNERS = new Map<string, string[]>();
 for (const entry of REGISTRY_ITEMS.values()) {
-  for (const file of entry.files) {
+  for (const file of entry.files ?? []) {
     const specifier = toImportSpecifier(file.path);
     FILE_OWNERS.set(specifier, [
       ...(FILE_OWNERS.get(specifier) ?? []),

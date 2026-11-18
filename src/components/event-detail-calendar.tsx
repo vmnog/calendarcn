@@ -30,7 +30,8 @@ import {
   stopEscapePropagation,
 } from "./event-detail-parts";
 import {
-  EVENT_COLORS,
+  getEventColorName,
+  getEventColorStyle,
   groupCalendarsByEmail,
   moveEventToCalendar,
   resolveEventColor,
@@ -41,17 +42,6 @@ import type {
   EventColor,
   EventDetailSectionProps,
 } from "./week-view-types";
-
-/** Name of each event color, shown in the swatch tooltips */
-const COLOR_NAMES: Record<EventColor, string> = {
-  red: "Red",
-  orange: "Orange",
-  yellow: "Yellow",
-  green: "Green",
-  blue: "Blue",
-  purple: "Purple",
-  gray: "Gray",
-};
 
 /** A 14px color swatch */
 const SWATCH_CLASS = "size-3.5 shrink-0 rounded-[4px]";
@@ -75,7 +65,8 @@ function CalendarSwatch({ calendarColor, eventColor }: CalendarSwatchProps) {
     return (
       <span
         data-testid="event-calendar-swatch"
-        className={cn(SWATCH_CLASS, EVENT_COLOR_SWATCH_CLASS[eventColor])}
+        className={cn(SWATCH_CLASS, EVENT_COLOR_SWATCH_CLASS)}
+        style={getEventColorStyle(eventColor, calendarColor)}
       />
     );
   }
@@ -89,15 +80,17 @@ function CalendarSwatch({ calendarColor, eventColor }: CalendarSwatchProps) {
         className={cn(
           "absolute top-0 left-0",
           SWATCH_CLASS,
-          EVENT_COLOR_SWATCH_CLASS[calendarColor],
+          EVENT_COLOR_SWATCH_CLASS,
         )}
+        style={getEventColorStyle(calendarColor)}
       />
       <span
         className={cn(
           "absolute top-0 right-0",
           SWATCH_CLASS,
-          EVENT_COLOR_SWATCH_CLASS[eventColor],
+          EVENT_COLOR_SWATCH_CLASS,
         )}
+        style={getEventColorStyle(eventColor, calendarColor)}
       />
     </span>
   );
@@ -141,11 +134,11 @@ function ColorSwatchItem({
 
   return (
     <DropdownMenuItem
-      aria-label={COLOR_NAMES[color]}
+      aria-label={getEventColorName(color)}
       aria-checked={checked}
       role="menuitemradio"
       data-color={color}
-      className="relative flex size-3.5 items-center justify-center rounded-[4px] p-0 focus:bg-transparent focus-visible:ring-2 focus-visible:ring-white/60"
+      className="relative flex size-3.5 items-center justify-center rounded-[4px] p-0 focus:bg-transparent focus-visible:ring-2 focus-visible:ring-calendar-menu-foreground/60"
       onClick={() => onPick(color)}
       onMouseEnter={show}
       onMouseLeave={hide}
@@ -155,13 +148,19 @@ function ColorSwatchItem({
       <span
         className={cn(
           "absolute inset-0 rounded-[4px]",
-          EVENT_COLOR_SWATCH_CLASS[color],
+          EVENT_COLOR_SWATCH_CLASS,
         )}
+        style={getEventColorStyle(color)}
       />
       {checked && (
-        <Check className="relative size-3 !text-black/55" strokeWidth={2.5} />
+        <Check
+          className="relative size-3 !text-calendar-menu/65"
+          strokeWidth={2.5}
+        />
       )}
-      <EventDetailTooltip rect={rect}>{COLOR_NAMES[color]}</EventDetailTooltip>
+      <EventDetailTooltip rect={rect}>
+        {getEventColorName(color)}
+      </EventDetailTooltip>
     </DropdownMenuItem>
   );
 }
@@ -187,7 +186,7 @@ export function EventDetailCalendar<
   /** Calendar hovered or focused in the picker, previewed in the row */
   const [previewCalendar, setPreviewCalendar] =
     React.useState<CalendarInfo | null>(null);
-  const { calendars } = useCalendarConfig();
+  const { calendars, eventColors } = useCalendarConfig();
 
   const groups = React.useMemo(
     () => groupCalendarsByEmail(calendars),
@@ -336,8 +335,9 @@ export function EventDetailCalendar<
                       className={cn(
                         "ml-[9px]",
                         SWATCH_CLASS,
-                        EVENT_COLOR_SWATCH_CLASS[item.color],
+                        EVENT_COLOR_SWATCH_CLASS,
                       )}
+                      style={getEventColorStyle(item.color)}
                     />
                     <span className="ml-[11px] truncate">{item.name}</span>
                   </DropdownMenuItem>
@@ -346,7 +346,7 @@ export function EventDetailCalendar<
             </div>
           ))}
           {groups.length > 0 && (
-            <DropdownMenuSeparator className="mx-1 my-1.5 bg-[#303030]" />
+            <DropdownMenuSeparator className="mx-1 my-1.5 bg-calendar-menu-border" />
           )}
           <div className={PANEL_MENU_LABEL_CLASS}>Event color</div>
           <div
@@ -354,7 +354,7 @@ export function EventDetailCalendar<
             aria-label="Event color"
             className="flex items-center gap-2 pt-1.5 pr-2.5 pb-2.5 pl-[31px]"
           >
-            {EVENT_COLORS.map((color) => (
+            {eventColors.map((color) => (
               <ColorSwatchItem
                 key={color}
                 color={color}

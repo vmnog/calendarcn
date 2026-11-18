@@ -21,9 +21,11 @@ Components install to `src/components/ui/`. Don't edit these directly — custom
 
 ### Adding a New Event Color
 
-1. Add the color name to `EventColor` union in `src/components/calendar-types.ts`
-2. Add CSS variables in `src/app/globals.css` (both `:root` and `.dark`)
-3. Add the color entry to `eventColorStyles` map in `src/components/calendar-event-item.tsx`
+An app adds one in its own CSS (the Theming docs page shows how). To ship an eighth with the calendar:
+
+1. Add the name to `BuiltInEventColor` in `src/components/calendar-types.ts` and to `EVENT_COLORS` in `src/lib/event-utils.ts`
+2. Add its five variables (`--event-<name>`, `-bg`, `-border`, `-strong`, `-muted`), light and dark, to `cssVars` of `calendar-core` and of `theme-notion` in `registry.json`, and the same values to `:root` and `.dark` in `src/app/globals.css` with their `--color-*` lines in `@theme inline` (`unit/theme-notion.spec.ts` checks the three agree)
+3. Run `pnpm registry:build`
 
 ### Adding a New Keyboard Shortcut
 

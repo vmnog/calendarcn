@@ -1,0 +1,180 @@
+---
+title: Theming
+description: The calendar wears your shadcn/ui theme. Restyle it with CSS variables, add event colors of your own, or add the Notion Calendar theme.
+---
+
+Every color in the calendar is a CSS variable, so it looks like the rest of your app the moment you install it and you restyle it in your own CSS, never in the copied files. The colors come from three places:
+
+- **Your shadcn/ui tokens.** The views use `--background`, `--foreground`, `--border`, `--muted-foreground` and `--popover`. Today's date and the current-time line use `--primary`.
+- **The calendar's own tokens**, `--calendar-*`. They paint the event details, the menus, the toasts and the sidebars, and each one defaults to the shadcn/ui token that means the same, so they follow your theme until you set them.
+- **Event colors**, `--event-*`. Seven ship, and you can [add your own](#add-an-event-color).
+
+The CLI writes the calendar's tokens and the event colors into your CSS file when you add a component, under `:root` and `.dark`, and gives each one a Tailwind color (`bg-calendar-menu`, `text-event`).
+
+The [live demo](/) looks like Notion Calendar because it also wears the [Notion Calendar theme](#the-notion-calendar-theme), which is optional.
+
+## Restyle the calendar
+
+Set a token in your global CSS file, below the lines the CLI wrote, for light and dark mode:
+
+```css title="app/globals.css"
+:root {
+  --calendar-menu: #eef2ff;
+  --calendar-menu-border: #c7d2fe;
+  --calendar-menu-foreground: #312e81;
+  --calendar-selection: #4f46e5;
+}
+
+.dark {
+  --calendar-menu: #1e1b4b;
+  --calendar-menu-border: #3730a3;
+  --calendar-menu-foreground: #e0e7ff;
+  --calendar-selection: #818cf8;
+}
+```
+
+In the example, **Indigo tokens** does that for eleven tokens. Click an event to open its details, open one of their menus, or right-click an event.
+
+<ComponentPreview name="theming-demo" />
+
+Set the tokens for the whole page, as above, not on an element around the calendar: menus, toasts and the event details render in a portal on `<body>`, outside the calendar's element.
+
+## Tokens
+
+Each table lists what a token paints, what a plain install sets it to, and the Notion Calendar theme's light and dark value.
+
+### Event details
+
+The panel, popover or sheet that shows an event.
+
+<ThemeTokens group="details" />
+
+### Menus and toasts
+
+The right-click menu, the details' menus, the time and date pickers, the [toasts](/docs/components/calendar-toaster), the tooltips and the scheduling hint share one surface. Softer text in a menu is `--calendar-menu-foreground` at a lower opacity, so one token sets all of it.
+
+<ThemeTokens group="menus" />
+
+### Accents
+
+<ThemeTokens group="accents" />
+
+### Views
+
+<ThemeTokens group="views" />
+
+### Sidebars
+
+The [Calendar Sidebar](/docs/components/calendar-sidebar) and the [Details Sidebar](/docs/components/details-sidebar). Inside them these tokens stand in for your `--sidebar-*` tokens, so setting one restyles the calendar's sidebars and leaves your app's own sidebar alone.
+
+<ThemeTokens group="sidebars" />
+
+## The Notion Calendar theme
+
+The live demo's colors are a theme you can add to your app. It turns your shadcn/ui theme into Notion Calendar's: warm greys, a red primary, and menus and toasts that are dark in light mode too.
+
+<InstallTabs item="theme-notion" />
+
+The theme only writes CSS variables, 102 under `:root` and the same 102 under `.dark`:
+
+- It **replaces** your 26 shadcn/ui color tokens: `--background`, `--foreground`, `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--accent`, each with its `-foreground`, `--destructive`, `--border`, `--input`, `--ring` and the eight `--sidebar-*` tokens. Your whole app takes the theme, not only the calendar.
+- It **replaces** the calendar's 35 own tokens, which stop following your theme and take the values in the tables above.
+- It writes the 41 event color variables with the values they already have.
+- It leaves `--radius`, the chart colors and your fonts as they are, and adds no files.
+
+Add it after the calendar. Updating the calendar later keeps the theme: `add` never changes a variable that is already in your CSS file. Commit first, so you can go back with `git checkout` on your CSS file.
+
+## Event colors
+
+An event's `color` picks its three variables. The CLI writes them for seven colors, with a light and a dark value each:
+
+| Variable                 | Used for                                                |
+| ------------------------ | ------------------------------------------------------- |
+| `--event-{color}`        | Event text: the title and time of the default content   |
+| `--event-{color}-bg`     | Event background                                        |
+| `--event-{color}-border` | The bar on an event's left edge, and the color swatches |
+| `--event-{color}-strong` | Title of a timed event in month view                    |
+| `--event-{color}-muted`  | Its start time in month view                            |
+
+<EventColorTokens />
+
+`--event-foreground` is the text on a selected event, and an event's text in dark mode. It is white.
+
+Override a color's variables to restyle every event of that color:
+
+```css title="app/globals.css"
+:root {
+  --event-blue: #1d4ed8;
+  --event-blue-bg: #dbeafe;
+  --event-blue-border: #3b82f6;
+}
+
+.dark {
+  --event-blue: #93c5fd;
+  --event-blue-bg: #1e3a8a;
+  --event-blue-border: #3b82f6;
+}
+```
+
+### Add an event color
+
+A color is a name and its variables. Define `--event-<name>`, `--event-<name>-bg` and `--event-<name>-border` for light and dark mode, then use the name as an event's, a calendar's or a contact's `color`:
+
+```css title="app/globals.css"
+:root {
+  --event-teal: #0f766e;
+  --event-teal-bg: #ccfbf1;
+  --event-teal-border: #14b8a6;
+}
+
+.dark {
+  --event-teal: #2dd4bf;
+  --event-teal-bg: #134e4a;
+  --event-teal-border: #2dd4bf;
+}
+```
+
+```tsx
+const events = [{ id: "1", title: "Swim", start, end, color: "teal" }];
+```
+
+`--event-<name>-strong` and `--event-<name>-muted` are optional. Without them, month view draws the title and the time in the color's text.
+
+To offer the color in the right-click menu and the details' calendar menu, pass the list to `eventColors`:
+
+```tsx
+import { EVENT_COLORS } from "@/lib/event-utils";
+
+<Calendar events={events} eventColors={[...EVENT_COLORS, "teal"]} />;
+```
+
+A name without variables is drawn in the event's calendar color, then in blue. A name can hold letters, digits, `-` and `_`.
+
+The example adds teal and rose, and offers both in its pickers.
+
+<ComponentPreview name="event-color-demo" />
+
+### In your own components
+
+Inside an event, `text-event`, `bg-event-bg`, `bg-event-border`, `text-event-strong` and `text-event-muted` paint with that event's color, whichever it is, so [custom event content](/docs/components/calendar-core#custom-event-content) needs no map from color to class. Outside an event, set the color on an element with `getEventColorStyle()`:
+
+```tsx
+import { getEventColorStyle } from "@/lib/event-utils";
+
+<span
+  className="size-3 rounded-sm bg-event-border"
+  style={getEventColorStyle(calendar.color)}
+/>;
+```
+
+`resolveEventColorStyle(event, calendars)` does the same for an event, with its calendar's color as the fallback.
+
+## Dark mode
+
+The calendar follows the `dark` class, as shadcn/ui does: every token has a value under `:root` and another under `.dark`. A token that points at one of yours (`var(--popover)`) changes with it, so a plain install needs nothing more. The [Theme Toggle](/docs/components/theme-toggle) switches the class with next-themes.
+
+When you set a token to a color of your own, set it under both selectors, as the examples above do.
+
+## Updating an older install
+
+Before every color was a variable, the sidebars' tokens and four view tokens (`--calendar-weekend`, `--calendar-current-week`, `--calendar-day-hover`, `--calendar-day-hover-current-week`) were installed with Notion Calendar's values. An update doesn't change variables already in your CSS file, so those keep Notion's greys after it. To make them follow your theme, delete their lines from your CSS file and run `add` again, which writes the new defaults. To keep the Notion look everywhere, add the theme.
