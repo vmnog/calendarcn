@@ -16,7 +16,7 @@ It takes every [`CalendarProvider`](/docs/components/calendar-core#calendarprovi
 The install brings every part of the demo, plus [Sample Data](/docs/sample-data) and the placeholder [conference providers](/docs/components/event-details#conference-providers), so the page below reproduces the live demo in your app's own colors. The live demo also wears the [Notion Calendar theme](/docs/theming#the-notion-calendar-theme), which is optional: add it to get the demo's colors too.
 
 ```npm
-npx shadcn add @calendarcn/theme-notion
+npx shadcn@latest add @calendarcn/theme-notion
 ```
 
 Back to the data: Delete `lib/mock-events.ts`, `lib/sample-events.ts` and `lib/conference-providers.ts` once you pass your own data.
@@ -102,6 +102,22 @@ That's the live demo. Its own page adds an avatar to the header (`headerActions`
 </Steps>
 
 The calendar renders in the browser only, since "today" and the time zone belong to the viewer. With Next.js Cache Components, create date-based events in an effect or load them from your API: see [Installation](/docs/installation).
+
+## Examples
+
+`CalendarApp` lays out for the width of the screen, so each example runs in a frame of its own, as wide as this column. Under 768px that is the phone layout, with both sidebars as sheets; "Open full screen" shows the desktop one.
+
+### With your own data
+
+Your events in your own state, your calendars and contacts, and new events on the calendar you choose.
+
+<ComponentPreview name="calendar-app-data-demo" height={680} />
+
+### With settings, accounts and your own buttons
+
+`settingsDialog`, `onAddCalendarAccount` and `onSupport` turn on the controls that are off by default, and `headerActions` and `sidebarFooterActions` add your own.
+
+<ComponentPreview name="calendar-app-settings-demo" height={680} />
 
 ## Your own data
 

@@ -43,6 +43,26 @@ export function ThreeDays() {
 }
 ```
 
+## Examples
+
+### Day and week in one grid
+
+Use one `TimeGrid` under a header of your own and switch its `view`: the grid lays out again instead of remounting, so it keeps its scroll position.
+
+<ComponentPreview name="time-grid-day-week-demo" height={600} />
+
+### Working hours only
+
+`dayStartHour` and `dayEndHour` on the provider set the hours the grid shows.
+
+<ComponentPreview name="time-grid-visible-hours-demo" height={600} />
+
+### Zoom the hours
+
+The [hour size](/docs/components/calendar-core#hour-size) lives in the provider: `zoomHoursIn()`, `zoomHoursOut()` and `resetHourHeight()` change it from your own buttons.
+
+<ComponentPreview name="time-grid-zoom-demo" height={600} />
+
 ## API Reference
 
 ### TimeGrid

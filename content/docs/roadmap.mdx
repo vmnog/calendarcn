@@ -7,9 +7,9 @@ CalendarCN is built in the open. This page lists the planned work, roughly in pr
 
 ## Up next
 
-### List in the shadcn registry directory
+### Restyle any part without editing its file
 
-Submit CalendarCN to the shadcn/ui registry directory, so it shows up next to the other community registries and installs under the `@calendarcn` namespace.
+A `data-slot` on every part of the calendar, `className` on every component, and a typed `classNames` map on `CalendarProvider`. Square event corners or bigger day numbers then live in your own code, where an update doesn't overwrite them.
 
 ## Later
 
@@ -17,7 +17,7 @@ Not scheduled yet, roughly in priority order.
 
 - **More views**: a resource view with people or rooms side by side.
 - **Large calendars**: virtualized rendering for thousands of events.
-- **Business hours**: shading for the hours outside them.
+- **Working hours**: shading for the hours outside your working day.
 - **Right-to-left** layouts.
 - **More blocks**: more ready-made layouts next to [Calendar App](/docs/components/calendar-app), in the style of the shadcn/ui sidebar blocks.
 
@@ -26,6 +26,8 @@ Not scheduled yet, roughly in priority order.
 The highlights. The [Changelog](/docs/changelog) lists every change item by item, with breaking changes called out.
 
 - **Theming**: every color in the calendar is a CSS variable that follows your shadcn/ui theme, so the event details, menus, toasts and sidebars match your app. Add event colors of your own next to the seven that ship, and get the live demo's look with the optional Notion Calendar theme. See [Theming](/docs/theming).
+- **One command to install**: CalendarCN is in shadcn/ui's [registry directory](https://ui.shadcn.com/docs/registry/registry-index), so `npx shadcn@latest add @calendarcn/calendar` works with nothing to configure first. [Installation](/docs/installation#requirements) now says what the calendar needs: Tailwind CSS 4, React 19, and what was tried on Next.js, Vite and a monorepo.
+- **Docs for AI assistants**: every example and install block has a Prompt tab to paste into a coding agent, every page is served as Markdown, and `/llms.txt` lists them. A skill teaches agents the calendar's rules, and the shadcn MCP server installs its items. See [Use with AI](/docs/ai).
 - **Creating events like Notion Calendar**: double-click an empty slot, or press and drag to draw an event of any length, in the day, week and month views and the all-day row. The new event is a draft until you name it or change it, and <Kbd>Esc</Kbd> throws it away. See [Creating events](/docs/components/calendar-core#creating-events).
 - **Selecting several events**: Shift- or <Kbd>⌘</Kbd>-click events, or press <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup> to select all visible, then delete, cut, copy, paste, duplicate or drag them together, each as one undo step with Notion Calendar's toasts. See [Calendar Core](/docs/components/calendar-core#selecting-several-events).
 - **Scheduling**: press <Kbd>S</Kbd> or click Scheduling in the sidebar, mark the times you're free on the day or week grid, and copy them as a message worded like Notion Calendar's ("Would 30 min during any of these times work for you?"). Scheduling links go to your app through `onCreateSchedulingLink`. See [Scheduling](/docs/components/scheduling).

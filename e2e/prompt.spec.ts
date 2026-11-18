@@ -8,7 +8,7 @@ import type { Locator, Page } from "@playwright/test";
  * site.
  */
 
-/** A component page with one example */
+/** A component page. Its first example is `week-view-demo` */
 const WEEK_VIEW_PATH = "/docs/components/week-view";
 
 /** A component page with several examples */
@@ -61,8 +61,7 @@ test("an example has Preview, Code and Prompt tabs, in that order", async ({
 }) => {
   await page.goto(WEEK_VIEW_PATH);
 
-  await expect(exampleTabLists(page)).toHaveCount(1);
-  await expect(exampleTabLists(page).getByRole("tab")).toHaveText([
+  await expect(exampleTabLists(page).first().getByRole("tab")).toHaveText([
     "Preview",
     "Code",
     "Prompt",

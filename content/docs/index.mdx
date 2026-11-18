@@ -35,11 +35,13 @@ CalendarCN is an open-source calendar for React. It brings the feel of Notion Ca
 
 Like shadcn/ui, CalendarCN isn't an npm dependency. The shadcn CLI copies the source into your project, so you can read it, restyle it and change how it behaves.
 
-The [Installation](/docs/installation) guide sets up shadcn/ui and adds the `@calendarcn` registry to your `components.json`. Then add the full calendar with one command:
+In a project that has shadcn/ui, one command adds the full calendar:
 
 ```npm
-npx shadcn add @calendarcn/calendar
+npx shadcn@latest add @calendarcn/calendar
 ```
+
+The CLI finds the `@calendarcn` registry by itself, so there's nothing to configure first. The [Installation](/docs/installation) guide covers setting up shadcn/ui, what CalendarCN [requires](/docs/installation#requirements) and every item.
 
 Or add only the pieces you need. Each one pulls in the ones it builds on.
 
@@ -161,7 +163,7 @@ There's no package version to bump. Fixes and improvements are live in the regis
 
 ## What's coming next? [#whats-next]
 
-CalendarCN is built in the open, and plans change as people use it. The Notion-style event details panel shipped most recently. Up next is listing CalendarCN in the shadcn/ui registry directory, next to the other community registries. Later plans include a year view and a resource view, and virtualized rendering for thousands of events.
+CalendarCN is built in the open, and plans change as people use it. Colors that follow your app's theme shipped most recently, with Notion Calendar's look as a theme you opt into, after creating events as drafts, selecting several events and scheduling, all the way Notion Calendar does them. Up next is a way to restyle any part without editing its file. Later plans include a resource view and virtualized rendering for thousands of events.
 
 <Cards>
   <Card title="Roadmap" href="/docs/roadmap">

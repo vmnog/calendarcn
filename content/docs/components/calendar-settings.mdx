@@ -64,6 +64,20 @@ The accounts are the provider's `calendars`, grouped by their `email` as in the 
 
 `defaultSection="calendars"` opens it on the first account, as "Manage calendar accounts" does in the live demo. [Calendar App](/docs/components/calendar-app) renders the dialog for you with `settingsDialog`.
 
+## Examples
+
+### The theme and the time format
+
+Pass `theme` with `onThemeChange` and `onHourCycleChange`, and General lists both settings. The theme here is [next-themes](https://github.com/pacocoursey/next-themes)', so it changes this site's too.
+
+<ComponentPreview name="calendar-settings-theme-demo" height={600} />
+
+### Managing calendar accounts
+
+The dialog opened on its first account, with a button to show or hide each calendar and "Add calendar account".
+
+<ComponentPreview name="calendar-settings-accounts-demo" height={240} />
+
 ## API Reference
 
 ### CalendarSettingsDialog

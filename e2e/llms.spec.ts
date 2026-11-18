@@ -22,7 +22,7 @@ const MDX_COMPONENT_TAGS = [
   "<Card",
 ];
 
-/** Pages with one live example, and the file its Code tab shows */
+/** Pages with live examples, and the file their first example's Code tab shows */
 const EXAMPLE_PAGES = [
   { path: WEEK_VIEW_PATH, file: "src/examples/week-view-demo.tsx" },
   { path: "/docs/loading-events", file: "src/examples/range-loading-demo.tsx" },
@@ -66,7 +66,7 @@ test("llms.txt lists every docs page with its Markdown URL", async ({
   const index = await response.text();
 
   expect(index).toContain("# CalendarCN");
-  expect(index).toContain("npx shadcn add @calendarcn/calendar");
+  expect(index).toContain("npx shadcn@latest add @calendarcn/calendar");
   expect(index).toContain(`${SITE_URL}/r/registry.json`);
   expect(index).toContain(`${SITE_URL}/llms-full.txt`);
   // The sidebar's groups
@@ -99,7 +99,7 @@ test("a docs page is served as Markdown at its URL plus .md", async ({
     /^# Week View\n\nA week, or any number of days, on the time grid\.\n/,
   );
   // InstallTabs: the CLI command and the Manual tab's steps
-  expect(markdown).toContain("npx shadcn add @calendarcn/week-view");
+  expect(markdown).toContain("npx shadcn@latest add @calendarcn/week-view");
   expect(markdown).toContain("`@calendarcn/time-grid`");
   expect(markdown).toContain(
     "[`components/week-view.tsx`](https://github.com/vmnog/calendarcn/blob/main/src/components/week-view.tsx)",
@@ -180,7 +180,8 @@ for (const { path, file } of EXAMPLE_PAGES) {
     expect(markdown).toContain(`\`\`\`tsx title="${file}"\n`);
 
     await page.goto(path);
-    await page.getByRole("tab", { name: "Code", exact: true }).click();
+    // The page's first example: a component page has several
+    await page.getByRole("tab", { name: "Code", exact: true }).first().click();
     const code = page
       .locator("figure", {
         has: page.locator("figcaption", { hasText: file }),
@@ -245,7 +246,7 @@ for (const { path, item, title } of INSTALL_PAGES) {
     );
 
     const prompt =
-      `Run \`npx shadcn add @calendarcn/${item}\` in this project to install CalendarCN's ${title}. ` +
+      `Run \`npx shadcn@latest add @calendarcn/${item}\` in this project to install CalendarCN's ${title}. ` +
       `If the command fails, read ${SITE_URL}/docs/installation.md and set up what's missing first. ` +
       `Then read ${SITE_URL}${path}.md in full and follow it to add ${title} to the app.`;
     await expect(panel.locator("pre")).toHaveText(prompt);

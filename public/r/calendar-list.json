@@ -2,6 +2,7 @@
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "calendar-list",
   "title": "Calendar List",
+  "author": "vmnog <https://vmnog.com>",
   "description": "The calendars grouped by account, each with its color and a button to show or hide it.",
   "dependencies": [
     "lucide-react"
@@ -29,5 +30,9 @@
       "calendar-sidebar-muted-foreground": "color-mix(in oklab, var(--sidebar-foreground) 50%, transparent)"
     }
   },
+  "categories": [
+    "calendar",
+    "sidebar"
+  ],
   "type": "registry:component"
 }

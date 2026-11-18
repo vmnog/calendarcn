@@ -103,23 +103,7 @@ While nothing is typed into it, a draft is a tinted range in its calendar's colo
 - `useCalendar()` returns the draft as `eventDraft` and starts one from your own button or command with `startEventDraft(range)`, drawn the same way. `updateEvent(draft)` saves it, `updateEventDraft(draft)` changes it without saving, and `clearSelection()` throws it away.
 - `addEventFromRange(range)` still adds an event at once, with no draft.
 
-```tsx
-function NewEventButton() {
-  const { startEventDraft } = useCalendar();
-  const start = new Date();
-  start.setMinutes(Math.ceil(start.getMinutes() / 30) * 30, 0, 0);
-
-  return (
-    <Button
-      onClick={() =>
-        startEventDraft({ start, end: new Date(start.getTime() + 30 * 60_000) })
-      }
-    >
-      New event
-    </Button>
-  );
-}
-```
+[A New event button](#a-new-event-button) starts drafts from buttons of your own.
 
 ## Repeating events
 
@@ -296,6 +280,32 @@ interface Meeting extends CalendarEvent {
   <WeekView />
 </CalendarProvider>;
 ```
+
+## Examples
+
+### A New event button
+
+`addEventAtNextSlot()` starts a [draft](#creating-events) at the next half hour, and `startEventDraft(range)` one for any range. `eventDraft` holds the draft until its first edit saves it.
+
+<ComponentPreview name="create-event-button-demo" height={600} />
+
+### Switches for the view settings
+
+The [view settings](#view-settings) and the week's first day are provider state. Change them from your own controls with `toggleWeekends()`, `toggleWeekNumbers()` and `setWeekStartsOn()`.
+
+<ComponentPreview name="view-settings-demo" height={600} />
+
+### Several events selected
+
+Shift-click events, or select every event on screen with `selectAllVisible()`. `selectedEventIds` lists them, and deleting one of them deletes them all, as one step for undo. See [Selecting several events](#selecting-several-events).
+
+<ComponentPreview name="multi-select-demo" height={600} />
+
+### Meet with someone
+
+With `contacts` and `contactEvents`, `useCalendarPeople()` adds people to the meeting: their events are drawn behind yours, hatched, and the free time you share is highlighted. See [Meeting with people](#meeting-with-people).
+
+<ComponentPreview name="meet-with-demo" height={600} />
 
 ## API Reference
 

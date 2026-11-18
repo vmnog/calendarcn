@@ -29,13 +29,33 @@ export function Schedule() {
 }
 ```
 
-Show fewer days with the provider's `numberOfDays` (or `defaultNumberOfDays`). Below 7, the columns start on the current day and previous/next move by that many days.
+Show fewer days with the provider's `numberOfDays` (or `defaultNumberOfDays`), as [Three days](#three-days) does. Below 7, the columns start on the current day and previous/next move by that many days.
 
-```tsx
-<CalendarProvider defaultEvents={events} defaultNumberOfDays={3}>
-  <WeekView />
-</CalendarProvider>
-```
+## Examples
+
+### Three days
+
+`defaultNumberOfDays={3}` on the provider shows three columns that start on today.
+
+<ComponentPreview name="week-view-three-days-demo" height={600} />
+
+### Your own toolbar
+
+Week View has no header of its own. Read the month and move between weeks with [`useCalendar()`](/docs/components/calendar-core#usecalendar) from any component inside the provider.
+
+<ComponentPreview name="week-view-toolbar-demo" height={600} />
+
+### Weekdays only
+
+Hide the weekend with the provider's [view settings](/docs/components/calendar-core#view-settings), and start the week on Monday with `defaultWeekStartsOn`.
+
+<ComponentPreview name="week-view-weekdays-demo" height={600} />
+
+### Details in a side panel
+
+`showEventPopover={false}` turns off the popover, and `useCalendar().selectedEvent` is the event to show in a panel of your own. For the built-in details there, see [Event Details](/docs/components/event-details#the-panel-beside-a-view).
+
+<ComponentPreview name="week-view-side-panel-demo" height={600} />
 
 ## Features
 

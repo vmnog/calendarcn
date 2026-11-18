@@ -3,7 +3,9 @@ title: People Picker
 description: Notion Calendar's F and P dialog, to meet with someone or show a teammate's calendar.
 ---
 
-`PeoplePicker` is the dialog the [live demo](/) opens with <Kbd>F</Kbd> ("Meet with...") and <Kbd>P</Kbd> ("Show teammate calendar..."), and from the same commands in the [Command Menu](/docs/components/command-menu). It searches the provider's `contacts` by name or email, and offers a typed address no contact has. Picking someone meets with them or shows their calendar through [`useCalendarPeople()`](/docs/components/calendar-core#usecalendarpeople), so it goes inside `CalendarProvider`.
+<ComponentPreview name="people-picker-demo" height={600} />
+
+`PeoplePicker` is the dialog the [live demo](/) opens with <Kbd>F</Kbd> ("Meet with...") and <Kbd>P</Kbd> ("Show teammate calendar..."), and from the same commands in the [Command Menu](/docs/components/command-menu). It searches the provider's `contacts` by name or email, and offers a typed address no contact has. Picking someone meets with them or shows their calendar through [`useCalendarPeople()`](/docs/components/calendar-core#usecalendarpeople), so it goes inside `CalendarProvider`. In the preview, each button opens it in one of its two modes, with the [sample data](/docs/sample-data)'s people.
 
 ## Installation
 
@@ -57,6 +59,20 @@ function CalendarWithPeople() {
 - `"teammate"` shows their calendar beside yours, without a meeting.
 
 The people already added are left out of the list. The arrow keys move through it, <Kbd>Enter</Kbd> picks, and <Kbd>Esc</Kbd> closes the picker, which opens empty the next time. The [Calendar Sidebar](/docs/components/calendar-sidebar) lists who was picked, each removable.
+
+## Examples
+
+### Your own list of who was picked
+
+The people are provider state, so a list of your own stays in sync with the picker: here each person in the meeting is a button that takes them out.
+
+<ComponentPreview name="people-picker-list-demo" height={600} />
+
+### Teammates, loaded as they're picked
+
+Control `teammates` to know who was picked, and load their events in `onTeammatesChange`.
+
+<ComponentPreview name="people-picker-teammates-demo" height={600} />
 
 ## API Reference
 

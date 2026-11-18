@@ -7,7 +7,10 @@
       "name": "calendar-core",
       "type": "registry:lib",
       "title": "Calendar Core",
-      "description": "Types, event layout math, keyboard shortcuts, CalendarProvider and useCalendar(). Every view builds on it.",
+      "description": "The state and logic every view builds on: CalendarProvider and useCalendar() (events, view, date, selection, undo and time zones), SchedulingProvider, the types, repeat rules, event layout math, keyboard shortcuts and the color tokens.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "core"],
+      "docs": "CalendarCN: every view runs inside <CalendarProvider>, in an element with a height, and useCalendar() reads and changes its state. https://calendarcn.xyz/docs/components/calendar-core",
       "dependencies": ["date-fns"],
       "registryDependencies": ["utils"],
       "files": [
@@ -373,7 +376,9 @@
       "name": "event-details",
       "type": "registry:component",
       "title": "Event Details",
-      "description": "Event chips, the detail panel, the details popover and the right-click menu.",
+      "description": "Event chips, the details panel and popover with inline editing, the right-click menu, the draft of an event being created and the dialog that asks which dates of a repeating event to change.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "events"],
       "dependencies": [
         "@floating-ui/react-dom",
         "date-fns",
@@ -510,7 +515,9 @@
       "name": "time-grid",
       "type": "registry:component",
       "title": "Time Grid",
-      "description": "The hour grid behind the day and week views: all-day row, time axis and current-time line, with drag, resize and create.",
+      "description": "The hour grid behind the day and week views: all-day row, time axis with additional time zones and current-time line, with drag, resize and create.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "views"],
       "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
@@ -592,6 +599,9 @@
       "type": "registry:component",
       "title": "Day View",
       "description": "One day on the time grid.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "views"],
+      "docs": "Day View: render <DayView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/day-view",
       "registryDependencies": ["@calendarcn/time-grid"],
       "files": [
         {
@@ -605,6 +615,9 @@
       "type": "registry:component",
       "title": "Week View",
       "description": "A week, or any number of days, on the time grid.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "views"],
+      "docs": "Week View: render <WeekView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/week-view",
       "registryDependencies": ["@calendarcn/time-grid"],
       "files": [
         {
@@ -618,6 +631,8 @@
       "type": "registry:component",
       "title": "Month View",
       "description": "The month grid, with drag, resize and create.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "views"],
       "dependencies": ["date-fns"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
@@ -667,6 +682,8 @@
       "type": "registry:component",
       "title": "Agenda View",
       "description": "The coming days' events as a scrolling list, grouped by day.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "views"],
       "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
@@ -684,6 +701,8 @@
       "type": "registry:component",
       "title": "Year View",
       "description": "The year as twelve month grids, with today and the days that have events marked.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "views"],
       "dependencies": ["date-fns", "react-day-picker@^9"],
       "registryDependencies": ["@calendarcn/calendar-core"],
       "files": [
@@ -698,6 +717,8 @@
       "type": "registry:component",
       "title": "Calendar Header",
       "description": "The live demo's header: month and year with the period on screen, view switcher, today, previous/next and panel toggles.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "navigation"],
       "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
@@ -723,6 +744,8 @@
       "type": "registry:component",
       "title": "Command Menu",
       "description": "The live demo's ⌘K menu: create an event, go to a typed date, today, previous/next, the views and the time zones, plus your app's panel, search, shortcut, theme and .ics commands.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "navigation"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "command",
@@ -754,6 +777,8 @@
       "type": "registry:component",
       "title": "People Picker",
       "description": "Notion Calendar's F and P dialog: search your contacts to meet with someone or show a teammate's calendar.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "scheduling"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
         "command",
@@ -772,6 +797,8 @@
       "type": "registry:component",
       "title": "Calendar Toaster",
       "description": "Notion Calendar's toasts: \"Event deleted\" and \"Event cut\" with Undo, and \"Event copied to clipboard\", at the bottom right of the calendar.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "events"],
       "dependencies": ["lucide-react"],
       "registryDependencies": ["@calendarcn/calendar-core"],
       "files": [
@@ -786,6 +813,8 @@
       "type": "registry:component",
       "title": "Calendar Settings",
       "description": "Notion Calendar's settings dialog: the calendar view, time format and theme, and each calendar account's calendars, with what your app can change.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "settings"],
       "dependencies": ["lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
@@ -805,6 +834,9 @@
       "type": "registry:block",
       "title": "Calendar",
       "description": "The full calendar: a toolbar with the view switcher, today and previous/next, over day, week, month, year and agenda views, with keyboard shortcuts.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "blocks"],
+      "docs": "Calendar: render <Calendar events={events} onEventsChange={setEvents} /> in an element with a height. It brings its own CalendarProvider. https://calendarcn.xyz/docs/installation#render-it",
       "registryDependencies": [
         "@calendarcn/calendar-header",
         "@calendarcn/time-grid",
@@ -824,6 +856,8 @@
       "type": "registry:lib",
       "title": "ICS Import and Export",
       "description": "parseIcs() and toIcs(): read and write iCalendar (.ics) files from Google Calendar, Apple Calendar and Outlook.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "data"],
       "dependencies": ["date-fns"],
       "registryDependencies": ["@calendarcn/calendar-core"],
       "files": [
@@ -838,6 +872,8 @@
       "type": "registry:lib",
       "title": "Conference Providers",
       "description": "Google Meet, Zoom and Microsoft Teams for the event details' Conferencing row, as the live demo offers them: placeholders that make up calls on example.com, to replace with calls to each service's API. No logos.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "data"],
       "registryDependencies": ["@calendarcn/calendar-core"],
       "files": [
         {
@@ -851,6 +887,8 @@
       "type": "registry:lib",
       "title": "Sample Data",
       "description": "The live demo's events, calendars, contacts, rooms and place suggestions, dated around today, and the docs examples' smaller week of events.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "data"],
       "dependencies": ["date-fns"],
       "registryDependencies": ["@calendarcn/calendar-core"],
       "files": [
@@ -869,6 +907,8 @@
       "type": "registry:component",
       "title": "Sidebar Overlay",
       "description": "A sidebar as a modal sheet for narrow screens, and the sidebars' Notion Calendar colors.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "sidebar"],
       "registryDependencies": ["sheet"],
       "files": [
         {
@@ -923,6 +963,8 @@
       "type": "registry:component",
       "title": "Theme Toggle",
       "description": "A button that cycles the theme through system, light and dark, with the next-themes provider it needs.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "theme"],
       "dependencies": ["lucide-react", "next-themes"],
       "registryDependencies": ["button"],
       "files": [
@@ -1160,6 +1202,8 @@
       "type": "registry:component",
       "title": "Mini Calendar",
       "description": "Notion Calendar's month picker: week numbers, today, the visible days highlighted and a way back to today.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "sidebar"],
       "dependencies": ["date-fns", "lucide-react", "react-day-picker@^9"],
       "registryDependencies": ["@calendarcn/calendar-core", "tooltip"],
       "files": [
@@ -1174,6 +1218,8 @@
       "type": "registry:component",
       "title": "Calendar List",
       "description": "The calendars grouped by account, each with its color and a button to show or hide it.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "sidebar"],
       "dependencies": ["lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
@@ -1202,7 +1248,9 @@
       "name": "calendar-sidebar",
       "type": "registry:component",
       "title": "Calendar Sidebar",
-      "description": "The left sidebar: mini calendar, scheduling, calendar list and theme toggle, inline or as an overlay.",
+      "description": "The left sidebar: mini calendar, scheduling, \"Meet with...\", calendar list and theme toggle, inline or as an overlay.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "sidebar"],
       "dependencies": ["lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
@@ -1232,6 +1280,8 @@
       "type": "registry:component",
       "title": "Details Sidebar",
       "description": "The right context panel: the selected event's details, event search, useful shortcuts, the full keyboard shortcut list and the scheduling panel.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "sidebar"],
       "dependencies": ["date-fns", "lucide-react"],
       "registryDependencies": [
         "@calendarcn/calendar-core",
@@ -1258,7 +1308,10 @@
       "name": "calendar-app",
       "type": "registry:block",
       "title": "Calendar App",
-      "description": "The live demo as one block: both sidebars, the header, day, week, month, year and agenda views, the ⌘K menu, the toasts, theme, .ics import and export, and keyboard shortcuts.",
+      "description": "The live demo as one block: both sidebars, the header, day, week, month, year and agenda views, the ⌘K menu, settings, scheduling, the toasts, theme, .ics import and export, and keyboard shortcuts.",
+      "author": "vmnog <https://vmnog.com>",
+      "categories": ["calendar", "blocks"],
+      "docs": "Calendar App: wrap your app in the ThemeProvider from @/components/theme-provider, then render <CalendarApp /> on a page of its own. https://calendarcn.xyz/docs/components/calendar-app#usage",
       "dependencies": ["next-themes"],
       "registryDependencies": [
         "@calendarcn/calendar-core",

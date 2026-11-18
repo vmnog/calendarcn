@@ -39,10 +39,25 @@ const ITEM_NAMES = [
  */
 const THEME_ITEM = "theme-notion";
 
+/** Items whose `docs` the CLI prints after an install: the next step and a docs link */
+const ITEMS_WITH_NEXT_STEP = [
+  "calendar",
+  "calendar-app",
+  "calendar-core",
+  "day-view",
+  "week-view",
+];
+
+/** Where every `docs` line sends people */
+const DOCS_URL = "https://calendarcn.xyz/docs";
+
 /** The parts of a built registry item the tests read */
 interface BuiltRegistryItem {
   name: string;
   type: string;
+  author?: string;
+  categories?: string[];
+  docs?: string;
   registryDependencies?: string[];
   files?: { path: string; content: string; type: string }[];
   cssVars?: {
@@ -82,6 +97,13 @@ for (const name of ITEM_NAMES) {
       `${REGISTRY_NAMESPACE}${THEME_ITEM}`,
     );
 
+    // What `shadcn view` and the shadcn MCP server show about the item
+    expect(item.author).toMatch(/\S/);
+    expect(item.categories?.length).toBeGreaterThan(0);
+    if (ITEMS_WITH_NEXT_STEP.includes(name)) {
+      expect(item.docs).toContain(DOCS_URL);
+    }
+
     // Every @calendarcn dependency resolves to another item
     const calendarDependencies = (item.registryDependencies ?? [])
       .filter((dependency) => dependency.startsWith(REGISTRY_NAMESPACE))
@@ -102,6 +124,10 @@ test("the Notion Calendar theme is served as variables only", async ({
   expect(theme.type).toBe("registry:theme");
   expect(theme.files ?? []).toEqual([]);
   expect(theme.registryDependencies ?? []).toEqual([]);
+  // Like every item: who made it, where it's filed, and its next step
+  expect(theme.author).toMatch(/\S/);
+  expect(theme.categories?.length).toBeGreaterThan(0);
+  expect(theme.docs).toContain(DOCS_URL);
   // Notion Calendar's menus are dark in light mode too
   expect(theme.cssVars?.light?.["calendar-menu"]).toBe("#252525");
   expect(theme.cssVars?.dark?.["calendar-menu"]).toBe("#252525");
@@ -147,4 +173,46 @@ test("a component page lists the item's files in the Manual tab", async ({
   await expect(manual.getByText("components/calendar.tsx")).toBeVisible();
   await expect(manual.getByRole("link", { name: "time-grid" })).toBeVisible();
   await expect(page.getByText("Coming soon")).toHaveCount(0);
+});
+
+test("the Installation page starts with one command and says what the calendar needs", async ({
+  page,
+}) => {
+  await page.goto("/docs/installation");
+  const article = page.locator("article");
+
+  // The first command adds the full calendar, with nothing to set up before it
+  await expect(article.locator("pre").first()).toHaveText(
+    /shadcn@latest add @calendarcn\/calendar$/,
+  );
+  await expect(
+    article.getByRole("heading", { name: "Add the registry" }),
+  ).toHaveCount(0);
+
+  await expect(
+    article.getByRole("heading", { name: "Requirements" }),
+  ).toBeVisible();
+  const requirements = article.getByRole("table").first();
+  for (const row of [
+    "Tailwind CSS",
+    "React",
+    "Framework",
+    "shadcn CLI",
+    "Monorepo",
+    "Server components",
+  ]) {
+    await expect(
+      requirements.getByRole("row").filter({ hasText: row }).first(),
+    ).toBeVisible();
+  }
+
+  // Every command on the page runs the latest CLI
+  const commands = await article.locator("pre").allTextContents();
+  const shadcnCommands = commands.filter((command) =>
+    /\bshadcn\b/.test(command),
+  );
+  expect(shadcnCommands.length).toBeGreaterThan(5);
+  for (const command of shadcnCommands) {
+    expect(command).toContain("shadcn@latest ");
+  }
 });
