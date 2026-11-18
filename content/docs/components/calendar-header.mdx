@@ -83,32 +83,23 @@ The header is a container (`@container/header`), so it follows its own width rat
 | 28rem        | The full month name, and a divider after the sidebar toggle |
 | 36rem        | The period on screen, the children, and a larger title      |
 
+## Examples
+
+### With your own actions
+
+Children sit before the view switcher. Here a button starts a new event, and with no panel props the header has no panel toggles.
+
+<ComponentPreview name="calendar-header-actions-demo" height={600} />
+
+### A header built from its parts
+
+`CalendarPeriodLabel`, `CalendarViewSwitcher` and `CalendarNavigation` in a header of your own, beside a title read from `useCalendar()`.
+
+<ComponentPreview name="calendar-header-parts-demo" height={600} />
+
 ## Build your own
 
-The header is made of parts you can use in a header of your own. Each reads `useCalendar()`. The [Calendar](/docs/components/calendar) block's toolbar is built from them too.
-
-```tsx
-import {
-  CalendarNavigation,
-  CalendarPeriodLabel,
-  CalendarViewSwitcher,
-} from "@/components/calendar-header";
-
-function Toolbar() {
-  const { monthName, year } = useCalendar();
-
-  return (
-    <header className="@container/header flex h-12 items-center gap-2 border-b px-3">
-      <h2 className="min-w-0 flex-1 truncate font-semibold">
-        {monthName} {year}
-        <CalendarPeriodLabel className="ml-2 text-xs font-normal text-muted-foreground" />
-      </h2>
-      <CalendarViewSwitcher />
-      <CalendarNavigation buttonClassName="size-8" />
-    </header>
-  );
-}
-```
+The header is made of parts you can use in a header of your own. Each reads `useCalendar()`. The [Calendar](/docs/components/calendar) block's toolbar is built from them too, and [A header built from its parts](#a-header-built-from-its-parts) is one you can try.
 
 ## API Reference
 

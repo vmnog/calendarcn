@@ -41,6 +41,20 @@ const { view, currentDate, visibleDays, weekStartsOn, goToDate } =
 
 When `currentDate` or `visibleDays` change, the mini calendar goes back to their month, even after the arrows browsed away.
 
+## Examples
+
+### Following a view
+
+Wired to [`useCalendar()`](/docs/components/calendar-core#usecalendar): the day on screen is highlighted, and picking a day shows it.
+
+<ComponentPreview name="mini-calendar-follow-demo" height={600} />
+
+### Monday start, no week numbers
+
+`weekStartsOn={1}` and `showWeekNumber={false}`.
+
+<ComponentPreview name="mini-calendar-monday-demo" height={420} />
+
 ## Features
 
 - Today is marked in your theme's primary color. The page renders with no today marked, then marks it in the browser, so server and client markup match.

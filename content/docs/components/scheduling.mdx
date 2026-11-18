@@ -86,6 +86,22 @@ function ScheduleLayout() {
 
 The views, the sidebars and the command menu leave scheduling out when there's no `SchedulingProvider` around them. To mark times without the details sidebar, render `AvailabilityPanel` wherever your app has room, or pass `showActions` to `AvailabilityHint` for its Cancel and Copy buttons. Start marking from your own button with `useScheduling().startPicking()`.
 
+## Examples
+
+Both examples leave out `useSchedulingShortcuts()`, whose keys listen on the whole page.
+
+### From your own button
+
+`useScheduling().startPicking()` starts marking, and `AvailabilityHint` with `showActions` has the Cancel and Copy buttons, so this layout needs no panel. Click the button, then drag on a day.
+
+<ComponentPreview name="scheduling-share-demo" height={600} />
+
+### The scheduling panel on its own
+
+`AvailabilityPanel` beside the view, outside a [Details Sidebar](/docs/components/details-sidebar): the meeting length, the text to copy and each marked time.
+
+<ComponentPreview name="scheduling-panel-demo" height={600} />
+
 ## Scheduling links
 
 Notion Calendar also creates scheduling links: booking pages where people pick one of your times. CalendarCN has no backend for them, so it hands them to your app. Pass `onCreateSchedulingLink` to `CalendarApp` (or `SchedulingProvider`), and the Scheduling row opens a menu with **Create recurring link** and **Create one-off link**, and the command menu lists "Create recurring scheduling link..." and "Create one-off scheduling link...". Without it they aren't offered, as in the live demo.

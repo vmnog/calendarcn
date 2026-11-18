@@ -31,6 +31,32 @@ export function Upcoming() {
 
 Rendered on its own, it sets the provider's view to `"agenda"` and starts on today. Previous and next move by 30 days, and the provider's `monthName` and `year` name the month the list starts in. To switch between the agenda and other views, render the view the provider is on, as the [Calendar](/docs/components/calendar) example does. Switching to the agenda starts it on today when the period on screen contains today, and on that period's first day otherwise.
 
+## Examples
+
+### No events
+
+With nothing in the next 30 days, the agenda shows an empty state that names the days it covers.
+
+<ComponentPreview name="agenda-view-empty-demo" height={400} />
+
+### Your own event content
+
+[`renderEventContent`](/docs/components/calendar-core#custom-event-content) draws the inside of each row, with `placement: "agenda"`.
+
+<ComponentPreview name="agenda-view-event-content-demo" height={600} />
+
+### On a phone
+
+At a phone's width the rows stack the title over the time. A popover has no room there, so turn it off and show the selected event in a sheet.
+
+<ComponentPreview name="agenda-view-phone-demo" height={600} />
+
+### A 24-hour clock and week numbers
+
+Times follow the provider's `hourCycle`, and with the `showWeekNumbers` [view setting](/docs/components/calendar-core#view-settings) on, "Week 23" marks where each week starts.
+
+<ComponentPreview name="agenda-view-week-numbers-demo" height={600} />
+
 ## Features
 
 - Each day lists its all-day events first, then timed events by start time.

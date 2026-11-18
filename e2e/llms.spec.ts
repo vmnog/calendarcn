@@ -22,7 +22,7 @@ const MDX_COMPONENT_TAGS = [
   "<Card",
 ];
 
-/** Pages with one live example, and the file its Code tab shows */
+/** Pages with live examples, and the file their first example's Code tab shows */
 const EXAMPLE_PAGES = [
   { path: WEEK_VIEW_PATH, file: "src/examples/week-view-demo.tsx" },
   { path: "/docs/loading-events", file: "src/examples/range-loading-demo.tsx" },
@@ -180,7 +180,8 @@ for (const { path, file } of EXAMPLE_PAGES) {
     expect(markdown).toContain(`\`\`\`tsx title="${file}"\n`);
 
     await page.goto(path);
-    await page.getByRole("tab", { name: "Code", exact: true }).click();
+    // The page's first example: a component page has several
+    await page.getByRole("tab", { name: "Code", exact: true }).first().click();
     const code = page
       .locator("figure", {
         has: page.locator("figcaption", { hasText: file }),

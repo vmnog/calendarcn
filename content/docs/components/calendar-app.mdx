@@ -97,6 +97,22 @@ That's the live demo. Its own page adds an avatar to the header (`headerActions`
 
 The calendar renders in the browser only, since "today" and the time zone belong to the viewer. With Next.js Cache Components, create date-based events in an effect or load them from your API: see [Installation](/docs/installation).
 
+## Examples
+
+`CalendarApp` lays out for the width of the screen, so each example runs in a frame of its own, as wide as this column. Under 768px that is the phone layout, with both sidebars as sheets; "Open full screen" shows the desktop one.
+
+### With your own data
+
+Your events in your own state, your calendars and contacts, and new events on the calendar you choose.
+
+<ComponentPreview name="calendar-app-data-demo" height={680} />
+
+### With settings, accounts and your own buttons
+
+`settingsDialog`, `onAddCalendarAccount` and `onSupport` turn on the controls that are off by default, and `headerActions` and `sidebarFooterActions` add your own.
+
+<ComponentPreview name="calendar-app-settings-demo" height={680} />
+
 ## Your own data
 
 The app takes the same props as `CalendarProvider`, for `DetailedCalendarEvent` events: the fields the details sidebar edits, from participants to reminders. Leave the events to the app with `defaultEvents`, or keep them in your state with `events` and `onEventsChange`:

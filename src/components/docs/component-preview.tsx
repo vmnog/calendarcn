@@ -1,7 +1,7 @@
 import { cache } from "react";
 import type { HTMLAttributes, ReactNode } from "react";
 import Link from "next/link";
-import { CalendarDaysIcon } from "lucide-react";
+import { ArrowUpRightIcon, CalendarDaysIcon } from "lucide-react";
 import { Pre } from "fumadocs-ui/components/codeblock";
 import { ServerCodeBlock } from "fumadocs-ui/components/codeblock.rsc";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
@@ -9,14 +9,18 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import { cn } from "@/lib/utils";
 import { CODE_THEMES } from "@/components/docs/code-themes";
 import { DocsCodeBlock } from "@/components/docs/docs-code-block";
+import { PreviewFrame } from "@/components/docs/preview-frame";
 import { PreviewTab } from "@/components/docs/preview-tab";
 import { EXAMPLE_ITEMS } from "@/components/docs/example-items";
 import {
+  getExampleFramePath,
   getExamplePath,
   isExampleName,
+  isFramedExample,
   readExampleSource,
   renderExample,
 } from "@/components/docs/examples";
+import type { ExampleName } from "@/components/docs/examples";
 import {
   buildExamplePrompt,
   indexDocsPages,
@@ -79,7 +83,10 @@ interface ComponentPreviewProps {
  * Preview / Code / Prompt tabs for an example, in the style of ui.shadcn.com.
  * The Preview tab renders the example component itself (fully interactive);
  * the Code tab shows that component's file, read from disk at build time,
- * so the two can't drift apart. The Prompt tab holds a prompt to paste into a
+ * so the two can't drift apart. An example listed in `FRAMED_EXAMPLES`
+ * renders in an iframe instead, which gives a full-page block a viewport of
+ * its own. Below a page's first example, each one mounts when it nears the
+ * screen (`PreviewFrame`). The Prompt tab holds a prompt to paste into a
  * coding agent, built from that same file, `registry.json` and the skill in
  * `skills/calendarcn/SKILL.md` (see `buildExamplePrompt()`).
  */
@@ -148,13 +155,20 @@ export async function ComponentPreview({
     <PreviewTabs className={className}>
       {/* An unfocusable panel, or the first event click closes its own popover */}
       <PreviewTab value="Preview" className="p-0">
-        <div
+        <PreviewFrame
           data-example={name}
           className="docs-preview relative isolate min-h-[400px] max-h-[960px] resize-y overflow-hidden rounded-xl bg-background text-foreground"
           style={{ height }}
+          // The page's first example is on screen at load. The others mount
+          // as they near it, so a page of calendars loads like a page of one
+          eager={pages.topExamples.has(name)}
         >
-          {renderExample(name)}
-        </div>
+          {isFramedExample(name) ? (
+            <ExampleFrame name={name} />
+          ) : (
+            renderExample(name)
+          )}
+        </PreviewFrame>
       </PreviewTab>
       <Tab value="Code">
         <PanelCodeBlock
@@ -174,6 +188,42 @@ export async function ComponentPreview({
         />
       </Tab>
     </PreviewTabs>
+  );
+}
+
+interface ExampleFrameProps {
+  name: ExampleName;
+}
+
+/**
+ * A framed example: its own page in an iframe, loaded once the frame nears
+ * the viewport, under a bar that opens that page on its own.
+ */
+function ExampleFrame({ name }: ExampleFrameProps) {
+  const path = getExampleFramePath(name);
+
+  return (
+    <div className="flex size-full flex-col">
+      <div className="flex h-9 shrink-0 items-center justify-between gap-3 border-b px-3 text-xs text-fd-muted-foreground">
+        <span className="truncate">
+          A full-page block, in a frame as wide as this one.
+        </span>
+        <Link
+          href={path}
+          target="_blank"
+          className="inline-flex shrink-0 items-center gap-1 font-medium text-fd-foreground hover:underline hover:underline-offset-4"
+        >
+          Open full screen
+          <ArrowUpRightIcon className="size-3.5" />
+        </Link>
+      </div>
+      <iframe
+        src={path}
+        title={`${name} example`}
+        loading="lazy"
+        className="block min-h-0 w-full flex-1 border-0"
+      />
+    </div>
   );
 }
 

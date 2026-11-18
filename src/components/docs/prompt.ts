@@ -95,6 +95,8 @@ export interface DocsPageIndex {
   examplePages: Map<string, DocsPageRef>;
   /** The page with each item's CLI and Manual tabs, by item name */
   installPages: Map<string, DocsPageRef>;
+  /** The first example of each page: the one at its top, on screen when the page loads */
+  topExamples: Set<string>;
 }
 
 /** What `shadcn add` needs to install for an example to run */
@@ -277,9 +279,12 @@ export async function readSkillRules(): Promise<string> {
 export function indexDocsPages(pages: DocsPageText[]): DocsPageIndex {
   const examplePages = new Map<string, DocsPageRef>();
   const installPages = new Map<string, DocsPageRef>();
+  const topExamples = new Set<string>();
 
   for (const { title, url, text } of pages) {
-    for (const [, name] of text.matchAll(PREVIEW_TAG)) {
+    const previews = Array.from(text.matchAll(PREVIEW_TAG), ([, name]) => name);
+    if (previews.length > 0) topExamples.add(previews[0]);
+    for (const name of previews) {
       if (!examplePages.has(name)) examplePages.set(name, { title, url });
     }
     for (const [, item] of text.matchAll(INSTALL_TAG)) {
@@ -287,7 +292,7 @@ export function indexDocsPages(pages: DocsPageText[]): DocsPageIndex {
     }
   }
 
-  return { examplePages, installPages };
+  return { examplePages, installPages, topExamples };
 }
 
 /** A code fence longer than any run of backticks in the code it wraps */

@@ -57,24 +57,7 @@ parseDateQuery("next friday", { today: new Date(), locale, weekStartsOn });
 // → the Friday of next week, at midnight, or null when the text isn't a date
 ```
 
-To open the menu straight on Go to date, as the <Kbd>.</Kbd> key does in the demo, pass `defaultPage="go-to-date"` before opening it:
-
-```tsx
-const [page, setPage] = React.useState<CommandMenuPage>("commands");
-
-useCalendarShortcuts({
-  onToggleCommandMenu: () => {
-    setPage("commands");
-    setOpen((o) => !o);
-  },
-  onGoToDate: () => {
-    setPage("go-to-date");
-    setOpen(true);
-  },
-});
-
-<CommandMenu open={open} onOpenChange={setOpen} defaultPage={page} />;
-```
+To open the menu straight on Go to date, as the <Kbd>.</Kbd> key does in the demo, pass `defaultPage="go-to-date"` before opening it, as [Open on Go to date](#open-on-go-to-date) does from a button. For the key, pass `onGoToDate` to [`useCalendarShortcuts()`](/docs/keyboard-shortcuts#app-shortcuts).
 
 ### Create event
 
@@ -148,6 +131,20 @@ useCalendarShortcuts({
 ### Theming
 
 The dialog is translucent and blurred in dark mode. The CLI also adds a rule to your CSS file that dims the page less behind the menu in dark mode (`rgb(0 0 0 / 0.3)`), found through the `data-command-menu` attribute on the dialog. The rest of the look comes from your own `command` and `dialog` components.
+
+## Examples
+
+### With your app's commands
+
+Each callback you pass adds its command to the menu. Here four of them say that they ran, where your app would open a panel or a page.
+
+<ComponentPreview name="command-menu-app-commands-demo" height={600} />
+
+### Open on Go to date
+
+`defaultPage="go-to-date"` opens the menu straight on its date field. Type "next friday" or "dec 25" and press <Kbd>Enter</Kbd>.
+
+<ComponentPreview name="command-menu-go-to-date-demo" height={600} />
 
 ## API Reference
 

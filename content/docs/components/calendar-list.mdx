@@ -55,6 +55,14 @@ const [hidden, setHidden] = React.useState<string[]>([]);
 />;
 ```
 
+## Examples
+
+### The provider's calendars, some hidden at first
+
+Inside a `CalendarProvider` the list needs no `calendars` prop, and `defaultHiddenCalendarIds` starts it with calendars hidden. To take a hidden calendar's events off the views, see [Calendar Sidebar](/docs/components/calendar-sidebar#hide-a-calendars-events).
+
+<ComponentPreview name="calendar-list-provider-demo" height={460} />
+
 ## API Reference
 
 ### CalendarList

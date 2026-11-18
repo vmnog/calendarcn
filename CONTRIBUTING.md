@@ -104,7 +104,19 @@ Files in the registry run in other people's projects, next to their own copies o
 
 ### Docs examples
 
-Each live preview on a docs page renders a file from `src/examples/`, and its Code tab shows that file's source. To add one, create the example, register it in `src/components/docs/examples.ts`, then use `<ComponentPreview name="your-example" />` in the MDX page.
+Each live preview on a docs page renders a file from `src/examples/`, and its Code tab shows that file's source. To add one, create the example, register it in `src/components/docs/examples.ts`, name its registry item in `src/components/docs/example-items.ts`, then use `<ComponentPreview name="your-example" />` in the MDX page.
+
+Every component page has an "Examples" section after Usage. Each example there is a `###` heading that says what it shows, one sentence, then the preview. People and their AI assistants copy these files, so an example runs as pasted:
+
+- One client component with no props, in one file, under about 90 lines.
+- It imports only files the registry installs, shadcn/ui components and the packages those bring. `unit/prompt.spec.ts` fails on anything else.
+- A view gets a parent with a height in the example itself (`h-[600px]`), and the preview the same height (`height={600}`).
+- A comment on each line that makes the example's point, and none on the rest.
+- `Calendar` examples pass `shortcuts={false}`, since several calendars share a page and the keys listen on the window.
+
+A full-page block such as `CalendarApp` lays out for the viewport's width. List its examples in `FRAMED_EXAMPLES` (in `examples.ts`) and the preview shows each in an iframe, at `/examples/<name>`.
+
+`pnpm test:unit` checks that every example is registered and shown and that every component page has enough of them, and `e2e/docs-examples.spec.ts` opens each one.
 
 ## Code Style
 
