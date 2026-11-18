@@ -154,10 +154,11 @@ export const ROW_BOX_CLASS =
 
 /**
  * Link text in the details panel: a faint underline that takes the text
- * color on hover, as Notion's links do
+ * color on hover, as Notion's links do. On a dark theme the divider color
+ * is too strong for it, so it takes the focus fill's
  */
 export const EVENT_DETAIL_LINK_CLASS =
-  "underline decoration-calendar-detail-border decoration-1 underline-offset-2 hover:decoration-current";
+  "underline decoration-calendar-detail-border decoration-1 underline-offset-2 hover:decoration-current dark:decoration-calendar-detail-focus";
 
 /** Gap in px between a menu opened from the panel and the panel's left edge */
 const PANEL_MENU_GAP = 4;

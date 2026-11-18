@@ -214,6 +214,7 @@
       "calendar-context-panel-muted-foreground": "#c7c5c1"
     }
   },
+  "docs": "Notion Calendar theme: it set your shadcn/ui color tokens and the calendar's own to Notion Calendar's colors, for light and dark mode. https://calendarcn.xyz/docs/theming#the-notion-calendar-theme",
   "categories": [
     "calendar",
     "theme"

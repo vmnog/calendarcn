@@ -943,6 +943,7 @@
       "description": "The live demo's look: Notion Calendar's colors for your shadcn/ui tokens and for every calendar and event token, light and dark. Optional: without it the calendar follows your app's own theme.",
       "author": "vmnog <https://vmnog.com>",
       "categories": ["calendar", "theme"],
+      "docs": "Notion Calendar theme: it set your shadcn/ui color tokens and the calendar's own to Notion Calendar's colors, for light and dark mode. https://calendarcn.xyz/docs/theming#the-notion-calendar-theme",
       "cssVars": {
         "light": {
           "background": "#ffffff",

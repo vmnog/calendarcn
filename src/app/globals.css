@@ -50,11 +50,6 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
-  --color-event: var(--event);
-  --color-event: var(--event);
-  --color-event: var(--event);
-  --color-event: var(--event);
-  --color-event: var(--event);
 
   /* Calendar and event tokens (the registry's cssVars) */
   --color-event-red: var(--event-red);
