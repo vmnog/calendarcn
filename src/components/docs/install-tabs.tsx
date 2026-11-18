@@ -18,8 +18,15 @@ import { SITE_URL } from "@/lib/source";
 
 import registry from "../../../registry.json";
 
-/** Registry namespace configured in `components.json` (see the Installation page). */
+/** Registry namespace the shadcn CLI resolves the items under (see the Installation page). */
 export const REGISTRY_NAMESPACE = "@calendarcn";
+
+/**
+ * The shadcn CLI as every command in the docs runs it. `@latest` keeps a
+ * package runner from reusing an old cached CLI, which wouldn't find the
+ * `@calendarcn` registry by itself.
+ */
+const SHADCN_CLI = "shadcn@latest";
 
 /** Where the Manual tab links each file's source */
 const SOURCE_URL = "https://github.com/vmnog/calendarcn/blob/main";
@@ -128,7 +135,7 @@ export function getInstallSteps(item: string): InstallSteps {
   return {
     title: entry.title,
     cliCommand: ({ runner }) =>
-      `${runner} shadcn add ${REGISTRY_NAMESPACE}/${item}`,
+      `${runner} ${SHADCN_CLI} add ${REGISTRY_NAMESPACE}/${item}`,
     calendarItems,
     dependenciesCommand:
       dependencies.length > 0
@@ -136,7 +143,7 @@ export function getInstallSteps(item: string): InstallSteps {
         : undefined,
     shadcnCommand:
       shadcnItems.length > 0
-        ? ({ runner }) => `${runner} shadcn add ${shadcnItems.join(" ")}`
+        ? ({ runner }) => `${runner} ${SHADCN_CLI} add ${shadcnItems.join(" ")}`
         : undefined,
     files: entry.files.map(({ path }) => ({
       label: path.replace(/^src\//, ""),

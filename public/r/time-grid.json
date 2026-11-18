@@ -2,7 +2,8 @@
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "time-grid",
   "title": "Time Grid",
-  "description": "The hour grid behind the day and week views: all-day row, time axis and current-time line, with drag, resize and create.",
+  "author": "vmnog <https://vmnog.com>",
+  "description": "The hour grid behind the day and week views: all-day row, time axis with additional time zones and current-time line, with drag, resize and create.",
   "dependencies": [
     "date-fns",
     "lucide-react"
@@ -96,6 +97,10 @@
       "content": "import * as React from \"react\";\n\n/** Matches when the viewer asked the system to minimize animation */\nconst REDUCED_MOTION_QUERY = \"(prefers-reduced-motion: reduce)\";\n\nfunction getServerSnapshot(): boolean {\n  return false;\n}\n\n/**\n * Subscribes to a CSS media query and returns whether it currently matches.\n *\n * Returns `false` during server rendering and hydration, then the live value.\n */\nexport function useMediaQuery(query: string): boolean {\n  const subscribe = React.useCallback(\n    (onChange: () => void) => {\n      const mql = window.matchMedia(query);\n      mql.addEventListener(\"change\", onChange);\n      return () => mql.removeEventListener(\"change\", onChange);\n    },\n    [query],\n  );\n\n  const getSnapshot = React.useCallback(\n    () => window.matchMedia(query).matches,\n    [query],\n  );\n\n  return React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);\n}\n\n/**\n * Whether the viewer prefers reduced motion. `false` during server\n * rendering and hydration, then the live value.\n */\nexport function usePrefersReducedMotion(): boolean {\n  return useMediaQuery(REDUCED_MOTION_QUERY);\n}\n",
       "type": "registry:hook"
     }
+  ],
+  "categories": [
+    "calendar",
+    "views"
   ],
   "type": "registry:component"
 }

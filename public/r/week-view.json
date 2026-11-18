@@ -2,6 +2,7 @@
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "week-view",
   "title": "Week View",
+  "author": "vmnog <https://vmnog.com>",
   "description": "A week, or any number of days, on the time grid.",
   "registryDependencies": [
     "@calendarcn/time-grid"
@@ -12,6 +13,11 @@
       "content": "\"use client\";\n\nimport type { WeekViewProps } from \"./week-view-types\";\nimport { TimeGrid } from \"./time-grid\";\n\n/**\n * Week calendar: `numberOfDays` columns (7 by default) on the hourly time\n * grid. Date, events and selection come from the surrounding\n * CalendarProvider, which navigates by week while this view is mounted.\n */\nexport function WeekView(props: WeekViewProps) {\n  return <TimeGrid {...props} view=\"week\" />;\n}\n",
       "type": "registry:component"
     }
+  ],
+  "docs": "Week View: render <WeekView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/week-view",
+  "categories": [
+    "calendar",
+    "views"
   ],
   "type": "registry:component"
 }
