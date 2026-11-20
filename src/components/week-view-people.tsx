@@ -4,10 +4,14 @@ import * as React from "react";
 import { addDays, startOfDay } from "date-fns";
 
 import { cn } from "@/lib/utils";
-import { eventColorStyles } from "./calendar-event-item";
+import { EVENT_COLOR_CLASSES } from "./calendar-event-item";
 import { useCalendarPeople } from "./calendar-people";
 import { useCalendarConfig } from "./calendar-provider";
-import { formatTimeRange, isMultiDayEvent } from "@/lib/event-utils";
+import {
+  formatTimeRange,
+  getEventColorStyle,
+  isMultiDayEvent,
+} from "@/lib/event-utils";
 import { getSharedFreeTime } from "@/lib/free-busy";
 import { getPersonInitial, getPersonName } from "@/lib/people";
 import { expandRecurringEvents } from "@/lib/recurrence";
@@ -192,7 +196,7 @@ export function PersonEventItem({
   const { event } = positionedEvent;
   if (!isPersonEvent(event)) return null;
   const person = event.calendarPerson;
-  const styles = eventColorStyles[person.color];
+  const styles = EVENT_COLOR_CLASSES;
   const heightPx =
     (positionedEvent.height / 100) * (dayEndHour - dayStartHour) * hourHeight;
   const time = formatTimeRange(event.start, event.end, hourCycle, locale);
@@ -208,6 +212,7 @@ export function PersonEventItem({
         styles.text,
       )}
       style={{
+        ...getEventColorStyle(person.color),
         top: `${positionedEvent.top}%`,
         height: `${positionedEvent.height}%`,
         left: `${positionedEvent.left}%`,
@@ -232,7 +237,7 @@ export function PersonEventItem({
         <span
           aria-hidden
           className={cn(
-            "flex size-3.5 shrink-0 items-center justify-center rounded-full text-[8px] leading-none font-semibold text-white",
+            "flex size-3.5 shrink-0 items-center justify-center rounded-full text-[8px] leading-none font-semibold text-event-foreground",
             styles.border,
           )}
         >

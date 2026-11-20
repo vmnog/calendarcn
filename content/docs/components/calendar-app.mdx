@@ -13,7 +13,13 @@ It takes every [`CalendarProvider`](/docs/components/calendar-core#calendarprovi
 
 <InstallTabs item="calendar-app" />
 
-The install brings every part of the demo, plus [Sample Data](/docs/reference/sample-data) and the placeholder [conference providers](/docs/components/event-details#conference-providers), so the page below reproduces the live demo. Delete `lib/mock-events.ts`, `lib/sample-events.ts` and `lib/conference-providers.ts` once you pass your own data.
+The install brings every part of the demo, plus [Sample Data](/docs/reference/sample-data) and the placeholder [conference providers](/docs/components/event-details#conference-providers), so the page below reproduces the live demo in your app's own colors. The live demo also wears the [Notion Calendar theme](/docs/guides/theming#the-notion-calendar-theme), which is optional: add it to get the demo's colors too.
+
+```npm
+npx shadcn@latest add @calendarcn/theme-notion
+```
+
+Back to the data: Delete `lib/mock-events.ts`, `lib/sample-events.ts` and `lib/conference-providers.ts` once you pass your own data.
 
 ## Usage
 

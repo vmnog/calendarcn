@@ -25,13 +25,13 @@ const POPOVER_PANEL_GAP = 6;
 const FIELD_POPOVER_DATA = { [FIELD_POPOVER_ATTRIBUTE]: "" };
 
 /**
- * The time menu and the date picker: dark in both themes like the panel's
+ * The time menu and the date picker: on the menus' surface like the panel's
  * other menus, and shown at once, without the enter or exit animation of
  * Radix (`data-state`) or Base UI (`data-open`, `data-closed`)
  */
 const FIELD_POPOVER_CLASS = cn(
   EVENT_DETAIL_MENU_CLASS,
-  "rounded-[10px] border p-0 text-sm font-medium text-white shadow-[0_8px_24px_rgb(0_0_0/0.24)] ring-0 outline-none",
+  "rounded-[10px] border p-0 text-sm font-medium text-calendar-menu-foreground shadow-[0_8px_24px_rgb(0_0_0/0.24)] ring-0 outline-none",
   "data-[state=open]:animate-none data-[state=closed]:animate-none data-open:animate-none data-closed:animate-none",
 );
 

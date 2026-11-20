@@ -40,6 +40,10 @@ const INSTALLATION_MARKDOWN_URL = `${SITE_URL}/docs/installation.md`;
 /** The docs' index for assistants, which the prompt names when the tabs aren't told their page */
 const DOCS_INDEX_URL = `${SITE_URL}/llms.txt`;
 
+/** What the Manual tab says above an item's CSS variables */
+export const CSS_STEP_TEXT =
+  "Add its variables to your global CSS file. Where a variable is already there, this value replaces it:";
+
 /** The prompt wraps like prose instead of scrolling like code, clear of the copy button */
 const PROMPT_TEXT_CLASS =
   "w-full ps-4 pe-10 leading-6 break-words whitespace-pre-wrap";
@@ -75,7 +79,14 @@ interface RegistryItem {
   title: string;
   dependencies?: string[];
   registryDependencies?: string[];
-  files: { path: string }[];
+  /** A theme item has none: it only writes CSS variables */
+  files?: { path: string }[];
+  /** Variables the CLI writes into the project's CSS file */
+  cssVars?: {
+    theme?: Record<string, string>;
+    light?: Record<string, string>;
+    dark?: Record<string, string>;
+  };
 }
 
 /** Every item in the registry, by name */
@@ -106,8 +117,43 @@ export interface InstallSteps {
   dependenciesCommand?: (packageManager: PackageManager) => string;
   /** The command that adds the shadcn/ui components it uses, when it uses any */
   shadcnCommand?: (packageManager: PackageManager) => string;
-  /** The files to copy */
+  /** The files to copy; none for an item that only adds CSS variables */
   files: InstallFile[];
+  /**
+   * The CSS the CLI writes into the project's global CSS file, when the item
+   * has variables: each one under `:root` and `.dark`, and a Tailwind color
+   * for it in `@theme inline`
+   */
+  css?: string;
+}
+
+/** A CSS rule with one declaration per line, or nothing when it has none */
+function toCssRule(selector: string, declarations: string[]): string[] {
+  if (declarations.length === 0) return [];
+  return [`${selector} {\n${declarations.join("\n")}\n}`];
+}
+
+/**
+ * An item's `cssVars` as the CSS the shadcn CLI writes for a Tailwind CSS 4
+ * project: the variables under `:root` and `.dark`, and a `--color-*` for
+ * each in `@theme inline`, so Tailwind has a utility for it
+ */
+function toCss(cssVars: RegistryItem["cssVars"]): string | undefined {
+  if (!cssVars) return undefined;
+  const light = Object.entries(cssVars.light ?? {});
+  const dark = Object.entries(cssVars.dark ?? {});
+  const names = new Set([...light, ...dark].map(([name]) => name));
+  const declare = ([name, value]: [string, string]) => `  --${name}: ${value};`;
+
+  const rules = [
+    ...toCssRule("@theme inline", [
+      ...Object.entries(cssVars.theme ?? {}).map(declare),
+      ...[...names].map((name) => `  --color-${name}: var(--${name});`),
+    ]),
+    ...toCssRule(":root", light.map(declare)),
+    ...toCssRule(".dark", dark.map(declare)),
+  ];
+  return rules.length > 0 ? rules.join("\n\n") : undefined;
 }
 
 /**
@@ -145,10 +191,11 @@ export function getInstallSteps(item: string): InstallSteps {
       shadcnItems.length > 0
         ? ({ runner }) => `${runner} ${SHADCN_CLI} add ${shadcnItems.join(" ")}`
         : undefined,
-    files: entry.files.map(({ path }) => ({
+    files: (entry.files ?? []).map(({ path }) => ({
       label: path.replace(/^src\//, ""),
       url: `${SOURCE_URL}/${path}`,
     })),
+    css: toCss(entry.cssVars),
   };
 }
 
@@ -246,7 +293,8 @@ function getItemDocsPath(item: string): string {
 
 /** The steps the CLI would run, written out: items, packages, components, files */
 function ManualSteps({ steps }: ManualStepsProps) {
-  const { calendarItems, dependenciesCommand, shadcnCommand, files } = steps;
+  const { calendarItems, dependenciesCommand, shadcnCommand, files, css } =
+    steps;
 
   return (
     <Steps>
@@ -274,21 +322,34 @@ function ManualSteps({ steps }: ManualStepsProps) {
           <PackageManagerTabs command={shadcnCommand} />
         </Step>
       )}
-      <Step>
-        <p>
-          Copy these files into your project, keeping the paths under your
-          components, hooks and lib folders:
-        </p>
-        <ul>
-          {files.map(({ label, url }) => (
-            <li key={url}>
-              <a href={url}>
-                <code>{label}</code>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </Step>
+      {files.length > 0 && (
+        <Step>
+          <p>
+            Copy these files into your project, keeping the paths under your
+            components, hooks and lib folders:
+          </p>
+          <ul>
+            {files.map(({ label, url }) => (
+              <li key={url}>
+                <a href={url}>
+                  <code>{label}</code>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Step>
+      )}
+      {css && (
+        <Step>
+          <p>{CSS_STEP_TEXT}</p>
+          <ServerCodeBlock
+            lang="css"
+            themes={CODE_THEMES}
+            code={css}
+            components={{ pre: DocsPre }}
+          />
+        </Step>
+      )}
     </Steps>
   );
 }

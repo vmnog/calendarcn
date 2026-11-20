@@ -15,6 +15,7 @@ import type { Locale } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useCalendarConfig } from "./calendar-provider";
 import {
+  EVENT_DETAIL_ACTION_CLASS,
   EVENT_DETAIL_GROUPED_INPUT_CLASS,
   EVENT_DETAIL_ICON_CLASS,
   EVENT_DETAIL_INPUT_GROUP_CLASS,
@@ -22,6 +23,7 @@ import {
   EVENT_DETAIL_PLACEHOLDER_CLASS,
   EVENT_DETAIL_ROW_HEIGHT_CLASS,
   EVENT_DETAIL_SECONDARY_CLASS,
+  PANEL_MENU_ITEM_CURRENT_CLASS,
   PANEL_MENU_SURFACE_CLASS,
   ROW_BOX_CLASS,
   EventDetailSection,
@@ -264,8 +266,8 @@ function ReminderSuggestions({
           role="option"
           aria-selected={index === highlightedIndex}
           className={cn(
-            "flex h-8 cursor-default items-center rounded-md px-2 text-xs text-[#CCCCCC] select-none",
-            index === highlightedIndex && "bg-[#303030] text-[#F0F0F0]",
+            "flex h-8 cursor-default items-center rounded-md px-2 text-xs text-calendar-menu-foreground/77 select-none",
+            index === highlightedIndex && PANEL_MENU_ITEM_CURRENT_CLASS,
           )}
           onMouseEnter={() => onHighlight(index)}
           onClick={() => onPick(reminder)}
@@ -273,7 +275,7 @@ function ReminderSuggestions({
           <span>
             <ReminderLabel
               reminder={reminder}
-              beforeClassName="text-[#717070]"
+              beforeClassName="text-calendar-menu-foreground/35"
             />
           </span>
         </div>
@@ -470,7 +472,7 @@ export function EventDetailReminders<
               onKeyDown={handleKeyDown}
               className={cn(
                 // The placeholder token (EVENT_DETAIL_PLACEHOLDER_CLASS), as the title sets it
-                "min-w-0 flex-1 placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",
+                "min-w-0 flex-1 placeholder:text-calendar-detail-placeholder",
                 EVENT_DETAIL_GROUPED_INPUT_CLASS,
               )}
             />
@@ -500,7 +502,7 @@ export function EventDetailReminders<
             className={cn(
               ROW_BOX_CLASS,
               "group/reminder w-full rounded-sm border border-transparent",
-              !readOnly && "hover:bg-[#F5F5F5] dark:hover:bg-[#242424]",
+              !readOnly && "hover:bg-calendar-detail-focus",
             )}
           >
             <span className="w-4 shrink-0" />
@@ -514,7 +516,10 @@ export function EventDetailReminders<
               <button
                 type="button"
                 aria-label={`Remove reminder: ${formatReminderLabel(reminder, hourCycle, locale).replace("\u200A", " ")}`}
-                className="flex size-5 shrink-0 items-center justify-center rounded-sm text-[#919091] opacity-0 group-hover/reminder:opacity-100 focus-visible:opacity-100 dark:text-[#818181]"
+                className={cn(
+                  "flex size-5 shrink-0 items-center justify-center rounded-sm opacity-0 group-hover/reminder:opacity-100 focus-visible:opacity-100",
+                  EVENT_DETAIL_ACTION_CLASS,
+                )}
                 onClick={() => removeReminder(index)}
               >
                 <X className="size-3.5" />

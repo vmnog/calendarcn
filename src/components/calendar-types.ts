@@ -559,10 +559,8 @@ export interface DetailedCalendarEvent extends CalendarEvent {
   visibility?: "default" | "public" | "private";
 }
 
-/**
- * Predefined event colors
- */
-export type EventColor =
+/** The seven event colors that ship with the calendar */
+export type BuiltInEventColor =
   | "red"
   | "orange"
   | "yellow"
@@ -570,6 +568,15 @@ export type EventColor =
   | "blue"
   | "purple"
   | "gray";
+
+/**
+ * Color of an event, a calendar or a person: one of the seven that ship, or
+ * any name your CSS backs with `--event-<name>`, `--event-<name>-bg` and
+ * `--event-<name>-border` (and, for month view's text shades,
+ * `--event-<name>-strong` and `--event-<name>-muted`). A name without
+ * variables is drawn in the event's calendar color, then in blue.
+ */
+export type EventColor = BuiltInEventColor | (string & {});
 
 /**
  * Represents a positioned event for rendering in the grid
@@ -1163,6 +1170,8 @@ export interface CalendarConfig {
   weekStartsOn?: WeekStartsOn;
   /** Calendars offered by the details panel's calendar picker and the event context menu */
   calendars: CalendarInfo[];
+  /** Colors the event color pickers offer, in order: the context menu's and the details' */
+  eventColors: readonly EventColor[];
   /** People the details' participants field suggests */
   contacts: EventContact[];
   /** Meeting rooms the details' participants field offers */
@@ -1452,6 +1461,13 @@ interface CalendarProviderBaseProps<
    * without its own `color` is drawn in its calendar's. Defaults to none
    */
   calendars?: CalendarInfo[];
+  /**
+   * Colors the event color pickers offer, in order: the right-click menu's
+   * and the details' calendar menu's. Add your own names beside the seven
+   * that ship, each backed by `--event-<name>*` variables in your CSS.
+   * Defaults to the seven
+   */
+  eventColors?: readonly EventColor[];
   /**
    * People the details' participants field suggests: recent ones before
    * typing, the matches while typing. Defaults to none (a typed email can

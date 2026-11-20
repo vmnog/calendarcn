@@ -97,7 +97,7 @@ const INDENTED_ROW_CLASS =
 
 /** Text of an action control that turns to the panel's text color on hover */
 const HOVER_TEXT_CLASS =
-  "text-[#929292] hover:text-[#32302C] dark:text-[#7F7F7F] dark:hover:text-[#D4D4D4]";
+  "text-calendar-detail-secondary/80 hover:text-calendar-detail-foreground dark:text-calendar-detail-secondary dark:hover:text-calendar-detail-foreground";
 
 /**
  * A row's end controls (remove, "?"): shown while the row is hovered or
@@ -106,16 +106,17 @@ const HOVER_TEXT_CLASS =
 const ROW_ACTION_CLASS =
   "opacity-0 group-focus-within/link:opacity-100 group-hover/link:opacity-100 [@media(hover:none)]:opacity-100";
 
-/** Tooltips are dark in both themes, like Notion's */
+/** Tooltips sit on the menus' surface */
 const TOOLTIP_CLASS =
-  "rounded-md border border-[#303030] bg-[#252525] px-2.5 py-1.5 text-sm leading-5 font-medium text-white shadow-md";
+  "rounded-md border border-calendar-menu-border bg-calendar-menu px-2.5 py-1.5 text-sm leading-5 font-medium text-calendar-menu-foreground shadow-md";
 
 /** A menu option; the highlighted one gets `MENU_OPTION_ACTIVE_CLASS` */
 const MENU_OPTION_CLASS =
-  "flex w-full cursor-default gap-[9px] rounded-sm px-2 py-1.5 text-left text-sm leading-5 font-medium text-[#E1E1E1]";
+  "flex w-full cursor-default gap-[9px] rounded-sm px-2 py-1.5 text-left text-sm leading-5 font-medium text-calendar-menu-foreground/86";
 
 /** The highlighted menu option: by pointer, arrow keys, or a typed link */
-const MENU_OPTION_ACTIVE_CLASS = "bg-[#303030] text-white";
+const MENU_OPTION_ACTIVE_CLASS =
+  "bg-calendar-menu-accent text-calendar-menu-accent-foreground";
 
 /**
  * What the add-link menu offers: the typed link, or a file from the
@@ -435,7 +436,7 @@ function LinkTooltip({
         onClick={copyUrl}
         onKeyDown={handleCopyKeyDown}
         onBlur={handleCopyBlur}
-        className="flex size-4 shrink-0 items-center justify-center rounded-sm text-[#9B9B9B] outline-none hover:text-white focus-visible:text-white focus-visible:ring-1 focus-visible:ring-white/60"
+        className="flex size-4 shrink-0 items-center justify-center rounded-sm text-calendar-menu-foreground/54 outline-none hover:text-calendar-menu-foreground focus-visible:text-calendar-menu-foreground focus-visible:ring-1 focus-visible:ring-calendar-menu-foreground/60"
       >
         {isCopied ? (
           <Check className="size-3.5" />
@@ -767,7 +768,7 @@ function AddLinkMenu({
           >
             {option.kind === "link" ? (
               <>
-                <Link className="size-4 shrink-0 text-[#656565]" />
+                <Link className="size-4 shrink-0 text-calendar-menu-foreground/30" />
                 <span className="truncate">{option.url}</span>
               </>
             ) : (
@@ -775,7 +776,7 @@ function AddLinkMenu({
                 <Paperclip className="mt-px size-4 shrink-0" />
                 <span className="flex flex-col gap-[3px]">
                   <span>Attach file</span>
-                  <span className="text-[#8A8A8A]">
+                  <span className="text-calendar-menu-muted-foreground">
                     Upload from your computer
                   </span>
                 </span>
@@ -980,7 +981,7 @@ function AddLinkRow({ hasIcon, onAddLink, onAttachFiles }: AddLinkRowProps) {
             className={cn(
               EVENT_DETAIL_GROUPED_INPUT_CLASS,
               EVENT_DETAIL_TEXT_CLASS,
-              "min-w-0 flex-1 placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",
+              "min-w-0 flex-1 placeholder:text-calendar-detail-placeholder",
             )}
           />
         </div>

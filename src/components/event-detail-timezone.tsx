@@ -79,15 +79,15 @@ const LIST_MAX_HEIGHT = 345;
 const ROW_BOX_CLASS =
   "-mr-1.5 -ml-[13px] flex h-[31px] min-w-0 flex-1 items-center gap-[11px] rounded-sm pr-2 pl-3";
 
-/** Zone text in the list, which is dark in both themes */
-const LIST_TEXT_CLASS = "text-[#D4D4D4]";
+/** Zone text in the list */
+const LIST_TEXT_CLASS = "text-calendar-menu-foreground/80";
 
 /** Offsets and unmatched text in the list */
-const LIST_MUTED_TEXT_CLASS = "text-[#7F7F7F]";
+const LIST_MUTED_TEXT_CLASS = "text-calendar-menu-muted-foreground";
 
 /** The row while it holds the search input: filled like a focused input */
 const EDITING_ROW_CLASS =
-  "border-[#F5F5F5] bg-[#F5F5F5] dark:border-[#242424] dark:bg-[#242424]";
+  "border-calendar-detail-focus bg-calendar-detail-focus";
 
 /** Rendered on the server and during hydration, where the viewer's zone is unknown */
 const SERVER_TIME_ZONE = "";
@@ -203,7 +203,7 @@ function ClockSwitchButton({ clock }: { clock: EventDetailClock }) {
         }}
         onBlur={tooltip.scheduleClose}
         className={cn(
-          "flex size-7 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:border-[#3A85D3]",
+          "flex size-7 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:border-calendar-selection",
           EVENT_DETAIL_ICON_BUTTON_CLASS,
           EVENT_DETAIL_SECONDARY_CLASS,
         )}
@@ -219,7 +219,7 @@ function ClockSwitchButton({ clock }: { clock: EventDetailClock }) {
 
 /**
  * "Brasilia Standard Time – Sao Paulo", with the part matching the search in
- * bold white and the rest dimmed while searching
+ * bold at full strength and the rest dimmed while searching
  */
 function ZoneText({ text, query }: { text: string; query: string | null }) {
   if (query === null) return <>{text}</>;
@@ -228,7 +228,11 @@ function ZoneText({ text, query }: { text: string; query: string | null }) {
   return (
     <span className={LIST_MUTED_TEXT_CLASS}>
       {before}
-      {match && <span className="font-semibold text-white">{match}</span>}
+      {match && (
+        <span className="font-semibold text-calendar-menu-foreground in-data-[selected=true]:text-calendar-menu-accent-foreground">
+          {match}
+        </span>
+      )}
       {after}
     </span>
   );
@@ -568,7 +572,7 @@ export function EventDetailTimezone<
               EVENT_DETAIL_HOVER_BORDER_CLASS,
               ROW_BOX_CLASS,
               "text-left outline-none disabled:cursor-default disabled:hover:border-transparent",
-              "focus-visible:border-[#3A85D3] dark:focus-visible:border-[#3A85D3]",
+              "focus-visible:border-calendar-selection",
             )}
           >
             <Globe className={EVENT_DETAIL_ICON_CLASS} />
@@ -621,7 +625,7 @@ export function EventDetailTimezone<
                 {sections.map((section, index) => (
                   <React.Fragment key={section.key}>
                     {index > 0 && (
-                      <CommandSeparator className="mx-0 bg-[#303030]" />
+                      <CommandSeparator className="mx-0 bg-calendar-menu-border" />
                     )}
                     <CommandGroup className="p-1">
                       {section.options.map((option) => (
@@ -630,9 +634,9 @@ export function EventDetailTimezone<
                           value={getItemValue(section.key, option.id)}
                           onSelect={() => pick(option.id)}
                           className={cn(
-                            "h-[30px] gap-[9px] rounded-md py-0 pr-2 pl-1.5 text-sm data-[selected=true]:bg-[#303030]",
+                            "h-[30px] gap-[9px] rounded-md py-0 pr-2 pl-1.5 text-sm data-[selected=true]:bg-calendar-menu-accent",
                             LIST_TEXT_CLASS,
-                            "data-[selected=true]:text-[#D4D4D4]",
+                            "data-[selected=true]:text-calendar-menu-accent-foreground/80",
                           )}
                         >
                           <span

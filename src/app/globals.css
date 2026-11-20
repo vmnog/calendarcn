@@ -21,39 +21,6 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-calendar-sidebar-muted-foreground: var(
-    --calendar-sidebar-muted-foreground
-  );
-  --color-calendar-context-panel: var(--calendar-context-panel);
-  --color-calendar-weekend: var(--calendar-weekend);
-  --color-calendar-current-week: var(--calendar-current-week);
-  --color-calendar-day-hover: var(--calendar-day-hover);
-  --color-calendar-day-hover-current-week: var(
-    --calendar-day-hover-current-week
-  );
-
-  /* Event colors */
-  --color-event-red: var(--event-red);
-  --color-event-red-border: var(--event-red-border);
-  --color-event-red-bg: var(--event-red-bg);
-  --color-event-orange: var(--event-orange);
-  --color-event-orange-border: var(--event-orange-border);
-  --color-event-orange-bg: var(--event-orange-bg);
-  --color-event-yellow: var(--event-yellow);
-  --color-event-yellow-border: var(--event-yellow-border);
-  --color-event-yellow-bg: var(--event-yellow-bg);
-  --color-event-green: var(--event-green);
-  --color-event-green-border: var(--event-green-border);
-  --color-event-green-bg: var(--event-green-bg);
-  --color-event-blue: var(--event-blue);
-  --color-event-blue-border: var(--event-blue-border);
-  --color-event-blue-bg: var(--event-blue-bg);
-  --color-event-purple: var(--event-purple);
-  --color-event-purple-border: var(--event-purple-border);
-  --color-event-purple-bg: var(--event-purple-bg);
-  --color-event-gray: var(--event-gray);
-  --color-event-gray-border: var(--event-gray-border);
-  --color-event-gray-bg: var(--event-gray-bg);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -83,35 +50,113 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* Calendar and event tokens (the registry's cssVars) */
+  --color-event-red: var(--event-red);
+  --color-event-red-border: var(--event-red-border);
+  --color-event-red-bg: var(--event-red-bg);
+  --color-event-red-strong: var(--event-red-strong);
+  --color-event-red-muted: var(--event-red-muted);
+  --color-event-orange: var(--event-orange);
+  --color-event-orange-border: var(--event-orange-border);
+  --color-event-orange-bg: var(--event-orange-bg);
+  --color-event-orange-strong: var(--event-orange-strong);
+  --color-event-orange-muted: var(--event-orange-muted);
+  --color-event-yellow: var(--event-yellow);
+  --color-event-yellow-border: var(--event-yellow-border);
+  --color-event-yellow-bg: var(--event-yellow-bg);
+  --color-event-yellow-strong: var(--event-yellow-strong);
+  --color-event-yellow-muted: var(--event-yellow-muted);
+  --color-event-green: var(--event-green);
+  --color-event-green-border: var(--event-green-border);
+  --color-event-green-bg: var(--event-green-bg);
+  --color-event-green-strong: var(--event-green-strong);
+  --color-event-green-muted: var(--event-green-muted);
+  --color-event-blue: var(--event-blue);
+  --color-event-blue-border: var(--event-blue-border);
+  --color-event-blue-bg: var(--event-blue-bg);
+  --color-event-blue-strong: var(--event-blue-strong);
+  --color-event-blue-muted: var(--event-blue-muted);
+  --color-event-purple: var(--event-purple);
+  --color-event-purple-border: var(--event-purple-border);
+  --color-event-purple-bg: var(--event-purple-bg);
+  --color-event-purple-strong: var(--event-purple-strong);
+  --color-event-purple-muted: var(--event-purple-muted);
+  --color-event-gray: var(--event-gray);
+  --color-event-gray-border: var(--event-gray-border);
+  --color-event-gray-bg: var(--event-gray-bg);
+  --color-event-gray-strong: var(--event-gray-strong);
+  --color-event-gray-muted: var(--event-gray-muted);
+  --color-event: var(--event);
+  --color-event-border: var(--event-border);
+  --color-event-bg: var(--event-bg);
+  --color-event-strong: var(--event-strong);
+  --color-event-muted: var(--event-muted);
+  --color-event-foreground: var(--event-foreground);
+  --color-calendar-detail-foreground: var(--calendar-detail-foreground);
+  --color-calendar-detail-secondary: var(--calendar-detail-secondary);
+  --color-calendar-detail-muted: var(--calendar-detail-muted);
+  --color-calendar-detail-placeholder: var(--calendar-detail-placeholder);
+  --color-calendar-detail-border: var(--calendar-detail-border);
+  --color-calendar-detail-hover-border: var(--calendar-detail-hover-border);
+  --color-calendar-detail-focus: var(--calendar-detail-focus);
+  --color-calendar-menu: var(--calendar-menu);
+  --color-calendar-menu-border: var(--calendar-menu-border);
+  --color-calendar-menu-foreground: var(--calendar-menu-foreground);
+  --color-calendar-menu-muted-foreground: var(--calendar-menu-muted-foreground);
+  --color-calendar-menu-accent: var(--calendar-menu-accent);
+  --color-calendar-menu-accent-foreground: var(
+    --calendar-menu-accent-foreground
+  );
+  --color-calendar-selection: var(--calendar-selection);
+  --color-calendar-selection-foreground: var(--calendar-selection-foreground);
+  --color-calendar-danger: var(--calendar-danger);
+  --color-calendar-danger-foreground: var(--calendar-danger-foreground);
+  --color-calendar-avatar: var(--calendar-avatar);
+  --color-calendar-avatar-foreground: var(--calendar-avatar-foreground);
+  --color-calendar-highlight: var(--calendar-highlight);
+  --color-calendar-weekend: var(--calendar-weekend);
+  --color-calendar-current-week: var(--calendar-current-week);
+  --color-calendar-day-hover: var(--calendar-day-hover);
+  --color-calendar-day-hover-current-week: var(
+    --calendar-day-hover-current-week
+  );
+  --color-calendar-sidebar: var(--calendar-sidebar);
+  --color-calendar-sidebar-foreground: var(--calendar-sidebar-foreground);
+  --color-calendar-sidebar-muted-foreground: var(
+    --calendar-sidebar-muted-foreground
+  );
+  --color-calendar-sidebar-primary: var(--calendar-sidebar-primary);
+  --color-calendar-sidebar-primary-foreground: var(
+    --calendar-sidebar-primary-foreground
+  );
+  --color-calendar-sidebar-accent: var(--calendar-sidebar-accent);
+  --color-calendar-sidebar-accent-foreground: var(
+    --calendar-sidebar-accent-foreground
+  );
+  --color-calendar-sidebar-border: var(--calendar-sidebar-border);
+  --color-calendar-sidebar-ring: var(--calendar-sidebar-ring);
+  --color-calendar-context-panel: var(--calendar-context-panel);
+  --color-calendar-context-panel-muted-foreground: var(
+    --calendar-context-panel-muted-foreground
+  );
 }
 
+/*
+ * The Notion Calendar theme, light then dark: the values of the
+ * `theme-notion` registry item (unit/theme-notion.spec.ts keeps the two in
+ * step). An app that doesn't add that item keeps its own shadcn/ui tokens,
+ * and the calendar's tokens default to them (`cssVars` in registry.json).
+ */
 :root {
   --radius: 0.625rem;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
   --background: #ffffff;
   --foreground: #32302c;
-
-  /* Event colors - light mode */
-  --event-red: #b23e31;
-  --event-red-border: #ee000e;
-  --event-red-bg: #ffe1d4;
-  --event-orange: #ad4517;
-  --event-orange-border: #fe7132;
-  --event-orange-bg: #ffe3c8;
-  --event-yellow: #855100;
-  --event-yellow-border: #f2b827;
-  --event-yellow-bg: #fff0be;
-  --event-green: #027b27;
-  --event-green-border: #49ca81;
-  --event-green-bg: #deffe3;
-  --event-blue: #006cbf;
-  --event-blue-border: #32a5e5;
-  --event-blue-bg: #e2f9ff;
-  --event-purple: #7733d2;
-  --event-purple-border: #9950ff;
-  --event-purple-bg: #feecff;
-  --event-gray: #5f6061;
-  --event-gray-border: #b3b4b4;
-  --event-gray-bg: #f6f4f3;
   --card: #ffffff;
   --card-foreground: #32302c;
   --popover: #ffffff;
@@ -128,15 +173,6 @@
   --border: #eeeeee;
   --input: #e5e5e5;
   --ring: #797875;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --calendar-weekend: #fcfcfc;
-  --calendar-current-week: #edece9;
-  --calendar-day-hover: #eeece8;
-  --calendar-day-hover-current-week: #e2e1dc;
   --sidebar: #f8f8f7;
   --sidebar-foreground: #939391;
   --sidebar-primary: #32302c;
@@ -145,7 +181,71 @@
   --sidebar-accent-foreground: #32302c;
   --sidebar-border: #e5e5e5;
   --sidebar-ring: #797875;
-  /* Calendar and details sidebars (calendar-sidebar, details-sidebar items) */
+  --event-red: #b23e31;
+  --event-red-border: #ee000e;
+  --event-red-bg: #ffe1d4;
+  --event-red-strong: #5c1a1a;
+  --event-red-muted: #8c3030;
+  --event-orange: #ad4517;
+  --event-orange-border: #fe7132;
+  --event-orange-bg: #ffe3c8;
+  --event-orange-strong: #5c2e14;
+  --event-orange-muted: #8c4420;
+  --event-yellow: #855100;
+  --event-yellow-border: #f2b827;
+  --event-yellow-bg: #fff0be;
+  --event-yellow-strong: #5c4410;
+  --event-yellow-muted: #8c6a1a;
+  --event-green: #027b27;
+  --event-green-border: #49ca81;
+  --event-green-bg: #deffe3;
+  --event-green-strong: #1a4d26;
+  --event-green-muted: #2a6640;
+  --event-blue: #006cbf;
+  --event-blue-border: #32a5e5;
+  --event-blue-bg: #e2f9ff;
+  --event-blue-strong: #1a3a5c;
+  --event-blue-muted: #2a5080;
+  --event-purple: #7733d2;
+  --event-purple-border: #9950ff;
+  --event-purple-bg: #feecff;
+  --event-purple-strong: #3d1f5c;
+  --event-purple-muted: #5a3080;
+  --event-gray: #5f6061;
+  --event-gray-border: #b3b4b4;
+  --event-gray-bg: #f6f4f3;
+  --event-gray-strong: #3a3a3a;
+  --event-gray-muted: #505050;
+  --event: var(--event-blue);
+  --event-border: var(--event-blue-border);
+  --event-bg: var(--event-blue-bg);
+  --event-strong: var(--event-blue-strong);
+  --event-muted: var(--event-blue-muted);
+  --event-foreground: #ffffff;
+  --calendar-detail-foreground: #32302c;
+  --calendar-detail-secondary: #787774;
+  --calendar-detail-muted: #c7c5c1;
+  --calendar-detail-placeholder: #ababa9;
+  --calendar-detail-border: #eeeeee;
+  --calendar-detail-hover-border: #e8e8e4;
+  --calendar-detail-focus: #f5f5f5;
+  --calendar-menu: #252525;
+  --calendar-menu-border: #303030;
+  --calendar-menu-foreground: #ffffff;
+  --calendar-menu-muted-foreground: #848484;
+  --calendar-menu-accent: #303030;
+  --calendar-menu-accent-foreground: #ffffff;
+  --calendar-selection: #3a85d3;
+  --calendar-selection-foreground: #ffffff;
+  --calendar-danger: #e56458;
+  --calendar-danger-foreground: #ffffff;
+  --calendar-avatar: #b1b1b1;
+  --calendar-avatar-foreground: #ffffff;
+  --calendar-highlight: #602c2b;
+  --calendar-weekend: #fcfcfc;
+  --calendar-current-week: #edece9;
+  --calendar-day-hover: #eeece8;
+  --calendar-day-hover-current-week: #e2e1dc;
   --calendar-sidebar: #f8f8f7;
   --calendar-sidebar-foreground: #939391;
   --calendar-sidebar-muted-foreground: #cfcfce;
@@ -156,35 +256,18 @@
   --calendar-sidebar-border: #e5e5e5;
   --calendar-sidebar-ring: #797875;
   --calendar-context-panel: #ffffff;
+  --calendar-context-panel-muted-foreground: #c7c5c1;
 }
 
 html.dark,
 .dark {
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
   --background: #191919;
   --foreground: #d9d9d9;
-
-  /* Event colors - dark mode */
-  --event-red: #d85140;
-  --event-red-border: #d85140;
-  --event-red-bg: #6c2920;
-  --event-orange: #e07040;
-  --event-orange-border: #e07040;
-  --event-orange-bg: #5f3524;
-  --event-yellow: #d4a83a;
-  --event-yellow-border: #d4a83a;
-  --event-yellow-bg: #4e3f1b;
-  --event-green: #52b577;
-  --event-green-border: #52b577;
-  --event-green-bg: #2d4935;
-  --event-blue: #4895c8;
-  --event-blue-border: #4895c8;
-  --event-blue-bg: #2f4656;
-  --event-purple: #8a5ad6;
-  --event-purple-border: #8a5ad6;
-  --event-purple-bg: #483a63;
-  --event-gray: #a0a0a0;
-  --event-gray-border: #a0a0a0;
-  --event-gray-bg: #424242;
   --card: #202020;
   --card-foreground: #d9d9d9;
   --popover: #202020;
@@ -201,15 +284,6 @@ html.dark,
   --border: #202020;
   --input: #333333;
   --ring: #7f7f7f;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --calendar-weekend: #181818;
-  --calendar-current-week: #2e2e2e;
-  --calendar-day-hover: #2e2e2e;
-  --calendar-day-hover-current-week: #3d3d3d;
   --sidebar: #202020;
   --sidebar-foreground: #868686;
   --sidebar-primary: #d9d9d9;
@@ -218,6 +292,71 @@ html.dark,
   --sidebar-accent-foreground: #d9d9d9;
   --sidebar-border: #333333;
   --sidebar-ring: #7f7f7f;
+  --event-red: #d85140;
+  --event-red-border: #d85140;
+  --event-red-bg: #6c2920;
+  --event-red-strong: #f0c4c4;
+  --event-red-muted: #cc8585;
+  --event-orange: #e07040;
+  --event-orange-border: #e07040;
+  --event-orange-bg: #5f3524;
+  --event-orange-strong: #f0d4be;
+  --event-orange-muted: #cc9575;
+  --event-yellow: #d4a83a;
+  --event-yellow-border: #d4a83a;
+  --event-yellow-bg: #4e3f1b;
+  --event-yellow-strong: #f0e0a8;
+  --event-yellow-muted: #ccab65;
+  --event-green: #52b577;
+  --event-green-border: #52b577;
+  --event-green-bg: #2d4935;
+  --event-green-strong: #c4e8d0;
+  --event-green-muted: #75a090;
+  --event-blue: #4895c8;
+  --event-blue-border: #4895c8;
+  --event-blue-bg: #2f4656;
+  --event-blue-strong: #c4daf0;
+  --event-blue-muted: #75a5cc;
+  --event-purple: #8a5ad6;
+  --event-purple-border: #8a5ad6;
+  --event-purple-bg: #483a63;
+  --event-purple-strong: #dcc8f0;
+  --event-purple-muted: #a585cc;
+  --event-gray: #a0a0a0;
+  --event-gray-border: #a0a0a0;
+  --event-gray-bg: #424242;
+  --event-gray-strong: #d8d8d8;
+  --event-gray-muted: #aaaaaa;
+  --event: var(--event-blue);
+  --event-border: var(--event-blue-border);
+  --event-bg: var(--event-blue-bg);
+  --event-strong: var(--event-blue-strong);
+  --event-muted: var(--event-blue-muted);
+  --event-foreground: #ffffff;
+  --calendar-detail-foreground: #d4d4d4;
+  --calendar-detail-secondary: #7f7f7f;
+  --calendar-detail-muted: #595959;
+  --calendar-detail-placeholder: #595959;
+  --calendar-detail-border: #262626;
+  --calendar-detail-hover-border: #373737;
+  --calendar-detail-focus: #242424;
+  --calendar-menu: #252525;
+  --calendar-menu-border: #303030;
+  --calendar-menu-foreground: #ffffff;
+  --calendar-menu-muted-foreground: #848484;
+  --calendar-menu-accent: #303030;
+  --calendar-menu-accent-foreground: #ffffff;
+  --calendar-selection: #3a85d3;
+  --calendar-selection-foreground: #ffffff;
+  --calendar-danger: #e56458;
+  --calendar-danger-foreground: #ffffff;
+  --calendar-avatar: #b1b1b1;
+  --calendar-avatar-foreground: #ffffff;
+  --calendar-highlight: #602c2b;
+  --calendar-weekend: #181818;
+  --calendar-current-week: #2e2e2e;
+  --calendar-day-hover: #2e2e2e;
+  --calendar-day-hover-current-week: #3d3d3d;
   --calendar-sidebar: #202020;
   --calendar-sidebar-foreground: #868686;
   --calendar-sidebar-muted-foreground: #555555;
@@ -228,6 +367,7 @@ html.dark,
   --calendar-sidebar-border: #333333;
   --calendar-sidebar-ring: #7f7f7f;
   --calendar-context-panel: #191919;
+  --calendar-context-panel-muted-foreground: #c7c5c1;
 }
 
 @layer base {
@@ -262,7 +402,7 @@ html.dark,
 
 @keyframes column-highlight-fade {
   from {
-    background-color: #602c2b;
+    background-color: var(--calendar-highlight);
   }
   to {
     background-color: transparent;
@@ -277,7 +417,7 @@ html.dark,
 @media (prefers-reduced-motion: reduce) {
   .column-highlight {
     animation: none;
-    background-color: #602c2b;
+    background-color: var(--calendar-highlight);
   }
 }
 

@@ -7,10 +7,6 @@ CalendarCN is built in the open. This page lists the planned work, roughly in pr
 
 ## Up next
 
-### Colors that follow your theme
-
-Every color in the calendar becomes a CSS variable that takes its value from your app's shadcn/ui theme, so the event details, the menus and the toasts are light in light mode and wear your palette. Notion Calendar's look stays one command away as a theme you opt into, `@calendarcn/theme-notion`, and events can use colors of your own next to the seven built in. A Theming page shows it all with live examples.
-
 ### Restyle any part without editing its file
 
 A `data-slot` on every part of the calendar, `className` on every component, and a typed `classNames` map on `CalendarProvider`. Square event corners or bigger day numbers then live in your own code, where an update doesn't overwrite them.
@@ -29,6 +25,7 @@ Not scheduled yet, roughly in priority order.
 
 The highlights. The [Changelog](/docs/project/changelog) lists every change item by item, with breaking changes called out.
 
+- **Theming**: every color in the calendar is a CSS variable that follows your shadcn/ui theme, so the event details, menus, toasts and sidebars match your app. Add event colors of your own next to the seven that ship, and get the live demo's look with the optional Notion Calendar theme. See [Theming](/docs/guides/theming).
 - **One command to install**: CalendarCN is in shadcn/ui's [registry directory](https://ui.shadcn.com/docs/registry/registry-index), so `npx shadcn@latest add @calendarcn/calendar` works with nothing to configure first. [Installation](/docs/installation#requirements) now says what the calendar needs: Tailwind CSS 4, React 19, and what was tried on Next.js, Vite and a monorepo.
 - **Docs for AI assistants**: every example and install block has a Prompt tab to paste into a coding agent, every page is served as Markdown, and `/llms.txt` lists them. A skill teaches agents the calendar's rules, and the shadcn MCP server installs its items. See [Use with AI](/docs/ai).
 - **Creating events like Notion Calendar**: double-click an empty slot, or press and drag to draw an event of any length, in the day, week and month views and the all-day row. The new event is a draft until you name it or change it, and <Kbd>Esc</Kbd> throws it away. See [Creating events](/docs/components/calendar-core#creating-events).

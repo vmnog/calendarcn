@@ -32,6 +32,10 @@ import {
 import { useCalendarConfig } from "./calendar-provider";
 import {
   EVENT_DETAIL_ACCENT_BG_CLASS,
+  EVENT_DETAIL_ACTION_CLASS,
+  EVENT_DETAIL_DIALOG_BUTTON_CLASS,
+  EVENT_DETAIL_DIALOG_CLASS,
+  EVENT_DETAIL_DIALOG_FILL_CLASS,
   EVENT_DETAIL_HOVER_BORDER_CLASS,
   EVENT_DETAIL_ICON_CLASS,
   EVENT_DETAIL_MENU_CLASS,
@@ -99,23 +103,23 @@ const END_DATE_FORMATS = [
   "M/d",
 ];
 
-/** Item text in the repeat menu, which is dark in both themes */
+/** Item text in the repeat menu */
 const MENU_ITEM_CLASS =
-  "relative h-8 gap-2 rounded-md py-0 pr-3 pl-7 text-sm font-medium text-[#D4D4D4] focus:!bg-[#303030] focus:!text-[#D4D4D4]";
+  "relative h-8 gap-2 rounded-md py-0 pr-3 pl-7 text-sm font-medium text-calendar-menu-foreground/80 focus:!bg-calendar-menu-accent focus:!text-calendar-menu-accent-foreground/80";
 
 /** "on Thu" in the repeat menu */
-const MENU_DETAIL_CLASS = "text-[#7F7F7F]";
+const MENU_DETAIL_CLASS = "text-calendar-menu-muted-foreground";
 
 /** A field of the custom dialog: bordered, filled on focus */
 const DIALOG_FIELD_CLASS =
-  "rounded-md border border-[#E8E8E4] bg-transparent text-foreground outline-none focus-within:border-[#F5F5F5] focus-within:bg-[#F5F5F5] has-[:disabled]:text-[#C7C5C1] dark:border-[#303030] dark:focus-within:border-[#303030] dark:focus-within:bg-[#303030] dark:has-[:disabled]:text-[#595959]";
+  "rounded-md border border-calendar-detail-hover-border bg-transparent text-foreground outline-none focus-within:border-calendar-detail-focus focus-within:bg-calendar-detail-focus has-[:disabled]:text-calendar-detail-muted dark:border-calendar-menu-border dark:focus-within:border-calendar-menu-accent dark:focus-within:bg-calendar-menu-accent";
 
-/** Blue of the Done button, the same in both themes */
+/** Fill and text of the Done button */
 const ACCENT_BG_CLASS = EVENT_DETAIL_ACCENT_BG_CLASS;
 
-/** Blue of a selected day in the custom dialog, softer than the button's */
+/** A selected day in the custom dialog: the Done button's color, softer */
 const SELECTED_DAY_CLASS =
-  "bg-[#82B7F0] text-white dark:bg-[#245A92] dark:text-white";
+  "bg-calendar-selection/57 text-calendar-selection-foreground";
 
 /** What the row shows for an RRULE the details can't read */
 const CUSTOM_RECURRENCE_LABEL: RecurrenceLabel = {
@@ -307,7 +311,10 @@ function NumberField({ label, value, onChange, disabled }: NumberFieldProps) {
           aria-label={`Increase ${label}`}
           disabled={disabled}
           onClick={() => onChange(clampCount(value + 1, value))}
-          className="text-[#989795] hover:text-foreground disabled:text-inherit dark:text-[#7F7F7F]"
+          className={cn(
+            EVENT_DETAIL_ACTION_CLASS,
+            "hover:text-foreground disabled:text-inherit",
+          )}
         >
           <ChevronUp className="size-3" />
         </button>
@@ -317,7 +324,10 @@ function NumberField({ label, value, onChange, disabled }: NumberFieldProps) {
           aria-label={`Decrease ${label}`}
           disabled={disabled}
           onClick={() => onChange(clampCount(value - 1, value))}
-          className="text-[#989795] hover:text-foreground disabled:text-inherit dark:text-[#7F7F7F]"
+          className={cn(
+            EVENT_DETAIL_ACTION_CLASS,
+            "hover:text-foreground disabled:text-inherit",
+          )}
         >
           <ChevronDown className="size-3" />
         </button>
@@ -457,7 +467,10 @@ function CustomRecurrenceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
-        className="w-[434px] max-w-[calc(100vw-32px)] gap-5 rounded-xl border-[#E8E8E4] bg-white p-[27px] text-sm font-medium dark:border-[#303030] dark:bg-[#252525]"
+        className={cn(
+          "w-[434px] max-w-[calc(100vw-32px)] gap-5 rounded-xl p-[27px] text-sm font-medium",
+          EVENT_DETAIL_DIALOG_CLASS,
+        )}
         onKeyDown={stopEscapePropagation}
       >
         <DialogTitle className="text-base font-medium">Repeat</DialogTitle>
@@ -479,7 +492,7 @@ function CustomRecurrenceDialog({
                   type="button"
                   aria-label={`Unit: ${unit}`}
                   className={cn(
-                    "flex h-8 w-[87px] items-center justify-between px-2.5 data-[state=open]:bg-[#F5F5F5] data-popup-open:bg-[#F5F5F5] dark:data-[state=open]:bg-[#303030] dark:data-popup-open:bg-[#303030]",
+                    "flex h-8 w-[87px] items-center justify-between px-2.5 data-[state=open]:bg-calendar-detail-focus data-popup-open:bg-calendar-detail-focus dark:data-[state=open]:bg-calendar-menu-accent dark:data-popup-open:bg-calendar-menu-accent",
                     DIALOG_FIELD_CLASS,
                   )}
                 >
@@ -532,7 +545,7 @@ function CustomRecurrenceDialog({
                         "flex size-[26px] items-center justify-center rounded-full text-[11px] font-semibold",
                         selected
                           ? SELECTED_DAY_CLASS
-                          : "border border-[#E8E8E4] text-foreground hover:bg-[#F5F5F5] dark:border-[#373737] dark:bg-[#303030] dark:hover:bg-[#373737]",
+                          : EVENT_DETAIL_DIALOG_BUTTON_CLASS,
                       )}
                     >
                       {format(date, "EEEEEE", { locale })}
@@ -549,7 +562,10 @@ function CustomRecurrenceDialog({
               <div
                 role="radiogroup"
                 aria-label="Day of the month"
-                className="flex rounded-md bg-[#F5F5F5] p-0.5 dark:bg-[#303030]"
+                className={cn(
+                  "flex rounded-md p-0.5",
+                  EVENT_DETAIL_DIALOG_FILL_CLASS,
+                )}
               >
                 {(
                   [
@@ -566,7 +582,7 @@ function CustomRecurrenceDialog({
                     className={cn(
                       "rounded-[5px] px-4 py-1.5 text-foreground",
                       monthlyBy === value &&
-                        "bg-white shadow-sm dark:bg-[#252525]",
+                        "bg-background shadow-sm dark:bg-calendar-menu",
                     )}
                   >
                     {text}
@@ -649,7 +665,10 @@ function CustomRecurrenceDialog({
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-8 rounded-md border border-[#E8E8E4] px-3 text-foreground hover:bg-[#F5F5F5] dark:border-[#373737] dark:bg-[#303030] dark:hover:bg-[#373737]"
+            className={cn(
+              "h-8 rounded-md px-3",
+              EVENT_DETAIL_DIALOG_BUTTON_CLASS,
+            )}
           >
             Cancel
           </button>
@@ -657,7 +676,7 @@ function CustomRecurrenceDialog({
             type="button"
             onClick={save}
             className={cn(
-              "h-8 rounded-md px-3 text-white hover:brightness-110",
+              "h-8 rounded-md px-3 hover:brightness-110",
               ACCENT_BG_CLASS,
             )}
           >
@@ -746,8 +765,8 @@ export function EventDetailRecurrence<
                   "group/repeat -ml-[13px] flex h-[31px] min-w-0 flex-1 items-center gap-[11px] rounded-sm pr-2 pl-3 text-left outline-none disabled:cursor-default disabled:hover:border-transparent",
                   // Without the series buttons the box ends 10px before the panel's edge
                   !repeats && "-mr-[3px]",
-                  "focus-visible:border-[#3A85D3] dark:focus-visible:border-[#3A85D3]",
-                  "data-[state=open]:border-[#F5F5F5] data-[state=open]:bg-[#F5F5F5] data-popup-open:border-[#F5F5F5] data-popup-open:bg-[#F5F5F5] dark:data-[state=open]:border-[#242424] dark:data-[state=open]:bg-[#242424] dark:data-popup-open:border-[#242424] dark:data-popup-open:bg-[#242424]",
+                  "focus-visible:border-calendar-selection",
+                  "data-[state=open]:border-calendar-detail-focus data-[state=open]:bg-calendar-detail-focus data-popup-open:border-calendar-detail-focus data-popup-open:bg-calendar-detail-focus",
                 )}
               >
                 <RefreshCcw className={EVENT_DETAIL_ICON_CLASS} />
@@ -792,10 +811,10 @@ export function EventDetailRecurrence<
                   className={MENU_ITEM_CLASS}
                   onClick={() => applyRule(null)}
                 >
-                  <RefreshCwOff className="absolute left-2.5 size-3.5 text-[#D4D4D4]" />
+                  <RefreshCwOff className="absolute left-2.5 size-3.5 text-calendar-menu-foreground opacity-80" />
                   Does not repeat
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-[#303030]" />
+                <DropdownMenuSeparator className="bg-calendar-menu-border" />
               </>
             )}
             {presets.map((preset, index) => (
@@ -805,7 +824,7 @@ export function EventDetailRecurrence<
                 onClick={() => applyRule(preset)}
               >
                 {index === checkedPreset && (
-                  <Check className="absolute left-2.5 size-3.5 text-[#D4D4D4]" />
+                  <Check className="absolute left-2.5 size-3.5 text-calendar-menu-foreground opacity-80" />
                 )}
                 <span>
                   <RecurrenceText
@@ -820,7 +839,7 @@ export function EventDetailRecurrence<
                 className={MENU_ITEM_CLASS}
                 onClick={() => setMenuOpen(false)}
               >
-                <Check className="absolute left-2.5 size-3.5 text-[#D4D4D4]" />
+                <Check className="absolute left-2.5 size-3.5 text-calendar-menu-foreground opacity-80" />
                 <span>
                   <RecurrenceText
                     label={label}
@@ -829,7 +848,7 @@ export function EventDetailRecurrence<
                 </span>
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator className="bg-[#303030]" />
+            <DropdownMenuSeparator className="bg-calendar-menu-border" />
             <DropdownMenuItem
               className={MENU_ITEM_CLASS}
               onClick={() => {
@@ -899,7 +918,7 @@ function SeriesButton({ label, onClick, children }: SeriesButtonProps) {
       disabled={!onClick}
       onClick={onClick}
       className={cn(
-        "flex size-8 items-center justify-center rounded-sm outline-none hover:bg-[#F5F5F5] hover:text-[#32302C] focus-visible:ring-1 focus-visible:ring-[#3A85D3] dark:focus-visible:ring-[#3A85D3] disabled:pointer-events-none disabled:text-[#DDDDDD] dark:hover:bg-[#242424] dark:hover:text-[#D4D4D4] dark:disabled:text-[#373737]",
+        "flex size-8 items-center justify-center rounded-sm outline-none hover:bg-calendar-detail-focus hover:text-calendar-detail-foreground focus-visible:ring-1 focus-visible:ring-calendar-selection disabled:pointer-events-none disabled:text-calendar-detail-placeholder/40",
         EVENT_DETAIL_SECONDARY_CLASS,
       )}
     >

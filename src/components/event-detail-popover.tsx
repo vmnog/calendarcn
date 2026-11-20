@@ -273,7 +273,7 @@ export function EventDetailPopover({
         <Button
           variant="ghost"
           size="icon"
-          className="size-7 text-[#C7C5C1] dark:text-[#595959]"
+          className="size-7 text-calendar-detail-muted"
           onClick={(e) => {
             e.stopPropagation();
             onExpand();
@@ -286,7 +286,7 @@ export function EventDetailPopover({
       <Button
         variant="ghost"
         size="icon"
-        className="size-7 text-[#C7C5C1] dark:text-[#595959]"
+        className="size-7 text-calendar-detail-muted"
         onClick={(e) => {
           e.stopPropagation();
           onClose();

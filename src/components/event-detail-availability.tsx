@@ -110,7 +110,7 @@ function HelpTextWithLink({ text }: HelpTextWithLinkProps) {
         {text.slice(lastSpace + 1)}
         <SquareArrowOutUpRight
           aria-hidden
-          className="ml-1 inline size-3 -translate-y-px align-middle text-[#8A8A8A]"
+          className="ml-1 inline size-3 -translate-y-px align-middle text-calendar-menu-muted-foreground"
         />
       </span>
     </>
@@ -144,7 +144,7 @@ function HelpIcon({ option, visible }: HelpIconProps) {
     >
       <CircleHelp
         aria-hidden
-        className="size-3.5 !text-[#9B9B9B] group-hover/item:!text-[#D5D5D5]"
+        className="size-3.5 !text-calendar-menu-foreground/54 group-hover/item:!text-calendar-menu-foreground/80"
       />
       <EventDetailTooltip rect={rect}>
         {option.helpLink ? (
@@ -294,7 +294,7 @@ function PanelSelect<TValue extends string>({
                 <HelpIcon option={option} visible={selected && !pointed} />
               </DropdownMenuItem>
               {option.separatorAfter && (
-                <DropdownMenuSeparator className="mx-1 my-[5px] bg-[#303030]" />
+                <DropdownMenuSeparator className="mx-1 my-[5px] bg-calendar-menu-border" />
               )}
             </React.Fragment>
           );
