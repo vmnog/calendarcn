@@ -8,7 +8,7 @@ Everyone taking part in this project is expected to follow the [Code of Conduct]
 
 - **Report a bug** or **suggest a feature** with an [issue template](https://github.com/vmnog/calendarcn/issues/new/choose).
 - **Improve the docs.** Every page lives in `content/docs/` as MDX, and a fix there is a great first PR.
-- **Pick up an issue.** Issues labeled [`good first issue`](https://github.com/vmnog/calendarcn/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22) are scoped for newcomers, and the [roadmap](https://calendarcn.xyz/docs/roadmap) lists the bigger plans.
+- **Pick up an issue.** Issues labeled [`good first issue`](https://github.com/vmnog/calendarcn/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22) are scoped for newcomers, and the [roadmap](https://calendarcn.xyz/docs/project/roadmap) lists the bigger plans.
 
 ## Prerequisites
 
@@ -98,7 +98,7 @@ src/
 
 `registry.json` lists the shadcn registry items (`calendar-core`, `time-grid`, `calendar` and the rest) and the files in each. `pnpm registry:build` turns it into `public/r/*.json`, which the site serves for `npx shadcn add @calendarcn/<item>`. After you change a file that ships in an item, or add a new one, run `pnpm registry:build` and commit `public/r`. CI fails when it's out of date.
 
-A change to a file that ships in an item also gets a line in the [Changelog](content/docs/changelog.mdx), under `## Unreleased` and today's date: **Added**, **Improved** or **Fixed**, the items whose files changed, one sentence on what people notice, and the PR link. Add a **Breaking** line under it for anything that can stop an app from compiling or change what it does after an update, and say what to change. [ADR-006](docs/decisions/006-versioned-releases.md) explains how releases use it.
+A change to a file that ships in an item also gets a line in the [Changelog](content/docs/project/changelog.mdx), under `## Unreleased` and today's date: **Added**, **Improved** or **Fixed**, the items whose files changed, one sentence on what people notice, and the PR link. Add a **Breaking** line under it for anything that can stop an app from compiling or change what it does after an update, and say what to change. [ADR-006](docs/decisions/006-versioned-releases.md) explains how releases use it.
 
 Files in the registry run in other people's projects, next to their own copies of the shadcn/ui components, Radix or Base UI. Use only the stock shadcn/ui API of `components/ui/*` that both share in them, not variants added in this repo. [`src/components/CLAUDE.md`](src/components/CLAUDE.md#registry-files) lists what that rules out.
 
@@ -146,7 +146,7 @@ CI runs lint, typecheck, format check, build and the e2e suite on every PR. On y
 [Open a new issue](https://github.com/vmnog/calendarcn/issues/new/choose) and pick a template:
 
 - **Bug report**: what happened, steps to reproduce, browser/OS, and timezone.
-- **Feature request**: the problem you're solving and your proposed solution. Check the [roadmap](https://calendarcn.xyz/docs/roadmap) first.
+- **Feature request**: the problem you're solving and your proposed solution. Check the [roadmap](https://calendarcn.xyz/docs/project/roadmap) first.
 - **Docs issue**: the page, and what's wrong or missing.
 
 For anything else, open a blank issue.

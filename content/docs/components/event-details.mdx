@@ -5,7 +5,7 @@ description: The panel and popover for viewing and editing an event.
 
 <ComponentPreview name="event-details-demo" />
 
-`EventDetailPanel` shows an event's details and edits them in place. The views open it in a popover beside the selected event, and you can render it yourself anywhere, such as a side panel. It needs an event, and `onEventChange` to edit it: without a change handler the panel is read-only. Inside a `CalendarProvider` it uses the provider's clock and locale, and its `calendars`, `contacts`, `rooms`, `conferenceProviders` and `locationSuggestions`. On its own it uses the defaults: no calendars to pick, contacts, rooms, conferencing services or place suggestions. The preview passes the live demo's, from [Sample Data](/docs/sample-data) and the [conference providers](#conference-providers).
+`EventDetailPanel` shows an event's details and edits them in place. The views open it in a popover beside the selected event, and you can render it yourself anywhere, such as a side panel. It needs an event, and `onEventChange` to edit it: without a change handler the panel is read-only. Inside a `CalendarProvider` it uses the provider's clock and locale, and its `calendars`, `contacts`, `rooms`, `conferenceProviders` and `locationSuggestions`. On its own it uses the defaults: no calendars to pick, contacts, rooms, conferencing services or place suggestions. The preview passes the live demo's, from [Sample Data](/docs/reference/sample-data) and the [conference providers](#conference-providers).
 
 ## Installation
 
@@ -169,7 +169,7 @@ An image file works too: `icon: <img src="/logos/zoom.svg" alt="" className="siz
 - Edit the description in place: the event takes the text when you leave it, and <Kbd>Esc</Kbd> restores it. Web addresses in it become links, and are also listed after the event's links.
 - Move the event to another of the provider's `calendars` (grouped by account) or give it its own color, set it busy or free and pick who can see it, from menus that open beside the panel. Hovering a choice previews it; <Kbd>Esc</Kbd> closes the menu and keeps the old value.
 - Add reminders from presets, or type a number to get it in minutes, hours, days or weeks ("2h", "10 mins"), up to 4 weeks before. Reminders stay sorted, and one that fires with another ("60min" and "1hour") isn't added twice. Adding one closes the list, and typing opens it again. Hover a reminder to remove it.
-- Right-click an event on the calendar to change its color or calendar, or to cut, copy, duplicate or delete it. The details' "..." menu has the same four actions, each with its key: see [Keyboard shortcuts](/docs/keyboard-shortcuts).
+- Right-click an event on the calendar to change its color or calendar, or to cut, copy, duplicate or delete it. The details' "..." menu has the same four actions, each with its key: see [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
 
 ## Custom details
 

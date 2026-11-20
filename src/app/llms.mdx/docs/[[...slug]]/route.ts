@@ -15,7 +15,7 @@ interface MarkdownRouteContext {
 
 /**
  * A docs page as Markdown. `next.config.ts` rewrites the page's URL plus
- * `.md` here (`/docs/components/week-view.md`, and `/docs.md` for the
+ * `.md` here (`/docs/components/day-week-view.md`, and `/docs.md` for the
  * introduction).
  */
 export async function GET(_request: Request, { params }: MarkdownRouteContext) {

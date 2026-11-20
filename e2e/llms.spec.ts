@@ -11,7 +11,7 @@ import { expect, test } from "@playwright/test";
 const SITE_URL = "https://calendarcn.xyz";
 
 /** A docs page whose Markdown the tests read closely */
-const WEEK_VIEW_PATH = "/docs/components/week-view";
+const WEEK_VIEW_PATH = "/docs/components/day-week-view";
 
 /** MDX components that must reach the Markdown in a Markdown form, never as a tag */
 const MDX_COMPONENT_TAGS = [
@@ -25,15 +25,22 @@ const MDX_COMPONENT_TAGS = [
 /** Pages with live examples, and the file their first example's Code tab shows */
 const EXAMPLE_PAGES = [
   { path: WEEK_VIEW_PATH, file: "src/examples/week-view-demo.tsx" },
-  { path: "/docs/loading-events", file: "src/examples/range-loading-demo.tsx" },
-  { path: "/docs/import-export", file: "src/examples/ics-demo.tsx" },
+  {
+    path: "/docs/guides/loading-events",
+    file: "src/examples/range-loading-demo.tsx",
+  },
+  { path: "/docs/guides/import-export", file: "src/examples/ics-demo.tsx" },
 ];
 
 /** Pages with Installation tabs, and the registry item their Prompt tab installs */
 const INSTALL_PAGES = [
   { path: WEEK_VIEW_PATH, item: "week-view", title: "Week View" },
   // A guide, whose item has no page of its own
-  { path: "/docs/import-export", item: "ics", title: "ICS Import and Export" },
+  {
+    path: "/docs/guides/import-export",
+    item: "ics",
+    title: "ICS Import and Export",
+  },
 ];
 
 /** Paths of the docs pages `/sitemap.xml` lists */
@@ -70,7 +77,13 @@ test("llms.txt lists every docs page with its Markdown URL", async ({
   expect(index).toContain(`${SITE_URL}/r/registry.json`);
   expect(index).toContain(`${SITE_URL}/llms-full.txt`);
   // The sidebar's groups
-  for (const group of ["Getting Started", "Guides", "Components"]) {
+  for (const group of [
+    "Getting started",
+    "Guides",
+    "Components",
+    "Reference",
+    "Project",
+  ]) {
     expect(index).toContain(`## ${group}`);
   }
 
@@ -96,7 +109,7 @@ test("a docs page is served as Markdown at its URL plus .md", async ({
 
   // The title and the description open the file
   expect(markdown).toMatch(
-    /^# Week View\n\nA week, or any number of days, on the time grid\.\n/,
+    /^# Day & Week View\n\nOne day, a week or any number of days on the time grid\.\n/,
   );
   // InstallTabs: the CLI command and the Manual tab's steps
   expect(markdown).toContain("npx shadcn@latest add @calendarcn/week-view");
@@ -161,7 +174,14 @@ test("llms-full.txt holds every page, with no MDX component left as a tag", asyn
 
   // Sidebar order: the introduction first, then the pages as the sidebar lists them
   expect(full).toMatch(/^# Introduction\n/);
-  const order = ["# Installation", "# Changelog", "# Calendar", "# Week View"];
+  const order = [
+    "# Installation",
+    "# Loading events",
+    "# Calendar",
+    "# Day & Week View",
+    "# Keyboard shortcuts",
+    "# Changelog",
+  ];
   const positions = order.map((heading) => full.indexOf(`\n${heading}\n`));
   expect(positions.every((position) => position > 0)).toBe(true);
   expect(positions).toEqual([...positions].sort((a, b) => a - b));
@@ -218,7 +238,7 @@ test("a docs page has Copy Markdown and an Open menu linking its Markdown", asyn
     page.getByRole("link", { name: "Open in GitHub" }),
   ).toHaveAttribute(
     "href",
-    "https://github.com/vmnog/calendarcn/blob/main/content/docs/components/week-view.mdx",
+    "https://github.com/vmnog/calendarcn/blob/main/content/docs/components/day-week-view.mdx",
   );
   // Assistants are sent to the Markdown on the live site
   const prompt = encodeURIComponent(`${SITE_URL}${WEEK_VIEW_PATH}.md`);
@@ -237,9 +257,10 @@ for (const { path, item, title } of INSTALL_PAGES) {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page.goto(path);
 
-    // The Installation tabs: CLI, Manual, Prompt. Examples have tabs of their own
+    // The Installation tabs: CLI, Manual, Prompt. Examples have tabs of their
+    // own, and the first Installation tabs are the page's own item's
     const tabs = page.getByRole("tablist").filter({ hasText: "Manual" });
-    const tab = tabs.getByRole("tab", { name: "Prompt", exact: true });
+    const tab = tabs.getByRole("tab", { name: "Prompt", exact: true }).first();
     await tab.click();
     const panel = page.locator(
       `[id="${await tab.getAttribute("aria-controls")}"]`,

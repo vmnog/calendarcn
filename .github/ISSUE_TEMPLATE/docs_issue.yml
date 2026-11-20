@@ -7,7 +7,7 @@ body:
     attributes:
       label: Page
       description: The docs page (or README section) this is about.
-      placeholder: e.g. https://calendarcn.xyz/docs/components/week-view
+      placeholder: e.g. https://calendarcn.xyz/docs/components/day-week-view
     validations:
       required: true
   - type: textarea

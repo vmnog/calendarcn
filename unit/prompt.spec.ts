@@ -139,14 +139,16 @@ test("every example is on a docs page, and its item has install tabs", () => {
     ).toBeDefined();
   }
   expect(PAGE_INDEX.examplePages.get("week-view-demo")).toEqual({
-    title: "Week View",
-    url: "/docs/components/week-view",
+    title: "Day & Week View",
+    url: "/docs/components/day-week-view",
   });
   // A guide's example links the guide, and its item's tabs are found there
   expect(PAGE_INDEX.examplePages.get("ics-demo")?.url).toBe(
-    "/docs/import-export",
+    "/docs/guides/import-export",
   );
-  expect(PAGE_INDEX.installPages.get("ics")?.url).toBe("/docs/import-export");
+  expect(PAGE_INDEX.installPages.get("ics")?.url).toBe(
+    "/docs/guides/import-export",
+  );
 });
 
 for (const name of EXAMPLE_NAMES) {
@@ -233,13 +235,13 @@ test("the Week View prompt leads with the install command", () => {
     "- Besides Week View, the command names what the example itself imports: `@calendarcn/sample-data`.",
   );
   expect(prompt).toContain(
-    "the Manual tab on https://calendarcn.xyz/docs/components/week-view lists the files",
+    "the Manual tab on https://calendarcn.xyz/docs/components/day-week-view lists the files",
   );
   expect(prompt).toContain(
     "Create this as `week-view-demo.tsx` in the project's components folder",
   );
   expect(prompt).toContain(
-    "- This page as Markdown: https://calendarcn.xyz/docs/components/week-view.md",
+    "- This page as Markdown: https://calendarcn.xyz/docs/components/day-week-view.md",
   );
   expect(prompt).toContain(
     "https://calendarcn.xyz/docs/components/calendar-core.md",
@@ -301,8 +303,8 @@ test("the example's fence is longer than any run of backticks in it", () => {
     examplePath: "src/examples/fence-demo.tsx",
     source,
     rules: RULES,
-    page: { title: "Week View", url: "/docs/components/week-view" },
-    installPage: { title: "Week View", url: "/docs/components/week-view" },
+    page: { title: "Week View", url: "/docs/components/day-week-view" },
+    installPage: { title: "Week View", url: "/docs/components/day-week-view" },
   });
 
   expect(prompt).toContain(`\`\`\`\`tsx\n${source}\n\`\`\`\`\n`);

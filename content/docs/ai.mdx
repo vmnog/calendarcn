@@ -18,7 +18,7 @@ Each prompt holds:
 - What to check before it reports back: types, the browser console, a drag, light and dark mode.
 - Where to read more.
 
-A prompt never holds the components' own source: the shadcn CLI installs that. Start with the prompt on [Calendar](/docs/components/calendar) for the full calendar, or on one view such as [Week View](/docs/components/week-view). A guide's prompt does that guide's task: the one on [Loading Events](/docs/loading-events) fetches events for the dates on screen, and the one on [Import and Export](/docs/import-export) reads and writes .ics files.
+A prompt never holds the components' own source: the shadcn CLI installs that. Start with the prompt on [Calendar](/docs/components/calendar) for the full calendar, or on one view such as [Week View](/docs/components/day-week-view). A guide's prompt does that guide's task: the one on [Loading Events](/docs/guides/loading-events) fetches events for the dates on screen, and the one on [Import and Export](/docs/guides/import-export) reads and writes .ics files.
 
 The Installation section of each page has a **Prompt** tab too, beside **CLI** and **Manual**. That one is a few lines: it installs the component and tells the agent to read the page. Use it when you want the component without the example.
 
@@ -135,7 +135,7 @@ I made to them has to be put back by hand. Work in this order.
    changed and would be overwritten, and the identical ones it skips. If it
    would create and overwrite nothing, tell me CalendarCN is up to date and
    stop.
-4. Read https://calendarcn.xyz/docs/changelog from the day these files were
+4. Read https://calendarcn.xyz/docs/project/changelog from the day these files were
    last installed or updated (the git log of one of them tells you) up to
    today. List every line marked "Breaking" that names an item I have.
 5. For each file the preview would overwrite, look at the change with

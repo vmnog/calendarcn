@@ -4,7 +4,7 @@ contact_links:
     url: https://calendarcn.xyz/docs
     about: Guides, live examples and the API reference for every component.
   - name: Roadmap
-    url: https://calendarcn.xyz/docs/roadmap
+    url: https://calendarcn.xyz/docs/project/roadmap
     about: Check whether a feature is already planned before requesting it.
   - name: Live demo
     url: https://calendarcn.xyz
