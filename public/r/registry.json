@@ -601,7 +601,7 @@
       "description": "One day on the time grid.",
       "author": "vmnog <https://vmnog.com>",
       "categories": ["calendar", "views"],
-      "docs": "Day View: render <DayView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/day-view",
+      "docs": "Day View: render <DayView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/day-week-view#day-view",
       "registryDependencies": ["@calendarcn/time-grid"],
       "files": [
         {
@@ -617,7 +617,7 @@
       "description": "A week, or any number of days, on the time grid.",
       "author": "vmnog <https://vmnog.com>",
       "categories": ["calendar", "views"],
-      "docs": "Week View: render <WeekView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/week-view",
+      "docs": "Week View: render <WeekView /> inside <CalendarProvider>. https://calendarcn.xyz/docs/components/day-week-view",
       "registryDependencies": ["@calendarcn/time-grid"],
       "files": [
         {
@@ -985,7 +985,7 @@
       "description": "The live demo's look: Notion Calendar's colors for your shadcn/ui tokens and for every calendar and event token, light and dark. Optional: without it the calendar follows your app's own theme.",
       "author": "vmnog <https://vmnog.com>",
       "categories": ["calendar", "theme"],
-      "docs": "Notion Calendar theme: it set your shadcn/ui color tokens and the calendar's own to Notion Calendar's colors, for light and dark mode. https://calendarcn.xyz/docs/theming#the-notion-calendar-theme",
+      "docs": "Notion Calendar theme: it set your shadcn/ui color tokens and the calendar's own to Notion Calendar's colors, for light and dark mode. https://calendarcn.xyz/docs/guides/theming#the-notion-calendar-theme",
       "cssVars": {
         "light": {
           "background": "#ffffff",

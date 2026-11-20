@@ -1,19 +1,17 @@
 {
   "title": "Docs",
   "pages": [
-    "---Getting Started---",
+    "---Getting started---",
     "index",
     "installation",
     "ai",
-    "keyboard-shortcuts",
-    "import-export",
-    "roadmap",
-    "changelog",
     "---Guides---",
-    "theming",
-    "loading-events",
-    "sample-data",
+    "...guides",
     "---Components---",
-    "...components"
+    "...components",
+    "---Reference---",
+    "...reference",
+    "---Project---",
+    "...project"
   ]
 }

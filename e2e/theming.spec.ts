@@ -14,7 +14,7 @@ import { FROZEN_NOW, calendarEvent, openCalendar } from "./helpers";
  */
 
 /** Path of the Theming page */
-const THEMING_PATH = "/docs/theming";
+const THEMING_PATH = "/docs/guides/theming";
 
 /** The Notion Calendar theme's menu surface, as a computed color */
 const NOTION_MENU = "rgb(37, 37, 37)";

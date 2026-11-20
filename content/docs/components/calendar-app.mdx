@@ -5,7 +5,7 @@ description: The live demo as one block, with both sidebars, the header, every v
 
 <LiveDemoPreview />
 
-`CalendarApp` is the [live demo](/), whole: the [Calendar Sidebar](/docs/components/calendar-sidebar) on the left, the [Calendar Header](/docs/components/calendar-header) over the day, week, month, year and agenda views, the [Details Sidebar](/docs/components/details-sidebar) on the right, the [Command Menu](/docs/components/command-menu), the [toasts](/docs/components/calendar-toaster) after a delete, cut or copy, theme switching, .ics import and export, and the keyboard shortcuts. The live demo renders this block, so what you install is what you see there.
+`CalendarApp` is the [live demo](/), whole: the [Calendar Sidebar](/docs/components/calendar-sidebar) on the left, the [Calendar Header](/docs/components/calendar-header) over the day, week, month, year and agenda views, the [Details Sidebar](/docs/components/details-sidebar) on the right, the [Command Menu](/docs/components/command-menu), the [toasts](/docs/guides/undo-and-notices) after a delete, cut or copy, theme switching, .ics import and export, and the keyboard shortcuts. The live demo renders this block, so what you install is what you see there.
 
 It takes every [`CalendarProvider`](/docs/components/calendar-core#calendarprovider) prop, so your events, calendars, contacts, rooms and conferencing services go in as props. For a smaller calendar to put inside a page of yours, use the [Calendar](/docs/components/calendar) block instead.
 
@@ -13,7 +13,7 @@ It takes every [`CalendarProvider`](/docs/components/calendar-core#calendarprovi
 
 <InstallTabs item="calendar-app" />
 
-The install brings every part of the demo, plus [Sample Data](/docs/sample-data) and the placeholder [conference providers](/docs/components/event-details#conference-providers), so the page below reproduces the live demo in your app's own colors. The live demo also wears the [Notion Calendar theme](/docs/theming#the-notion-calendar-theme), which is optional: add it to get the demo's colors too.
+The install brings every part of the demo, plus [Sample Data](/docs/reference/sample-data) and the placeholder [conference providers](/docs/components/event-details#conference-providers), so the page below reproduces the live demo in your app's own colors. The live demo also wears the [Notion Calendar theme](/docs/guides/theming#the-notion-calendar-theme), which is optional: add it to get the demo's colors too.
 
 ```npm
 npx shadcn@latest add @calendarcn/theme-notion
@@ -142,13 +142,13 @@ const [events, setEvents] = React.useState<DetailedCalendarEvent[]>([]);
 - The eye beside a calendar in the sidebar hides its events: they leave every view and the event search, and come back when it's shown again. An event created on a hidden calendar, or moved to one, shows that calendar again.
 - `contacts` and `rooms` are who and what the details' participants field invites. `conferenceProviders` fill its Conferencing menu, and `locationSuggestions` its location field.
 - `contacts` are also who you can meet with: the sidebar's "Meet with...", <Kbd>F</Kbd> and <Kbd>P</Kbd> add them, and `contactEvents` holds their events, by email, to draw beside yours. See [Meeting with people](/docs/components/calendar-core#meeting-with-people).
-- `createEvent` builds the event a double-click or a drag on empty space starts (see [Creating events](/docs/components/calendar-core#creating-events)), `onEventCreate`, `onEventUpdate` and `onEventSelect` report single changes, and `onVisibleRangeChange` with `loading` loads events by range: see [Loading Events](/docs/loading-events).
+- `createEvent` builds the event a double-click or a drag on empty space starts (see [Creating events](/docs/components/calendar-core#creating-events)), `onEventCreate`, `onEventUpdate` and `onEventSelect` report single changes, and `onVisibleRangeChange` with `loading` loads events by range: see [Loading Events](/docs/guides/loading-events).
 
 ### .ics files
 
-The command menu's "Import .ics file..." reads a file with [`parseIcs()`](/docs/import-export), adds its events and goes to the first one. An event whose id is already there is replaced, so importing the same file again updates it. Controlled or not, the new list comes back through `onEventsChange`, and `onEventsImport` gets only the imported events, to save them.
+The command menu's "Import .ics file..." reads a file with [`parseIcs()`](/docs/guides/import-export), adds its events and goes to the first one. An event whose id is already there is replaced, so importing the same file again updates it. Controlled or not, the new list comes back through `onEventsChange`, and `onEventsImport` gets only the imported events, to save them.
 
-"Export .ics file" writes every event, those of hidden calendars included, with [`toIcs()`](/docs/import-export#export-events) and downloads it as `exportFileName`, with `exportCalendarName` as the calendar's name.
+"Export .ics file" writes every event, those of hidden calendars included, with [`toIcs()`](/docs/guides/import-export#export-events) and downloads it as `exportFileName`, with `exportCalendarName` as the calendar's name.
 
 ### Settings and accounts
 
@@ -207,7 +207,7 @@ From 768px up, while the details sidebar is closed, a selected event shows its d
 
 ## Keyboard shortcuts
 
-`CalendarApp` turns on the calendar's single-key [shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>Y</Kbd>, <Kbd>A</Kbd>, <Kbd>C</Kbd>…) and the app's own:
+`CalendarApp` turns on the calendar's single-key [shortcuts](/docs/reference/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>Y</Kbd>, <Kbd>A</Kbd>, <Kbd>C</Kbd>…) and the app's own:
 
 | Action                                              | Shortcut                                      |
 | --------------------------------------------------- | --------------------------------------------- |
@@ -231,18 +231,18 @@ Press <Kbd>.</Kbd> to open the command menu on Go to date: type a date ("tomorro
 `CalendarApp` is a short file that puts these items together. To build a layout of your own, install the ones you need:
 
 - [Calendar Core](/docs/components/calendar-core): `CalendarProvider`, `useCalendar()` and `useCalendarShortcuts()`.
-- [Calendar Sidebar](/docs/components/calendar-sidebar): the left sidebar, with the [Mini Calendar](/docs/components/mini-calendar), the [Calendar List](/docs/components/calendar-list) and the [Theme Toggle](/docs/components/theme-toggle).
+- [Calendar Sidebar](/docs/components/calendar-sidebar): the left sidebar, with the [Mini Calendar](/docs/components/calendar-sidebar#mini-calendar), the [Calendar List](/docs/components/calendar-sidebar#calendar-list) and the [Theme Toggle](/docs/components/calendar-sidebar#theme-toggle).
 - [Calendar Header](/docs/components/calendar-header): the toolbar, with the view switcher and the panel toggles.
-- [Time Grid](/docs/components/time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) and [Agenda View](/docs/components/agenda-view): the views.
+- [Time Grid](/docs/components/day-week-view#time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) and [Agenda View](/docs/components/agenda-view): the views.
 - [Details Sidebar](/docs/components/details-sidebar): the right sidebar, with the [Event Details](/docs/components/event-details).
 - [Command Menu](/docs/components/command-menu): the <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> menu.
 - [Calendar Settings](/docs/components/calendar-settings): the settings dialog.
-- [People Picker](/docs/components/people-picker): the <Kbd>F</Kbd> and <Kbd>P</Kbd> dialog, to meet with someone or show a teammate's calendar.
-- [Calendar Toaster](/docs/components/calendar-toaster): the toasts after a delete, cut or copy, with Undo.
-- [Scheduling](/docs/components/scheduling): marking open times and copying them as text, and scheduling links through `onCreateSchedulingLink`.
-- [Sidebar Overlay](/docs/components/sidebar-overlay): both sidebars as sheets on narrow screens, and their colors.
-- [Import and Export](/docs/import-export): `parseIcs()` and `toIcs()`.
-- [Sample Data](/docs/sample-data) and the [conference providers](/docs/components/event-details#conference-providers): the demo's data.
+- [People Picker](/docs/guides/meet-with-people): the <Kbd>F</Kbd> and <Kbd>P</Kbd> dialog, to meet with someone or show a teammate's calendar.
+- [Calendar Toaster](/docs/guides/undo-and-notices): the toasts after a delete, cut or copy, with Undo.
+- [Scheduling](/docs/guides/share-your-availability): marking open times and copying them as text, and scheduling links through `onCreateSchedulingLink`.
+- [Sidebar Overlay](/docs/components/calendar-sidebar#sidebar-overlay): both sidebars as sheets on narrow screens, and their colors.
+- [Import and Export](/docs/guides/import-export): `parseIcs()` and `toIcs()`.
+- [Sample Data](/docs/reference/sample-data) and the [conference providers](/docs/components/event-details#conference-providers): the demo's data.
 
 ## API Reference
 
@@ -315,7 +315,7 @@ Press <Kbd>.</Kbd> to open the command menu on Go to date: type a date ("tomorro
       name: "onCreateSchedulingLink",
       type: "(request: SchedulingLinkRequest) => void",
       description:
-        "Creates a scheduling link (a booking page) in your app. With it, the sidebar's Scheduling row and the command menu offer recurring and one-off links. See [Scheduling links](/docs/components/scheduling#scheduling-links).",
+        "Creates a scheduling link (a booking page) in your app. With it, the sidebar's Scheduling row and the command menu offer recurring and one-off links. See [Scheduling links](/docs/guides/share-your-availability#scheduling-links).",
     },
     {
       name: "showComingSoon",

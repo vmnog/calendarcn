@@ -12,7 +12,7 @@ import { FROZEN_NOW, calendarEvent, openCalendar } from "./helpers";
 const FIXTURES_DIR = path.join(__dirname, "fixtures");
 
 /** Docs page that shows the import / export example */
-const IMPORT_EXPORT_PAGE = "/docs/import-export";
+const IMPORT_EXPORT_PAGE = "/docs/guides/import-export";
 
 function fixturePath(name: string): string {
   return path.join(FIXTURES_DIR, name);

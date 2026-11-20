@@ -152,7 +152,7 @@ test("without the theme, the calendar's tokens point at the app's own", async ({
 test("the theme's Manual tab lists its variables instead of files", async ({
   page,
 }) => {
-  await page.goto("/docs/theming");
+  await page.goto("/docs/guides/theming");
   await page.getByRole("tab", { name: "Manual" }).click();
 
   const manual = page.getByRole("tabpanel");

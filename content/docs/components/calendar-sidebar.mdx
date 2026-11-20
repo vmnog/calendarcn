@@ -5,9 +5,9 @@ description: The left sidebar of the demo, with the mini calendar, scheduling, "
 
 <ComponentPreview name="calendar-sidebar-demo" />
 
-Calendar Sidebar is the left column of the [live demo](/), modeled on Notion Calendar's: the [Mini Calendar](/docs/components/mini-calendar), a scheduling row and a "Meet with..." field, the [Calendar List](/docs/components/calendar-list), "Add calendar account" when you pass `onAddCalendarAccount`, and a footer with the [Theme Toggle](/docs/components/theme-toggle). On wide screens it's a fixed column that pushes the page over; on phones it opens as a sheet from the left ([Sidebar Overlay](/docs/components/sidebar-overlay)).
+Calendar Sidebar is the left column of the [live demo](/), modeled on Notion Calendar's: the [Mini Calendar](#mini-calendar), a scheduling row and a "Meet with..." field, the [Calendar List](#calendar-list), "Add calendar account" when you pass `onAddCalendarAccount`, and a footer with the [Theme Toggle](#theme-toggle). On wide screens it's a fixed column that pushes the page over; on phones it opens as a sheet from the left ([Sidebar Overlay](#sidebar-overlay)).
 
-It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves, numbers its weeks while the provider's week numbers are on, and picking a day goes there (with weekends hidden, a Saturday or Sunday opens the Monday after it in day view). The "Meet with..." field meets with the provider's `contacts` (see [Meeting with people](#meeting-with-people)). Inside a [`SchedulingProvider`](/docs/components/scheduling), the Scheduling row starts marking open times to share, or opens a menu of scheduling links when your app creates them; without one, the row isn't there. "Add calendar account" calls your `onAddCalendarAccount`, to connect an account your way; the live demo adds an .ics file as a calendar. The file is yours, so wire them up there.
+It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves, numbers its weeks while the provider's week numbers are on, and picking a day goes there (with weekends hidden, a Saturday or Sunday opens the Monday after it in day view). The "Meet with..." field meets with the provider's `contacts` (see [Meeting with people](#meeting-with-people)). Inside a [`SchedulingProvider`](/docs/guides/share-your-availability), the Scheduling row starts marking open times to share, or opens a menu of scheduling links when your app creates them; without one, the row isn't there. "Add calendar account" calls your `onAddCalendarAccount`, to connect an account your way; the live demo adds an .ics file as a calendar. The file is yours, so wire them up there.
 
 ## Installation
 
@@ -78,11 +78,11 @@ The list's eye buttons hide and show calendars. Hiding only dims the row; to tak
 
 The "Meet with..." field picks people from the provider's `contacts`, as Notion Calendar's does: focusing it lists the recent ones, typing lists the matches (or the typed address), the arrow keys move through them and <Kbd>Enter</Kbd> or a click picks one. <Kbd>Esc</Kbd> closes the list and clears the field. While you type, F, P and the calendar's other keys type into the field.
 
-Picking someone adds them to a "Meeting participants" section under the field: their events show beside yours in the day and week views and the times you're all free are highlighted ([Meeting with people](/docs/components/calendar-core#meeting-with-people)). Hover a row to stop meeting with that person, or press "Clear" to stop meeting with everyone. Teammates added with "Show teammate calendar..." ([People Picker](/docs/components/people-picker)) are listed under "Team calendars", each with a button to remove them. Both lists live in the provider, through [`useCalendarPeople()`](/docs/components/calendar-core#usecalendarpeople), so the sidebar takes no props for them.
+Picking someone adds them to a "Meeting participants" section under the field: their events show beside yours in the day and week views and the times you're all free are highlighted ([Meeting with people](/docs/components/calendar-core#meeting-with-people)). Hover a row to stop meeting with that person, or press "Clear" to stop meeting with everyone. Teammates added with "Show teammate calendar..." ([People Picker](/docs/guides/meet-with-people)) are listed under "Team calendars", each with a button to remove them. Both lists live in the provider, through [`useCalendarPeople()`](/docs/components/calendar-core#usecalendarpeople), so the sidebar takes no props for them.
 
 ### Colors
 
-The sidebars have their own tokens, added to your CSS file on install: `--calendar-sidebar`, `--calendar-sidebar-foreground`, `--calendar-sidebar-muted-foreground`, `--calendar-sidebar-primary` and the rest of shadcn/ui's sidebar set, each with a `calendar-` prefix. Each defaults to your matching `--sidebar-*` token, so the sidebars look like the rest of your app's. Inside the sidebar they stand in for your `--sidebar-*` tokens, so setting them in your CSS restyles both calendar sidebars and leaves your app's own sidebar alone. [Theming](/docs/theming#sidebars) lists them, and the [Notion Calendar theme](/docs/theming#the-notion-calendar-theme) sets them to the live demo's greys.
+The sidebars have their own tokens, added to your CSS file on install: `--calendar-sidebar`, `--calendar-sidebar-foreground`, `--calendar-sidebar-muted-foreground`, `--calendar-sidebar-primary` and the rest of shadcn/ui's sidebar set, each with a `calendar-` prefix. Each defaults to your matching `--sidebar-*` token, so the sidebars look like the rest of your app's. Inside the sidebar they stand in for your `--sidebar-*` tokens, so setting them in your CSS restyles both calendar sidebars and leaves your app's own sidebar alone. [Theming](/docs/guides/theming#sidebars) lists them, and the [Notion Calendar theme](/docs/guides/theming#the-notion-calendar-theme) sets them to the live demo's greys.
 
 ## Examples
 
@@ -171,3 +171,377 @@ Hover a calendar in the list and click its eye: its events leave the view, and c
 />
 
 `CALENDAR_SIDEBAR_WIDTH` (`15rem`) is the sidebar's width, inline and as an overlay.
+
+## Mini Calendar
+
+<ComponentPreview name="mini-calendar-demo" height={420} />
+
+Mini Calendar is the small month at the top of the Calendar Sidebar, modeled on Notion Calendar's: week numbers down the side (`showWeekNumber={false}` hides them; Calendar Sidebar shows them while the provider's week numbers are on), today in red, and the days the calendar shows highlighted as one band. Browse months with the up and down arrows; away from today's month, the month's name shows with a button back to today.
+
+It's built on [React DayPicker](https://daypicker.dev) directly, with its own styles, so it looks the same whatever your shadcn/ui `Calendar` and `Button` look like.
+
+<InstallTabs item="mini-calendar" />
+
+```tsx
+import { MiniCalendar } from "@/components/mini-calendar";
+
+export function DatePicker() {
+  const [date, setDate] = React.useState<Date>();
+
+  return <MiniCalendar currentDate={date} onDateSelect={setDate} />;
+}
+```
+
+To follow a calendar, pass the days it shows as `visibleDays`: they're highlighted, and the mini calendar shows the month of the last one, so a week that crosses into a new month shows the new month. Calendar Sidebar does this from `useCalendar()`:
+
+```tsx
+const { view, currentDate, visibleDays, weekStartsOn, goToDate } =
+  useCalendar();
+
+<MiniCalendar
+  currentDate={currentDate}
+  visibleDays={view === "month" || view === "agenda" ? [] : visibleDays}
+  weekStartsOn={weekStartsOn}
+  onDateSelect={goToDate}
+/>;
+```
+
+When `currentDate` or `visibleDays` change, the mini calendar goes back to their month, even after the arrows browsed away.
+
+- Today is marked in your theme's primary color. The page renders with no today marked, then marks it in the browser, so server and client markup match.
+- "Go back to today" shows once you browse to another month. It shows today's month and calls `onDateSelect` with today.
+- Every day is a click target from edge to edge, with no gaps between days. Arrow keys move between days; the focused day gets a ring.
+- Six weeks always show, so the height never changes between months.
+
+### Following a view
+
+Wired to [`useCalendar()`](/docs/components/calendar-core#usecalendar): the day on screen is highlighted, and picking a day shows it.
+
+<ComponentPreview name="mini-calendar-follow-demo" height={600} />
+
+### Monday start, no week numbers
+
+`weekStartsOn={1}` and `showWeekNumber={false}`.
+
+<ComponentPreview name="mini-calendar-monday-demo" height={420} />
+
+### MiniCalendar
+
+<PropsTable
+  rows={[
+    {
+      name: "currentDate",
+      type: "Date",
+      description:
+        "Day the calendar is on. Picks the month shown when there are no `visibleDays` (month view, agenda).",
+    },
+    {
+      name: "visibleDays",
+      type: "Date[]",
+      description:
+        "Days the calendar shows. They're highlighted, and the month of the last one is shown.",
+    },
+    {
+      name: "onDateSelect",
+      type: "(date: Date) => void",
+      description:
+        'Called with the day picked, or with today from "Go back to today".',
+    },
+    {
+      name: "weekStartsOn",
+      type: "0 | 1 | 2 | 3 | 4 | 5 | 6",
+      default: "0",
+      description: "First day of the week, 0 (Sunday) to 6.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the calendar's root.",
+    },
+  ]}
+/>
+
+## Calendar List
+
+<ComponentPreview name="calendar-list-demo" height={460} />
+
+Calendar List is the list of calendars in the Calendar Sidebar. Calendars are grouped under their account's email, each account collapsible, each calendar with its color. Hover a calendar to show its eye button and hide it; a subscribed calendar, like a holidays feed, gets a feed icon.
+
+<InstallTabs item="calendar-list" />
+
+The list lists the `calendars` of the surrounding [`CalendarProvider`](/docs/components/calendar-core), the same ones the event details' calendar picker offers. It's built from shadcn/ui's sidebar parts, so it needs a `SidebarProvider` around it.
+
+```tsx
+import { CalendarList } from "@/components/calendar-list";
+import type { CalendarInfo } from "@/components/calendar-types";
+
+const calendars: CalendarInfo[] = [
+  {
+    id: "personal",
+    name: "Personal",
+    color: "purple",
+    email: "you@example.com",
+  },
+  {
+    id: "holidays",
+    name: "Holidays",
+    color: "green",
+    email: "you@example.com",
+    isSubscribed: true,
+  },
+  { id: "work", name: "Work", color: "blue", email: "you@work.example.com" },
+];
+
+<CalendarProvider defaultEvents={events} calendars={calendars}>
+  <SidebarProvider>
+    <CalendarList />
+  </SidebarProvider>
+</CalendarProvider>;
+```
+
+Outside a provider, pass `calendars` yourself. Hiding a calendar only dims its row: read the hidden ids with `onHiddenCalendarIdsChange` to filter your events, or set them with `hiddenCalendarIds`.
+
+```tsx
+const [hidden, setHidden] = React.useState<string[]>([]);
+
+<CalendarList
+  calendars={calendars}
+  hiddenCalendarIds={hidden}
+  onHiddenCalendarIdsChange={setHidden}
+/>;
+```
+
+### The provider's calendars, some hidden at first
+
+Inside a `CalendarProvider` the list needs no `calendars` prop, and `defaultHiddenCalendarIds` starts it with calendars hidden. To take a hidden calendar's events off the views, see [Hide a calendar's events](#hide-a-calendars-events).
+
+<ComponentPreview name="calendar-list-provider-demo" height={460} />
+
+### CalendarList
+
+<PropsTable
+  rows={[
+    {
+      name: "calendars",
+      type: "CalendarInfo[]",
+      description:
+        "Calendars to list, grouped under their account `email`. Defaults to the `calendars` of the nearest `CalendarProvider`.",
+    },
+    {
+      name: "hiddenCalendarIds",
+      type: "string[]",
+      description: "Ids of the hidden calendars (controlled).",
+    },
+    {
+      name: "defaultHiddenCalendarIds",
+      type: "string[]",
+      default: "[]",
+      description: "Ids of the calendars hidden at first (uncontrolled).",
+    },
+    {
+      name: "onHiddenCalendarIdsChange",
+      type: "(hiddenCalendarIds: string[]) => void",
+      description:
+        "Called with the new hidden ids when a calendar is shown or hidden.",
+    },
+  ]}
+/>
+
+### CalendarInfo
+
+The list reads these fields of each calendar (from `@/components/calendar-types`):
+
+<PropsTable
+  nameHeader="Field"
+  rows={[
+    {
+      name: "id",
+      type: "string",
+      required: true,
+      description: "What `hiddenCalendarIds` holds.",
+    },
+    {
+      name: "name",
+      type: "string",
+      required: true,
+      description: "Shown in the row.",
+    },
+    {
+      name: "color",
+      type: "EventColor",
+      required: true,
+      description: "The row's swatch.",
+    },
+    {
+      name: "email",
+      type: "string",
+      description:
+        'Account the calendar is listed under. Calendars without one are listed under "Calendars".',
+    },
+    {
+      name: "isSubscribed",
+      type: "boolean",
+      description:
+        "A calendar followed rather than owned, like a holidays feed. Its swatch gets a feed icon.",
+    },
+  ]}
+/>
+
+## Theme Toggle
+
+<ComponentPreview name="theme-toggle-demo" height={240} />
+
+Theme Toggle is the button at the bottom of the Calendar Sidebar. Each click moves to the next theme: system, light, dark, then system again. Its icon shows the current one: a monitor, a sun or a moon.
+
+<InstallTabs item="theme-toggle" />
+
+It installs `ThemeProvider` too, a client wrapper around [next-themes](https://github.com/pacocoursey/next-themes)' provider.
+
+Wrap your app in `ThemeProvider`, in the root layout. With `attribute="class"`, dark mode sets the `dark` class that shadcn/ui's dark tokens use:
+
+```tsx title="app/layout.tsx"
+import { ThemeProvider } from "@/components/theme-provider";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+Then render the toggle anywhere inside it:
+
+```tsx
+import { ThemeToggle } from "@/components/theme-toggle";
+
+<ThemeToggle />;
+```
+
+If your app already has a next-themes provider, keep yours: the toggle only needs `useTheme()`.
+
+- Server rendering shows the system icon until the page loads in the browser, where the stored theme is known, so the markup always matches.
+- It forwards its ref and props to the button, so it works as a tooltip trigger: the Calendar Sidebar wraps it in a tooltip.
+
+### In a tooltip
+
+The toggle forwards its ref and props to its button, so it works as a tooltip's trigger.
+
+<ComponentPreview name="theme-toggle-tooltip-demo" height={240} />
+
+### ThemeToggle
+
+Takes the props of a `<button>`. It's a ghost icon button, `size-7`, in the muted text color; `className` changes it.
+
+### ThemeProvider
+
+Takes next-themes' `ThemeProvider` props, such as `attribute`, `defaultTheme`, `enableSystem` and `storageKey`.
+
+## Sidebar Overlay
+
+<ComponentPreview name="sidebar-overlay-demo" height={240} />
+
+Sidebar Overlay shows a sidebar's content as a modal sheet from the left or the right. The Calendar Sidebar and the [Details Sidebar](/docs/components/details-sidebar) use it on phones. It's the same sheet as shadcn/ui's `Sidebar` on mobile, but you own its open state and the breakpoint, so a sidebar can turn into an overlay at any width.
+
+<InstallTabs item="sidebar-overlay" />
+
+It also adds the sidebars' color tokens to your CSS: see [Colors](#colors).
+
+```tsx
+import { SidebarOverlay } from "@/components/sidebar-overlay";
+
+export function MobileNav() {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Menu</Button>
+      <SidebarOverlay
+        open={open}
+        onOpenChange={setOpen}
+        side="left"
+        title="Navigation"
+        description="Pages of the app."
+        style={{ "--sidebar-width": "15rem" } as React.CSSProperties}
+      >
+        <nav>{/* ... */}</nav>
+      </SidebarOverlay>
+    </>
+  );
+}
+```
+
+The sheet is as wide as `--sidebar-width`, up to 85% of the screen. Its title and description are for screen readers only.
+
+- Closes on an outside tap and <Kbd>Esc</Kbd>, with focus kept inside while it's open.
+- Opening focuses the sheet itself, not its first field, so a search field doesn't pop up a phone's keyboard.
+- Works with shadcn/ui on Radix and on Base UI.
+
+### A day picker in a sheet
+
+Anything can go in the sheet. Here a [Mini Calendar](#mini-calendar) picks a day, and the pick closes the sheet.
+
+<ComponentPreview name="sidebar-overlay-picker-demo" height={240} />
+
+### SidebarOverlay
+
+<PropsTable
+  rows={[
+    {
+      name: "open",
+      type: "boolean",
+      required: true,
+      description: "Whether the sheet is open.",
+    },
+    {
+      name: "onOpenChange",
+      type: "(open: boolean) => void",
+      required: true,
+      description: "Called when the sheet asks to open or close.",
+    },
+    {
+      name: "side",
+      type: '"left" | "right"',
+      required: true,
+      description: "Edge the sheet slides in from.",
+    },
+    {
+      name: "title",
+      type: "string",
+      required: true,
+      description: "Accessible name of the sheet (visually hidden).",
+    },
+    {
+      name: "description",
+      type: "string",
+      required: true,
+      description: "Accessible description of the sheet (visually hidden).",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the sheet.",
+    },
+    {
+      name: "style",
+      type: "CSSProperties",
+      description: "Styles for the sheet, e.g. its `--sidebar-width`.",
+    },
+  ]}
+/>
+
+`CALENDAR_SIDEBAR_COLORS_CLASS` points shadcn/ui's `--sidebar-*` colors at the `--calendar-sidebar-*` tokens for an element and what's inside it. The sheet and both calendar sidebars use it. The tokens default to your own `--sidebar-*` colors ([Colors](#colors)).

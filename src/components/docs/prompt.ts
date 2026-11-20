@@ -80,7 +80,7 @@ for (const entry of REGISTRY_ITEMS.values()) {
 export interface DocsPageRef {
   /** The page's title, e.g. `Week View` */
   title: string;
-  /** The page's path on the site, e.g. `/docs/components/week-view` */
+  /** The page's path on the site, e.g. `/docs/components/day-week-view` */
   url: string;
 }
 

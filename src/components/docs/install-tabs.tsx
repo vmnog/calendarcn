@@ -266,6 +266,31 @@ interface ManualStepsProps {
   steps: InstallSteps;
 }
 
+/**
+ * Items whose docs aren't a component page of their own name: they're a
+ * section of another page, or a guide or reference page. Every other item is
+ * at `/docs/components/<name>`.
+ */
+const ITEM_DOCS_PATHS: Record<string, string> = {
+  "time-grid": "/docs/components/day-week-view#time-grid",
+  "day-view": "/docs/components/day-week-view#day-view",
+  "week-view": "/docs/components/day-week-view",
+  "mini-calendar": "/docs/components/calendar-sidebar#mini-calendar",
+  "calendar-list": "/docs/components/calendar-sidebar#calendar-list",
+  "theme-toggle": "/docs/components/calendar-sidebar#theme-toggle",
+  "sidebar-overlay": "/docs/components/calendar-sidebar#sidebar-overlay",
+  "people-picker": "/docs/guides/meet-with-people",
+  "calendar-toaster": "/docs/guides/undo-and-notices",
+  ics: "/docs/guides/import-export",
+  "sample-data": "/docs/reference/sample-data",
+  "conference-providers": "/docs/components/event-details#conference-providers",
+};
+
+/** The docs page (and section) of a registry item */
+function getItemDocsPath(item: string): string {
+  return ITEM_DOCS_PATHS[item] ?? `/docs/components/${item}`;
+}
+
 /** The steps the CLI would run, written out: items, packages, components, files */
 function ManualSteps({ steps }: ManualStepsProps) {
   const { calendarItems, dependenciesCommand, shadcnCommand, files, css } =
@@ -279,7 +304,7 @@ function ManualSteps({ steps }: ManualStepsProps) {
           <ul>
             {calendarItems.map((name) => (
               <li key={name}>
-                <Link href={`/docs/components/${name}`}>{name}</Link>
+                <Link href={getItemDocsPath(name)}>{name}</Link>
               </li>
             ))}
           </ul>

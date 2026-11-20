@@ -4,7 +4,7 @@ A calendar for React inspired by [Notion Calendar](https://www.notion.so/product
 
 [![CI](https://github.com/vmnog/calendarcn/actions/workflows/ci.yml/badge.svg)](https://github.com/vmnog/calendarcn/actions/workflows/ci.yml) [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-**[Live demo](https://calendarcn.xyz)** · **[Docs](https://calendarcn.xyz/docs)** · **[Roadmap](https://calendarcn.xyz/docs/roadmap)**
+**[Live demo](https://calendarcn.xyz)** · **[Docs](https://calendarcn.xyz/docs)** · **[Roadmap](https://calendarcn.xyz/docs/project/roadmap)**
 
 [![CalendarCN preview](./public/og-image.png)](https://calendarcn.xyz)
 

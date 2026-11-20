@@ -51,7 +51,7 @@ The panel, popover or sheet that shows an event.
 
 ### Menus and toasts
 
-The right-click menu, the details' menus, the time and date pickers, the [toasts](/docs/components/calendar-toaster), the tooltips and the scheduling hint share one surface. Softer text in a menu is `--calendar-menu-foreground` at a lower opacity, so one token sets all of it.
+The right-click menu, the details' menus, the time and date pickers, the [toasts](/docs/guides/undo-and-notices), the tooltips and the scheduling hint share one surface. Softer text in a menu is `--calendar-menu-foreground` at a lower opacity, so one token sets all of it.
 
 <ThemeTokens group="menus" />
 
@@ -171,7 +171,7 @@ import { getEventColorStyle } from "@/lib/event-utils";
 
 ## Dark mode
 
-The calendar follows the `dark` class, as shadcn/ui does: every token has a value under `:root` and another under `.dark`. A token that points at one of yours (`var(--popover)`) changes with it, so a plain install needs nothing more. The [Theme Toggle](/docs/components/theme-toggle) switches the class with next-themes.
+The calendar follows the `dark` class, as shadcn/ui does: every token has a value under `:root` and another under `.dark`. A token that points at one of yours (`var(--popover)`) changes with it, so a plain install needs nothing more. The [Theme Toggle](/docs/components/calendar-sidebar#theme-toggle) switches the class with next-themes.
 
 When you set a token to a color of your own, set it under both selectors, as the examples above do.
 

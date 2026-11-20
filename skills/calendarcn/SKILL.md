@@ -13,7 +13,7 @@ CalendarCN is a React calendar that the shadcn CLI copies into a project as sour
 ## Find the docs
 
 - https://calendarcn.xyz/llms.txt lists every docs page.
-- Every page is Markdown at its URL plus `.md`, like https://calendarcn.xyz/docs/components/week-view.md
+- Every page is Markdown at its URL plus `.md`, like https://calendarcn.xyz/docs/components/day-week-view.md
 - Read the page of the component you are about to use before you write code. Each has a working example and a table of every prop.
 - Start with [Installation](https://calendarcn.xyz/docs/installation.md), [Calendar](https://calendarcn.xyz/docs/components/calendar.md) and [Calendar Core](https://calendarcn.xyz/docs/components/calendar-core.md), which documents `CalendarProvider`, `useCalendar()` and the event type.
 
@@ -93,8 +93,8 @@ Each is on a docs page. Reach for these before editing a copied file:
 - `renderEventContent` draws the inside of each event. See "Custom event content" in Calendar Core.
 - `renderEventDetails` replaces the body of the details popover. See "Custom details" in [Event Details](https://calendarcn.xyz/docs/components/event-details.md).
 - A header or toolbar of your own reads and changes the calendar with `useCalendar()`. See "Build your own" in [Calendar](https://calendarcn.xyz/docs/components/calendar.md).
-- Every color is a CSS variable, set in `:root` and `.dark`. The `--calendar-*` tokens paint the details, menus, toasts and sidebars and default to the app's shadcn/ui theme; `--event-{color}`, `--event-{color}-bg` and `--event-{color}-border` paint events. `@calendarcn/theme-notion` adds Notion Calendar's look. See [Theming](https://calendarcn.xyz/docs/theming.md).
-- `shortcuts={false}` on `Calendar` turns off the single-key shortcuts. See [Keyboard shortcuts](https://calendarcn.xyz/docs/keyboard-shortcuts.md).
+- Every color is a CSS variable, set in `:root` and `.dark`. The `--calendar-*` tokens paint the details, menus, toasts and sidebars and default to the app's shadcn/ui theme; `--event-{color}`, `--event-{color}-bg` and `--event-{color}-border` paint events. `@calendarcn/theme-notion` adds Notion Calendar's look. See [Theming](https://calendarcn.xyz/docs/guides/theming.md).
+- `shortcuts={false}` on `Calendar` turns off the single-key shortcuts. See [Keyboard shortcuts](https://calendarcn.xyz/docs/reference/keyboard-shortcuts.md).
 
 ## Update
 
@@ -112,7 +112,7 @@ There is no package version to bump. The registry serves the latest code, and ru
    npx shadcn@latest add @calendarcn/calendar --diff components/calendar.tsx
    ```
 
-2. Read the [Changelog](https://calendarcn.xyz/docs/changelog.md) from the day of the last update up. Each line marked **Breaking** says what to change in the project's code.
+2. Read the [Changelog](https://calendarcn.xyz/docs/project/changelog.md) from the day of the last update up. Each line marked **Breaking** says what to change in the project's code.
 3. Commit the project's work, then overwrite:
 
    ```bash

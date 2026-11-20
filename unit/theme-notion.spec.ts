@@ -18,7 +18,7 @@ const ROOT = path.join(__dirname, "..");
 const GLOBALS_CSS = "src/app/globals.css";
 
 /** The docs page that says what adding the theme changes, relative to the root */
-const THEMING_PAGE = "content/docs/theming.mdx";
+const THEMING_PAGE = "content/docs/guides/theming.mdx";
 
 /** Name of the theme item */
 const THEME_ITEM = "theme-notion";

@@ -14,7 +14,7 @@ That gets fixes to people fast, but nothing names what they have:
 - Nobody can stay on a known-good state. Every `add` resolves the items and the items they depend on against the latest `main`.
 - Breaking changes, like `parseIcs()` reading `RRULE` into `recurrenceRule` instead of `recurrence` (#50), are only in pull request descriptions.
 
-The docs now have a Changelog page (`content/docs/changelog.mdx`), grouped by the day each change merged, and an Updating guide built on `add --dry-run`, `--diff <path>` and `--overwrite`.
+The docs now have a Changelog page (`content/docs/project/changelog.mdx`), grouped by the day each change merged, and an Updating guide built on `add --dry-run`, `--diff <path>` and `--overwrite`.
 
 ## Decision
 

@@ -44,7 +44,7 @@ const [events, setEvents] = React.useState(initialEvents);
 </CalendarProvider>;
 ```
 
-Use `onEventCreate`, `onEventUpdate`, `onEventDelete` and `onEventSelect` to react to one change at a time, for example to save it to a server. `onEventCreate` also gets an occurrence of a repeating event the first time it is edited: see [Repeating events](#repeating-events). To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/loading-events).
+Use `onEventCreate`, `onEventUpdate`, `onEventDelete` and `onEventSelect` to react to one change at a time, for example to save it to a server. `onEventCreate` also gets an occurrence of a repeating event the first time it is edited: see [Repeating events](#repeating-events). To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/guides/loading-events).
 
 ### Undo and redo
 
@@ -76,7 +76,7 @@ On one of them, delete, cut, copy, duplicate and paste act on them all, from the
 
 ### Notices
 
-After a delete, a cut or a copy, the provider keeps a notice worded like Notion Calendar's toasts: "Event deleted" with the event's title and an undo, "Event cut" with an undo, "Event copied to clipboard" with the title. [Calendar Toaster](/docs/components/calendar-toaster) shows it; without one, nothing shows. `useCalendarNotice()` returns it, to show with a toast library of your own, and `showNotice` adds notices of yours. A notice's undo takes back that action and nothing else, so the notice closes as soon as another change is the latest, and its undo is there exactly while `canUndo` is.
+After a delete, a cut or a copy, the provider keeps a notice worded like Notion Calendar's toasts: "Event deleted" with the event's title and an undo, "Event cut" with an undo, "Event copied to clipboard" with the title. [Calendar Toaster](/docs/guides/undo-and-notices) shows it; without one, nothing shows. `useCalendarNotice()` returns it, to show with a toast library of your own, and `showNotice` adds notices of yours. A notice's undo takes back that action and nothing else, so the notice closes as soon as another change is the latest, and its undo is there exactly while `canUndo` is.
 
 ### Server rendering
 
@@ -117,7 +117,7 @@ An event with a `recurrenceRule` (or an RRULE in `recurrence`) is one event in `
 - Occurrences keep the series' clock time in its `timeZone` when the clocks change. An all-day series keeps whole days.
 - `recurrence` written as display text ("Every week on Thu") is a label only: draw those occurrences as events of your own.
 
-When you load events by range ([Loading Events](/docs/loading-events)), include the repeating events whose series reaches into the range, even when their first date is earlier.
+When you load events by range ([Loading Events](/docs/guides/loading-events)), include the repeating events whose series reaches into the range, even when their first date is earlier.
 
 ### Editing a repeating event
 
@@ -243,7 +243,7 @@ const contactEvents = useFreeBusy(meetWith, visibleRange); // your loader
 </CalendarProvider>;
 ```
 
-The [Calendar Sidebar](/docs/components/calendar-sidebar)'s "Meet with..." field and the [People Picker](/docs/components/people-picker) (F and P in [Calendar App](/docs/components/calendar-app)) add people; your own controls can call `addMeetWith`, `addTeammate` and the rest. `getSharedFreeTime(calendars, days, options)` in `lib/free-busy.ts` computes the highlighted free time, to list it elsewhere: it counts an event as busy unless it's marked `status: "free"`, the calendar's owner declined it, or it's all-day (unless marked busy).
+The [Calendar Sidebar](/docs/components/calendar-sidebar)'s "Meet with..." field and the [People Picker](/docs/guides/meet-with-people) (F and P in [Calendar App](/docs/components/calendar-app)) add people; your own controls can call `addMeetWith`, `addTeammate` and the rest. `getSharedFreeTime(calendars, days, options)` in `lib/free-busy.ts` computes the highlighted free time, to list it elsewhere: it counts an event as busy unless it's marked `status: "free"`, the calendar's owner declined it, or it's all-day (unless marked busy).
 
 ## Custom event content
 
@@ -524,7 +524,7 @@ With `contacts` and `contactEvents`, `useCalendarPeople()` adds people to the me
       type: "EventColor[]",
       default: "the seven colors",
       description:
-        "Colors the event color pickers offer, in order: the right-click menu's and the details' calendar menu's. Add [colors of your own](/docs/theming#add-an-event-color) beside the seven that ship.",
+        "Colors the event color pickers offer, in order: the right-click menu's and the details' calendar menu's. Add [colors of your own](/docs/guides/theming#add-an-event-color) beside the seven that ship.",
     },
     {
       name: "contacts",
@@ -640,7 +640,7 @@ With `contacts` and `contactEvents`, `useCalendarPeople()` adds people to the me
       name: "onVisibleRangeChange",
       type: "(range: VisibleRange) => void",
       description:
-        "Called with the dates the view draws: once after it mounts, then each time they change (navigation, a view switch, a sideways scroll once it snaps). Never twice in a row for the same range. See [Loading Events](/docs/loading-events).",
+        "Called with the dates the view draws: once after it mounts, then each time they change (navigation, a view switch, a sideways scroll once it snaps). Never twice in a row for the same range. See [Loading Events](/docs/guides/loading-events).",
     },
     {
       name: "loading",
@@ -1289,7 +1289,7 @@ The fields the calendar needs to place and draw an event. [`DetailedCalendarEven
       name: "color",
       type: '"red" | "orange" | "yellow" | "green" | "blue" | "purple" | "gray" | string',
       description:
-        "The event's own color: one of the seven that ship, or [a name of your own](/docs/theming#add-an-event-color) backed by `--event-<name>` CSS variables. Without one it's drawn in its calendar's color (the `CalendarInfo` its `calendarId` names), else blue. `resolveEventColor(event, calendars)` from `@/lib/event-utils` returns the color an event is drawn in.",
+        "The event's own color: one of the seven that ship, or [a name of your own](/docs/guides/theming#add-an-event-color) backed by `--event-<name>` CSS variables. Without one it's drawn in its calendar's color (the `CalendarInfo` its `calendarId` names), else blue. `resolveEventColor(event, calendars)` from `@/lib/event-utils` returns the color an event is drawn in.",
     },
   ]}
 />
