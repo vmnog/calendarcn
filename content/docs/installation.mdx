@@ -12,7 +12,7 @@ npx shadcn@latest add @calendarcn/calendar
 The CLI copies the files into your components, hooks and lib folders, installs their npm dependencies and the shadcn/ui components they use, and adds the calendar's color tokens to your CSS file. Then [render it](#render-it). New to shadcn/ui, or want only some of the pieces? Follow the [steps](#step-by-step) below.
 
 <Callout title="No registry to add">
-  The CLI finds `@calendarcn` in shadcn's [registry directory](https://ui.shadcn.com/docs/registry/registry-index) and writes it under `registries` in your `components.json` during the first `add`. Add it yourself in two cases: with a shadcn CLI older than 3.7.0, which can't read the directory, and before the first `add` if you use the [shadcn MCP server](/docs/ai#shadcn-mcp-server), which only knows the registries in `components.json`. `npx shadcn@latest registry add @calendarcn` writes the same entry:
+  The CLI finds `@calendarcn` in shadcn's [registry directory](https://ui.shadcn.com/docs/registry/registry-index) and writes it under `registries` in your `components.json` during the first `add`. Add it yourself in three cases: with a shadcn CLI older than 3.7.0, which can't read the directory, before the first `add` if you use the [shadcn MCP server](/docs/ai#shadcn-mcp-server), which only knows the registries in `components.json`, and to [stay on a version](#stay-on-a-version), with that version's address. `npx shadcn@latest registry add @calendarcn` writes the same entry:
 
 ```json title="components.json"
 {
@@ -141,7 +141,7 @@ Each item pulls in the ones it builds on. [Registry items](/docs/reference/regis
 
 ## Updating
 
-There's no package to upgrade. The registry at `calendarcn.xyz/r` serves the latest `main`, so every fix and improvement is live there as soon as its pull request merges, without waiting for a release. The [Changelog](/docs/project/changelog) lists what changed in each item and calls out breaking changes.
+There's no package to upgrade. The registry at `calendarcn.xyz/r` serves the latest `main`, so every fix and improvement is live there as soon as its pull request merges, without waiting for a release. The [Changelog](/docs/project/changelog) lists what changed in each item and calls out breaking changes, and [Versions](#versions) covers the releases and how to stay on one.
 
 To update, run `add` again for the items you installed. Each item updates the items it builds on, so `@calendarcn/calendar` updates all of them.
 
@@ -204,3 +204,33 @@ Then type-check and try your app before you commit the update.
   `useCalendar()`. `add` only writes the registry's files and the color tokens
   in your CSS file, so code in your own files is never overwritten.
 </Callout>
+
+## Versions
+
+A release names a point on `main`: a tag such as `v0.1.0`, with a [GitHub release](https://github.com/vmnog/calendarcn/releases) that holds that version's section of the [Changelog](/docs/project/changelog). The whole registry shares one version, since the items build on each other. Watch the repository's releases on GitHub to hear about a new one.
+
+Versions follow semver over what your code builds on: the exported components, hooks, functions and types, their props and fields, the file paths the items install, and the CSS variables. While CalendarCN is on 0.x, a breaking change raises the minor version (0.1.0 to 0.2.0) and anything else the patch (0.1.0 to 0.1.1). Each breaking change is marked **Breaking** in the Changelog, with what to change.
+
+### Stay on a version
+
+`@calendarcn` follows the latest `main` unless you say otherwise. To stay on a release, point the registry at its tag in your `components.json`:
+
+```json title="components.json"
+{
+  "registries": {
+    "@calendarcn": "https://raw.githubusercontent.com/vmnog/calendarcn/v0.1.0/public/r/{name}.json"
+  }
+}
+```
+
+Every `add` then installs that version, for the item and everything it builds on, since they all resolve through this one address. `--dry-run` shows what it would install:
+
+```npm
+npx shadcn@latest add @calendarcn/calendar --dry-run
+```
+
+GitHub serves these files from the repository at that tag. A version stays as it was released: fixes go into the next one.
+
+### Move to the next version
+
+Read the [Changelog](/docs/project/changelog) from your version up, change the tag in the address, then [update](#updating) as above: preview, overwrite, review. To follow the latest again, put back `https://calendarcn.xyz/r/{name}.json`.
