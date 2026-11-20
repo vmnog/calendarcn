@@ -4,24 +4,15 @@
     "calendar",
     "calendar-app",
     "calendar-core",
-    "time-grid",
-    "day-view",
-    "week-view",
+    "day-week-view",
     "month-view",
     "agenda-view",
     "year-view",
     "event-details",
     "calendar-header",
     "command-menu",
-    "people-picker",
-    "calendar-toaster",
-    "scheduling",
     "calendar-settings",
     "calendar-sidebar",
-    "mini-calendar",
-    "calendar-list",
-    "theme-toggle",
-    "details-sidebar",
-    "sidebar-overlay"
+    "details-sidebar"
   ]
 }

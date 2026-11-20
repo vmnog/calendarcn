@@ -13,7 +13,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-CHANGELOG="$ROOT/content/docs/changelog.mdx"
+CHANGELOG="$ROOT/content/docs/project/changelog.mdx"
 REPO_URL="https://github.com/vmnog/calendarcn"
 SITE_URL="https://calendarcn.xyz"
 

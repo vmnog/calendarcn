@@ -14,7 +14,13 @@ import { expect, test } from "@playwright/test";
 const ROOT = path.join(__dirname, "..");
 
 /** The docs Changelog the script reads */
-const CHANGELOG_PATH = path.join(ROOT, "content", "docs", "changelog.mdx");
+const CHANGELOG_PATH = path.join(
+  ROOT,
+  "content",
+  "docs",
+  "project",
+  "changelog.mdx",
+);
 
 /** MDX the docs render and GitHub doesn't, and links that only work on the site */
 const MDX_LEFT = /<\/?(Kbd|KbdGroup|Contributor)\b|\]\(\/docs\//;

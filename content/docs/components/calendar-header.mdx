@@ -32,7 +32,7 @@ export function Schedule() {
 }
 ```
 
-On its own it shows the title, the view switcher, today, previous and next. The view switcher sets the provider's view, so render the view the provider is on below it, as the preview does: [`TimeGrid`](/docs/components/time-grid) for day and week, [`MonthView`](/docs/components/month-view), [`YearView`](/docs/components/year-view) and [`AgendaView`](/docs/components/agenda-view).
+On its own it shows the title, the view switcher, today, previous and next. The view switcher sets the provider's view, so render the view the provider is on below it, as the preview does: [`TimeGrid`](/docs/components/day-week-view#time-grid) for day and week, [`MonthView`](/docs/components/month-view), [`YearView`](/docs/components/year-view) and [`AgendaView`](/docs/components/agenda-view).
 
 ### Panels
 
@@ -61,7 +61,7 @@ const [contextPanelOpen, setContextPanelOpen] = React.useState(false);
 
 ### Keyboard shortcuts
 
-The tooltips advertise <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> for the sidebar and <Kbd>/</Kbd> for the context panel. Turn those keys on, with the calendar's own, by passing the same toggles to [`useCalendarShortcuts()`](/docs/keyboard-shortcuts#app-shortcuts) inside the provider:
+The tooltips advertise <KbdGroup><Kbd>⌘</Kbd><Kbd>/</Kbd></KbdGroup> for the sidebar and <Kbd>/</Kbd> for the context panel. Turn those keys on, with the calendar's own, by passing the same toggles to [`useCalendarShortcuts()`](/docs/reference/keyboard-shortcuts#app-shortcuts) inside the provider:
 
 ```tsx
 import { useCalendarShortcuts } from "@/hooks/use-calendar-shortcuts";

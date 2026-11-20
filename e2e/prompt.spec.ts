@@ -9,13 +9,13 @@ import type { Locator, Page } from "@playwright/test";
  */
 
 /** A component page. Its first example is `week-view-demo` */
-const WEEK_VIEW_PATH = "/docs/components/week-view";
+const WEEK_VIEW_PATH = "/docs/components/day-week-view";
 
 /** A component page with several examples */
 const CALENDAR_CORE_PATH = "/docs/components/calendar-core";
 
 /** A guide, whose example belongs to the `ics` item */
-const IMPORT_EXPORT_PATH = "/docs/import-export";
+const IMPORT_EXPORT_PATH = "/docs/guides/import-export";
 
 /** The "Use with AI" page */
 const AI_PATH = "/docs/ai";
@@ -90,7 +90,7 @@ test("the prompt leads with the install command and holds the example's code and
   expect(prompt).toContain("## Rules");
   expect(prompt).toContain("Give its parent a height.");
   expect(prompt).toContain(
-    "https://calendarcn.xyz/docs/components/week-view.md",
+    "https://calendarcn.xyz/docs/components/day-week-view.md",
   );
 });
 
@@ -157,8 +157,10 @@ test("a guide's prompt installs the guide's item and links the guide", async ({
   const prompt = await readCode(await openTab(page, "Prompt"));
 
   expect(prompt).toContain("npx shadcn@latest add @calendarcn/ics");
-  expect(prompt).toContain('from the "Import and Export" page of the docs');
-  expect(prompt).toContain("https://calendarcn.xyz/docs/import-export.md");
+  expect(prompt).toContain('from the "Import and export" page of the docs');
+  expect(prompt).toContain(
+    "https://calendarcn.xyz/docs/guides/import-export.md",
+  );
 });
 
 test("Use with AI lists the MCP command for each client, the skill and the update prompt", async ({

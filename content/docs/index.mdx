@@ -27,8 +27,8 @@ CalendarCN is an open-source calendar for React. It brings the feel of Notion Ca
 - **Direct manipulation**: drag events to move them, drag their edges to resize, double-click or drag on empty space to create one.
 - **Real calendar data**: overlapping events side by side, multi-day and all-day events, a current-time indicator.
 - **Event details**: a side panel or popover with inline editing.
-- **Import and export**: read and write .ics files from Google Calendar, Apple Calendar and Outlook. See [Import and Export](/docs/import-export).
-- **Keyboard first**: shortcuts for every view, and the live demo's [command menu](/docs/components/command-menu). See [Keyboard shortcuts](/docs/keyboard-shortcuts).
+- **Import and export**: read and write .ics files from Google Calendar, Apple Calendar and Outlook. See [Import and Export](/docs/guides/import-export).
+- **Keyboard first**: shortcuts for every view, and the live demo's [command menu](/docs/components/command-menu). See [Keyboard shortcuts](/docs/reference/keyboard-shortcuts).
 - **Theming**: light and dark mode with the shadcn/ui CSS variables.
 
 ## How do I install it? [#install]
@@ -57,13 +57,13 @@ Or add only the pieces you need. Each one pulls in the ones it builds on.
   <Card title="Calendar Core" href="/docs/components/calendar-core">
     `CalendarProvider` and `useCalendar()`, the state every view shares.
   </Card>
-  <Card title="Time Grid" href="/docs/components/time-grid">
+  <Card title="Time Grid" href="/docs/components/day-week-view#time-grid">
     The scrollable hour grid behind the day and week views.
   </Card>
-  <Card title="Day View" href="/docs/components/day-view">
+  <Card title="Day View" href="/docs/components/day-week-view#day-view">
     A single day on the time grid.
   </Card>
-  <Card title="Week View" href="/docs/components/week-view">
+  <Card title="Week View" href="/docs/components/day-week-view">
     A week, or any number of days, on the time grid.
   </Card>
   <Card title="Month View" href="/docs/components/month-view">
@@ -101,11 +101,11 @@ Already keep them in Google Calendar, Apple Calendar or Outlook? `parseIcs()` tu
     Who owns the events, and `onEventCreate`, `onEventUpdate` and
     `onEventSelect` for saving one change at a time.
   </Card>
-  <Card title="Loading Events" href="/docs/loading-events">
+  <Card title="Loading Events" href="/docs/guides/loading-events">
     Fetch events for the dates on screen as people navigate, with a loading bar
     while they arrive.
   </Card>
-  <Card title="Import and Export" href="/docs/import-export">
+  <Card title="Import and Export" href="/docs/guides/import-export">
     Read and write .ics files, plus a recipe that syncs with Google Calendar.
   </Card>
   <Card
@@ -146,7 +146,7 @@ The CLI copies the source into your project, so you can change the toolbar or th
   </Card>
 </Cards>
 
-The single-key shortcuts can be turned off with `shortcuts={false}` or changed: see [Keyboard shortcuts](/docs/keyboard-shortcuts#use-them-in-your-own-calendar).
+The single-key shortcuts can be turned off with `shortcuts={false}` or changed: see [Keyboard shortcuts](/docs/reference/keyboard-shortcuts#use-them-in-your-own-calendar).
 
 ## How do I get updates? [#updates]
 
@@ -156,7 +156,7 @@ There's no package to upgrade. Fixes and improvements are live in the registry a
   <Card title="Updating" href="/docs/installation#updating">
     Preview an update, apply it, and put your own edits back.
   </Card>
-  <Card title="Changelog" href="/docs/changelog">
+  <Card title="Changelog" href="/docs/project/changelog">
     What changed in each item, newest first, with breaking changes called out.
   </Card>
   <Card title="Versions" href="/docs/installation#versions">
@@ -169,7 +169,7 @@ There's no package to upgrade. Fixes and improvements are live in the registry a
 CalendarCN is built in the open, and plans change as people use it. Creating events as drafts, selecting several events and scheduling shipped most recently, all the way Notion Calendar does them. Up next are colors that follow your app's theme, with Notion Calendar's look as a theme you opt into, and a way to restyle any part without editing its file. Later plans include a resource view and virtualized rendering for thousands of events.
 
 <Cards>
-  <Card title="Roadmap" href="/docs/roadmap">
+  <Card title="Roadmap" href="/docs/project/roadmap">
     Everything that's planned, roughly in priority order, and what shipped
     recently.
   </Card>

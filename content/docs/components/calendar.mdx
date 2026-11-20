@@ -7,7 +7,7 @@ description: The full calendar, with a toolbar, a view switcher, and day, week, 
 
 <ComponentPreview name="calendar-demo" height={680} />
 
-`Calendar` puts the pieces together: a [`CalendarProvider`](/docs/components/calendar-core) for the state, a toolbar with the title, view switcher, today and previous/next, and the [Time Grid](/docs/components/time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) or [Agenda View](/docs/components/agenda-view) below it. It takes every `CalendarProvider` prop, and the CLI copies its source into your project, so change the toolbar or the layout right in `components/calendar.tsx`.
+`Calendar` puts the pieces together: a [`CalendarProvider`](/docs/components/calendar-core) for the state, a toolbar with the title, view switcher, today and previous/next, and the [Time Grid](/docs/components/day-week-view#time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) or [Agenda View](/docs/components/agenda-view) below it. It takes every `CalendarProvider` prop, and the CLI copies its source into your project, so change the toolbar or the layout right in `components/calendar.tsx`.
 
 ## Installation
 
@@ -36,7 +36,7 @@ const [events, setEvents] = React.useState(initialEvents);
 <Calendar events={events} onEventsChange={setEvents} defaultView="month" />;
 ```
 
-The view switcher offers day, week, month, year and agenda, 2 to 9 days at a time, and the weekend, declined events and week number settings. The examples use `createSampleEvents()` from [Sample Data](/docs/sample-data) for their data; pass your own events instead.
+The view switcher offers day, week, month, year and agenda, 2 to 9 days at a time, and the weekend, declined events and week number settings. The examples use `createSampleEvents()` from [Sample Data](/docs/reference/sample-data) for their data; pass your own events instead.
 
 ## Examples
 
@@ -172,7 +172,7 @@ Every event is a button you can reach with <Kbd>Tab</Kbd>. The views only handle
 - Each event is labelled with its title and time and reports its selection with `aria-pressed`. Day columns, month cells and agenda days are labelled groups with the full date. Year view's months are grids named by month and year, and each day is a button named by its date and its number of events. Decorative parts (time axis, grid lines, drag previews) are hidden from assistive tech, and off-screen scroll buffers are `inert`.
 - With reduced motion turned on, scrolling snaps without the slide animation.
 
-`Calendar` also turns on the single-key [keyboard shortcuts](/docs/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>Y</Kbd>, <Kbd>A</Kbd>…). They listen on the whole page, so pass `shortcuts={false}` when several calendars share a page or the keys clash with your app's.
+`Calendar` also turns on the single-key [keyboard shortcuts](/docs/reference/keyboard-shortcuts) (<Kbd>T</Kbd>, <Kbd>J</Kbd>/<Kbd>K</Kbd>, <Kbd>D</Kbd>, <Kbd>W</Kbd>, <Kbd>M</Kbd>, <Kbd>Y</Kbd>, <Kbd>A</Kbd>…). They listen on the whole page, so pass `shortcuts={false}` when several calendars share a page or the keys clash with your app's.
 
 ## In a dialog
 
