@@ -12,7 +12,8 @@ import { createSampleEvents } from "@/lib/sample-events";
 export function CalendarSettingsDemo() {
   // The provider reads its initial events once, so create them once
   const [initialEvents] = React.useState(() => createSampleEvents(new Date()));
-  const [open, setOpen] = React.useState(false);
+  // Starts open so the docs show the dialog: start it closed in your app
+  const [open, setOpen] = React.useState(true);
   const [hourCycle, setHourCycle] = React.useState<HourCycle>(12);
 
   return (

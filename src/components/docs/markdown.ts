@@ -342,6 +342,8 @@ function getMarkdownComponents(page: DocsPage): Record<string, ElementType> {
     Kbd,
     KbdGroup,
     LiveDemoPreview,
+    // A calendar that plays one move: nothing to read
+    PlayableHero: Nothing,
     PropsTable,
     Step: ChildrenOnly,
     Steps: ChildrenOnly,

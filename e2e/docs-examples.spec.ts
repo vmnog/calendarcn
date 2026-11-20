@@ -133,9 +133,13 @@ for (const { name: pageName, examples } of PAGES) {
       const iframe = frame.locator("iframe");
 
       if ((await iframe.count()) > 0) {
-        // A full-page block, on a page of its own: its header names the month
+        // An example on a page of its own, in the frame
         await expect(
-          frame.frameLocator("iframe").getByRole("heading", { level: 1 }),
+          frame
+            .frameLocator("iframe")
+            .locator(RENDERED_PART)
+            .filter({ visible: true })
+            .first(),
         ).toBeVisible();
       } else {
         await expect(frame.locator(RENDERED_PART).first()).toBeVisible();
@@ -385,6 +389,89 @@ test("your app's command runs from the command menu", async ({ page }) => {
   await expect(
     frame.getByText("Your last command: Go to settings"),
   ).toBeVisible();
+});
+
+test("the command menu example starts open, and leaves the page its focus", async ({
+  page,
+}) => {
+  await openPage(page, "command-menu");
+  const frame = (await showExample(page, "command-menu-demo")).frameLocator(
+    "iframe",
+  );
+  const field = frame.getByPlaceholder("Type a command...");
+
+  await expect(field).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.tagName))
+    .toBe("BODY");
+
+  // Escape in it closes it, and its button opens it again
+  await field.click();
+  await page.keyboard.press("Escape");
+  await expect(field).toHaveCount(0);
+  await frame.getByRole("button", { name: "Open command menu" }).click();
+  await expect(field).toBeVisible();
+});
+
+test("the settings example starts open, and closes and opens again", async ({
+  page,
+}) => {
+  await openPage(page, "calendar-settings");
+  const frame = (
+    await showExample(page, "calendar-settings-demo")
+  ).frameLocator("iframe");
+  const dialog = frame.getByRole("dialog", { name: "Settings" });
+
+  await expect(dialog).toBeVisible();
+  await dialog.click({ position: { x: 8, y: 8 } });
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await frame.getByRole("button", { name: "Open settings" }).click();
+  await expect(dialog).toBeVisible();
+});
+
+test("the toaster example says how to bring up a toast", async ({ page }) => {
+  await openPage(page, "undo-and-notices");
+  const frame = await showExample(page, "calendar-toaster-demo");
+
+  await expect(frame).toContainText("Right-click an event → Delete");
+});
+
+test("the Calendar App frame shows a poster until the demo loads", async ({
+  page,
+}) => {
+  await openPage(page, "calendar-app");
+  const frame = page.locator("[data-live-demo]");
+
+  await expect(frame.locator("img").first()).toHaveAttribute(
+    "src",
+    "/docs/calendar-app-poster.webp",
+  );
+  // Then the demo fades in over it
+  await expect(frame).toHaveAttribute("data-loaded", "true", {
+    timeout: 20_000,
+  });
+  await expect(frame.locator("iframe")).toHaveCSS("opacity", "1");
+});
+
+test("wide previews leave the text column on desktop and fit a phone", async ({
+  page,
+}) => {
+  for (const name of ["calendar", "day-week-view", "month-view"]) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openPage(page, name);
+    const widths = await page.evaluate(() => ({
+      wide: document.querySelector(".docs-wide")!.getBoundingClientRect().width,
+      text: document.querySelector("#nd-page .prose")!.getBoundingClientRect()
+        .width,
+    }));
+    expect(widths.wide).toBeGreaterThan(widths.text);
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+      .toBe(375);
+  }
 });
 
 test("a notice of your own shows in the toaster, with Undo", async ({
