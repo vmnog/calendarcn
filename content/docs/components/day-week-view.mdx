@@ -1,0 +1,291 @@
+---
+title: Day & Week View
+description: One day, a week or any number of days on the time grid.
+---
+
+<ComponentPreview name="week-view-demo" />
+
+Day View and Week View are the same time grid with a different number of days: an all-day row on top, an hour grid below. They read the date, events and selection from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so they have almost no props of their own.
+
+## Installation
+
+<Tabs items={["Week View", "Day View"]}>
+  <Tab value="Week View">
+    <InstallTabs item="week-view" />
+  </Tab>
+  <Tab value="Day View">
+    <InstallTabs item="day-view" />
+  </Tab>
+</Tabs>
+
+## Usage
+
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import { WeekView } from "@/components/week-view";
+
+export function Schedule() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      {/* Week View fills its parent's height */}
+      <div className="h-[600px]">
+        <WeekView scrollToHour={8} />
+      </div>
+    </CalendarProvider>
+  );
+}
+```
+
+## Features
+
+- Drag an event to move it, including to another day. The grid scrolls when you reach its edge.
+- Drag the top or bottom edge of an event to resize it.
+- Double-click an empty slot to create an event, or press and drag to draw one, then type its title. Do the same in the all-day row for an all-day event. See [Creating events](/docs/components/calendar-core#creating-events).
+- Click an event to open its details in a popover. Right-click it to change its color or calendar.
+- Overlapping events sit side by side. All-day and multi-day events sit in the all-day row.
+- Scroll sideways to move through days. Scrolling snaps to the nearest day.
+- Touch: long-press an event to drag it, or empty space to create one.
+- Move and resize from the keyboard. See [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility).
+
+## Day View
+
+<ComponentPreview name="day-view-demo" />
+
+Day View shows a single day on the [Time Grid](#time-grid), with the same drag, resize and create interactions as the week view. Rendered on its own, it sets the provider's view to `"day"`, so prev/next, <Kbd>T</Kbd> and the header step by one day.
+
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import { DayView } from "@/components/day-view";
+
+export function Today() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <div className="h-[600px]">
+        <DayView scrollToHour={8} />
+      </div>
+    </CalendarProvider>
+  );
+}
+```
+
+## Week View
+
+Week View shows several days side by side on the [Time Grid](#time-grid). Show fewer days with the provider's `numberOfDays` (or `defaultNumberOfDays`), as [Three days](#three-days) does. Below 7, the columns start on the current day and previous/next move by that many days.
+
+## Time Grid
+
+<ComponentPreview name="time-grid-demo" />
+
+The time grid lays out days as columns and hours as rows. Day View and Week View are both built on it, and you can use it directly for a custom layout.
+
+<InstallTabs item="time-grid" />
+
+- A time axis, a column per day and a current-time indicator.
+- An all-day row for all-day and multi-day events.
+- Overlapping events placed side by side.
+- Drag an event to move it, including to another day. The grid scrolls when you reach its edge.
+- Drag the top or bottom edge of an event to resize it.
+- Double-click an empty slot to create an event, or press and drag to draw one, as in Notion Calendar. The all-day row does the same for all-day events. See [Creating events](/docs/components/calendar-core#creating-events).
+- Visible hours, snap step and clock come from [`CalendarProvider`](/docs/components/calendar-core#calendarprovider): `dayStartHour`, `dayEndHour`, `snapMinutes` and `hourCycle`.
+- Additional time zones' hours beside the time axis, from the provider's [`secondaryTimeZones`](/docs/components/calendar-core#additional-time-zones). Each zone's label opens Notion Calendar's menu for it (change, make primary or secondary, remove), and the "+" left of "All-day" adds one.
+- The calendar's own zone, [`timeZone`](/docs/components/calendar-core#time-zone), labels the time axis, and a zone travelled to is filled in the primary color with an x that travels back home.
+- The provider's [view settings](/docs/components/calendar-core#view-settings): with weekends hidden the columns are weekdays only, so scrolling, previous and next, and a drag from Friday to the next column all step over the weekend to Monday. Declined events are struck through on a dashed outline, or hidden.
+- Other people's events behind yours, hatched in their color, and the free time you share highlighted, while you meet with them or show their calendar: see [Meeting with people](/docs/components/calendar-core#meeting-with-people).
+- Hours that fill the screen by default, or the provider's [`hourHeight`](/docs/components/calendar-core#hour-size), which zooming steps through while the middle of the screen stays put.
+
+```tsx
+import { CalendarProvider } from "@/components/calendar-provider";
+import { TimeGrid } from "@/components/time-grid";
+
+export function ThreeDays() {
+  return (
+    <CalendarProvider defaultEvents={events}>
+      <div className="h-[600px]">
+        <TimeGrid view="week" numberOfDays={3} />
+      </div>
+    </CalendarProvider>
+  );
+}
+```
+
+## Examples
+
+### Three days
+
+`defaultNumberOfDays={3}` on the provider shows three columns that start on today.
+
+<ComponentPreview name="week-view-three-days-demo" height={600} />
+
+### Your own toolbar
+
+Week View has no header of its own. Read the month and move between weeks with [`useCalendar()`](/docs/components/calendar-core#usecalendar) from any component inside the provider.
+
+<ComponentPreview name="week-view-toolbar-demo" height={600} />
+
+### Weekdays only
+
+Hide the weekend with the provider's [view settings](/docs/components/calendar-core#view-settings), and start the week on Monday with `defaultWeekStartsOn`.
+
+<ComponentPreview name="week-view-weekdays-demo" height={600} />
+
+### Details in a side panel
+
+`showEventPopover={false}` turns off the popover, and `useCalendar().selectedEvent` is the event to show in a panel of your own. For the built-in details there, see [Event Details](/docs/components/event-details#the-panel-beside-a-view).
+
+<ComponentPreview name="week-view-side-panel-demo" height={600} />
+
+### A week strip
+
+Pick the day for Day View from a strip of your own: `currentDate` is the day on screen and `goToDate()` shows another.
+
+<ComponentPreview name="day-view-week-strip-demo" height={600} />
+
+### 5-minute steps
+
+`snapMinutes` sets the step that drag, resize and new events snap to, and `defaultEventDuration` the length of a double-clicked event.
+
+<ComponentPreview name="day-view-snap-demo" height={600} />
+
+### All-day events
+
+All-day events sit in a row above the hours, and one that spans several days runs past the edges of the day.
+
+<ComponentPreview name="day-view-all-day-demo" height={600} />
+
+### Day and week in one grid
+
+Use one `TimeGrid` under a header of your own and switch its `view`: the grid lays out again instead of remounting, so it keeps its scroll position.
+
+<ComponentPreview name="time-grid-day-week-demo" height={600} />
+
+### Working hours only
+
+`dayStartHour` and `dayEndHour` on the provider set the hours the grid shows.
+
+<ComponentPreview name="time-grid-visible-hours-demo" height={600} />
+
+### Zoom the hours
+
+The [hour size](/docs/components/calendar-core#hour-size) lives in the provider: `zoomHoursIn()`, `zoomHoursOut()` and `resetHourHeight()` change it from your own buttons.
+
+<ComponentPreview name="time-grid-zoom-demo" height={600} />
+
+## API Reference
+
+### WeekView
+
+Everything else (date, events, number of days, hours, clock, locale) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+
+<PropsTable
+  rows={[
+    {
+      name: "numberOfDays",
+      type: "number",
+      description:
+        "Number of day columns. Defaults to the provider's `numberOfDays`. When set, it fixes the column count, and prev/next step by it below 7 while the provider's `numberOfDays` is uncontrolled.",
+    },
+    {
+      name: "showEventPopover",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the selected event opens a details popover beside it. Turn it off when the details are shown elsewhere, such as a side panel.",
+    },
+    {
+      name: "onEventPopoverExpand",
+      type: "() => void",
+      description:
+        "Called by the popover's expand button, e.g. to move the details into a side panel. The button is hidden when this is not set.",
+    },
+    {
+      name: "scrollToHour",
+      type: "number",
+      description:
+        "Hour the grid scrolls to when it mounts, e.g. `8` for 8 AM or `8.5` for 8:30. Applied once and clamped to the provider's `dayStartHour`..`dayEndHour`. Unset starts at the top.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the root element.",
+    },
+  ]}
+/>
+
+### DayView
+
+Everything else (date, events, hours, clock, locale) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+
+<PropsTable
+  rows={[
+    {
+      name: "showEventPopover",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the selected event opens a details popover beside it. Turn it off when the details are shown elsewhere, such as a side panel.",
+    },
+    {
+      name: "onEventPopoverExpand",
+      type: "() => void",
+      description:
+        "Called by the popover's expand button, e.g. to move the details into a side panel. The button is hidden when this is not set.",
+    },
+    {
+      name: "scrollToHour",
+      type: "number",
+      description:
+        "Hour the grid scrolls to when it mounts, e.g. `8` for 8 AM or `8.5` for 8:30. Applied once and clamped to the provider's `dayStartHour`..`dayEndHour`. Unset starts at the top.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the root element.",
+    },
+  ]}
+/>
+
+### TimeGrid
+
+Use it directly when you switch between day and week yourself and want to keep the scroll position, as the [demo](/) does. Everything else is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+
+<PropsTable
+  rows={[
+    {
+      name: "view",
+      type: '"day" | "week"',
+      required: true,
+      description:
+        '"day" shows one column, "week" shows `numberOfDays` columns. While the provider\'s `view` is uncontrolled, the provider adopts it, so navigation and header info follow it.',
+    },
+    {
+      name: "numberOfDays",
+      type: "number",
+      description:
+        "Number of day columns. Defaults to the provider's `numberOfDays`. When set, it fixes the column count, and prev/next step by it below 7 while the provider's `numberOfDays` is uncontrolled.",
+    },
+    {
+      name: "showEventPopover",
+      type: "boolean",
+      default: "true",
+      description:
+        "Whether the selected event opens a details popover beside it. Turn it off when the details are shown elsewhere, such as a side panel.",
+    },
+    {
+      name: "onEventPopoverExpand",
+      type: "() => void",
+      description:
+        "Called by the popover's expand button, e.g. to move the details into a side panel. The button is hidden when this is not set.",
+    },
+    {
+      name: "scrollToHour",
+      type: "number",
+      description:
+        "Hour the grid scrolls to when it mounts, e.g. `8` for 8 AM or `8.5` for 8:30. Applied once and clamped to the provider's `dayStartHour`..`dayEndHour`. Unset starts at the top.",
+    },
+    {
+      name: "className",
+      type: "string",
+      description: "Classes for the root element.",
+    },
+  ]}
+/>

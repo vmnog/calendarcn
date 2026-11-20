@@ -57,7 +57,7 @@ parseDateQuery("next friday", { today: new Date(), locale, weekStartsOn });
 // → the Friday of next week, at midnight, or null when the text isn't a date
 ```
 
-To open the menu straight on Go to date, as the <Kbd>.</Kbd> key does in the demo, pass `defaultPage="go-to-date"` before opening it, as [Open on Go to date](#open-on-go-to-date) does from a button. For the key, pass `onGoToDate` to [`useCalendarShortcuts()`](/docs/keyboard-shortcuts#app-shortcuts).
+To open the menu straight on Go to date, as the <Kbd>.</Kbd> key does in the demo, pass `defaultPage="go-to-date"` before opening it, as [Open on Go to date](#open-on-go-to-date) does from a button. For the key, pass `onGoToDate` to [`useCalendarShortcuts()`](/docs/reference/keyboard-shortcuts#app-shortcuts).
 
 ### Create event
 
@@ -93,13 +93,13 @@ Pass a callback to add its command. These are the demo's:
 />
 ```
 
-- `onImportIcs` and `onExportIcs` add "Import .ics file..." and "Export .ics file". Read and write the files with [`@calendarcn/ics`](/docs/import-export): the demo opens a hidden `<input type="file">`, passes its text to `parseIcs()` and adds the events, and downloads `toIcs(events)` as a file.
+- `onImportIcs` and `onExportIcs` add "Import .ics file..." and "Export .ics file". Read and write the files with [`@calendarcn/ics`](/docs/guides/import-export): the demo opens a hidden `<input type="file">`, passes its text to `parseIcs()` and adds the events, and downloads `toIcs(events)` as a file.
 - `onCycleTheme` adds "Set theme...". The demo goes from system to light to dark with `useTheme()` from next-themes.
 - `onSearchEvents` adds "Search events", and once you type, "Search events for “…”" with your text. The demo opens the [Details Sidebar](/docs/components/details-sidebar)'s event search with the field focused.
 - `onShowShortcuts` adds "Show keyboard shortcuts" (<Kbd>?</Kbd>). The demo shows the details sidebar's full list.
-- `onMeetWith` and `onShowTeammateCalendar` add "Meet with..." (F) and "Show teammate calendar..." (P). The demo opens the [People Picker](/docs/components/people-picker) from both.
+- `onMeetWith` and `onShowTeammateCalendar` add "Meet with..." (F) and "Show teammate calendar..." (P). The demo opens the [People Picker](/docs/guides/meet-with-people) from both.
 - `onToggleSidebar` and `onToggleContextPanel` add the panel toggles, next to the [Calendar Header](/docs/components/calendar-header)'s buttons.
-- `onShareAvailability` adds "Share availability..." (<Kbd>S</Kbd>), and `onCreateSchedulingLink` adds "Create recurring scheduling link..." and "Create one-off scheduling link...", called with `"recurring"` or `"one-off"`. Calendar App passes them from [`useScheduling()`](/docs/components/scheduling#usescheduling); the link commands only when the app creates scheduling links.
+- `onShareAvailability` adds "Share availability..." (<Kbd>S</Kbd>), and `onCreateSchedulingLink` adds "Create recurring scheduling link..." and "Create one-off scheduling link...", called with `"recurring"` or `"one-off"`. Calendar App passes them from [`useScheduling()`](/docs/guides/share-your-availability#usescheduling); the link commands only when the app creates scheduling links.
 - `onOpenSettings` adds "Go to settings" (<KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup>). The demo opens the [Calendar Settings](/docs/components/calendar-settings) dialog.
 - `onAddCalendarAccount` and `onManageCalendarAccounts` add "Add calendar account" and "Manage calendar accounts". The demo adds an .ics file as a calendar, and opens the settings on the calendars.
 - `onSupport` adds "Support & feedback" and `onAbout` adds "About CalendarCN". The demo opens a new GitHub issue in a new tab, and the docs.
@@ -113,11 +113,11 @@ The "Time zones" commands come from `useCalendar()`, like going to today and the
 - "Show additional time zones..." adds a zone's column beside the time axis.
 - With more than one zone, "Make time zone primary..." and "Hide time zone..." pick one of the zones shown.
 
-Each opens a list of zones in the menu's place, searched by city, zone name or offset ("Tokyo", "Japan", "+9"). <Kbd>⌫</Kbd> in an empty search goes back to the commands. Pass `timeZoneCommand="travel"` to open the menu on its list: the demo does that for <Kbd>Z</Kbd>, with [`useCalendarShortcuts({ onTravelToTimeZone })`](/docs/keyboard-shortcuts#app-shortcuts).
+Each opens a list of zones in the menu's place, searched by city, zone name or offset ("Tokyo", "Japan", "+9"). <Kbd>⌫</Kbd> in an empty search goes back to the commands. Pass `timeZoneCommand="travel"` to open the menu on its list: the demo does that for <Kbd>Z</Kbd>, with [`useCalendarShortcuts({ onTravelToTimeZone })`](/docs/reference/keyboard-shortcuts#app-shortcuts).
 
 ### Keyboard shortcuts
 
-The menu shows each command's shortcut. Pass the same callbacks to [`useCalendarShortcuts()`](/docs/keyboard-shortcuts#app-shortcuts) to turn the keys on:
+The menu shows each command's shortcut. Pass the same callbacks to [`useCalendarShortcuts()`](/docs/reference/keyboard-shortcuts#app-shortcuts) to turn the keys on:
 
 ```tsx
 useCalendarShortcuts({

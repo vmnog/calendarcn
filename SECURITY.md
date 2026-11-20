@@ -9,7 +9,7 @@ CalendarCN isn't an npm package. Its source is copied into your project from the
 | The latest: the registry and the newest release    | Yes                 |
 | Older releases, and projects pinned to one of them | No                  |
 
-To get a fix, update the items you installed: see [Updating](https://calendarcn.xyz/docs/installation#updating). The [Changelog](https://calendarcn.xyz/docs/changelog) names the items each fix changed.
+To get a fix, update the items you installed: see [Updating](https://calendarcn.xyz/docs/installation#updating). The [Changelog](https://calendarcn.xyz/docs/project/changelog) names the items each fix changed.
 
 ## Reporting a vulnerability
 
