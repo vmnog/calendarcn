@@ -37,6 +37,16 @@ function stored(page: Page, title: string): Locator {
     .filter({ hasText: title });
 }
 
+/**
+ * Where a drag of the standup starts: near its right side. The standup sits
+ * in the first column, and its center is within the drag's 40px edge zone
+ * (`EDGE_ZONE_PX` in use-event-drag.ts), where a slow drag goes back a week
+ */
+async function offEdge(locator: Locator): Promise<{ offsetX: number }> {
+  const box = await boxOf(locator);
+  return { offsetX: box.width - 8 };
+}
+
 /** Vertical center of a box */
 function centerY(box: { y: number; height: number }): number {
   return box.y + box.height / 2;
@@ -121,7 +131,11 @@ test("a dragged event moves the instant the app stores", async ({ page }) => {
   );
 
   await standup.scrollIntoViewIfNeeded();
-  await dragBy(page, standup, { dx: 0, dy: await hourHeight(page) });
+  await dragBy(page, standup, {
+    dx: 0,
+    dy: await hourHeight(page),
+    ...(await offEdge(standup)),
+  });
 
   await expect(standup).toHaveAccessibleName(
     "Team standup, 11:00 AM to 11:30 AM, Sunday, June 7",
@@ -147,7 +161,11 @@ test("dragging one of several selected events moves them all by the calendar's c
   // Three hours later in Tokyo is past midnight in New York: the timed
   // events move three hours, and the all-day offsite keeps its day
   await standup.scrollIntoViewIfNeeded();
-  await dragBy(page, standup, { dx: 0, dy: 3 * (await hourHeight(page)) });
+  await dragBy(page, standup, {
+    dx: 0,
+    dy: 3 * (await hourHeight(page)),
+    ...(await offEdge(standup)),
+  });
 
   await expect(standup).toHaveAccessibleName(
     "Team standup, 1:00 PM to 1:30 PM, Sunday, June 7",

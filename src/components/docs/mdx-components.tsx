@@ -14,6 +14,7 @@ import { DocsContributor } from "@/components/docs/docs-contributor";
 import { DocsMap, DocsMapCta } from "@/components/docs/docs-map";
 import { InstallTabs } from "@/components/docs/install-tabs";
 import { LiveDemoPreview } from "@/components/docs/live-demo-preview";
+import { PlayableHero } from "@/components/docs/playable-hero";
 import { PropsTable } from "@/components/docs/props-table";
 import { EventColorTokens, ThemeTokens } from "@/components/docs/theme-tokens";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
@@ -74,6 +75,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     DocsMapCta,
     InstallTabs,
     LiveDemoPreview,
+    PlayableHero,
     PropsTable,
     ThemeTokens,
     EventColorTokens,

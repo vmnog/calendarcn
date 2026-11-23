@@ -202,18 +202,32 @@ export function isExampleName(name: string): name is ExampleName {
 const EXAMPLE_FRAMES_PATH = "/examples";
 
 /**
- * Examples `ComponentPreview` shows in an iframe, at `/examples/<name>`: the
- * ones that render a full-page block. Calendar App lays out for the
+ * Examples `ComponentPreview` shows in an iframe, at `/examples/<name>`, with
+ * the line its frame's bar says about it. Calendar App lays out for the
  * viewport's width, which only a frame of its own gives it inside a docs
- * page.
+ * page. The command menu and settings examples start with their dialog
+ * open: a dialog covers its whole page, so the frame keeps it to the preview.
  */
-export const FRAMED_EXAMPLES: ExampleName[] = [
-  "calendar-app-data-demo",
-  "calendar-app-settings-demo",
-];
+const FRAME_CAPTIONS = {
+  "calendar-app-data-demo":
+    "A full-page block, in a frame as wide as this one.",
+  "calendar-app-settings-demo":
+    "A full-page block, in a frame as wide as this one.",
+  "command-menu-demo": "Starts open. Click outside it to close it.",
+  "calendar-settings-demo": "Starts open. Click outside it to close it.",
+} satisfies Partial<Record<ExampleName, string>>;
 
-export function isFramedExample(name: ExampleName): boolean {
-  return FRAMED_EXAMPLES.includes(name);
+export type FramedExampleName = keyof typeof FRAME_CAPTIONS;
+
+export const FRAMED_EXAMPLES = Object.keys(FRAME_CAPTIONS) as ExampleName[];
+
+export function isFramedExample(name: ExampleName): name is FramedExampleName {
+  return name in FRAME_CAPTIONS;
+}
+
+/** What a framed example's bar says about it */
+export function getExampleFrameCaption(name: FramedExampleName): string {
+  return FRAME_CAPTIONS[name];
 }
 
 /** Path of the page that renders a framed example alone, e.g. `/examples/calendar-app-data-demo` */

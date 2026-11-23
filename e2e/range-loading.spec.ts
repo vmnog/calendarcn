@@ -11,6 +11,12 @@ import { FROZEN_NOW, boxOf } from "./helpers";
  */
 const DOCS_PATH = "/docs/guides/loading-events";
 
+/**
+ * How far past FROZEN_NOW the mount test pauses the page's clock: pausing
+ * must jump ahead, and a minute keeps the same day
+ */
+const PAUSE_AHEAD_MS = 60_000;
+
 /** The live example inside the docs page */
 function demo(page: Page): Locator {
   return page.locator('[data-example="range-loading-demo"]');
@@ -55,6 +61,12 @@ test.beforeEach(async ({ page }) => {
 test("reports the week once on mount and shows the bar until it loads", async ({
   page,
 }) => {
+  // The pretend server answers 800ms after mount, too soon to check the log
+  // and the bar on a busy runner: load again with the page's timers paused,
+  // so the load waits for the test
+  await page.clock.install({ time: FROZEN_NOW });
+  await page.clock.pauseAt(new Date(FROZEN_NOW.getTime() + PAUSE_AHEAD_MS));
+  await page.reload();
   await expectLatestRange(page, {
     start: "2026-05-31",
     end: "2026-06-07",
@@ -62,6 +74,7 @@ test("reports the week once on mount and shows the bar until it loads", async ({
   });
   await expect(loadingBar(page)).toBeVisible();
 
+  await page.clock.resume();
   await waitForLoaded(page);
   await expect(
     demo(page)

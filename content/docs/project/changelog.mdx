@@ -3,7 +3,7 @@ title: Changelog
 description: What changed in each registry item, newest first, with breaking changes called out.
 ---
 
-Every pull request merged to `main` goes live in the registry right away, so this page lists changes by the day they merged. Find the day you last ran `add`, read up from there, then [update](/docs/installation#updating). Each entry names the items whose files changed. Changes to the docs, the demo and the tests are left out.
+Every pull request merged to `main` goes live in the registry right away, so this page lists changes by the day they merged, grouped under the [version](/docs/installation#versions) that holds them. Changes merged since the last version sit under "Unreleased" at the top. Find the day you last ran `add`, or the version you [stay on](/docs/installation#stay-on-a-version), read up from there, then [update](/docs/installation#updating). Each entry names the items whose files changed. Changes to the docs, the demo and the tests are left out.
 
 Entries marked **Breaking** can stop your code from compiling or change what it does after you update. Each one says what to change.
 
@@ -11,7 +11,7 @@ Entries marked **Breaking** can stop your code from compiling or change what it 
 
 Live in the registry, but not in a tagged release yet.
 
-### November 17, 2026
+### November 23, 2026
 
 - **Improved** `calendar-core`, `event-details`, `time-grid`, `month-view`, `agenda-view`, `calendar-toaster`, `calendar-settings`, `calendar-list`, `sidebar-overlay`, `calendar-sidebar`, `details-sidebar`: every color is a CSS variable, so the calendar wears your shadcn/ui theme. The event details, the menus, the toasts, the dialogs and the sidebars read the calendar's own `--calendar-*` tokens, which the CLI adds to your CSS file and which default to your `--foreground`, `--popover`, `--border`, `--accent`, `--primary`, `--destructive` and `--sidebar-*` tokens. Set them in your CSS to restyle the calendar without editing a copied file. See [Theming](/docs/guides/theming). [#98](https://github.com/vmnog/calendarcn/pull/98)
   - **Breaking:** after an update the event details, menus, toasts and dialogs take your app's theme instead of Notion Calendar's greys, and the menus and toasts are no longer dark in light mode. Run `npx shadcn@latest add @calendarcn/theme-notion` to bring Notion Calendar's colors back.
@@ -20,7 +20,17 @@ Live in the registry, but not in a tagged release yet.
 - **Added** `theme-notion`: the live demo's look as a theme. It writes Notion Calendar's colors over your shadcn/ui color tokens and the calendar's own, light and dark, and adds no files. No item depends on it. See [The Notion Calendar theme](/docs/guides/theming#the-notion-calendar-theme). [#98](https://github.com/vmnog/calendarcn/pull/98)
 - **Added** `calendar-core`, `event-details`, `time-grid`, `month-view`, `agenda-view`: event colors of your own. An event's, a calendar's or a contact's `color` is any name your CSS backs with `--event-<name>`, `--event-<name>-bg` and `--event-<name>-border`; a name without variables is drawn in the event's calendar color, then in blue. `CalendarProvider` takes `eventColors`, the colors the right-click menu and the details' calendar menu offer. Inside an event, `text-event`, `bg-event-bg` and `bg-event-border` paint with its color. See [Add an event color](/docs/guides/theming#add-an-event-color). [#98](https://github.com/vmnog/calendarcn/pull/98)
   - **Breaking:** `EventColor` also accepts any string, so a `Record<EventColor, …>` no longer checks that all seven names are there, and a `switch` over a color needs a `default`. `BuiltInEventColor` is the seven names. The text shades of timed events in month view are the new `--event-<color>-strong` and `--event-<color>-muted` variables.
+
+## v0.1.0
+
+Released November 23, 2026.
+
+### November 18, 2026
+
 - **Improved** every item: after an install, the shadcn CLI prints the next step with a link to the docs for `calendar`, `calendar-app`, `calendar-core`, `day-view` and `week-view`, and every item names its author and categories, which `shadcn view` and the shadcn MCP server show. No file changed. [#96](https://github.com/vmnog/calendarcn/pull/96)
+
+### November 17, 2026
+
 - **Improved** `calendar-core`, `event-details`, `time-grid`, `month-view`, `details-sidebar`, `calendar-app`: creating an event works the way it does in Notion Calendar. Double-click an empty slot for a 30-minute event, or press and drag to draw one of any length, up, down or across days; both ends snap to `snapMinutes`. The all-day row and the month view do the same for all-day events, and a long press does it on touch. The new event is a draft: a tinted range, selected, with its title focused, that isn't stored until its first edit. Naming it (<Kbd>Enter</Kbd>, or leaving the title) or changing any other field saves it, and the first title keystroke turns the tint into an event block. <Kbd>Esc</Kbd> leaves the title and then throws the draft away, as does a click elsewhere while nothing was typed, and <Kbd>Esc</Kbd> mid-drag drops it. <Kbd>C</Kbd> and "Create event..." start a draft too, drawn as an event block from the start, half an hour long, or all-day in month view. An event without a title shows its time in the title's place. `useCalendar()` adds `eventDraft`, `startEventDraft()` and `updateEventDraft()`, `CalendarProvider` adds `defaultEventDuration`, `NewEventRange` adds `isAllDay`, `EventDetailPanel` and `EventDetailPopover` add `onTitlePreview`, and `EventDraftPopover`, `TimeGridEventDraft` and `AllDayEventDraft` are new in `@/components/event-draft`. See [Creating events](/docs/components/calendar-core#creating-events). [#92](https://github.com/vmnog/calendarcn/pull/92)
   - **Breaking:** a single click on an empty slot no longer creates an event. It clears the selection; a double-click or a drag creates.
   - **Breaking:** an event created on the calendar is stored, and reported through `onEventCreate` and `onEventsChange`, when its first edit saves it, not when it appears. `onEventCreate` gets it with the title it was given, once. `onEventSelect` is called for the draft, with the id it keeps. `addEventFromRange()` still adds its event at once.

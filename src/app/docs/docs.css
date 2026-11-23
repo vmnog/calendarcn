@@ -492,3 +492,25 @@ body:has(#nd-notebook-layout) #nd-sidebar[data-hovered="true"] {
 body:has(#nd-notebook-layout) div[data-state]:has(+ #nd-sidebar-mobile) {
   background-color: var(--docs-nav-overlay);
 }
+
+/*
+ * Wide blocks (`ComponentPreview wide`, the Introduction's hero): out of the
+ * text column into the article's side padding, 12px short of the sidebar's
+ * hairline and the TOC column, which stay clear. On phones the padding is
+ * the screen's margin, so they keep the text column's width.
+ */
+@media (width >= 48rem) {
+  body:has(#nd-notebook-layout) .docs-wide {
+    /* The article's inline padding (`md:px-6 xl:px-8` on `#nd-page`) less 12px */
+    --docs-wide-gutter: 0.75rem;
+    width: calc(100% + 2 * var(--docs-wide-gutter));
+    max-width: none;
+    margin-inline: calc(-1 * var(--docs-wide-gutter));
+  }
+}
+
+@media (width >= 80rem) {
+  body:has(#nd-notebook-layout) .docs-wide {
+    --docs-wide-gutter: 1.25rem;
+  }
+}

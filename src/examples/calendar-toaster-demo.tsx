@@ -13,10 +13,15 @@ export function CalendarToasterDemo() {
 
   return (
     <CalendarProvider defaultEvents={initialEvents}>
-      {/* The toaster sits at the bottom right of this positioned element */}
-      <div className="relative h-full">
-        <WeekView scrollToHour={8} />
-        <CalendarToaster />
+      <div className="flex h-full flex-col">
+        <p className="shrink-0 border-b px-3 py-2.5 text-sm text-muted-foreground">
+          Right-click an event → Delete, then Undo in the toast.
+        </p>
+        {/* The toaster sits at the bottom right of this positioned element */}
+        <div className="relative min-h-0 flex-1">
+          <WeekView scrollToHour={8} />
+          <CalendarToaster />
+        </div>
       </div>
     </CalendarProvider>
   );
