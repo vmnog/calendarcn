@@ -17,7 +17,7 @@ const NAV_GROUPS = [
 ];
 
 /** Docs pages the sidebar links */
-const NAV_PAGE_COUNT = 31;
+const NAV_PAGE_COUNT = 32;
 
 /** The Guides group's pages, in order */
 const GUIDES = [
@@ -30,6 +30,7 @@ const GUIDES = [
   "Share your availability",
   "Undo and notices",
   "Customise the look",
+  "Theming",
   "Import and export",
 ];
 

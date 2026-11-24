@@ -18,7 +18,7 @@ import {
 } from "date-fns";
 
 import { cn } from "@/lib/utils";
-import { eventColorStyles } from "@/components/calendar-event-item";
+import { EVENT_COLOR_CLASSES } from "@/components/calendar-event-item";
 import { useCalendar, useCalendarConfig } from "@/components/calendar-provider";
 import type {
   DetailedCalendarEvent,
@@ -48,7 +48,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { resolveEventColor } from "@/lib/event-utils";
+import { resolveEventColorStyle } from "@/lib/event-utils";
 import { expandRecurringEvents } from "@/lib/recurrence";
 import {
   KEYBOARD_SHORTCUT_GROUPS,
@@ -66,8 +66,22 @@ import type { DetailsSidebarActions } from "@/components/week-view-types";
  */
 export const CONTEXT_PANEL_WIDTH = "309px";
 
-/** Muted text color the context panel uses for labels and placeholders */
-const PANEL_MUTED_FOREGROUND = "#C7C5C1";
+/**
+ * Muted text color the context panel uses for labels and placeholders: its
+ * own token, which stands in for `--muted-foreground` inside the panel
+ */
+const PANEL_MUTED_FOREGROUND = "var(--calendar-context-panel-muted-foreground)";
+
+/** A caption in the panel: a muted heading, "No upcoming results" */
+const PANEL_CAPTION_CLASS =
+  "text-calendar-detail-placeholder dark:text-calendar-detail-secondary";
+
+/**
+ * The panel's search fields (events, shortcuts): filled on hover in a light
+ * theme, outlined in a dark one, filled while focused in both
+ */
+const SEARCH_FIELD_CLASS =
+  "group/search flex flex-1 cursor-text items-center gap-2 rounded-sm border border-transparent px-1 hover:border-calendar-detail-focus hover:bg-calendar-detail-focus dark:hover:border-calendar-detail-hover-border dark:hover:bg-transparent has-[:focus]:border-calendar-detail-focus has-[:focus]:bg-calendar-detail-focus dark:has-[:focus]:border-calendar-detail-focus dark:has-[:focus]:bg-calendar-detail-focus";
 
 /**
  * Days before and after today the event search lists a repeating event's
@@ -418,7 +432,7 @@ export function DetailsSidebar({
             <>
               <Button
                 variant="ghost"
-                className="-ml-2 h-7 gap-2 px-2 has-[>svg]:px-2 text-xs text-[#91908F] justify-start"
+                className="-ml-2 h-7 gap-2 px-2 has-[>svg]:px-2 text-xs text-sidebar-foreground justify-start"
                 onClick={() => setSearchSelectedEvent(null)}
               >
                 <ArrowLeft className="size-4" />
@@ -428,10 +442,10 @@ export function DetailsSidebar({
             </>
           ) : showingAllShortcuts ? (
             <div
-              className="group/search flex flex-1 cursor-text items-center gap-2 rounded-sm border border-transparent px-1 hover:border-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:border-[#373737] dark:hover:bg-transparent has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]"
+              className={SEARCH_FIELD_CLASS}
               onClick={() => shortcutInputRef.current?.focus()}
             >
-              <SearchIcon className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
+              <SearchIcon className="size-4 shrink-0 text-calendar-detail-muted" />
               <input
                 ref={shortcutInputRef}
                 type="text"
@@ -463,10 +477,10 @@ export function DetailsSidebar({
             </div>
           ) : (
             <div
-              className="group/search flex flex-1 cursor-text items-center gap-2 rounded-sm border border-transparent px-1 hover:border-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:border-[#373737] dark:hover:bg-transparent has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]"
+              className={SEARCH_FIELD_CLASS}
               onClick={() => inputRef.current?.focus()}
             >
-              <CalendarSearch className="size-4 shrink-0 text-[#C7C5C1] dark:text-[#595959]" />
+              <CalendarSearch className="size-4 shrink-0 text-calendar-detail-muted" />
               <input
                 ref={inputRef}
                 type="text"
@@ -536,7 +550,7 @@ export function DetailsSidebar({
           <AllShortcutsList groups={foundShortcutGroups} />
         ) : isLoadingResults ? (
           <div className="px-4 pl-8 pt-8">
-            <p className="text-[#ABABA9] dark:text-[#7C7C7C] text-xs">
+            <p className={cn(PANEL_CAPTION_CLASS, "text-xs")}>
               Searching
               <AnimatedDots />
             </p>
@@ -552,7 +566,7 @@ export function DetailsSidebar({
               />
             ))}
             <div className="px-4 pt-5">
-              <p className="-ml-1 text-[#E8533E] text-xs font-semibold pb-3">
+              <p className="-ml-1 text-primary text-xs font-semibold pb-3">
                 Today
               </p>
               {todayGroup && (
@@ -567,7 +581,7 @@ export function DetailsSidebar({
                 </div>
               )}
               {!hasUpcomingResults && (
-                <p className="text-[#ABABA9] dark:text-[#7F7F7F] pl-4 pt-1 text-xs">
+                <p className={cn(PANEL_CAPTION_CLASS, "pl-4 pt-1 text-xs")}>
                   No upcoming results
                 </p>
               )}
@@ -683,7 +697,7 @@ function DateGroupSection({
       <p
         className={cn(
           "-ml-1 text-xs font-semibold pb-3",
-          group.isToday ? "text-[#E8533E]" : "text-foreground",
+          group.isToday ? "text-primary" : "text-foreground",
         )}
       >
         {group.label}
@@ -702,19 +716,22 @@ function DateGroupSection({
   );
 }
 
-/** Color tokens for search result items by temporal state */
+/**
+ * Colors of a search result by temporal state: the details' text colors,
+ * at half strength for a past event
+ */
 const SEARCH_RESULT_COLORS = {
   future: {
-    title: "text-[#32302C] dark:text-[#D4D4D4]",
-    time: "text-[#787774] dark:text-[#7F7F7F]",
-    duration: "text-[#ABABA9] dark:text-[#5A5A5A]",
-    hover: "hover:bg-[#F5F5F5] dark:hover:bg-[#252525]",
+    title: "text-calendar-detail-foreground",
+    time: "text-calendar-detail-secondary",
+    duration: "text-calendar-detail-placeholder",
+    hover: "hover:bg-calendar-detail-focus",
   },
   past: {
-    title: "text-[#989795] dark:text-[#777]",
-    time: "text-[#BBBBB9] dark:text-[#4C4C4C]",
-    duration: "text-[#D5D5D4] dark:text-[#3A3A3A]",
-    hover: "hover:bg-[#FAFAFA] dark:hover:bg-[#1F1F1F]",
+    title: "text-calendar-detail-foreground/50",
+    time: "text-calendar-detail-secondary/50",
+    duration: "text-calendar-detail-placeholder/50",
+    hover: "hover:bg-calendar-detail-focus/50",
   },
 } as const;
 
@@ -750,7 +767,7 @@ function AnimatedDots() {
       {[0, 1, 2].map((i) => (
         <span
           key={i}
-          className="inline-block size-0.5 rounded-full bg-[#ABABA9] dark:bg-[#7C7C7C] transition-opacity duration-200"
+          className="inline-block size-0.5 rounded-full bg-calendar-detail-placeholder dark:bg-calendar-detail-secondary transition-opacity duration-200"
           style={{ opacity: filled[i] ? 1 : 0.1 }}
         />
       ))}
@@ -785,9 +802,10 @@ function SearchResultItem({
       <div
         className={cn(
           "-mt-1 -mb-1 w-1 shrink-0 self-stretch rounded-full",
-          eventColorStyles[resolveEventColor(event, calendars)].border,
+          EVENT_COLOR_CLASSES.border,
           isPast && "opacity-40",
         )}
+        style={resolveEventColorStyle(event, calendars)}
       />
       <div className="flex min-w-0 flex-col gap-0.5">
         <p
@@ -832,7 +850,8 @@ function ShortcutKeys({ shortcut }: { shortcut: KeyboardShortcut }) {
  * too faint on white for a long list, so light mode uses the darker
  * secondary text
  */
-const ALL_SHORTCUTS_ROW_CLASS = "text-[#787774] dark:text-muted-foreground";
+const ALL_SHORTCUTS_ROW_CLASS =
+  "text-calendar-detail-secondary dark:text-muted-foreground";
 
 /**
  * Notion Calendar's full keyboard shortcut list, in the context panel: each
@@ -842,7 +861,7 @@ const ALL_SHORTCUTS_ROW_CLASS = "text-[#787774] dark:text-muted-foreground";
 function AllShortcutsList({ groups }: { groups: KeyboardShortcutGroup[] }) {
   if (groups.length === 0) {
     return (
-      <p className="text-[#ABABA9] dark:text-[#7F7F7F] px-4 pt-6 text-xs">
+      <p className={cn(PANEL_CAPTION_CLASS, "px-4 pt-6 text-xs")}>
         No keyboard shortcut found
       </p>
     );
@@ -866,7 +885,7 @@ function AllShortcutsList({ groups }: { groups: KeyboardShortcutGroup[] }) {
           ))}
           {group.sections?.map((section) => (
             <div key={section.heading} className="pt-2">
-              <h4 className="text-[#ABABA9] dark:text-[#7F7F7F] py-1 text-xs">
+              <h4 className={cn(PANEL_CAPTION_CLASS, "py-1 text-xs")}>
                 {section.heading}
               </h4>
               {section.shortcuts.map((shortcut) => (

@@ -51,13 +51,13 @@ import type { AvailabilityHintProps } from "@/components/week-view-types";
 /** Notion Calendar's hint while open times are marked, at the bottom of the calendar */
 export const AVAILABILITY_HINT = "Mark available times on your calendar";
 
-/** The panel's main button: Notion Calendar's blue "Create" */
+/** The panel's main button, "Create": the selection color */
 const PRIMARY_BUTTON_CLASS =
-  "h-7 bg-[#2383E2] px-2.5 text-xs text-white hover:bg-[#0077D4]";
+  "h-7 bg-calendar-selection px-2.5 text-xs text-calendar-selection-foreground hover:bg-calendar-selection hover:brightness-90";
 
 /** The panel's "Cancel", outlined like Notion Calendar's */
 const CANCEL_BUTTON_CLASS =
-  "h-7 border border-[#E8E8E4] bg-transparent px-2.5 text-xs dark:border-[#373737]";
+  "h-7 border border-calendar-detail-hover-border bg-transparent px-2.5 text-xs";
 
 /** A section's heading ("Snippet", "Times") */
 const SECTION_HEADING_CLASS = cn(
@@ -65,13 +65,13 @@ const SECTION_HEADING_CLASS = cn(
   EVENT_DETAIL_TEXT_CLASS,
 );
 
-/** The pill's dark surface, like the toasts and menus in both themes */
+/** The pill's surface, the toasts' and menus' */
 const HINT_CLASS =
-  "pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-transparent bg-[#252525] py-1.5 pr-1.5 pl-3.5 text-xs text-[#F0F0F0] shadow-lg dark:border-[#303030]";
+  "pointer-events-auto flex max-w-full items-center gap-2 rounded-full border border-transparent bg-calendar-menu py-1.5 pr-1.5 pl-3.5 text-xs text-calendar-menu-foreground/93 shadow-lg dark:border-calendar-menu-border";
 
 /** A button inside the pill */
 const HINT_BUTTON_CLASS =
-  "rounded-full px-2.5 py-1 font-medium outline-none hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-white/50 disabled:opacity-40";
+  "rounded-full px-2.5 py-1 font-medium outline-none hover:bg-calendar-menu-foreground/10 focus-visible:ring-1 focus-visible:ring-calendar-menu-foreground/50 disabled:opacity-40";
 
 /** "1 time marked", "3 times marked" */
 function describeMarkedTimes(count: number): string {
@@ -161,7 +161,7 @@ function AvailabilityRangeCard({
       data-selected={isSelected || undefined}
       className={cn(
         "group/card flex flex-col py-1.5",
-        isSelected && "bg-[#F5F5F5] dark:bg-[#252525]",
+        isSelected && "bg-calendar-detail-focus",
       )}
       onClick={onSelect}
     >
@@ -377,7 +377,10 @@ export function AvailabilityHint({
           <>
             <button
               type="button"
-              className={cn(HINT_BUTTON_CLASS, "text-white/70")}
+              className={cn(
+                HINT_BUTTON_CLASS,
+                "text-calendar-menu-foreground/70",
+              )}
               onClick={cancelPicking}
             >
               Cancel
@@ -387,7 +390,7 @@ export function AvailabilityHint({
               disabled={!hasRanges}
               className={cn(
                 HINT_BUTTON_CLASS,
-                "bg-[#2383E2] hover:bg-[#0077D4]",
+                "bg-calendar-selection text-calendar-selection-foreground hover:bg-calendar-selection hover:brightness-90",
               )}
               onClick={
                 isLink ? finishSchedulingLink : () => void copyAndFinish()

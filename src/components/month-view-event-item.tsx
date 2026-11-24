@@ -17,9 +17,9 @@ import {
   formatTime,
   getEventLabel,
   isDeclinedByViewer,
-  resolveEventColor,
+  resolveEventColorStyle,
 } from "@/lib/event-utils";
-import type { CalendarEvent, EventColor } from "./calendar-types";
+import type { CalendarEvent } from "./calendar-types";
 import type { EventDetailsTriggerProps } from "./week-view-types";
 
 export interface MonthViewEventItemProps {
@@ -39,38 +39,14 @@ export interface MonthViewEventItemProps {
   className?: string;
 }
 
-/** Left border color for each event color */
-const borderColorStyles: Record<EventColor, string> = {
-  red: "bg-event-red-border",
-  orange: "bg-event-orange-border",
-  yellow: "bg-event-yellow-border",
-  green: "bg-event-green-border",
-  blue: "bg-event-blue-border",
-  purple: "bg-event-purple-border",
-  gray: "bg-event-gray-border",
-};
+/** Left border of the event, in its color */
+const BORDER_COLOR_CLASS = "bg-event-border";
 
-/** Darker, more saturated color for event start time */
-const timeColorStyles: Record<EventColor, string> = {
-  red: "text-[#8C3030] dark:text-[#CC8585]",
-  orange: "text-[#8C4420] dark:text-[#CC9575]",
-  yellow: "text-[#8C6A1A] dark:text-[#CCAB65]",
-  green: "text-[#2A6640] dark:text-[#75A090]",
-  blue: "text-[#2A5080] dark:text-[#75A5CC]",
-  purple: "text-[#5A3080] dark:text-[#A585CC]",
-  gray: "text-[#505050] dark:text-[#AAAAAA]",
-};
+/** The start time: the color's muted text shade (`--event-<color>-muted`) */
+const TIME_COLOR_CLASS = "text-event-muted";
 
-/** Light tinted title color — near-white with a hint of the event color */
-const titleColorStyles: Record<EventColor, string> = {
-  red: "text-[#5C1A1A] dark:text-[#F0C4C4]",
-  orange: "text-[#5C2E14] dark:text-[#F0D4BE]",
-  yellow: "text-[#5C4410] dark:text-[#F0E0A8]",
-  green: "text-[#1A4D26] dark:text-[#C4E8D0]",
-  blue: "text-[#1A3A5C] dark:text-[#C4DAF0]",
-  purple: "text-[#3D1F5C] dark:text-[#DCC8F0]",
-  gray: "text-[#3A3A3A] dark:text-[#D8D8D8]",
-};
+/** The title: the color's strong text shade (`--event-<color>-strong`) */
+const TITLE_COLOR_CLASS = "text-event-strong";
 
 /**
  * Box for custom `renderEventContent` output: fills the line after the color
@@ -99,10 +75,7 @@ export function MonthViewEventItem({
     useIsEventInSelection(event.id) && !isGhost && !isDragging;
   const isSelected = isSelectedProp || isInSelection;
   const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
-  const color = resolveEventColor(event, calendars);
-  const borderColor = borderColorStyles[color];
-  const timeColor = timeColorStyles[color];
-  const titleColor = titleColorStyles[color];
+  const colorStyle = resolveEventColorStyle(event, calendars);
   // `false` on the server and during hydration, so the markup matches
   const eventIsPast = useIsPast(event.end, timeZone);
   // "9 AM" / "2:30 PM", or "09:00" / "14:30" on a 24-hour clock
@@ -160,12 +133,13 @@ export function MonthViewEventItem({
         isGhost && "opacity-30 pointer-events-none",
         className,
       )}
+      style={colorStyle}
     >
       {/* Colored left border, kept as a gap when declined */}
       <div
         className={cn(
           "w-[3px] self-stretch shrink-0 rounded-l-sm",
-          isDeclined ? "bg-transparent" : borderColor,
+          isDeclined ? "bg-transparent" : BORDER_COLOR_CLASS,
         )}
       />
 
@@ -184,14 +158,17 @@ export function MonthViewEventItem({
         fallback={
           <span className="text-[0.6875rem] leading-tight truncate pl-1 pr-1">
             <span
-              className={cn(timeColor, isDeclined && DECLINED_EVENT_TEXT_CLASS)}
+              className={cn(
+                TIME_COLOR_CLASS,
+                isDeclined && DECLINED_EVENT_TEXT_CLASS,
+              )}
             >
               {startTimeLabel}
             </span>{" "}
             <span
               className={cn(
                 "font-bold",
-                titleColor,
+                TITLE_COLOR_CLASS,
                 isDeclined && DECLINED_EVENT_TEXT_CLASS,
               )}
             >

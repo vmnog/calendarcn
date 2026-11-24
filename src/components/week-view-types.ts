@@ -64,6 +64,7 @@ export type {
   CalendarEvent,
   DetailedCalendarEvent,
   EventDetailSectionProps,
+  BuiltInEventColor,
   EventColor,
   PositionedEvent,
   EventDragVariant,

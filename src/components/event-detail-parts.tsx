@@ -5,22 +5,32 @@ import * as ReactDOM from "react-dom";
 
 import { cn } from "@/lib/utils";
 
-/** Main text: values, the title, the header's kind (Notion: #D4D4D4 dark) */
-export const EVENT_DETAIL_TEXT_CLASS = "text-[#32302C] dark:text-[#D4D4D4]";
+/** Main text: values, the title, the header's kind */
+export const EVENT_DETAIL_TEXT_CLASS = "text-calendar-detail-foreground";
 
 /** Secondary text: a duration, an offset ("GMT-3"), a rule's " on Thu", "before" */
-export const EVENT_DETAIL_SECONDARY_CLASS =
-  "text-[#787774] dark:text-[#7F7F7F]";
+export const EVENT_DETAIL_SECONDARY_CLASS = "text-calendar-detail-secondary";
 
-/** Blue of a checked radio and the details' main buttons, the same in both themes */
-export const EVENT_DETAIL_ACCENT_BG_CLASS = "bg-[#3A85D3] dark:bg-[#3A85D3]";
+/**
+ * Fill of a checked radio and the details' main buttons, with the color of
+ * what sits on it (`--calendar-selection` and its foreground)
+ */
+export const EVENT_DETAIL_ACCENT_BG_CLASS =
+  "bg-calendar-selection text-calendar-selection-foreground";
 
 /** Muted icons: a row's leading icon, the arrow between times, chevrons */
-export const EVENT_DETAIL_MUTED_CLASS = "text-[#C7C5C1] dark:text-[#595959]";
+export const EVENT_DETAIL_MUTED_CLASS = "text-calendar-detail-muted";
 
 /** Placeholder text of an empty field ("Location", "Description") */
 export const EVENT_DETAIL_PLACEHOLDER_CLASS =
-  "text-[#ABABA9] dark:text-[#595959]";
+  "text-calendar-detail-placeholder";
+
+/**
+ * A small action in the details (remove, previous and next, a stepper's
+ * arrows): the secondary color, a little softer on a light theme
+ */
+export const EVENT_DETAIL_ACTION_CLASS =
+  "text-calendar-detail-secondary/80 dark:text-calendar-detail-secondary";
 
 /** Height of one row of the panel (Notion: 35px, at 14px medium text) */
 export const EVENT_DETAIL_ROW_HEIGHT_CLASS = "min-h-[35px]";
@@ -33,12 +43,12 @@ export const EVENT_DETAIL_ICON_CLASS = cn(
 
 /** Border that shows on hover, for dropdown triggers and clickable rows */
 export const EVENT_DETAIL_HOVER_BORDER_CLASS =
-  "rounded-sm border border-transparent hover:border-[#E8E8E4] dark:hover:border-[#373737]";
+  "rounded-sm border border-transparent hover:border-calendar-detail-hover-border";
 
 /** A standalone inline-editable input (the title): hover border, filled on focus */
 export const EVENT_DETAIL_INPUT_CLASS = cn(
   EVENT_DETAIL_HOVER_BORDER_CLASS,
-  "bg-transparent outline-none focus:border-[#F5F5F5] focus:bg-[#F5F5F5] dark:focus:border-[#242424] dark:focus:bg-[#242424]",
+  "bg-transparent outline-none focus:border-calendar-detail-focus focus:bg-calendar-detail-focus",
 );
 
 /**
@@ -48,7 +58,7 @@ export const EVENT_DETAIL_INPUT_CLASS = cn(
  */
 export const EVENT_DETAIL_INPUT_GROUP_CLASS = cn(
   EVENT_DETAIL_HOVER_BORDER_CLASS,
-  "cursor-text has-[:focus]:border-[#F5F5F5] has-[:focus]:bg-[#F5F5F5] dark:has-[:focus]:border-[#242424] dark:has-[:focus]:bg-[#242424]",
+  "cursor-text has-[:focus]:border-calendar-detail-focus has-[:focus]:bg-calendar-detail-focus",
 );
 
 /** The input inside an `EVENT_DETAIL_INPUT_GROUP_CLASS` wrapper */
@@ -57,18 +67,30 @@ export const EVENT_DETAIL_GROUPED_INPUT_CLASS =
 
 /** An icon button (the "..." menu): its hover border blends into its fill */
 export const EVENT_DETAIL_ICON_BUTTON_CLASS =
-  "border border-transparent hover:border-[#F5F5F5] hover:bg-[#F5F5F5] dark:hover:border-[#242424] dark:hover:bg-[#242424]";
+  "border border-transparent hover:border-calendar-detail-focus hover:bg-calendar-detail-focus";
 
-/** Menu surface: menus are dark in both themes */
-export const EVENT_DETAIL_MENU_CLASS = "bg-[#252525] border-[#303030]";
+/**
+ * Menu surface (`--calendar-menu` and its border). It follows the app's
+ * popover; the Notion Calendar theme makes it dark in both themes.
+ */
+export const EVENT_DETAIL_MENU_CLASS =
+  "bg-calendar-menu border-calendar-menu-border";
 
 /** A menu item on `EVENT_DETAIL_MENU_CLASS` */
 export const EVENT_DETAIL_MENU_ITEM_CLASS =
-  "text-xs text-white focus:!bg-[#303030] focus:!text-white";
+  "text-xs text-calendar-menu-foreground focus:!bg-calendar-menu-accent focus:!text-calendar-menu-accent-foreground";
 
 /** "Soon" badge of a menu item that isn't built yet, on `EVENT_DETAIL_MENU_CLASS` */
 export const EVENT_DETAIL_MENU_SOON_CLASS =
-  "ml-auto rounded bg-white/10 px-1.5 py-0.5 text-[10px] leading-none font-medium text-white/60";
+  "ml-auto rounded bg-calendar-menu-foreground/10 px-1.5 py-0.5 text-[10px] leading-none font-medium text-calendar-menu-foreground/60";
+
+/** A key hint at the end of a menu item ("⌘C"), and a menu's small labels */
+export const EVENT_DETAIL_MENU_SHORTCUT_CLASS =
+  "text-calendar-menu-foreground/40";
+
+/** The delete item of a menu: the danger color, filled with it while highlighted */
+export const EVENT_DETAIL_MENU_DANGER_CLASS =
+  "text-calendar-danger focus:!bg-calendar-danger focus:!text-calendar-danger-foreground focus:[&>svg]:!text-calendar-danger-foreground";
 
 /**
  * Keys of the event actions: shown beside them in the right-click menu and
@@ -82,32 +104,49 @@ export const EVENT_ACTION_KEYS = {
   delete: { label: "delete", aria: "Delete Backspace" },
 } as const;
 
-/** Main text of a menu item */
-export const EVENT_DETAIL_MENU_TEXT_CLASS = "text-[#E0E0E0]";
+/** Main text of a menu item: the menu's foreground, a little softer */
+export const EVENT_DETAIL_MENU_TEXT_CLASS = "text-calendar-menu-foreground/86";
 
 /** Secondary text in a menu: an email under a name, an address, a hint */
-export const EVENT_DETAIL_MENU_SECONDARY_CLASS = "text-[#8B8B8B]";
+export const EVENT_DETAIL_MENU_SECONDARY_CLASS =
+  "text-calendar-menu-muted-foreground";
 
 /** Surface of a menu opened from the bottom of the panel (with `EVENT_DETAIL_MENU_CLASS`) */
 export const PANEL_MENU_SURFACE_CLASS = "rounded-lg p-1.5 shadow-lg";
 
 /** An item of a `PANEL_MENU_SURFACE_CLASS` menu: 32px tall, highlight inset */
 export const PANEL_MENU_ITEM_CLASS =
-  "group/item h-8 gap-0 rounded-md px-2 py-0 text-xs text-[#CCCCCC] focus:!bg-[#303030] focus:!text-[#F0F0F0]";
+  "group/item h-8 gap-0 rounded-md px-2 py-0 text-xs text-calendar-menu-foreground/77 focus:!bg-calendar-menu-accent focus:!text-calendar-menu-accent-foreground/93";
 
 /**
  * The current item of a `PANEL_MENU_SURFACE_CLASS` menu while nothing else
  * is highlighted: Notion opens its menus with the current value highlighted
  */
-export const PANEL_MENU_ITEM_CURRENT_CLASS = "bg-[#303030] text-[#F0F0F0]";
+export const PANEL_MENU_ITEM_CURRENT_CLASS =
+  "bg-calendar-menu-accent text-calendar-menu-accent-foreground/93";
 
 /** A muted heading in a `PANEL_MENU_SURFACE_CLASS` menu (an account, "Event color") */
 export const PANEL_MENU_LABEL_CLASS =
-  "flex h-8 items-center pr-2 pl-[31px] text-xs text-[#848484] select-none";
+  "flex h-8 items-center pr-2 pl-[31px] text-xs text-calendar-menu-muted-foreground select-none";
+
+/**
+ * Surface of the details' dialogs (custom repeat, "This event / All
+ * events"): the page's background in a light theme, the menus' in a dark one
+ */
+export const EVENT_DETAIL_DIALOG_CLASS =
+  "border-calendar-detail-hover-border bg-background dark:border-calendar-menu-border dark:bg-calendar-menu";
+
+/** An outlined button of those dialogs: Cancel, a day that isn't picked */
+export const EVENT_DETAIL_DIALOG_BUTTON_CLASS =
+  "border border-calendar-detail-hover-border text-foreground hover:bg-calendar-detail-focus dark:bg-calendar-menu-accent dark:hover:bg-calendar-menu-foreground/8";
+
+/** A filled control of those dialogs at rest: a field while it's focused, a segmented control's track */
+export const EVENT_DETAIL_DIALOG_FILL_CLASS =
+  "bg-calendar-detail-focus dark:bg-calendar-menu-accent";
 
 /** A panel dropdown trigger while its menu is open: filled, border blended in */
 export const PANEL_TRIGGER_OPEN_CLASS =
-  "border-[#F5F5F5] bg-[#F5F5F5] hover:border-[#F5F5F5] dark:border-[#252525] dark:bg-[#252525] dark:hover:border-[#252525]";
+  "border-calendar-detail-focus bg-calendar-detail-focus hover:border-calendar-detail-focus";
 
 /** A row's 32px box, from 8px off the panel's edges, with the icon column at 26px */
 export const ROW_BOX_CLASS =
@@ -115,10 +154,11 @@ export const ROW_BOX_CLASS =
 
 /**
  * Link text in the details panel: a faint underline that takes the text
- * color on hover, as Notion's links do
+ * color on hover, as Notion's links do. On a dark theme the divider color
+ * is too strong for it, so it takes the focus fill's
  */
 export const EVENT_DETAIL_LINK_CLASS =
-  "underline decoration-[#EEEEEE] decoration-1 underline-offset-2 hover:decoration-current dark:decoration-[#242424]";
+  "underline decoration-calendar-detail-border decoration-1 underline-offset-2 hover:decoration-current dark:decoration-calendar-detail-focus";
 
 /** Gap in px between a menu opened from the panel and the panel's left edge */
 const PANEL_MENU_GAP = 4;
@@ -204,7 +244,7 @@ export function EventDetailTooltip({
   return ReactDOM.createPortal(
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-[100] w-max max-w-[232px] -translate-x-1/2 -translate-y-full rounded-md border border-transparent bg-[#252525] px-2.5 py-1.5 text-xs leading-[18px] text-[#F0F0F0] shadow-md dark:border-[#303030]"
+      className="pointer-events-none fixed z-[100] w-max max-w-[232px] -translate-x-1/2 -translate-y-full rounded-md border border-transparent bg-calendar-menu px-2.5 py-1.5 text-xs leading-[18px] text-calendar-menu-foreground/93 shadow-md dark:border-calendar-menu-border"
       style={{
         left: rect.left + rect.width / 2,
         top: rect.top - TOOLTIP_GAP,
@@ -250,10 +290,7 @@ export function EventDetailDivider({ className }: { className?: string }) {
   return (
     <div
       role="separator"
-      className={cn(
-        "border-t border-[#EEEEEE] dark:border-[#262626]",
-        className,
-      )}
+      className={cn("border-t border-calendar-detail-border", className)}
     />
   );
 }
@@ -383,7 +420,7 @@ export function EventDetailPlaceholderRow({
   );
 }
 
-/** A round radio, blue with a white dot when checked */
+/** A round radio, filled with the selection color and a dot when checked */
 export function RadioDot({ checked }: { checked: boolean }) {
   return (
     <span
@@ -392,10 +429,10 @@ export function RadioDot({ checked }: { checked: boolean }) {
         "flex size-4 shrink-0 items-center justify-center rounded-full",
         checked
           ? EVENT_DETAIL_ACCENT_BG_CLASS
-          : "border border-[#E8E8E4] bg-[#F5F5F5] dark:border-[#373737] dark:bg-[#303030]",
+          : "border border-calendar-detail-hover-border bg-calendar-detail-focus dark:bg-calendar-menu-accent",
       )}
     >
-      {checked && <span className="size-1.5 rounded-full bg-white" />}
+      {checked && <span className="size-1.5 rounded-full bg-current" />}
     </span>
   );
 }

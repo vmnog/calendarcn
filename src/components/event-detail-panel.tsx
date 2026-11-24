@@ -38,7 +38,9 @@ import {
   EVENT_DETAIL_ICON_BUTTON_CLASS,
   EVENT_DETAIL_INPUT_CLASS,
   EVENT_DETAIL_MENU_CLASS,
+  EVENT_DETAIL_MENU_DANGER_CLASS,
   EVENT_DETAIL_MENU_ITEM_CLASS,
+  EVENT_DETAIL_MENU_SHORTCUT_CLASS,
   EVENT_DETAIL_MUTED_CLASS,
   EVENT_DETAIL_PLACEHOLDER_CLASS,
   EVENT_DETAIL_ROW_HEIGHT_CLASS,
@@ -164,11 +166,11 @@ function EventKindHelpIcon({ tooltip }: { tooltip?: string }) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <CircleHelp className="size-3.5 text-white" />
+      <CircleHelp className="size-3.5 text-calendar-menu-accent-foreground" />
       {tooltipPos &&
         ReactDOM.createPortal(
           <div
-            className="pointer-events-none fixed z-[100] max-w-[240px] rounded-sm bg-[#252525] border border-[#303030] px-2 py-1 text-xs text-white shadow-md"
+            className="pointer-events-none fixed z-[100] max-w-[240px] rounded-sm bg-calendar-menu border border-calendar-menu-border px-2 py-1 text-xs text-calendar-menu-foreground shadow-md"
             style={{
               top: tooltipPos.top,
               left: tooltipPos.left - 8,
@@ -226,10 +228,14 @@ function fromOwnClock<TEvent extends DetailedCalendarEvent>(
   return { ...edited, start: back("start"), end: back("end") };
 }
 
+/** An item of the kind menu (Event, Focus time…) */
+const KIND_MENU_ITEM_CLASS =
+  "group/item text-xs text-calendar-menu-foreground focus:bg-calendar-menu-accent focus:text-calendar-menu-accent-foreground";
+
 function EventDetailOptionsRow({ onExpand }: { onExpand: () => void }) {
   const labelClass = cn(
     EVENT_DETAIL_PLACEHOLDER_CLASS,
-    "group-hover/options:text-[#A5A5A5] dark:group-hover/options:text-[#636363]",
+    "group-hover/options:text-calendar-detail-secondary/65",
   );
 
   return (
@@ -240,7 +246,7 @@ function EventDetailOptionsRow({ onExpand }: { onExpand: () => void }) {
       )}
     >
       <div
-        className="group/options flex h-[31px] cursor-default items-center gap-[18px] rounded-md px-[9px] hover:bg-[#F5F5F5] dark:hover:bg-[#242424]"
+        className="group/options flex h-[31px] cursor-default items-center gap-[18px] rounded-md px-[9px] hover:bg-calendar-detail-focus"
         onClick={onExpand}
       >
         <span className={labelClass}>All-day</span>
@@ -430,14 +436,17 @@ export function EventDetailPanel<
                 EVENT_DETAIL_HOVER_BORDER_CLASS,
                 !onEventChange &&
                   "hover:border-transparent dark:hover:border-transparent",
-                kindMenuOpen && "bg-[#252525] text-white",
+                kindMenuOpen &&
+                  "bg-calendar-menu text-calendar-menu-foreground",
               )}
             >
               {EVENT_KIND_LABELS[kind]}
               <ChevronDown
                 className={cn(
                   "size-4",
-                  kindMenuOpen ? "text-[#595959]" : EVENT_DETAIL_MUTED_CLASS,
+                  kindMenuOpen
+                    ? "text-calendar-menu-foreground/24"
+                    : EVENT_DETAIL_MUTED_CLASS,
                 )}
               />
             </button>
@@ -453,8 +462,9 @@ export function EventDetailPanel<
           >
             <DropdownMenuItem
               className={cn(
-                "group/item text-xs text-white focus:bg-[#303030] focus:text-white",
-                !hoveredOther && "bg-[#303030]",
+                KIND_MENU_ITEM_CLASS,
+                !hoveredOther &&
+                  "bg-calendar-menu-accent text-calendar-menu-accent-foreground",
               )}
               onClick={() => selectKind(kind)}
               onMouseEnter={() => setHoveredOther(false)}
@@ -463,11 +473,11 @@ export function EventDetailPanel<
               <span className="flex-1">{EVENT_KIND_LABELS[kind]}</span>
               <EventKindHelpIcon tooltip={EVENT_KIND_TOOLTIPS[kind]} />
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-[#303030]" />
+            <DropdownMenuSeparator className="bg-calendar-menu-border" />
             {otherKinds.map((other) => (
               <DropdownMenuItem
                 key={other}
-                className="group/item text-xs text-white focus:bg-[#303030] focus:text-white pl-8"
+                className={cn(KIND_MENU_ITEM_CLASS, "pl-8")}
                 onClick={() => selectKind(other)}
                 onMouseEnter={() => setHoveredOther(true)}
               >
@@ -509,7 +519,10 @@ export function EventDetailPanel<
                 >
                   <SquareDashed className="size-3.5" />
                   Cut
-                  <DropdownMenuShortcut aria-hidden className="text-white/40">
+                  <DropdownMenuShortcut
+                    aria-hidden
+                    className={EVENT_DETAIL_MENU_SHORTCUT_CLASS}
+                  >
                     {EVENT_ACTION_KEYS.cut.label}
                   </DropdownMenuShortcut>
                 </DropdownMenuItem>
@@ -521,7 +534,10 @@ export function EventDetailPanel<
                 >
                   <TabletSmartphone className="size-3.5" />
                   Copy
-                  <DropdownMenuShortcut aria-hidden className="text-white/40">
+                  <DropdownMenuShortcut
+                    aria-hidden
+                    className={EVENT_DETAIL_MENU_SHORTCUT_CLASS}
+                  >
                     {EVENT_ACTION_KEYS.copy.label}
                   </DropdownMenuShortcut>
                 </DropdownMenuItem>
@@ -533,22 +549,31 @@ export function EventDetailPanel<
                 >
                   <Copy className="size-3.5" />
                   Duplicate
-                  <DropdownMenuShortcut aria-hidden className="text-white/40">
+                  <DropdownMenuShortcut
+                    aria-hidden
+                    className={EVENT_DETAIL_MENU_SHORTCUT_CLASS}
+                  >
                     {EVENT_ACTION_KEYS.duplicate.label}
                   </DropdownMenuShortcut>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-[#303030]" />
+                <DropdownMenuSeparator className="bg-calendar-menu-border" />
                 <DropdownMenuItem
                   disabled={!onDelete}
                   aria-keyshortcuts={EVENT_ACTION_KEYS.delete.aria}
-                  className="text-xs text-[#E56458] focus:!bg-[#DE5551] focus:!text-white focus:[&>svg]:!text-white focus:[&>[data-slot=dropdown-menu-shortcut]]:!text-white"
+                  className={cn(
+                    "text-xs focus:[&>[data-slot=dropdown-menu-shortcut]]:!text-calendar-danger-foreground",
+                    EVENT_DETAIL_MENU_DANGER_CLASS,
+                  )}
                   onClick={onDelete}
                 >
-                  <Trash2 className="size-3.5 text-[#E56458]" />
+                  <Trash2 className="size-3.5 text-calendar-danger" />
                   Delete
                   <DropdownMenuShortcut
                     aria-hidden
-                    className="text-white/40 tracking-normal"
+                    className={cn(
+                      EVENT_DETAIL_MENU_SHORTCUT_CLASS,
+                      "tracking-normal",
+                    )}
                   >
                     {EVENT_ACTION_KEYS.delete.label}
                   </DropdownMenuShortcut>
@@ -572,7 +597,7 @@ export function EventDetailPanel<
           data-event-title=""
           readOnly={!onEventChange}
           className={cn(
-            "h-[35px] px-[7px] placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]",
+            "h-[35px] px-[7px] placeholder:text-calendar-detail-placeholder",
             EVENT_DETAIL_INPUT_CLASS,
           )}
         />

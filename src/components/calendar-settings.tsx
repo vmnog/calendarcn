@@ -13,11 +13,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { groupCalendarsByEmail } from "@/lib/event-utils";
+import { getEventColorStyle, groupCalendarsByEmail } from "@/lib/event-utils";
 import type {
   CalendarGroup,
   CalendarTheme,
-  EventColor,
   HourCycle,
 } from "@/components/calendar-types";
 import type {
@@ -44,16 +43,8 @@ const HOUR_CYCLE_OPTIONS: { value: HourCycle; label: string }[] = [
 /** Label of the calendars that have no account `email`, as in the calendar list */
 const NO_ACCOUNT_LABEL = "Calendars";
 
-/** Swatch color of each calendar color, as in the calendar list */
-const CALENDAR_SWATCH_CLASSES: Record<EventColor, string> = {
-  red: "bg-event-red",
-  orange: "bg-event-orange",
-  yellow: "bg-event-yellow",
-  green: "bg-event-green",
-  blue: "bg-event-blue",
-  purple: "bg-event-purple",
-  gray: "bg-event-gray",
-};
+/** A calendar's swatch, as in the calendar list: its color, set with `getEventColorStyle()` */
+const CALENDAR_SWATCH_CLASS = "bg-event";
 
 /** A nav row: the selected one is filled */
 const NAV_ITEM_CLASS =
@@ -417,12 +408,13 @@ function AccountPane({
                 <span
                   className={cn(
                     "flex size-3 shrink-0 items-center justify-center rounded-xs",
-                    CALENDAR_SWATCH_CLASSES[calendar.color],
+                    CALENDAR_SWATCH_CLASS,
                     !isVisible && "opacity-40",
                   )}
+                  style={getEventColorStyle(calendar.color)}
                 >
                   {calendar.isSubscribed && (
-                    <Rss className="size-2 text-white" />
+                    <Rss className="size-2 text-event-foreground" />
                   )}
                 </span>
                 <span

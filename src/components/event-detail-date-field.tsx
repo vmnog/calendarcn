@@ -32,11 +32,11 @@ import type { EventDetailDateFieldProps } from "./week-view-types";
 
 /** A day of the date picker: today, the event's day and hover fill a box */
 const PICKER_DAY_CLASS =
-  "relative isolate flex h-[30.5px] w-full items-center justify-center text-[13px] text-[#D4D4D4] outline-none before:absolute before:top-1/2 before:left-1/2 before:-z-10 before:h-[25px] before:w-[30px] before:-translate-1/2 before:rounded-[6px] hover:before:bg-[#303030]";
+  "relative isolate flex h-[30.5px] w-full items-center justify-center text-[13px] text-calendar-menu-foreground/80 outline-none before:absolute before:top-1/2 before:left-1/2 before:-z-10 before:h-[25px] before:w-[30px] before:-translate-1/2 before:rounded-[6px] hover:before:bg-calendar-menu-accent";
 
 /** The date picker's previous and next month buttons */
 const PICKER_CHEVRON_CLASS =
-  "flex size-[24px] items-center justify-center justify-self-center rounded-[6px] text-[#848484] outline-none hover:bg-[#303030] disabled:opacity-40";
+  "flex size-[24px] items-center justify-center justify-self-center rounded-[6px] text-calendar-menu-muted-foreground outline-none hover:bg-calendar-menu-accent disabled:opacity-40";
 
 /**
  * Keys that move the marked day from the date field, the picker staying in
@@ -59,7 +59,7 @@ function DatePickerCaption({ calendarMonth }: MonthCaptionProps) {
 
   return (
     <div className="grid h-[33px] grid-cols-7 items-center">
-      <span className="col-span-5 pl-[11px] text-[#D4D4D4]">
+      <span className="col-span-5 pl-[11px] text-calendar-menu-foreground/80">
         {format(calendarMonth.date, "LLLL yyyy", { locale })}
       </span>
       <button
@@ -103,11 +103,12 @@ function DatePickerDayButton({
       tabIndex={-1}
       className={cn(
         PICKER_DAY_CLASS,
-        (modifiers.outside || modifiers.disabled) && "text-[#5F5F5F]",
+        (modifiers.outside || modifiers.disabled) &&
+          "text-calendar-menu-foreground/27",
         modifiers.disabled && "hover:before:bg-transparent",
-        modifiers.selected && "before:bg-[#303030]",
+        modifiers.selected && "before:bg-calendar-menu-accent",
         modifiers.today &&
-          "text-white before:bg-[#F15550] hover:before:bg-[#F15550]",
+          "text-primary-foreground before:bg-primary hover:before:bg-primary",
         className,
       )}
     />
@@ -133,7 +134,7 @@ const DATE_PICKER_CLASS_NAMES = {
   month_grid: "w-full border-collapse",
   weekdays: "flex",
   weekday:
-    "flex h-[22px] flex-1 items-center justify-center text-[11px] font-medium text-[#898989] select-none",
+    "flex h-[22px] flex-1 items-center justify-center text-[11px] font-medium text-calendar-menu-muted-foreground select-none",
   week: "flex",
   day: "flex-1 p-0",
   today: "",

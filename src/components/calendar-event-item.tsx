@@ -17,12 +17,11 @@ import {
   formatTimeRange,
   getEventLabel,
   isDeclinedByViewer,
-  resolveEventColor,
+  resolveEventColorStyle,
 } from "@/lib/event-utils";
 import type {
   CalendarEvent,
   CalendarEventItemProps,
-  EventColor,
   EventContentProps,
   EventDetailsTriggerProps,
   EventItemPopoverProps,
@@ -41,66 +40,20 @@ export const DECLINED_EVENT_OUTLINE_CLASS =
 export const DECLINED_EVENT_TEXT_CLASS =
   "text-muted-foreground line-through dark:text-muted-foreground";
 
-export const eventColorStyles: Record<
-  EventColor,
-  {
-    bg: string;
-    bgHover: string;
-    border: string;
-    borderLine: string;
-    text: string;
-  }
-> = {
-  red: {
-    bg: "bg-event-red-bg",
-    bgHover: "hover:bg-event-red-bg/70",
-    border: "bg-event-red-border",
-    borderLine: "border-event-red-border",
-    text: "text-event-red",
-  },
-  orange: {
-    bg: "bg-event-orange-bg",
-    bgHover: "hover:bg-event-orange-bg/70",
-    border: "bg-event-orange-border",
-    borderLine: "border-event-orange-border",
-    text: "text-event-orange",
-  },
-  yellow: {
-    bg: "bg-event-yellow-bg",
-    bgHover: "hover:bg-event-yellow-bg/70",
-    border: "bg-event-yellow-border",
-    borderLine: "border-event-yellow-border",
-    text: "text-event-yellow",
-  },
-  green: {
-    bg: "bg-event-green-bg",
-    bgHover: "hover:bg-event-green-bg/70",
-    border: "bg-event-green-border",
-    borderLine: "border-event-green-border",
-    text: "text-event-green",
-  },
-  blue: {
-    bg: "bg-event-blue-bg",
-    bgHover: "hover:bg-event-blue-bg/70",
-    border: "bg-event-blue-border",
-    borderLine: "border-event-blue-border",
-    text: "text-event-blue",
-  },
-  purple: {
-    bg: "bg-event-purple-bg",
-    bgHover: "hover:bg-event-purple-bg/70",
-    border: "bg-event-purple-border",
-    borderLine: "border-event-purple-border",
-    text: "text-event-purple",
-  },
-  gray: {
-    bg: "bg-event-gray-bg",
-    bgHover: "hover:bg-event-gray-bg/70",
-    border: "bg-event-gray-border",
-    borderLine: "border-event-gray-border",
-    text: "text-event-gray",
-  },
-};
+/**
+ * Classes that paint with an event's color. They read `--event`,
+ * `--event-bg` and `--event-border`, which the event's element sets with
+ * `resolveEventColorStyle()` (or `getEventColorStyle()` for a color that
+ * isn't an event's), so any color name your CSS backs with variables works,
+ * not only the seven that ship.
+ */
+export const EVENT_COLOR_CLASSES = {
+  bg: "bg-event-bg",
+  bgHover: "hover:bg-event-bg/70",
+  border: "bg-event-border",
+  borderLine: "border-event-border",
+  text: "text-event",
+} as const;
 
 /**
  * Positions a block from explicit start/end times (drag and resize
@@ -260,8 +213,8 @@ export function CalendarEventItem({
   const isSelected = isSelectedProp || isInSelection;
   const { calendars, dayStartHour, dayEndHour, hourCycle, locale, timeZone } =
     useCalendarConfig();
-  const color = resolveEventColor(event, calendars);
-  const styles = eventColorStyles[color];
+  const colorStyle = resolveEventColorStyle(event, calendars);
+  const styles = EVENT_COLOR_CLASSES;
   /** Declined by the viewer: an outline only, struck-through text */
   const isDeclined = isDeclinedByViewer(event);
   const showsDeclined = isDeclined && !isSelected;
@@ -416,6 +369,7 @@ export function CalendarEventItem({
           className,
         )}
         style={{
+          ...colorStyle,
           top: `${positionedEvent.top}%`,
           height: `${positionedEvent.height}%`,
           left: `${positionedEvent.left}%`,
@@ -424,11 +378,11 @@ export function CalendarEventItem({
           zIndex: 15,
         }}
       >
-        <div className="absolute inset-0 rounded-sm bg-white dark:bg-[#191919]" />
+        <div className="absolute inset-0 rounded-sm bg-background" />
         <div className={cn("absolute inset-0 rounded-sm", styles.bg)} />
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-white dark:mix-blend-overlay",
+            "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-event-foreground dark:mix-blend-overlay",
             styles.border,
           )}
         />
@@ -446,7 +400,7 @@ export function CalendarEventItem({
                 className={cn(
                   "font-medium text-[0.625rem] leading-tight break-words",
                   styles.text,
-                  "dark:text-white/80",
+                  "dark:text-event-foreground/80",
                 )}
               >
                 <SeriesChangeDot eventId={event.id} />
@@ -457,7 +411,7 @@ export function CalendarEventItem({
                   className={cn(
                     "text-[0.625rem] whitespace-nowrap",
                     styles.text,
-                    "dark:text-white dark:mix-blend-overlay",
+                    "dark:text-event-foreground dark:mix-blend-overlay",
                   )}
                 >
                   {formatTimeRange(event.start, event.end, hourCycle, locale)}
@@ -480,6 +434,7 @@ export function CalendarEventItem({
           className,
         )}
         style={{
+          ...colorStyle,
           ...posStyle,
           left: "0%",
           width: "100%",
@@ -500,6 +455,7 @@ export function CalendarEventItem({
 
     const draggingStyle: React.CSSProperties = useFixed
       ? {
+          ...colorStyle,
           position: "fixed",
           top: `${cursorY}px`,
           left: `${cursorX}px`,
@@ -509,6 +465,7 @@ export function CalendarEventItem({
           zIndex: 30,
         }
       : {
+          ...colorStyle,
           top: posStyle.top,
           height: `${heightPx}px`,
           left: `${positionedEvent.left}%`,
@@ -529,11 +486,11 @@ export function CalendarEventItem({
         )}
         style={draggingStyle}
       >
-        <div className="absolute inset-0 rounded-sm bg-white dark:bg-[#191919]" />
+        <div className="absolute inset-0 rounded-sm bg-background" />
         <div className={cn("absolute inset-0 rounded-sm", styles.bg)} />
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-white dark:mix-blend-overlay",
+            "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-event-foreground dark:mix-blend-overlay",
             styles.border,
           )}
         />
@@ -548,12 +505,12 @@ export function CalendarEventItem({
                 heightPx < 40 && "flex-row items-center gap-1",
               )}
             >
-              <span className="font-medium text-[0.625rem] leading-tight break-words text-white dark:text-white flex items-center gap-0.5">
+              <span className="font-medium text-[0.625rem] leading-tight break-words text-event-foreground dark:text-event-foreground flex items-center gap-0.5">
                 <SeriesChangeDot eventId={event.id} />
                 {event.title}
               </span>
               {heightPx >= 40 && (
-                <span className="text-[0.625rem] whitespace-nowrap text-white dark:text-white">
+                <span className="text-[0.625rem] whitespace-nowrap text-event-foreground dark:text-event-foreground">
                   {timeRangeLabel}
                 </span>
               )}
@@ -661,6 +618,7 @@ export function CalendarEventItem({
         className,
       )}
       style={{
+        ...colorStyle,
         ...posStyle,
         zIndex: isSelected ? 20 : positionedEvent.column,
       }}
@@ -668,7 +626,7 @@ export function CalendarEventItem({
       {/* Solid background layer to prevent transparency bleed-through */}
       <div
         className={cn(
-          "absolute inset-0 bg-white dark:bg-[#191919]",
+          "absolute inset-0 bg-background",
           hasTopRounding && "rounded-t-md",
           hasBottomRounding && "rounded-b-md",
         )}
@@ -691,7 +649,7 @@ export function CalendarEventItem({
       {!isSelected && !isDeclined && (
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-[4px] dark:bg-white dark:mix-blend-overlay",
+            "absolute left-0 top-0 bottom-0 w-[4px] dark:bg-event-foreground dark:mix-blend-overlay",
             hasTopRounding && "rounded-tl-md",
             hasBottomRounding && "rounded-bl-md",
             styles.border,
@@ -713,10 +671,10 @@ export function CalendarEventItem({
               className={cn(
                 "font-medium text-[0.625rem] leading-tight break-words flex items-center gap-0.5",
                 isSelected
-                  ? "text-white dark:text-white"
+                  ? "text-event-foreground dark:text-event-foreground"
                   : cn(
                       styles.text,
-                      "dark:text-white/80",
+                      "dark:text-event-foreground/80",
                       eventIsPast && "opacity-60",
                     ),
                 isDeclined && "line-through",
@@ -736,10 +694,10 @@ export function CalendarEventItem({
                 className={cn(
                   "text-[0.625rem] whitespace-nowrap",
                   isSelected
-                    ? "text-white dark:text-white"
+                    ? "text-event-foreground dark:text-event-foreground"
                     : cn(
                         styles.text,
-                        "dark:text-white dark:mix-blend-overlay",
+                        "dark:text-event-foreground dark:mix-blend-overlay",
                         eventIsPast && "opacity-60 dark:opacity-100",
                       ),
                   isDeclined && "line-through",
@@ -851,8 +809,8 @@ export function AllDayEventItem({
     useIsEventInSelection(event.id) && (dragVariant ?? "default") === "default";
   const isSelected = isSelectedProp || isInSelection;
   const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
-  const color = resolveEventColor(event, calendars);
-  const styles = eventColorStyles[color];
+  const colorStyle = resolveEventColorStyle(event, calendars);
+  const styles = EVENT_COLOR_CLASSES;
   const { view, boundaryRight, headerBottom } = useCalendarPopoverBoundary();
   const isDayView = view === "day";
   // `false` on the server and during hydration, so the markup matches
@@ -933,10 +891,11 @@ export function AllDayEventItem({
           spanEnd && "rounded-r-md",
           className,
         )}
+        style={colorStyle}
       >
         <div
           className={cn(
-            "absolute inset-0 bg-white dark:bg-[#191919]",
+            "absolute inset-0 bg-background",
             spanStart && "rounded-l-md",
             spanEnd && "rounded-r-md",
           )}
@@ -952,7 +911,7 @@ export function AllDayEventItem({
         {spanStart && (
           <div
             className={cn(
-              "absolute left-0 top-0 bottom-0 w-[4px] dark:bg-white dark:mix-blend-overlay",
+              "absolute left-0 top-0 bottom-0 w-[4px] dark:bg-event-foreground dark:mix-blend-overlay",
               spanStart && "rounded-l-md",
               styles.border,
             )}
@@ -967,7 +926,7 @@ export function AllDayEventItem({
                 "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap",
                 spanStart && "pl-1",
                 styles.text,
-                "dark:text-white/80",
+                "dark:text-event-foreground/80",
               )}
             >
               <SeriesChangeDot eventId={event.id} />
@@ -989,6 +948,7 @@ export function AllDayEventItem({
           styles.borderLine,
           className,
         )}
+        style={colorStyle}
       />
     );
   }
@@ -1004,12 +964,13 @@ export function AllDayEventItem({
           "rounded-sm opacity-80 shadow-lg",
           className,
         )}
+        style={colorStyle}
       >
-        <div className="absolute inset-0 rounded-sm bg-white dark:bg-[#191919]" />
+        <div className="absolute inset-0 rounded-sm bg-background" />
         <div className={cn("absolute inset-0 rounded-sm", styles.bg)} />
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-white dark:mix-blend-overlay",
+            "absolute left-0 top-0 bottom-0 w-[4px] rounded-l-md dark:bg-event-foreground dark:mix-blend-overlay",
             styles.border,
           )}
         />
@@ -1021,7 +982,7 @@ export function AllDayEventItem({
               className={cn(
                 "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap pl-1",
                 styles.text,
-                "dark:text-white/80",
+                "dark:text-event-foreground/80",
               )}
             >
               <SeriesChangeDot eventId={event.id} />
@@ -1127,14 +1088,14 @@ export function AllDayEventItem({
       )}
       style={
         titleOffsetPercent > 0
-          ? { paddingLeft: `${titleOffsetPercent}%` }
-          : undefined
+          ? { ...colorStyle, paddingLeft: `${titleOffsetPercent}%` }
+          : colorStyle
       }
     >
       {/* Solid background layer to prevent transparency bleed-through */}
       <div
         className={cn(
-          "absolute inset-0 bg-white dark:bg-[#191919]",
+          "absolute inset-0 bg-background",
           spanStart && "rounded-l-md",
           spanEnd && "rounded-r-md",
         )}
@@ -1157,7 +1118,7 @@ export function AllDayEventItem({
       {spanStart && !isSelected && !isDeclined && (
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-[4px] dark:bg-white dark:mix-blend-overlay",
+            "absolute left-0 top-0 bottom-0 w-[4px] dark:bg-event-foreground dark:mix-blend-overlay",
             spanStart && "rounded-l-md",
             styles.border,
             eventIsPast && "opacity-60",
@@ -1174,10 +1135,10 @@ export function AllDayEventItem({
                 "relative font-medium text-[0.625rem] leading-tight whitespace-nowrap",
                 spanStart && "pl-1",
                 isSelected
-                  ? "text-white dark:text-white"
+                  ? "text-event-foreground dark:text-event-foreground"
                   : cn(
                       styles.text,
-                      "dark:text-white/80",
+                      "dark:text-event-foreground/80",
                       eventIsPast && "opacity-60",
                     ),
                 isDeclined && "line-through",
@@ -1192,10 +1153,10 @@ export function AllDayEventItem({
                 className={cn(
                   "relative text-[0.625rem] leading-tight whitespace-nowrap shrink-0",
                   isSelected
-                    ? "text-white dark:text-white"
+                    ? "text-event-foreground dark:text-event-foreground"
                     : cn(
                         styles.text,
-                        "dark:text-white dark:mix-blend-overlay",
+                        "dark:text-event-foreground dark:mix-blend-overlay",
                         eventIsPast && "opacity-60",
                       ),
                   isDeclined && "line-through",

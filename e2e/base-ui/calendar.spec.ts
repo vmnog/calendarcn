@@ -13,8 +13,11 @@ import { FROZEN_NOW, answerThisEvent, boxOf, calendarEvent } from "../helpers";
 /** Gap between an event and its details (POPOVER_SIDE_OFFSET) */
 const DETAILS_GAP = 8;
 
-/** Checked background of the details' all-day switch, #3A85D3 */
-const SWITCH_CHECKED_BACKGROUND = "rgb(58, 133, 211)";
+/**
+ * Checked background of the details' all-day switch: the calendar's
+ * selection color, which is the project's `--primary` without a theme
+ */
+const SWITCH_CHECKED_COLOR = "var(--calendar-selection)";
 
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(FROZEN_NOW);
@@ -162,13 +165,33 @@ test("on a 24-hour clock the time menu and typed times read as written, and the 
   );
 });
 
-test("the all-day switch is blue when checked", async ({ page }) => {
+test("the all-day switch takes the selection color when checked", async ({
+  page,
+}) => {
   await calendarEvent(page, "Team Offsite").click();
 
   // Base UI marks a checked switch with data-checked, not data-state
   const allDay = eventDetails(page).getByRole("switch");
   await expect(allDay).toHaveAttribute("data-checked", "");
-  await expect(allDay).toHaveCSS("background-color", SWITCH_CHECKED_BACKGROUND);
+  const expected = await page.evaluate((color) => {
+    const probe = document.createElement("div");
+    probe.style.backgroundColor = color;
+    document.body.append(probe);
+    const computed = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return computed;
+  }, SWITCH_CHECKED_COLOR);
+  expect(expected).toBe(
+    await page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.style.backgroundColor = "var(--primary)";
+      document.body.append(probe);
+      const computed = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return computed;
+    }),
+  );
+  await expect(allDay).toHaveCSS("background-color", expected);
 });
 
 test("the time zone and repeat rows edit the event", async ({ page }) => {

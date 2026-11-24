@@ -5,11 +5,7 @@ import { History, Rss, UserRound, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useCalendarPeople } from "@/components/calendar-people";
-import type {
-  CalendarPerson,
-  EventColor,
-  EventContact,
-} from "@/components/calendar-types";
+import type { CalendarPerson, EventContact } from "@/components/calendar-types";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -17,6 +13,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { getEventColorStyle } from "@/lib/event-utils";
 import {
   getPersonInitial,
   getPersonName,
@@ -25,16 +22,8 @@ import {
   suggestPeople,
 } from "@/lib/people";
 
-/** Swatch color of a person, as the calendar list colors its calendars */
-const PERSON_SWATCH_CLASSES: Record<EventColor, string> = {
-  red: "bg-event-red",
-  orange: "bg-event-orange",
-  yellow: "bg-event-yellow",
-  green: "bg-event-green",
-  blue: "bg-event-blue",
-  purple: "bg-event-purple",
-  gray: "bg-event-gray",
-};
+/** A person's swatch, as the calendar list colors its calendars: their color, set with `getEventColorStyle()` */
+const PERSON_SWATCH_CLASS = "bg-event";
 
 /** A person row's name: the sidebar's small text, truncated */
 const PERSON_ROW_NAME_CLASS =
@@ -156,18 +145,20 @@ function PersonRow({ person, shape, removeLabel, onRemove }: PersonRowProps) {
           aria-hidden
           className={cn(
             "flex size-3 shrink-0 items-center justify-center rounded-xs",
-            PERSON_SWATCH_CLASSES[person.color],
+            PERSON_SWATCH_CLASS,
           )}
+          style={getEventColorStyle(person.color)}
         >
-          <Rss className="size-2 text-white" />
+          <Rss className="size-2 text-event-foreground" />
         </span>
       ) : (
         <span
           aria-hidden
           className={cn(
-            "flex size-4 shrink-0 items-center justify-center rounded-full text-[9px] leading-none font-semibold text-white",
-            PERSON_SWATCH_CLASSES[person.color],
+            "flex size-4 shrink-0 items-center justify-center rounded-full text-[9px] leading-none font-semibold text-event-foreground",
+            PERSON_SWATCH_CLASS,
           )}
+          style={getEventColorStyle(person.color)}
         >
           {getPersonInitial(person)}
         </span>
@@ -265,7 +256,9 @@ function MeetWithField({ contacts, exclude, onPick }: MeetWithFieldProps) {
   return (
     <div className="relative">
       <div
-        className="flex items-center gap-2 rounded-sm bg-[#EFEFEE] px-2 py-1.5 has-[:focus]:bg-[#E8E8E4] dark:bg-sidebar dark:has-[:focus]:bg-[#242424]"
+        // Filled with the sidebar's border color: half strength at rest, full
+        // while focused. A dark theme fills it only while focused
+        className="flex items-center gap-2 rounded-sm bg-sidebar-border/50 px-2 py-1.5 has-[:focus]:bg-sidebar-border dark:bg-sidebar dark:has-[:focus]:bg-sidebar-accent"
         onClick={() => inputRef.current?.focus()}
       >
         <UserRound className="text-calendar-sidebar-muted-foreground size-4 shrink-0" />

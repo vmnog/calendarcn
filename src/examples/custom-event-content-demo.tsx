@@ -8,21 +8,17 @@ import { CalendarProvider } from "@/components/calendar-provider";
 import { WeekView } from "@/components/week-view";
 import type {
   DetailedCalendarEvent,
-  EventColor,
   EventContentProps,
 } from "@/components/calendar-types";
 import { createSampleEvents } from "@/lib/sample-events";
 
-/** Text class per event color, from the `--event-*` theme tokens */
-const TEXT_CLASS: Record<EventColor, string> = {
-  red: "text-event-red",
-  orange: "text-event-orange",
-  yellow: "text-event-yellow",
-  green: "text-event-green",
-  blue: "text-event-blue",
-  purple: "text-event-purple",
-  gray: "text-event-gray",
-};
+/**
+ * The text of the content: `text-event` is the color of the event it is
+ * drawn in, whichever that is. In dark mode the calendar's own content is
+ * near white, so this one is too.
+ */
+const TEXT_CLASS =
+  "text-[0.625rem] leading-tight text-event dark:text-event-foreground/85";
 
 export function CustomEventContentDemo() {
   // The provider reads its initial events once, so create them once
@@ -48,15 +44,10 @@ function renderEventContent({
   isCompact,
   timeLabel,
 }: EventContentProps<DetailedCalendarEvent>) {
-  const textClass = cn(
-    "text-[0.625rem] leading-tight dark:text-white/85",
-    TEXT_CLASS[event.color ?? "blue"],
-  );
-
   // One line: the all-day row, month cells, and short time-grid blocks
   if (isCompact || placement !== "time-grid") {
     return (
-      <div className={cn("flex h-full items-center gap-1", textClass)}>
+      <div className={cn("flex h-full items-center gap-1", TEXT_CLASS)}>
         {event.recurrence && <RepeatIcon className="size-2.5 shrink-0" />}
         <span className="truncate font-semibold">{event.title}</span>
       </div>
@@ -64,7 +55,7 @@ function renderEventContent({
   }
 
   return (
-    <div className={cn("flex h-full flex-col gap-0.5 pt-0.5", textClass)}>
+    <div className={cn("flex h-full flex-col gap-0.5 pt-0.5", TEXT_CLASS)}>
       <span className="font-semibold">{event.title}</span>
       <span className="tabular-nums opacity-80">{timeLabel}</span>
       {event.location && (
