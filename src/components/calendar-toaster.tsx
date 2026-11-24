@@ -21,12 +21,12 @@ const TOAST_FADE_MS = 150;
 const TOASTER_LABEL = "Notifications";
 
 /**
- * A toast's look: dark in both themes, like the event menus and the
- * details' tooltip. The border shows in dark mode only, where #252525 sits
- * close to the #191919 page
+ * A toast's look: the surface and text of the event menus and the details'
+ * tooltip (`--calendar-menu` and the tokens beside it). The border shows in
+ * dark mode only, where the surface sits close to the page's
  */
 const TOAST_CLASS =
-  "pointer-events-auto relative flex w-[220px] max-w-full gap-2 rounded-md border border-transparent bg-[#252525] py-2.5 pr-8 pl-3 text-xs leading-[18px] text-[#F0F0F0] shadow-lg dark:border-[#303030] dark:shadow-black/40";
+  "pointer-events-auto relative flex w-[220px] max-w-full gap-2 rounded-md border border-transparent bg-calendar-menu py-2.5 pr-8 pl-3 text-xs leading-[18px] text-calendar-menu-foreground/93 shadow-lg dark:border-calendar-menu-border dark:shadow-black/40";
 
 /** Slides in, and fades over its last `TOAST_FADE_MS`; neither with reduced motion */
 const TOAST_MOTION_CLASS =
@@ -34,7 +34,7 @@ const TOAST_MOTION_CLASS =
 
 /** The toast's Undo and Close: a faint fill on hover, a ring on keyboard focus */
 const TOAST_BUTTON_CLASS =
-  "rounded-sm outline-none hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-white/50";
+  "rounded-sm outline-none hover:bg-calendar-menu-foreground/10 focus-visible:ring-1 focus-visible:ring-calendar-menu-foreground/50";
 
 /** Props of one toast (only used in this file) */
 interface CalendarToastProps {
@@ -167,11 +167,14 @@ function CalendarToast({ notice, duration, onDismiss }: CalendarToastProps) {
       }}
       onBlur={handleBlur}
     >
-      <Info aria-hidden className="mt-0.5 size-3.5 shrink-0 text-white/60" />
+      <Info
+        aria-hidden
+        className="mt-0.5 size-3.5 shrink-0 text-calendar-menu-foreground/60"
+      />
       <div className="min-w-0 flex-1">
         <p className="font-medium">{message}</p>
         {title ? (
-          <p className="truncate text-white/60">{`“${title}”`}</p>
+          <p className="truncate text-calendar-menu-foreground/60">{`“${title}”`}</p>
         ) : null}
         {onUndo ? (
           <div className="mt-1.5 flex justify-end">
@@ -179,7 +182,7 @@ function CalendarToast({ notice, duration, onDismiss }: CalendarToastProps) {
               type="button"
               className={cn(
                 TOAST_BUTTON_CLASS,
-                "bg-white/10 px-2 py-0.5 font-medium text-white hover:bg-white/15",
+                "bg-calendar-menu-foreground/10 px-2 py-0.5 font-medium text-calendar-menu-foreground hover:bg-calendar-menu-foreground/15",
               )}
               onClick={handleUndo}
             >
@@ -193,7 +196,7 @@ function CalendarToast({ notice, duration, onDismiss }: CalendarToastProps) {
         aria-label="Close"
         className={cn(
           TOAST_BUTTON_CLASS,
-          "absolute top-2 right-2 p-0.5 text-white/40 hover:text-white",
+          "absolute top-2 right-2 p-0.5 text-calendar-menu-foreground/40 hover:text-calendar-menu-foreground",
         )}
         onClick={() => onDismiss(id)}
       >

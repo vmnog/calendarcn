@@ -6,14 +6,13 @@ import { cn } from "@/lib/utils";
 import {
   getDaySegmentPosition,
   getEventDayRange,
-  resolveEventColor,
+  resolveEventColorStyle,
 } from "@/lib/event-utils";
 import { useCalendarPopoverBoundary } from "./calendar-popover-context";
 import { useCalendarConfig, useCalendarEventDraft } from "./calendar-provider";
 import { EventDetailPopover } from "./event-detail-popover";
 import type {
   CalendarEvent,
-  EventColor,
   EventDraftLayerProps,
   EventDraftPopoverProps,
   EventPopoverAnchor,
@@ -32,19 +31,12 @@ export const EVENT_DRAFT_ANCHOR_PROPS = { [EVENT_DRAFT_ANCHOR_ATTRIBUTE]: "" };
 export const EVENT_DRAFT_SLOT = "event-draft";
 
 /**
- * Fill of a draft that nothing was typed into yet, by color: the event's
- * own color, see-through over the grid, as Notion Calendar tints the range
- * a new event will cover
+ * Fill of a draft that nothing was typed into yet: the event's own color
+ * (set on the element with `resolveEventColorStyle()`), see-through over the
+ * grid, as Notion Calendar tints the range a new event will cover
  */
-export const EVENT_DRAFT_TINT_CLASS: Record<EventColor, string> = {
-  red: "bg-event-red-border/25 dark:bg-event-red-border/20",
-  orange: "bg-event-orange-border/25 dark:bg-event-orange-border/20",
-  yellow: "bg-event-yellow-border/25 dark:bg-event-yellow-border/20",
-  green: "bg-event-green-border/25 dark:bg-event-green-border/20",
-  blue: "bg-event-blue-border/25 dark:bg-event-blue-border/20",
-  purple: "bg-event-purple-border/25 dark:bg-event-purple-border/20",
-  gray: "bg-event-gray-border/25 dark:bg-event-gray-border/20",
-};
+export const EVENT_DRAFT_TINT_CLASS =
+  "bg-event-border/25 dark:bg-event-border/20";
 
 /** The first anchor of the event being created that is on screen, if any */
 function findEventDraftAnchor(boundary: HTMLElement): Element | null {
@@ -83,8 +75,7 @@ export function TimeGridEventDraft({
 
   if (!event || event.isAllDay) return null;
 
-  const tint =
-    EVENT_DRAFT_TINT_CLASS[resolveEventColor(event, config.calendars)];
+  const colorStyle = resolveEventColorStyle(event, config.calendars);
   const visibleEnd = visibleStartIndex + (visibleCount ?? days.length);
 
   return (
@@ -104,8 +95,15 @@ export function TimeGridEventDraft({
             <div
               {...(isOnScreen ? EVENT_DRAFT_ANCHOR_PROPS : null)}
               data-slot={isTinted ? EVENT_DRAFT_SLOT : undefined}
-              className={cn("absolute inset-x-0", isTinted && tint)}
-              style={{ top: `${segment.top}%`, height: `${segment.height}%` }}
+              className={cn(
+                "absolute inset-x-0",
+                isTinted && EVENT_DRAFT_TINT_CLASS,
+              )}
+              style={{
+                ...colorStyle,
+                top: `${segment.top}%`,
+                height: `${segment.height}%`,
+              }}
             />
           </div>
         );
@@ -147,15 +145,16 @@ export function AllDayEventDraft({
     visibleStartIndex + (visibleCount ?? days.length) - 1,
   );
   const columnPercent = 100 / days.length;
-  const tint = EVENT_DRAFT_TINT_CLASS[resolveEventColor(event, calendars)];
+  const colorStyle = resolveEventColorStyle(event, calendars);
 
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
       {isTinted && (
         <div
           data-slot={EVENT_DRAFT_SLOT}
-          className={cn("absolute inset-y-0", tint)}
+          className={cn("absolute inset-y-0", EVENT_DRAFT_TINT_CLASS)}
           style={{
+            ...colorStyle,
             left: `${startColumn * columnPercent}%`,
             width: `${(endColumn - startColumn + 1) * columnPercent}%`,
           }}

@@ -23,9 +23,11 @@ import {
   startOfYear,
 } from "date-fns";
 import type { Locale } from "date-fns";
+import type { CSSProperties } from "react";
 import type {
   AgendaDay,
   AgendaEntry,
+  BuiltInEventColor,
   CalendarConfig,
   CalendarEvent,
   CalendarGroup,
@@ -49,8 +51,11 @@ import {
 } from "@/lib/recurrence";
 import { getTimeZoneRowLabel, isKnownTimeZone } from "@/lib/time-zones";
 
-/** Every event color, in the order the color pickers list them */
-export const EVENT_COLORS: readonly EventColor[] = [
+/**
+ * The seven event colors that ship, in the order the color pickers list
+ * them. The pickers show the provider's `eventColors`, which defaults to these
+ */
+export const EVENT_COLORS: readonly BuiltInEventColor[] = [
   "red",
   "orange",
   "yellow",
@@ -85,6 +90,101 @@ export function resolveEventColor(
   if (event.color) return event.color;
   const calendar = calendars.find((c) => c.id === event.calendarId);
   return calendar?.color ?? DEFAULT_EVENT_COLOR;
+}
+
+/** A color name that can be part of a CSS variable's name (`--event-<name>`) */
+const EVENT_COLOR_NAME = /^[a-zA-Z][\w-]*$/;
+
+/**
+ * The variables the `event-*` color classes read, and the suffix of the
+ * color's own variable each one takes its value from (`--event-teal-bg`)
+ */
+const EVENT_COLOR_VARIABLES = [
+  ["--event", ""],
+  ["--event-bg", "-bg"],
+  ["--event-border", "-border"],
+] as const;
+
+/**
+ * The two text shades of a timed event in month view. A color that doesn't
+ * define them uses its own text color for both
+ */
+const EVENT_COLOR_SHADES = [
+  ["--event-strong", "-strong"],
+  ["--event-muted", "-muted"],
+] as const;
+
+/** Whether a color is one of the seven that ship, whose variables always exist */
+function isBuiltInEventColor(color: EventColor): color is BuiltInEventColor {
+  return EVENT_COLORS.some((builtIn) => builtIn === color);
+}
+
+/**
+ * `var()` for one of a color's variables. A name your CSS doesn't define
+ * resolves to `fallback`, which only a custom color needs.
+ */
+function eventColorVar(color: EventColor, suffix: string, fallback: string) {
+  if (isBuiltInEventColor(color)) return `var(--event-${color}${suffix})`;
+  if (!EVENT_COLOR_NAME.test(color)) return fallback;
+  return `var(--event-${color}${suffix}, ${fallback})`;
+}
+
+/**
+ * Inline style that sets an element's event color: `--event`, `--event-bg`,
+ * `--event-border`, `--event-strong` and `--event-muted`, from the
+ * `--event-<color>*` variables in your CSS. The `event-*` classes
+ * (`bg-event-bg`, `text-event`, `EVENT_COLOR_CLASSES`) on the element and
+ * inside it then paint with that color. A name without variables takes
+ * `fallback`'s (an event's calendar color), then blue's.
+ */
+export function getEventColorStyle(
+  color: EventColor,
+  fallback: EventColor = DEFAULT_EVENT_COLOR,
+): CSSProperties {
+  // A calendar's own color has only blue behind it
+  const backup = fallback === color ? DEFAULT_EVENT_COLOR : fallback;
+  const style: Record<string, string> = {};
+  for (const [variable, suffix] of EVENT_COLOR_VARIABLES) {
+    const last = `var(--event-${DEFAULT_EVENT_COLOR}${suffix})`;
+    style[variable] = eventColorVar(
+      color,
+      suffix,
+      eventColorVar(backup, suffix, last),
+    );
+  }
+  for (const [variable, suffix] of EVENT_COLOR_SHADES) {
+    const last = `var(--event-${DEFAULT_EVENT_COLOR}${suffix})`;
+    const fallbackShade = eventColorVar(
+      backup,
+      suffix,
+      eventColorVar(backup, "", last),
+    );
+    style[variable] = eventColorVar(
+      color,
+      suffix,
+      eventColorVar(color, "", fallbackShade),
+    );
+  }
+  return style;
+}
+
+/**
+ * `getEventColorStyle()` for an event: its own `color` with its calendar's
+ * as the fallback, else its calendar's color, else blue
+ */
+export function resolveEventColorStyle(
+  event: Pick<DetailedCalendarEvent, "color" | "calendarId">,
+  calendars: readonly CalendarInfo[],
+): CSSProperties {
+  const calendar = calendars.find((c) => c.id === event.calendarId);
+  const calendarColor = calendar?.color ?? DEFAULT_EVENT_COLOR;
+  return getEventColorStyle(event.color ?? calendarColor, calendarColor);
+}
+
+/** A color's name as a picker reads it out: "Red", "Teal", "Light blue" */
+export function getEventColorName(color: EventColor): string {
+  const words = color.replace(/[-_]+/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 /** Length in minutes of the slot `getNewEventRange` returns for a point on a day column */

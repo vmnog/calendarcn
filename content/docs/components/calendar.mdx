@@ -190,16 +190,17 @@ Pressing <Kbd>Esc</Kbd> closes the details first. A Radix dialog stays open. A B
 
 ## Theming
 
-The calendar uses your shadcn/ui theme (`--background`, `--foreground`, `--border`, `--muted-foreground`, `--popover`) plus a few tokens of its own, which the CLI adds to your CSS file for light mode (`:root`) and dark mode (`.dark`). Today's date and the current-time line use `--primary`.
+Every color in the calendar is a CSS variable. The views use your shadcn/ui theme (`--background`, `--foreground`, `--border`, `--muted-foreground`, `--popover`), today's date and the current-time line use `--primary`, and the event details, menus and toasts use the calendar's own `--calendar-*` tokens, which default to your theme too. [Theming](/docs/guides/theming) lists every token, shows how to restyle them and has the Notion Calendar theme.
 
-| Variable                 | Used for                                                      |
-| ------------------------ | ------------------------------------------------------------- |
-| `--event-{color}`        | Event text: the title and time of the default content         |
-| `--event-{color}-bg`     | Event background                                              |
-| `--event-{color}-border` | The bar on an event's left edge, and the color swatches       |
-| `--calendar-weekend`     | Background of weekend columns and weekend cells in month view |
+Events take their color from three variables per color, which the CLI adds to your CSS file for light mode (`:root`) and dark mode (`.dark`):
 
-`{color}` is one of `red`, `orange`, `yellow`, `green`, `blue`, `purple` and `gray`. Override them to restyle every event of that color:
+| Variable                 | Used for                                                |
+| ------------------------ | ------------------------------------------------------- |
+| `--event-{color}`        | Event text: the title and time of the default content   |
+| `--event-{color}-bg`     | Event background                                        |
+| `--event-{color}-border` | The bar on an event's left edge, and the color swatches |
+
+`{color}` is one of `red`, `orange`, `yellow`, `green`, `blue`, `purple` and `gray`, or [a name of your own](/docs/guides/theming#add-an-event-color). Override them to restyle every event of that color:
 
 ```css
 :root {
@@ -215,7 +216,7 @@ The calendar uses your shadcn/ui theme (`--background`, `--foreground`, `--borde
 }
 ```
 
-They're also Tailwind colors (`text-event-blue`, `bg-event-blue-bg`, `bg-event-blue-border`), which is how the [custom content](/docs/components/calendar-core#custom-event-content) example colors its text.
+Inside an event, `text-event`, `bg-event-bg` and `bg-event-border` paint with that event's color, whichever it is. [Custom content](/docs/components/calendar-core#custom-event-content) can use them.
 
 ## API Reference
 

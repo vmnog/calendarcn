@@ -164,11 +164,11 @@ function ConferencingMenuContent({
             onMouseEnter={() => onPreview(null)}
           >
             <span className="w-4 shrink-0" />
-            <VideoOff className="size-4 text-white" />
+            <VideoOff className="size-4 text-current" />
             No conferencing
           </DropdownMenuItem>
           {providers.length > 0 && (
-            <DropdownMenuSeparator className="bg-[#303030]" />
+            <DropdownMenuSeparator className="bg-calendar-menu-border" />
           )}
         </>
       )}
@@ -182,7 +182,7 @@ function ConferencingMenuContent({
         >
           <span className="flex w-4 shrink-0 items-center justify-center">
             {option === currentOption && (
-              <Check className="size-4 text-white" />
+              <Check className="size-4 text-current" />
             )}
           </span>
           <ProviderIcon
@@ -341,8 +341,8 @@ export function EventDetailConferencing<
                 "gap-2",
                 EVENT_DETAIL_HOVER_BORDER_CLASS,
                 // Keyboard focus in the row shows its hover border
-                "has-[:focus-visible]:border-[#E8E8E4] dark:has-[:focus-visible]:border-[#373737]",
-                menuOpen && "border-[#E8E8E4] dark:border-[#373737]",
+                "has-[:focus-visible]:border-calendar-detail-hover-border",
+                menuOpen && "border-calendar-detail-hover-border",
               )}
             >
               <a

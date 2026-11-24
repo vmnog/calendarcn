@@ -81,6 +81,19 @@ npx shadcn@latest add @calendarcn/week-view
 </Step>
 <Step>
 
+### Add the Notion Calendar theme (optional)
+
+A plain install wears your app's own shadcn/ui theme: the calendar's color tokens point at yours. To get the [live demo](/)'s look instead, add its theme:
+
+```npm
+npx shadcn@latest add @calendarcn/theme-notion
+```
+
+It writes Notion Calendar's colors over your shadcn/ui color tokens and the calendar's own, for light and dark mode, so your whole app takes the theme. It adds no files. [Theming](/docs/guides/theming#the-notion-calendar-theme) lists what it changes.
+
+</Step>
+<Step>
+
 ### Render it
 
 ```tsx title="app/calendar/page.tsx"
@@ -137,7 +150,7 @@ The calendar fills its parent's height, so give the parent one. It renders in th
 
 ## Registry items
 
-Each item pulls in the ones it builds on. [Registry items](/docs/reference/registry-items) lists them all, with what each adds.
+Each item pulls in the ones it builds on. [Registry items](/docs/reference/registry-items) lists them all, with what each adds. No item installs `theme-notion`, so your app keeps its own colors until you [add the theme](#add-the-notion-calendar-theme-optional).
 
 ## Updating
 

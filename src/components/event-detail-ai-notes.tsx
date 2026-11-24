@@ -70,7 +70,7 @@ export function EventDetailAiNotes<
             disabled={!onEventChange}
             data-testid="event-ai-notes-button"
             className={cn(
-              "flex h-8 flex-1 items-center rounded-md border border-[#F0F0F0] bg-[#FBFBFB] hover:bg-[#F5F5F5] dark:border-[#303030] dark:bg-[#282828] dark:hover:bg-[#2E2E2E]",
+              "flex h-8 flex-1 items-center rounded-md border border-calendar-detail-border bg-calendar-detail-focus/40 hover:bg-calendar-detail-focus dark:border-calendar-menu-border dark:bg-calendar-menu dark:hover:bg-calendar-menu-accent",
               EVENT_DETAIL_TEXT_CLASS,
             )}
             onClick={() => setNotes(true)}

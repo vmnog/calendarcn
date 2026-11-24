@@ -15,29 +15,44 @@
     }
   ],
   "cssVars": {
+    "theme": {
+      "color-calendar-sidebar": "var(--calendar-sidebar)",
+      "color-calendar-sidebar-foreground": "var(--calendar-sidebar-foreground)",
+      "color-calendar-sidebar-muted-foreground": "var(--calendar-sidebar-muted-foreground)",
+      "color-calendar-sidebar-primary": "var(--calendar-sidebar-primary)",
+      "color-calendar-sidebar-primary-foreground": "var(--calendar-sidebar-primary-foreground)",
+      "color-calendar-sidebar-accent": "var(--calendar-sidebar-accent)",
+      "color-calendar-sidebar-accent-foreground": "var(--calendar-sidebar-accent-foreground)",
+      "color-calendar-sidebar-border": "var(--calendar-sidebar-border)",
+      "color-calendar-sidebar-ring": "var(--calendar-sidebar-ring)",
+      "color-calendar-context-panel": "var(--calendar-context-panel)",
+      "color-calendar-context-panel-muted-foreground": "var(--calendar-context-panel-muted-foreground)"
+    },
     "light": {
-      "calendar-sidebar": "#f8f8f7",
-      "calendar-sidebar-foreground": "#939391",
-      "calendar-sidebar-muted-foreground": "#cfcfce",
-      "calendar-sidebar-primary": "#32302c",
-      "calendar-sidebar-primary-foreground": "#ffffff",
-      "calendar-sidebar-accent": "#efefef",
-      "calendar-sidebar-accent-foreground": "#32302c",
-      "calendar-sidebar-border": "#e5e5e5",
-      "calendar-sidebar-ring": "#797875",
-      "calendar-context-panel": "#ffffff"
+      "calendar-sidebar": "var(--sidebar)",
+      "calendar-sidebar-foreground": "var(--sidebar-foreground)",
+      "calendar-sidebar-muted-foreground": "color-mix(in oklab, var(--sidebar-foreground) 50%, transparent)",
+      "calendar-sidebar-primary": "var(--sidebar-primary)",
+      "calendar-sidebar-primary-foreground": "var(--sidebar-primary-foreground)",
+      "calendar-sidebar-accent": "var(--sidebar-accent)",
+      "calendar-sidebar-accent-foreground": "var(--sidebar-accent-foreground)",
+      "calendar-sidebar-border": "var(--sidebar-border)",
+      "calendar-sidebar-ring": "var(--sidebar-ring)",
+      "calendar-context-panel": "var(--background)",
+      "calendar-context-panel-muted-foreground": "var(--muted-foreground)"
     },
     "dark": {
-      "calendar-sidebar": "#202020",
-      "calendar-sidebar-foreground": "#868686",
-      "calendar-sidebar-muted-foreground": "#555555",
-      "calendar-sidebar-primary": "#d9d9d9",
-      "calendar-sidebar-primary-foreground": "#191919",
-      "calendar-sidebar-accent": "#2a2a2a",
-      "calendar-sidebar-accent-foreground": "#d9d9d9",
-      "calendar-sidebar-border": "#333333",
-      "calendar-sidebar-ring": "#7f7f7f",
-      "calendar-context-panel": "#191919"
+      "calendar-sidebar": "var(--sidebar)",
+      "calendar-sidebar-foreground": "var(--sidebar-foreground)",
+      "calendar-sidebar-muted-foreground": "color-mix(in oklab, var(--sidebar-foreground) 50%, transparent)",
+      "calendar-sidebar-primary": "var(--sidebar-primary)",
+      "calendar-sidebar-primary-foreground": "var(--sidebar-primary-foreground)",
+      "calendar-sidebar-accent": "var(--sidebar-accent)",
+      "calendar-sidebar-accent-foreground": "var(--sidebar-accent-foreground)",
+      "calendar-sidebar-border": "var(--sidebar-border)",
+      "calendar-sidebar-ring": "var(--sidebar-ring)",
+      "calendar-context-panel": "var(--background)",
+      "calendar-context-panel-muted-foreground": "var(--muted-foreground)"
     }
   },
   "categories": [

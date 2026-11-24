@@ -8,12 +8,19 @@ import {
   readExampleSource,
 } from "@/components/docs/examples";
 import {
+  CSS_STEP_TEXT,
   NPM,
   REGISTRY_NAMESPACE,
   getInstallSteps,
 } from "@/components/docs/install-tabs";
 import type { DocsMapQuestion } from "@/components/docs/docs-map";
 import type { PropDefinition } from "@/components/docs/props-table";
+import {
+  getEventColorPartLabels,
+  getEventColorRows,
+  getThemeTokenRows,
+} from "@/components/docs/theme-tokens";
+import type { ThemeTokenGroup } from "@/components/docs/theme-tokens";
 import { SITE_URL } from "@/lib/source";
 import type { DocsPage } from "@/lib/source";
 
@@ -107,6 +114,15 @@ function codeBlock(lang: string, code: string, title?: string): string {
   const fence = "`".repeat(Math.max(3, longestBacktickRun(code) + 1));
   const meta = title ? ` title="${title}"` : "";
   return block(`${fence}${lang}${meta}\n${code}\n${fence}`);
+}
+
+/** Text with every line pushed in by `spaces`, so a code block stays inside a list item */
+function indent(text: string, spaces: number): string {
+  const prefix = " ".repeat(spaces);
+  return text
+    .split("\n")
+    .map((line) => (line ? `${prefix}${line}` : line))
+    .join("\n");
 }
 
 /** A table cell: one line, with the pipes escaped (GitHub tables need it in code too) */
@@ -222,7 +238,10 @@ async function InstallTabs({ item, children }: InstallTabsProps) {
       `Install the dependencies: ${inlineCode(steps.dependenciesCommand(NPM))}`,
     steps.shadcnCommand &&
       `Add the shadcn/ui components it uses: ${inlineCode(steps.shadcnCommand(NPM))}`,
-    `Copy these files into your project, keeping the paths under your components, hooks and lib folders:\n${files.join("\n")}`,
+    files.length > 0 &&
+      `Copy these files into your project, keeping the paths under your components, hooks and lib folders:\n${files.join("\n")}`,
+    steps.css &&
+      `${CSS_STEP_TEXT}\n\n${indent(codeBlock("css", steps.css).trim(), 3)}`,
   ].filter((step) => typeof step === "string");
 
   return [
@@ -278,6 +297,46 @@ async function PropsTable({
       `|${" --- |".repeat(header.length)}`,
       ...lines,
     ].join("\n"),
+  );
+}
+
+/** A Markdown table from its header and its rows of cells */
+function table(header: string[], rows: string[][]): string {
+  return block(
+    [
+      `| ${header.join(" | ")} |`,
+      `|${" --- |".repeat(header.length)}`,
+      ...rows.map((cells) => `| ${cells.map(tableCell).join(" | ")} |`),
+    ].join("\n"),
+  );
+}
+
+/** `ThemeTokens`: the group's tokens as a table, read as the page reads them */
+function ThemeTokens({ group }: { group: ThemeTokenGroup }) {
+  asMarkdown();
+  return table(
+    ["Token", "Used for", "Default", "Notion light", "Notion dark"],
+    getThemeTokenRows(group).map((row) => [
+      inlineCode(row.name),
+      row.description,
+      inlineCode(row.defaultValue),
+      inlineCode(row.notionLight),
+      inlineCode(row.notionDark),
+    ]),
+  );
+}
+
+/** `EventColorTokens`: each color's variables with their light and dark value */
+function EventColorTokens() {
+  asMarkdown();
+  return table(
+    ["Color", ...getEventColorPartLabels()],
+    getEventColorRows().map((row) => [
+      inlineCode(row.color),
+      ...row.parts.map(
+        (part) => `${inlineCode(part.light)} / ${inlineCode(part.dark)}`,
+      ),
+    ]),
   );
 }
 
@@ -338,6 +397,7 @@ function getMarkdownComponents(page: DocsPage): Record<string, ElementType> {
     Contributor,
     DocsMap,
     DocsMapCta,
+    EventColorTokens,
     InstallTabs,
     Kbd,
     KbdGroup,
@@ -349,6 +409,7 @@ function getMarkdownComponents(page: DocsPage): Record<string, ElementType> {
     Steps: ChildrenOnly,
     Tab: ChildrenOnly,
     Tabs: ChildrenOnly,
+    ThemeTokens,
   };
 }
 

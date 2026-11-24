@@ -1,6 +1,7 @@
 {
   "title": "Guides",
   "pages": [
+    "theming",
     "loading-events",
     "import-export",
     "meet-with-people",

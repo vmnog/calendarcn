@@ -16,6 +16,7 @@ import { InstallTabs } from "@/components/docs/install-tabs";
 import { LiveDemoPreview } from "@/components/docs/live-demo-preview";
 import { PlayableHero } from "@/components/docs/playable-hero";
 import { PropsTable } from "@/components/docs/props-table";
+import { EventColorTokens, ThemeTokens } from "@/components/docs/theme-tokens";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 /** The app's `Kbd`, opted out of the Fumadocs prose `kbd` styles. */
@@ -76,6 +77,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     LiveDemoPreview,
     PlayableHero,
     PropsTable,
+    ThemeTokens,
+    EventColorTokens,
     ...components,
   };
 }

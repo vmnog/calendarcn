@@ -12,14 +12,15 @@ import { SeriesChangeDot } from "./event-series-scope-dialog";
 import {
   DECLINED_EVENT_OUTLINE_CLASS,
   DECLINED_EVENT_TEXT_CLASS,
+  EVENT_COLOR_CLASSES,
   EVENT_FOCUS_RING_CLASS,
 } from "./calendar-event-item";
 import {
   getEventLabel,
   isDeclinedByViewer,
-  resolveEventColor,
+  resolveEventColorStyle,
 } from "@/lib/event-utils";
-import type { CalendarEvent, EventColor } from "./calendar-types";
+import type { CalendarEvent } from "./calendar-types";
 import type { EventDetailsTriggerProps } from "./week-view-types";
 
 /** Width in pixels of the resize hotzone at each edge */
@@ -59,54 +60,6 @@ export interface MonthViewEventBarProps {
   className?: string;
 }
 
-const barColorStyles: Record<
-  EventColor,
-  { bg: string; bgHover: string; border: string; text: string }
-> = {
-  red: {
-    bg: "bg-event-red-bg",
-    bgHover: "hover:bg-event-red-bg/70",
-    border: "bg-event-red-border",
-    text: "text-event-red",
-  },
-  orange: {
-    bg: "bg-event-orange-bg",
-    bgHover: "hover:bg-event-orange-bg/70",
-    border: "bg-event-orange-border",
-    text: "text-event-orange",
-  },
-  yellow: {
-    bg: "bg-event-yellow-bg",
-    bgHover: "hover:bg-event-yellow-bg/70",
-    border: "bg-event-yellow-border",
-    text: "text-event-yellow",
-  },
-  green: {
-    bg: "bg-event-green-bg",
-    bgHover: "hover:bg-event-green-bg/70",
-    border: "bg-event-green-border",
-    text: "text-event-green",
-  },
-  blue: {
-    bg: "bg-event-blue-bg",
-    bgHover: "hover:bg-event-blue-bg/70",
-    border: "bg-event-blue-border",
-    text: "text-event-blue",
-  },
-  purple: {
-    bg: "bg-event-purple-bg",
-    bgHover: "hover:bg-event-purple-bg/70",
-    border: "bg-event-purple-border",
-    text: "text-event-purple",
-  },
-  gray: {
-    bg: "bg-event-gray-bg",
-    bgHover: "hover:bg-event-gray-bg/70",
-    border: "bg-event-gray-border",
-    text: "text-event-gray",
-  },
-};
-
 export function MonthViewEventBar({
   event,
   roundedLeft,
@@ -127,8 +80,8 @@ export function MonthViewEventBar({
     useIsEventInSelection(event.id) && !isGhost && !isDragging;
   const isSelected = isSelectedProp || isInSelection;
   const { calendars, hourCycle, locale, timeZone } = useCalendarConfig();
-  const color = resolveEventColor(event, calendars);
-  const styles = barColorStyles[color];
+  const colorStyle = resolveEventColorStyle(event, calendars);
+  const styles = EVENT_COLOR_CLASSES;
   /** Declined by the viewer: an outline only, struck-through text */
   const isDeclined = isDeclinedByViewer(event);
   const showsDeclined = isDeclined && !isSelected;
@@ -222,11 +175,12 @@ export function MonthViewEventBar({
         isGhost && "opacity-30 pointer-events-none",
         className,
       )}
+      style={colorStyle}
     >
       {/* Solid background layer to prevent transparency bleed-through */}
       <div
         className={cn(
-          "absolute inset-0 bg-white dark:bg-[#191919]",
+          "absolute inset-0 bg-background",
           roundedLeft && "rounded-l-sm",
           roundedRight && "rounded-r-sm",
         )}
@@ -248,7 +202,7 @@ export function MonthViewEventBar({
       {roundedLeft && !isSelected && !isDeclined && (
         <div
           className={cn(
-            "absolute left-0 top-0 bottom-0 w-[3px] dark:bg-white dark:mix-blend-overlay",
+            "absolute left-0 top-0 bottom-0 w-[3px] dark:bg-event-foreground dark:mix-blend-overlay",
             "rounded-l-sm",
             styles.border,
           )}
@@ -278,8 +232,8 @@ export function MonthViewEventBar({
               roundedLeft ? "pl-1.5" : "pl-1",
               roundedRight ? "pr-1" : "pr-0",
               isSelected
-                ? "text-white dark:text-white"
-                : cn(styles.text, "dark:text-white/80"),
+                ? "text-event-foreground dark:text-event-foreground"
+                : cn(styles.text, "dark:text-event-foreground/80"),
               isDeclined && "line-through",
               showsDeclined && DECLINED_EVENT_TEXT_CLASS,
             )}

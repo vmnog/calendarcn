@@ -13,7 +13,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import {
-  EVENT_COLORS,
+  getEventColorStyle,
   groupCalendarsByEmail,
   moveEventToCalendar,
   resolveEventColor,
@@ -22,7 +22,10 @@ import {
   useCalendarConfig,
   useCalendarEventActions,
 } from "./calendar-provider";
-import { EVENT_ACTION_KEYS } from "./event-detail-parts";
+import {
+  EVENT_ACTION_KEYS,
+  EVENT_DETAIL_MENU_SHORTCUT_CLASS,
+} from "./event-detail-parts";
 import type {
   CalendarInfo,
   DetailedCalendarEvent,
@@ -31,17 +34,14 @@ import type {
 
 /**
  * Swatch of an event or calendar color in a picker (this menu, the details
- * panel's calendar picker): the color events are drawn with
+ * panel's calendar picker): the color events are drawn with, set on the
+ * swatch with `getEventColorStyle()`
  */
-export const EVENT_COLOR_SWATCH_CLASS: Record<EventColor, string> = {
-  red: "bg-event-red-border",
-  orange: "bg-event-orange-border",
-  yellow: "bg-event-yellow-border",
-  green: "bg-event-green-border",
-  blue: "bg-event-blue-border",
-  purple: "bg-event-purple-border",
-  gray: "bg-event-gray-border",
-};
+export const EVENT_COLOR_SWATCH_CLASS = "bg-event-border";
+
+/** A row of the menu: the menu's text, highlighted on hover and focus */
+const MENU_ROW_CLASS =
+  "relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-none select-none text-calendar-menu-foreground hover:bg-calendar-menu-accent hover:text-calendar-menu-accent-foreground focus:bg-calendar-menu-accent focus:text-calendar-menu-accent-foreground";
 
 interface EventContextMenuProps {
   /** The right-clicked event; "Block on calendar" moves it to that calendar */
@@ -72,8 +72,7 @@ function MenuItem({
       disabled={disabled}
       aria-keyshortcuts={keyShortcuts}
       className={cn(
-        "relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-none select-none",
-        "text-white hover:bg-[#303030] focus:bg-[#303030]",
+        MENU_ROW_CLASS,
         "disabled:pointer-events-none disabled:opacity-50",
         className,
       )}
@@ -87,14 +86,17 @@ function MenuItem({
 /** An action's keys at the end of its row. Screen readers get `aria-keyshortcuts` instead */
 function Shortcut({ children }: { children: React.ReactNode }) {
   return (
-    <span aria-hidden className="ml-auto text-xs text-white/40">
+    <span
+      aria-hidden
+      className={cn("ml-auto text-xs", EVENT_DETAIL_MENU_SHORTCUT_CLASS)}
+    >
       {children}
     </span>
   );
 }
 
 function Separator() {
-  return <div className="-mx-1 my-1 h-px bg-[#303030]" />;
+  return <div className="-mx-1 my-1 h-px bg-calendar-menu-border" />;
 }
 
 function SubMenu({
@@ -125,14 +127,14 @@ function SubMenu({
       <button
         type="button"
         className={cn(
-          "relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-xs outline-none select-none",
-          "text-white hover:bg-[#303030] focus:bg-[#303030]",
-          open && "bg-[#303030]",
+          MENU_ROW_CLASS,
+          open &&
+            "bg-calendar-menu-accent text-calendar-menu-accent-foreground",
         )}
       >
         {trigger}
         <svg
-          className="ml-auto size-4 text-white/60"
+          className="ml-auto size-4 text-calendar-menu-foreground/60"
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
           fill="none"
@@ -145,7 +147,7 @@ function SubMenu({
         </svg>
       </button>
       {open && (
-        <div className="absolute left-full top-0 ml-1 min-w-[180px] rounded-sm border border-[#303030] bg-[#252525] p-1 shadow-lg">
+        <div className="absolute left-full top-0 ml-1 min-w-[180px] rounded-sm border border-calendar-menu-border bg-calendar-menu p-1 shadow-lg">
           {children}
         </div>
       )}
@@ -162,7 +164,7 @@ export function EventContextMenu({
   const menuRef = React.useRef<HTMLDivElement>(null);
   const [adjustedPos, setAdjustedPos] = React.useState(position);
   const [ready, setReady] = React.useState(false);
-  const { calendars } = useCalendarConfig();
+  const { calendars, eventColors } = useCalendarConfig();
   const eventActions = useCalendarEventActions();
   const currentColor = resolveEventColor(event, calendars);
   const calendarGroups = React.useMemo(
@@ -232,7 +234,7 @@ export function EventContextMenu({
   return createPortal(
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[200px] rounded-sm border border-[#303030] bg-[#252525] p-1 shadow-md animate-in fade-in-0 zoom-in-95 motion-reduce:animate-none"
+      className="fixed z-50 min-w-[200px] rounded-sm border border-calendar-menu-border bg-calendar-menu p-1 shadow-md animate-in fade-in-0 zoom-in-95 motion-reduce:animate-none"
       style={{
         top: adjustedPos.y,
         left: adjustedPos.x,
@@ -241,17 +243,20 @@ export function EventContextMenu({
     >
       {/* Color selector row */}
       <div className="flex items-center gap-1.5 px-2 py-1.5">
-        {EVENT_COLORS.map((color) => (
+        {eventColors.map((color) => (
           <button
             key={color}
             type="button"
             className={cn(
               "relative flex size-3 items-center justify-center rounded-xs",
-              EVENT_COLOR_SWATCH_CLASS[color],
+              EVENT_COLOR_SWATCH_CLASS,
             )}
+            style={getEventColorStyle(color)}
             onClick={() => handleColorSelect(color)}
           >
-            {color === currentColor && <Check className="size-2 text-white" />}
+            {color === currentColor && (
+              <Check className="size-2 text-event-foreground" />
+            )}
           </button>
         ))}
       </div>
@@ -271,7 +276,12 @@ export function EventContextMenu({
             {calendarGroups.map((group) => (
               <React.Fragment key={group.email ?? ""}>
                 {group.email && (
-                  <div className="px-2 py-1 text-[10px] text-white/40">
+                  <div
+                    className={cn(
+                      "px-2 py-1 text-[10px]",
+                      EVENT_DETAIL_MENU_SHORTCUT_CLASS,
+                    )}
+                  >
                     {group.email}
                   </div>
                 )}
@@ -283,8 +293,9 @@ export function EventContextMenu({
                     <div
                       className={cn(
                         "size-3 rounded-xs shrink-0",
-                        EVENT_COLOR_SWATCH_CLASS[cal.color],
+                        EVENT_COLOR_SWATCH_CLASS,
                       )}
+                      style={getEventColorStyle(cal.color)}
                     />
                     {cal.name}
                   </MenuItem>
@@ -341,9 +352,9 @@ export function EventContextMenu({
         onSelect={
           eventActions ? () => runAction(eventActions.deleteEvent) : undefined
         }
-        className="text-[#E56458] hover:!bg-[#DE5551] hover:!text-white focus:!bg-[#DE5551] focus:!text-white [&:hover>svg]:!text-white [&:focus>svg]:!text-white [&:hover>.ml-auto]:!text-white [&:focus>.ml-auto]:!text-white"
+        className="text-calendar-danger hover:!bg-calendar-danger hover:!text-calendar-danger-foreground focus:!bg-calendar-danger focus:!text-calendar-danger-foreground [&:hover>svg]:!text-calendar-danger-foreground [&:focus>svg]:!text-calendar-danger-foreground [&:hover>.ml-auto]:!text-calendar-danger-foreground [&:focus>.ml-auto]:!text-calendar-danger-foreground"
       >
-        <Trash2 className="size-3.5 text-[#E56458]" />
+        <Trash2 className="size-3.5 text-calendar-danger" />
         Delete
         <Shortcut>{EVENT_ACTION_KEYS.delete.label}</Shortcut>
       </MenuItem>

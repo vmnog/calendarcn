@@ -40,10 +40,10 @@ const DEFAULT_START_HOUR = 9;
 const DEFAULT_END_HOUR = 10;
 
 /** The clock and arrow of an all-day event, fainter than its times */
-const ALL_DAY_ICON_CLASS = "text-[#EEEEEE] dark:text-[#303030]";
+const ALL_DAY_ICON_CLASS = "text-calendar-detail-muted/30";
 
 /** The duration of an all-day event, between its icons and its times */
-const ALL_DAY_DURATION_CLASS = "text-[#D2D2D2] dark:text-[#373737]";
+const ALL_DAY_DURATION_CLASS = "text-calendar-detail-placeholder/50";
 
 /**
  * The arrow between the times: Notion Calendar's is 13px wide and 10.5px
@@ -293,8 +293,8 @@ export function EventDetailAllDay<
             onClick={(e) => e.stopPropagation()}
             aria-label="All-day"
             // data-[state=*] is the Radix switch, data-checked/data-unchecked
-            // Base UI's. Notion's is 18x11 with a 9px white thumb
-            className="data-[size=sm]:h-[11px] data-[size=sm]:w-[18px] **:data-[slot=switch-thumb]:!size-[9px] **:data-[slot=switch-thumb]:!bg-white data-[state=unchecked]:!bg-[#C7C5C1] data-unchecked:!bg-[#C7C5C1] dark:data-[state=unchecked]:!bg-[#595959] dark:data-unchecked:!bg-[#595959] data-[state=checked]:!bg-[#3A85D3] data-checked:!bg-[#3A85D3]"
+            // Base UI's. Notion's is 18x11 with a 9px thumb
+            className="data-[size=sm]:h-[11px] data-[size=sm]:w-[18px] **:data-[slot=switch-thumb]:!size-[9px] **:data-[slot=switch-thumb]:!bg-calendar-selection-foreground data-[state=unchecked]:!bg-calendar-detail-muted data-unchecked:!bg-calendar-detail-muted data-[state=checked]:!bg-calendar-selection data-checked:!bg-calendar-selection"
           />
         }
       >

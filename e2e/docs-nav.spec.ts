@@ -17,7 +17,7 @@ const NAV_GROUPS = [
 ];
 
 /** Docs pages the sidebar links */
-const NAV_PAGE_COUNT = 26;
+const NAV_PAGE_COUNT = 27;
 
 /** Each old page and where it answers now */
 const MOVED_PAGES = [

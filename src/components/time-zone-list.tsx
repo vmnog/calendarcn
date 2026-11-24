@@ -44,10 +44,10 @@ const VARIANT_CLASSES: Record<
     separator: "",
   },
   menu: {
-    item: "h-[30px] gap-[9px] rounded-md py-0 pr-2 pl-1.5 text-sm text-[#D4D4D4] data-[selected=true]:bg-[#303030] data-[selected=true]:text-[#D4D4D4]",
-    muted: "text-[#7F7F7F]",
-    heading: "[&_[cmdk-group-heading]]:text-[#7F7F7F]",
-    separator: "mx-0 bg-[#303030]",
+    item: "h-[30px] gap-[9px] rounded-md py-0 pr-2 pl-1.5 text-sm text-calendar-menu-foreground/80 data-[selected=true]:bg-calendar-menu-accent data-[selected=true]:text-calendar-menu-accent-foreground/80",
+    muted: "text-calendar-menu-muted-foreground",
+    heading: "[&_[cmdk-group-heading]]:text-calendar-menu-muted-foreground",
+    separator: "mx-0 bg-calendar-menu-border",
   },
 };
 

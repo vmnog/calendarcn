@@ -19,7 +19,7 @@ const VIEWPORT_MARGIN = 8;
 
 /** `EVENT_DETAIL_PLACEHOLDER_CLASS`'s colors on an input's placeholder */
 export const EVENT_DETAIL_INPUT_PLACEHOLDER_CLASS =
-  "placeholder:text-[#ABABA9] dark:placeholder:text-[#595959]";
+  "placeholder:text-calendar-detail-placeholder";
 
 /**
  * Props for EventDetailSuggestions
@@ -149,7 +149,7 @@ export function EventDetailSuggestions({
             <>
               <div
                 role="none"
-                className="-mx-1.5 my-1.5 border-t border-[#303030]"
+                className="-mx-1.5 my-1.5 border-t border-calendar-menu-border"
               />
               {footer}
             </>
@@ -180,7 +180,7 @@ interface EventDetailSuggestionProps {
 
 /**
  * One option of `EventDetailSuggestions`: 31px tall (taller with a second
- * line), with the #303030 highlight inset in the list
+ * line), with the highlight inset in the list
  */
 export function EventDetailSuggestion({
   id,
@@ -196,9 +196,10 @@ export function EventDetailSuggestion({
       role="option"
       aria-selected={active}
       className={cn(
-        "flex min-h-[31px] cursor-default items-center gap-2 rounded-md px-2 py-1",
+        "group/suggestion flex min-h-[31px] cursor-default items-center gap-2 rounded-md px-2 py-1",
         EVENT_DETAIL_MENU_TEXT_CLASS,
-        active && "bg-[#303030] text-white",
+        active &&
+          "bg-calendar-menu-accent text-calendar-menu-accent-foreground",
         className,
       )}
       onMouseMove={active ? undefined : onActivate}
@@ -238,7 +239,9 @@ export function HighlightedMatch({ text, query }: HighlightedMatchProps) {
       <span className={EVENT_DETAIL_MENU_SECONDARY_CLASS}>
         {text.slice(0, start)}
       </span>
-      <span className="text-white">{text.slice(start, end)}</span>
+      <span className="text-calendar-menu-foreground group-aria-selected/suggestion:text-calendar-menu-accent-foreground">
+        {text.slice(start, end)}
+      </span>
       <span className={EVENT_DETAIL_MENU_SECONDARY_CLASS}>
         {text.slice(end)}
       </span>
