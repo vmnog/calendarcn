@@ -7,7 +7,7 @@ description: The left sidebar of the demo, with the mini calendar, scheduling, "
 
 Calendar Sidebar is the left column of the [live demo](/), modeled on Notion Calendar's: the [Mini Calendar](#mini-calendar), a scheduling row and a "Meet with..." field, the [Calendar List](#calendar-list), "Add calendar account" when you pass `onAddCalendarAccount`, and a footer with the [Theme Toggle](#theme-toggle). On wide screens it's a fixed column that pushes the page over; on phones it opens as a sheet from the left ([Sidebar Overlay](#sidebar-overlay)).
 
-It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so the mini calendar follows the calendar as it moves, numbers its weeks while the provider's week numbers are on, and picking a day goes there (with weekends hidden, a Saturday or Sunday opens the Monday after it in day view). The "Meet with..." field meets with the provider's `contacts` (see [Meeting with people](#meeting-with-people)). Inside a [`SchedulingProvider`](/docs/guides/share-your-availability), the Scheduling row starts marking open times to share, or opens a menu of scheduling links when your app creates them; without one, the row isn't there. "Add calendar account" calls your `onAddCalendarAccount`, to connect an account your way; the live demo adds an .ics file as a calendar. The file is yours, so wire them up there.
+It reads the date, view and calendars from the surrounding [`CalendarProvider`](/docs/reference/api), so the mini calendar follows the calendar as it moves, numbers its weeks while the provider's week numbers are on, and picking a day goes there (with weekends hidden, a Saturday or Sunday opens the Monday after it in day view). The "Meet with..." field meets with the provider's `contacts` (see [Meeting with people](#meeting-with-people)). Inside a [`SchedulingProvider`](/docs/guides/share-your-availability), the Scheduling row starts marking open times to share, or opens a menu of scheduling links when your app creates them; without one, the row isn't there. "Add calendar account" calls your `onAddCalendarAccount`, to connect an account your way; the live demo adds an .ics file as a calendar. The file is yours, so wire them up there.
 
 ## Installation
 
@@ -78,7 +78,7 @@ The list's eye buttons hide and show calendars. Hiding only dims the row; to tak
 
 The "Meet with..." field picks people from the provider's `contacts`, as Notion Calendar's does: focusing it lists the recent ones, typing lists the matches (or the typed address), the arrow keys move through them and <Kbd>Enter</Kbd> or a click picks one. <Kbd>Esc</Kbd> closes the list and clears the field. While you type, F, P and the calendar's other keys type into the field.
 
-Picking someone adds them to a "Meeting participants" section under the field: their events show beside yours in the day and week views and the times you're all free are highlighted ([Meeting with people](/docs/components/calendar-core#meeting-with-people)). Hover a row to stop meeting with that person, or press "Clear" to stop meeting with everyone. Teammates added with "Show teammate calendar..." ([People Picker](/docs/guides/meet-with-people)) are listed under "Team calendars", each with a button to remove them. Both lists live in the provider, through [`useCalendarPeople()`](/docs/components/calendar-core#usecalendarpeople), so the sidebar takes no props for them.
+Picking someone adds them to a "Meeting participants" section under the field: their events show beside yours in the day and week views and the times you're all free are highlighted ([Meeting with people](/docs/guides/meet-with-people#meeting-with-people)). Hover a row to stop meeting with that person, or press "Clear" to stop meeting with everyone. Teammates added with "Show teammate calendar..." ([People Picker](/docs/guides/meet-with-people)) are listed under "Team calendars", each with a button to remove them. Both lists live in the provider, through [`useCalendarPeople()`](/docs/reference/api#usecalendarpeople), so the sidebar takes no props for them.
 
 ### Colors
 
@@ -215,7 +215,7 @@ When `currentDate` or `visibleDays` change, the mini calendar goes back to their
 
 ### Following a view
 
-Wired to [`useCalendar()`](/docs/components/calendar-core#usecalendar): the day on screen is highlighted, and picking a day shows it.
+Wired to [`useCalendar()`](/docs/reference/api#usecalendar): the day on screen is highlighted, and picking a day shows it.
 
 <ComponentPreview name="mini-calendar-follow-demo" height={600} />
 
@@ -269,7 +269,7 @@ Calendar List is the list of calendars in the Calendar Sidebar. Calendars are gr
 
 <InstallTabs item="calendar-list" />
 
-The list lists the `calendars` of the surrounding [`CalendarProvider`](/docs/components/calendar-core), the same ones the event details' calendar picker offers. It's built from shadcn/ui's sidebar parts, so it needs a `SidebarProvider` around it.
+The list lists the `calendars` of the surrounding [`CalendarProvider`](/docs/reference/api), the same ones the event details' calendar picker offers. It's built from shadcn/ui's sidebar parts, so it needs a `SidebarProvider` around it.
 
 ```tsx
 import { CalendarList } from "@/components/calendar-list";

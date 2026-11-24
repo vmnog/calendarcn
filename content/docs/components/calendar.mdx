@@ -7,7 +7,7 @@ description: The full calendar, with a toolbar, a view switcher, and day, week, 
 
 <ComponentPreview name="calendar-demo" height={680} wide />
 
-`Calendar` puts the pieces together: a [`CalendarProvider`](/docs/components/calendar-core) for the state, a toolbar with the title, view switcher, today and previous/next, and the [Time Grid](/docs/components/day-week-view#time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) or [Agenda View](/docs/components/agenda-view) below it. It takes every `CalendarProvider` prop, and the CLI copies its source into your project, so change the toolbar or the layout right in `components/calendar.tsx`.
+`Calendar` puts the pieces together: a [`CalendarProvider`](/docs/reference/api) for the state, a toolbar with the title, view switcher, today and previous/next, and the [Time Grid](/docs/components/day-week-view#time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) or [Agenda View](/docs/components/agenda-view) below it. It takes every `CalendarProvider` prop, and the CLI copies its source into your project, so change the toolbar or the layout right in `components/calendar.tsx`.
 
 ## Installation
 
@@ -28,7 +28,7 @@ export function Schedule() {
 }
 ```
 
-Events, the view and the date can each be left to the calendar (`defaultEvents`, `defaultView`, `defaultDate`) or controlled (`events` with `onEventsChange`, and so on), the same as on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider):
+Events, the view and the date can each be left to the calendar (`defaultEvents`, `defaultView`, `defaultDate`) or controlled (`events` with `onEventsChange`, and so on), the same as on [`CalendarProvider`](/docs/reference/api#calendarprovider):
 
 ```tsx
 const [events, setEvents] = React.useState(initialEvents);
@@ -42,13 +42,13 @@ The view switcher offers day, week, month, year and agenda, 2 to 9 days at a tim
 
 ### Your own buttons
 
-`children` render inside the calendar's provider, after the calendar, so a bar of your own under it can read the calendar with [`useCalendar()`](/docs/components/calendar-core#usecalendar) and move it: here with `goToToday()`, `navigateToDate()` and `switchView()`.
+`children` render inside the calendar's provider, after the calendar, so a bar of your own under it can read the calendar with [`useCalendar()`](/docs/reference/api#usecalendar) and move it: here with `goToToday()`, `navigateToDate()` and `switchView()`.
 
 <ComponentPreview name="calendar-buttons-demo" height={600} />
 
 ### Working hours
 
-Monday to Friday, from 8:00 to 18:00 on a 24-hour clock. Every [`CalendarProvider` setting](/docs/components/calendar-core#configuration) is a `Calendar` prop.
+Monday to Friday, from 8:00 to 18:00 on a 24-hour clock. Every [`CalendarProvider` setting](/docs/guides/customise-the-look#configuration) is a `Calendar` prop.
 
 <ComponentPreview name="calendar-working-hours-demo" height={600} />
 
@@ -103,7 +103,7 @@ function Body() {
 }
 ```
 
-A header like this needs these fields of [`useCalendar()`](/docs/components/calendar-core#usecalendar):
+A header like this needs these fields of [`useCalendar()`](/docs/reference/api#usecalendar):
 
 <PropsTable
   nameHeader="Field"
@@ -215,11 +215,11 @@ The calendar uses your shadcn/ui theme (`--background`, `--foreground`, `--borde
 }
 ```
 
-They're also Tailwind colors (`text-event-blue`, `bg-event-blue-bg`, `bg-event-blue-border`), which is how the [custom content](/docs/components/calendar-core#custom-event-content) example colors its text.
+They're also Tailwind colors (`text-event-blue`, `bg-event-blue-bg`, `bg-event-blue-border`), which is how the [custom content](/docs/guides/customise-the-look#custom-event-content) example colors its text.
 
 ## API Reference
 
-`Calendar` takes every [`CalendarProvider` prop](/docs/components/calendar-core#calendarprovider) (events, view, date, configuration and render slots), plus these:
+`Calendar` takes every [`CalendarProvider` prop](/docs/reference/api#calendarprovider) (events, view, date, configuration and render slots), plus these:
 
 <PropsTable
   rows={[

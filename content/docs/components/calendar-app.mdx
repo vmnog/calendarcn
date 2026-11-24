@@ -7,7 +7,7 @@ description: The live demo as one block, with both sidebars, the header, every v
 
 `CalendarApp` is the [live demo](/), whole: the [Calendar Sidebar](/docs/components/calendar-sidebar) on the left, the [Calendar Header](/docs/components/calendar-header) over the day, week, month, year and agenda views, the [Details Sidebar](/docs/components/details-sidebar) on the right, the [Command Menu](/docs/components/command-menu), the [toasts](/docs/guides/undo-and-notices) after a delete, cut or copy, theme switching, .ics import and export, and the keyboard shortcuts. The live demo renders this block, so what you install is what you see there.
 
-It takes every [`CalendarProvider`](/docs/components/calendar-core#calendarprovider) prop, so your events, calendars, contacts, rooms and conferencing services go in as props. For a smaller calendar to put inside a page of yours, use the [Calendar](/docs/components/calendar) block instead.
+It takes every [`CalendarProvider`](/docs/reference/api#calendarprovider) prop, so your events, calendars, contacts, rooms and conferencing services go in as props. For a smaller calendar to put inside a page of yours, use the [Calendar](/docs/components/calendar) block instead.
 
 ## Installation
 
@@ -135,8 +135,8 @@ const [events, setEvents] = React.useState<DetailedCalendarEvent[]>([]);
 - `calendars` fill the sidebar's calendar list and the details' calendar picker; an event without its own `color` takes its calendar's.
 - The eye beside a calendar in the sidebar hides its events: they leave every view and the event search, and come back when it's shown again. An event created on a hidden calendar, or moved to one, shows that calendar again.
 - `contacts` and `rooms` are who and what the details' participants field invites. `conferenceProviders` fill its Conferencing menu, and `locationSuggestions` its location field.
-- `contacts` are also who you can meet with: the sidebar's "Meet with...", <Kbd>F</Kbd> and <Kbd>P</Kbd> add them, and `contactEvents` holds their events, by email, to draw beside yours. See [Meeting with people](/docs/components/calendar-core#meeting-with-people).
-- `createEvent` builds the event a double-click or a drag on empty space starts (see [Creating events](/docs/components/calendar-core#creating-events)), `onEventCreate`, `onEventUpdate` and `onEventSelect` report single changes, and `onVisibleRangeChange` with `loading` loads events by range: see [Loading Events](/docs/guides/loading-events).
+- `contacts` are also who you can meet with: the sidebar's "Meet with...", <Kbd>F</Kbd> and <Kbd>P</Kbd> add them, and `contactEvents` holds their events, by email, to draw beside yours. See [Meeting with people](/docs/guides/meet-with-people#meeting-with-people).
+- `createEvent` builds the event a double-click or a drag on empty space starts (see [Creating events](/docs/guides/creating-events#creating-events)), `onEventCreate`, `onEventUpdate` and `onEventSelect` report single changes, and `onVisibleRangeChange` with `loading` loads events by range: see [Loading Events](/docs/guides/loading-events).
 
 ### .ics files
 
@@ -224,7 +224,7 @@ Press <Kbd>.</Kbd> to open the command menu on Go to date: type a date ("tomorro
 
 `CalendarApp` is a short file that puts these items together. To build a layout of your own, install the ones you need:
 
-- [Calendar Core](/docs/components/calendar-core): `CalendarProvider`, `useCalendar()` and `useCalendarShortcuts()`.
+- [Calendar Core](/docs/reference/api): `CalendarProvider`, `useCalendar()` and `useCalendarShortcuts()`.
 - [Calendar Sidebar](/docs/components/calendar-sidebar): the left sidebar, with the [Mini Calendar](/docs/components/calendar-sidebar#mini-calendar), the [Calendar List](/docs/components/calendar-sidebar#calendar-list) and the [Theme Toggle](/docs/components/calendar-sidebar#theme-toggle).
 - [Calendar Header](/docs/components/calendar-header): the toolbar, with the view switcher and the panel toggles.
 - [Time Grid](/docs/components/day-week-view#time-grid), [Month View](/docs/components/month-view), [Year View](/docs/components/year-view) and [Agenda View](/docs/components/agenda-view): the views.
@@ -240,7 +240,7 @@ Press <Kbd>.</Kbd> to open the command menu on Go to date: type a date ("tomorro
 
 ## API Reference
 
-`CalendarApp` takes every [`CalendarProvider` prop](/docs/components/calendar-core#calendarprovider) (events, view, date, calendars, contacts, rooms, conferencing, configuration and render slots), for `DetailedCalendarEvent` events, plus these:
+`CalendarApp` takes every [`CalendarProvider` prop](/docs/reference/api#calendarprovider) (events, view, date, calendars, contacts, rooms, conferencing, configuration and render slots), for `DetailedCalendarEvent` events, plus these:
 
 <PropsTable
   rows={[

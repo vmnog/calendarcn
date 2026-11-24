@@ -243,9 +243,7 @@ test("the Week View prompt leads with the install command", () => {
   expect(prompt).toContain(
     "- This page as Markdown: https://calendarcn.xyz/docs/components/day-week-view.md",
   );
-  expect(prompt).toContain(
-    "https://calendarcn.xyz/docs/components/calendar-core.md",
-  );
+  expect(prompt).toContain("https://calendarcn.xyz/docs/reference/api.md");
   expect(prompt).toContain(
     "- Every docs page: https://calendarcn.xyz/llms.txt",
   );
@@ -277,9 +275,9 @@ test("the note on new Date() shows only on an example that calls it", () => {
   expect(RULES).toContain("Without `cacheComponents`, leave it as it is.");
 });
 
-test("a prompt on the Calendar Core page links that page once", () => {
+test("a prompt links the API page once", () => {
   const prompt = buildPrompt("config-demo");
-  const links = prompt.match(/calendar-core\.md/g) ?? [];
+  const links = prompt.match(/reference\/api\.md/g) ?? [];
 
   expect(links).toHaveLength(1);
 });

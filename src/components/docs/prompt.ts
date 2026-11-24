@@ -21,8 +21,8 @@ export const SKILL_PATH = "skills/calendarcn/SKILL.md";
 /** Heading of the skill's section the prompts carry */
 const RULES_HEADING = "## Rules";
 
-/** Docs path of Calendar Core, which documents the provider, `useCalendar()` and the event type */
-const CALENDAR_CORE_PATH = "/docs/components/calendar-core";
+/** Docs path of the API page, which documents Calendar Core: the provider, `useCalendar()` and the event type */
+const CALENDAR_CORE_PATH = "/docs/reference/api";
 
 /** Import prefix of the project's own files in the examples (`@/components/week-view` is `src/components/week-view.tsx`) */
 const LOCAL_IMPORT_PREFIX = "@/";

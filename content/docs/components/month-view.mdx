@@ -5,7 +5,7 @@ description: A month at a glance.
 
 <ComponentPreview name="month-view-demo" wide />
 
-Month View shows six weeks at a time. Timed events are listed in each day, all-day and multi-day events run across days as bars, and busy days collapse the rest into a "more" button. Like every view, it reads its state from the surrounding [`CalendarProvider`](/docs/components/calendar-core).
+Month View shows six weeks at a time. Timed events are listed in each day, all-day and multi-day events run across days as bars, and busy days collapse the rest into a "more" button. Like every view, it reads its state from the surrounding [`CalendarProvider`](/docs/reference/api).
 
 ## Installation
 
@@ -35,13 +35,13 @@ Set `defaultView="month"` (or control `view`) so the provider snaps the date, he
 
 ### Your own toolbar
 
-Month View has no header of its own. In month view, `goToPrev()` and `goToNext()` from [`useCalendar()`](/docs/components/calendar-core#usecalendar) move a month, and `monthName` follows the month on screen.
+Month View has no header of its own. In month view, `goToPrev()` and `goToNext()` from [`useCalendar()`](/docs/reference/api#usecalendar) move a month, and `monthName` follows the month on screen.
 
 <ComponentPreview name="month-view-toolbar-demo" height={600} />
 
 ### Monday start and week numbers
 
-`defaultWeekStartsOn={1}` starts the weeks on Monday, and the `showWeekNumbers` [view setting](/docs/components/calendar-core#view-settings) numbers them.
+`defaultWeekStartsOn={1}` starts the weeks on Monday, and the `showWeekNumbers` [view setting](/docs/guides/customise-the-look#view-settings) numbers them.
 
 <ComponentPreview name="month-view-week-numbers-demo" height={600} />
 
@@ -53,14 +53,14 @@ A day with more events than fit shows "N more". Clicking it switches the provide
 
 ### Your own event content
 
-[`renderEventContent`](/docs/components/calendar-core#custom-event-content) draws the inside of each event: `placement` is `"month-item"` for a line in a day and `"month-bar"` for a bar across days.
+[`renderEventContent`](/docs/guides/customise-the-look#custom-event-content) draws the inside of each event: `placement` is `"month-item"` for a line in a day and `"month-bar"` for a bar across days.
 
 <ComponentPreview name="month-view-event-content-demo" height={600} />
 
 ## Features
 
 - Drag an event to another day, or drag the ends of a bar to change its dates.
-- Double-click a day's empty space to create an all-day event, or press and drag across days to draw one over them. See [Creating events](/docs/components/calendar-core#creating-events).
+- Double-click a day's empty space to create an all-day event, or press and drag across days to draw one over them. See [Creating events](/docs/guides/creating-events#creating-events).
 - "N more" on a busy day calls `showDay()`, which switches the provider to the week view and briefly highlights that day. Render [Week View](/docs/components/day-week-view) for that view, as the [Calendar](/docs/components/calendar) example does; with Month View alone the button has nothing to show.
 - Scroll vertically to move through weeks. Scrolling snaps to the nearest week.
 - Hide weekends, show week numbers or hide the events you declined through the provider's view settings. Declined events are struck through while they show.
@@ -76,7 +76,7 @@ A day with more events than fit shows "N more". Clicking it switches the provide
 
 ### MonthView
 
-Everything else (date, events, week start, locale, view settings) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+Everything else (date, events, week start, locale, view settings) is set on [`CalendarProvider`](/docs/reference/api#calendarprovider).
 
 <PropsTable
   rows={[

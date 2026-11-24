@@ -54,6 +54,7 @@ const DOCS_REDIRECTS: { from: string; to: string }[] = [
     from: "/docs/components/calendar-toaster",
     to: "/docs/guides/undo-and-notices",
   },
+  { from: "/docs/components/calendar-core", to: "/docs/reference/api" },
   { from: "/docs/loading-events", to: "/docs/guides/loading-events" },
   { from: "/docs/import-export", to: "/docs/guides/import-export" },
   {

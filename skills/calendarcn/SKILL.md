@@ -15,7 +15,7 @@ CalendarCN is a React calendar that the shadcn CLI copies into a project as sour
 - https://calendarcn.xyz/llms.txt lists every docs page.
 - Every page is Markdown at its URL plus `.md`, like https://calendarcn.xyz/docs/components/day-week-view.md
 - Read the page of the component you are about to use before you write code. Each has a working example and a table of every prop.
-- Start with [Installation](https://calendarcn.xyz/docs/installation.md), [Calendar](https://calendarcn.xyz/docs/components/calendar.md) and [Calendar Core](https://calendarcn.xyz/docs/components/calendar-core.md), which documents `CalendarProvider`, `useCalendar()` and the event type.
+- Start with [Installation](https://calendarcn.xyz/docs/installation.md), [Calendar](https://calendarcn.xyz/docs/components/calendar.md) and [Calendar Core](https://calendarcn.xyz/docs/reference/api.md), which documents `CalendarProvider`, `useCalendar()` and the event type.
 
 ## Install
 
@@ -89,8 +89,8 @@ One view, inside a provider that owns the events:
 
 Each is on a docs page. Reach for these before editing a copied file:
 
-- Settings are props of `CalendarProvider` and `Calendar`: `hourCycle`, `locale`, `weekStartsOn`, `dayStartHour`, `dayEndHour`, `snapMinutes`, `timeZone`. See "Configuration" in [Calendar Core](https://calendarcn.xyz/docs/components/calendar-core.md).
-- `renderEventContent` draws the inside of each event. See "Custom event content" in Calendar Core.
+- Settings are props of `CalendarProvider` and `Calendar`: `hourCycle`, `locale`, `weekStartsOn`, `dayStartHour`, `dayEndHour`, `snapMinutes`, `timeZone`. See "Configuration" in [Customise the look](https://calendarcn.xyz/docs/guides/customise-the-look.md).
+- `renderEventContent` draws the inside of each event. See "Custom event content" in Customise the look.
 - `renderEventDetails` replaces the body of the details popover. See "Custom details" in [Event Details](https://calendarcn.xyz/docs/components/event-details.md).
 - A header or toolbar of your own reads and changes the calendar with `useCalendar()`. See "Build your own" in [Calendar](https://calendarcn.xyz/docs/components/calendar.md).
 - Event colors are the CSS variables `--event-{color}`, `--event-{color}-bg` and `--event-{color}-border`, set in `:root` and `.dark`. See "Theming" in Calendar.

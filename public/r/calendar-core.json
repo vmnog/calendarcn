@@ -249,7 +249,7 @@
       }
     }
   },
-  "docs": "CalendarCN: every view runs inside <CalendarProvider>, in an element with a height, and useCalendar() reads and changes its state. https://calendarcn.xyz/docs/components/calendar-core",
+  "docs": "CalendarCN: every view runs inside <CalendarProvider>, in an element with a height, and useCalendar() reads and changes its state. https://calendarcn.xyz/docs/reference/api",
   "categories": [
     "calendar",
     "core"

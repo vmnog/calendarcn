@@ -7,7 +7,7 @@ description: The right context panel of the demo, with the selected event's deta
 
 Details Sidebar is the right column of the [live demo](/), Notion Calendar's context panel. It shows the selected event's details in the [`EventDetailPanel`](/docs/components/event-details), and otherwise a search field and a list of useful shortcuts. While you mark open times inside a [`SchedulingProvider`](/docs/guides/share-your-availability), it shows the scheduling panel: the meeting length, the text to copy and the marked times. On wide screens it's a fixed column beside the calendar; on narrower ones it opens as a sheet from the right ([Sidebar Overlay](/docs/components/calendar-sidebar#sidebar-overlay)).
 
-It reads the events and the selection from the surrounding [`CalendarProvider`](/docs/components/calendar-core), and edits the event through it.
+It reads the events and the selection from the surrounding [`CalendarProvider`](/docs/reference/api), and edits the event through it.
 
 ## Installation
 
@@ -98,7 +98,7 @@ useCalendarShortcuts({
 
 The full list is Notion Calendar's: every shortcut under its group (General, Workflows, Editing, Calendar view, Calendar navigation, App navigation), the ones that act on an event under "With a selected event…". The field at the top finds one by name or by key, and <Kbd>Esc</Kbd> or its × goes back to the useful shortcuts. Selecting an event closes it too.
 
-It lists `KEYBOARD_SHORTCUT_GROUPS` from `lib/keyboard-shortcuts.ts` ([Calendar Core](/docs/components/calendar-core)), every key the live demo handles. Pass `shortcutGroups` for your own: the demo leaves out <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> when it has no settings, with `filterKeyboardShortcutGroups()`. The default "Useful shortcuts" take their Go to date and full-list keys from the same file.
+It lists `KEYBOARD_SHORTCUT_GROUPS` from `lib/keyboard-shortcuts.ts` ([Calendar Core](/docs/reference/api)), every key the live demo handles. Pass `shortcutGroups` for your own: the demo leaves out <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> when it has no settings, with `filterKeyboardShortcutGroups()`. The default "Useful shortcuts" take their Go to date and full-list keys from the same file.
 
 The panel uses the calendar sidebar's colors: see [Colors](/docs/components/calendar-sidebar#colors).
 

@@ -1,0 +1,42 @@
+---
+title: Repeating events
+description: One event in your list, drawn on every date its rule gives, and Notion Calendar's question when you change one date.
+---
+
+<ComponentPreview name="event-details-demo" />
+
+In the preview, Design review repeats every week on Wednesday: its details show the rule, and changing it changes the event's `recurrenceRule`.
+
+## Repeating events
+
+An event with a `recurrenceRule` (or an RRULE in `recurrence`) is one event in `events`, and every view draws it on each date its rule gives, as does the details sidebar's search. The views generate those occurrences for the dates on screen with `expandRecurringEvents()`; they are never added to `events`, so `useCalendar().events`, `onEventsChange` and the .ics export hold each series once.
+
+- An occurrence's id is the series' id and its date, `launch-2026-06-20`. Selecting it, `selectedEvent` and the details' series arrows work as for any event.
+- Editing or deleting one date (drag, resize, the keyboard, the right-click menu or the details) asks which events it applies to: see [Editing a repeating event](#editing-a-repeating-event). **This event** changes that date only. It is added to your events with `seriesId` (the series' id) and `originalStart` (the start it had), through `onEventCreate` and `onEventsChange`, and drawn in place of the generated one. Later edits to it go through `onEventUpdate`.
+- Cut on one date, and Delete with **This event**, leave it out of the series: its start is added to the series event's `excludedDates` (reported through `onEventUpdate`), and a stored date goes with it. Cut on the series' own event cuts the whole series. Undo and redo treat each as one step: the first edit of a generated date is a create, so undoing it brings the generated date back.
+- Duplicate and Paste on a date of a repeating event add a single event on that date: the copy has no `seriesId`, `originalStart`, `recurrenceRule`, `recurrence` or `excludedDates`, so it doesn't repeat and the series keeps its dates.
+- `excludedDates` leaves dates out, like an .ics `EXDATE`.
+- Occurrences keep the series' clock time in its `timeZone` when the clocks change. An all-day series keeps whole days.
+- `recurrence` written as display text ("Every week on Thu") is a label only: draw those occurrences as events of your own.
+
+When you load events by range ([Loading Events](/docs/guides/loading-events)), include the repeating events whose series reaches into the range, even when their first date is earlier.
+
+## Editing a repeating event
+
+A change to one date of a repeating event asks which events it applies to, as Notion Calendar does: **This event**, **This and following events** or **All events** (on the series' first date, only this event or all events; a repeat rule change, only the following or all events). A drag, a resize, an <Kbd>Alt</Kbd> arrow move or a change from the right-click menu asks at once. A change in the details waits: the date shows it on the calendar with a dot before its title, and the question comes when you leave the event, listing what changed. **Save event** applies it, **Discard change** drops it, **Continue editing** goes back to it, and so does <Kbd>Esc</Kbd>. A delete asks the same way, with **Delete event** and **Cancel**.
+
+- **This event** stores the date as an event of its own (with `seriesId` and `originalStart`), or, for a delete, adds its start to the series' `excludedDates`.
+- **This and following events** ends the series the day before (its `end` becomes that date) and starts a new series event, with a new id, from this date. A series that ends after a number of times keeps the count that's left. Later dates stored on their own move to the new series.
+- **All events** changes the series event. A new time moves every date; dates with a time of their own keep it. Deleting all events deletes the series and its stored dates.
+
+When a date moves to another day, or the repeat rule changes, the stored dates and excluded dates it affects are removed: their days are no longer in the series.
+
+Each answer is one undo step. `onEventsChange` gets the full list once, then `onEventDelete`, `onEventUpdate` and `onEventCreate` get each event the answer removed, changed or added, in that order, so a new series reaches your server before its dates. A change that waits is never reported. After an answer, a toast says what happened: Event deleted, All events deleted (both with Undo) or Event updated.
+
+The views render the question with `EventSeriesScopeDialog` (`@/components/event-series-scope-dialog`). In a layout without them, render it once inside the provider; without it, a change applies to that date only (a repeat rule change, to that date and the following ones). To skip the question in your own code, pass the answer: `updateEvent(event, "all")` or `deleteEvent(event.id, "this")`. Custom details should change events with `editEvent(event)`, which waits like the built-in details. `getSeriesEditChanges()` and `getSeriesDeleteChanges()` from `@/lib/recurrence` return the same changes without a provider.
+
+## See also
+
+- [`CalendarEvent`](/docs/reference/api#calendarevent)
+- [`Repeat helpers`](/docs/reference/api#repeat-helpers)
+- [`useCalendar()`](/docs/reference/api#usecalendar)

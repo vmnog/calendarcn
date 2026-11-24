@@ -11,8 +11,8 @@ import type { Locator, Page } from "@playwright/test";
 /** A component page. Its first example is `week-view-demo` */
 const WEEK_VIEW_PATH = "/docs/components/day-week-view";
 
-/** A component page with several examples */
-const CALENDAR_CORE_PATH = "/docs/components/calendar-core";
+/** A guide with several examples. Its second is `custom-event-content-demo` */
+const CUSTOMISE_PATH = "/docs/guides/customise-the-look";
 
 /** A guide, whose example belongs to the `ics` item */
 const IMPORT_EXPORT_PATH = "/docs/guides/import-export";
@@ -134,7 +134,7 @@ test("long lines of the prompt wrap instead of scrolling sideways", async ({
 });
 
 test("every example on a page has its own prompt", async ({ page }) => {
-  await page.goto(CALENDAR_CORE_PATH);
+  await page.goto(CUSTOMISE_PATH);
 
   const examples = await page.locator("[data-example]").count();
   expect(examples).toBeGreaterThan(1);
@@ -146,7 +146,7 @@ test("every example on a page has its own prompt", async ({ page }) => {
   // The second example's prompt carries the second example's file
   const second = await openTab(page, "Prompt", 1);
   await expect(second.locator("pre")).toContainText(
-    "src/examples/config-demo.tsx",
+    "src/examples/custom-event-content-demo.tsx",
   );
 });
 

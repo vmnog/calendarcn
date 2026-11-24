@@ -3,6 +3,7 @@ import path from "node:path";
 import { expect, test } from "@playwright/test";
 
 import { EXAMPLE_ITEMS } from "@/components/docs/example-items";
+import { CORE_ANCHOR_PAGES } from "@/components/docs/legacy-anchors";
 import { indexDocsPages } from "@/components/docs/prompt";
 
 /**
@@ -26,6 +27,12 @@ const COMPONENT_PAGES_DIR = "content/docs/components";
 
 /** Folder of the guides, relative to the root */
 const GUIDE_PAGES_DIR = "content/docs/guides";
+
+/** Folder of the reference pages, relative to the root */
+const REFERENCE_PAGES_DIR = "content/docs/reference";
+
+/** The API page, where the old Calendar Core page redirects */
+const API_PAGE_URL = "/docs/reference/api";
 
 /** Previews every guide has at least: a guide shows what it teaches */
 const MIN_PREVIEWS_ON_GUIDES = 1;
@@ -54,7 +61,7 @@ const PREVIEW_TAG = /<ComponentPreview\s+name="([^"]+)"/g;
 
 /** A Markdown link to an anchor: `](#here)` or `](/docs/components/page#there)` */
 const ANCHOR_LINK =
-  /\]\((\/docs\/(?:components|guides)\/[a-z-]+)?#([^)\s]+)\)/g;
+  /\]\((\/docs\/(?:components|guides|reference)\/[a-z-]+)?#([^)\s]+)\)/g;
 
 function readText(relativePath: string): string {
   return readFileSync(path.join(ROOT, relativePath), "utf8");
@@ -84,6 +91,8 @@ function readPages(folder: string): DocsPage[] {
 const PAGES = readPages(COMPONENT_PAGES_DIR);
 
 const GUIDES = readPages(GUIDE_PAGES_DIR);
+
+const REFERENCE = readPages(REFERENCE_PAGES_DIR);
 
 const EXAMPLE_FILES = readdirSync(path.join(ROOT, EXAMPLES_DIR))
   .filter((file) => file.endsWith(".tsx"))
@@ -246,10 +255,13 @@ for (const { name, text } of GUIDES) {
   });
 }
 
-for (const { name, url, text } of [...PAGES, ...GUIDES]) {
+for (const { name, url, text } of [...PAGES, ...GUIDES, ...REFERENCE]) {
   test(`the ${name} page's links to headings resolve`, () => {
     const anchors = new Map(
-      [...PAGES, ...GUIDES].map((page) => [page.url, getAnchors(page.text)]),
+      [...PAGES, ...GUIDES, ...REFERENCE].map((page) => [
+        page.url,
+        getAnchors(page.text),
+      ]),
     );
 
     for (const [link, pagePath, anchor] of text.matchAll(ANCHOR_LINK)) {
@@ -259,3 +271,15 @@ for (const { name, url, text } of [...PAGES, ...GUIDES]) {
     }
   });
 }
+
+test("every old Calendar Core anchor is a heading of the page it moved to", () => {
+  const anchors = new Map(
+    [...GUIDES, ...REFERENCE].map((page) => [page.url, getAnchors(page.text)]),
+  );
+
+  for (const [anchor, url] of Object.entries(CORE_ANCHOR_PAGES)) {
+    expect(anchors.get(url)?.has(anchor), `#${anchor} on ${url}`).toBe(true);
+    // An anchor still on the API page would never be reached there
+    expect(anchors.get(API_PAGE_URL)?.has(anchor), anchor).toBe(false);
+  }
+});

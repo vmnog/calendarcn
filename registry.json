@@ -10,7 +10,7 @@
       "description": "The state and logic every view builds on: CalendarProvider and useCalendar() (events, view, date, selection, undo and time zones), SchedulingProvider, the types, repeat rules, event layout math, keyboard shortcuts and the color tokens.",
       "author": "vmnog <https://vmnog.com>",
       "categories": ["calendar", "core"],
-      "docs": "CalendarCN: every view runs inside <CalendarProvider>, in an element with a height, and useCalendar() reads and changes its state. https://calendarcn.xyz/docs/components/calendar-core",
+      "docs": "CalendarCN: every view runs inside <CalendarProvider>, in an element with a height, and useCalendar() reads and changes its state. https://calendarcn.xyz/docs/reference/api",
       "dependencies": ["date-fns"],
       "registryDependencies": ["utils"],
       "files": [

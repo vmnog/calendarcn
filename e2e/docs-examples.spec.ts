@@ -252,7 +252,7 @@ test("a busy day's more button opens its week", async ({ page }) => {
 test("the New event button starts a draft that a title saves", async ({
   page,
 }) => {
-  await openPage(page, "calendar-core");
+  await openPage(page, "creating-events");
   const frame = await showExample(page, "create-event-button-demo");
 
   await expect(frame.getByText("No draft")).toBeVisible();
@@ -271,7 +271,7 @@ test("the New event button starts a draft that a title saves", async ({
 test("Select all visible selects every event, and Delete removes them all", async ({
   page,
 }) => {
-  await openPage(page, "calendar-core");
+  await openPage(page, "your-events");
   const frame = await showExample(page, "multi-select-demo");
   const events = frame.locator("[data-event-id]:not([inert] *)");
   await expect(exampleEvent(frame, "Customer call")).toBeVisible();
@@ -290,7 +290,7 @@ test("Select all visible selects every event, and Delete removes them all", asyn
 });
 
 test("the view settings' switches change the month", async ({ page }) => {
-  await openPage(page, "calendar-core");
+  await openPage(page, "customise-the-look");
   const frame = await showExample(page, "view-settings-demo");
   const friday = frame.locator('[data-date="2026-06-05"]');
   const saturday = frame.locator('[data-date="2026-06-06"]');
