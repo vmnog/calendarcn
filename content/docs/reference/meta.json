@@ -1,4 +1,10 @@
 {
   "title": "Reference",
-  "pages": ["api", "keyboard-shortcuts", "registry-items", "sample-data"]
+  "pages": [
+    "api",
+    "keyboard-shortcuts",
+    "registry-items",
+    "sample-data",
+    "troubleshooting"
+  ]
 }

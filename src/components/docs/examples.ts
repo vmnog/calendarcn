@@ -50,6 +50,7 @@ import { CalendarWorkingHoursDemo } from "@/examples/calendar-working-hours-demo
 import { CommandMenuAppCommandsDemo } from "@/examples/command-menu-app-commands-demo";
 import { CommandMenuGoToDateDemo } from "@/examples/command-menu-go-to-date-demo";
 import { CreateEventButtonDemo } from "@/examples/create-event-button-demo";
+import { CreatingEventsChallengeDemo } from "@/examples/creating-events-challenge-demo";
 import { DayViewAllDayDemo } from "@/examples/day-view-all-day-demo";
 import { DayViewSnapDemo } from "@/examples/day-view-snap-demo";
 import { DayViewWeekStripDemo } from "@/examples/day-view-week-strip-demo";
@@ -59,6 +60,7 @@ import { EventDetailsReadOnlyDemo } from "@/examples/event-details-read-only-dem
 import { EventDetailsSectionsDemo } from "@/examples/event-details-sections-demo";
 import { EventDetailsSidePanelDemo } from "@/examples/event-details-side-panel-demo";
 import { MeetWithDemo } from "@/examples/meet-with-demo";
+import { MeetWithPeopleChallengeDemo } from "@/examples/meet-with-people-challenge-demo";
 import { MiniCalendarFollowDemo } from "@/examples/mini-calendar-follow-demo";
 import { MiniCalendarMondayDemo } from "@/examples/mini-calendar-monday-demo";
 import { MonthViewBusyDemo } from "@/examples/month-view-busy-demo";
@@ -69,6 +71,7 @@ import { MultiSelectDemo } from "@/examples/multi-select-demo";
 import { PeoplePickerDemo } from "@/examples/people-picker-demo";
 import { PeoplePickerListDemo } from "@/examples/people-picker-list-demo";
 import { PeoplePickerTeammatesDemo } from "@/examples/people-picker-teammates-demo";
+import { RepeatingEventsChallengeDemo } from "@/examples/repeating-events-challenge-demo";
 import { SchedulingPanelDemo } from "@/examples/scheduling-panel-demo";
 import { SchedulingShareDemo } from "@/examples/scheduling-share-demo";
 import { SidebarOverlayPickerDemo } from "@/examples/sidebar-overlay-picker-demo";
@@ -148,6 +151,7 @@ const EXAMPLES = {
   "command-menu-app-commands-demo": CommandMenuAppCommandsDemo,
   "command-menu-go-to-date-demo": CommandMenuGoToDateDemo,
   "create-event-button-demo": CreateEventButtonDemo,
+  "creating-events-challenge-demo": CreatingEventsChallengeDemo,
   "day-view-all-day-demo": DayViewAllDayDemo,
   "day-view-snap-demo": DayViewSnapDemo,
   "day-view-week-strip-demo": DayViewWeekStripDemo,
@@ -157,6 +161,7 @@ const EXAMPLES = {
   "event-details-sections-demo": EventDetailsSectionsDemo,
   "event-details-side-panel-demo": EventDetailsSidePanelDemo,
   "meet-with-demo": MeetWithDemo,
+  "meet-with-people-challenge-demo": MeetWithPeopleChallengeDemo,
   "mini-calendar-follow-demo": MiniCalendarFollowDemo,
   "mini-calendar-monday-demo": MiniCalendarMondayDemo,
   "month-view-busy-demo": MonthViewBusyDemo,
@@ -167,6 +172,7 @@ const EXAMPLES = {
   "people-picker-demo": PeoplePickerDemo,
   "people-picker-list-demo": PeoplePickerListDemo,
   "people-picker-teammates-demo": PeoplePickerTeammatesDemo,
+  "repeating-events-challenge-demo": RepeatingEventsChallengeDemo,
   "scheduling-panel-demo": SchedulingPanelDemo,
   "scheduling-share-demo": SchedulingShareDemo,
   "sidebar-overlay-picker-demo": SidebarOverlayPickerDemo,

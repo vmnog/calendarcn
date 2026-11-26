@@ -97,7 +97,7 @@ const inRange = (event: CalendarEvent, range: VisibleRange) =>
   (event.isAllDay ? event.end >= range.start : event.end > range.start);
 ```
 
-<Callout title="All-day events">
+<Callout title="Compare an all-day end with >=">
   An all-day event's `end` is the start of its last day, so a one-day event has `start` equal to `end`. Compare its end with `>=`, or it drops off the first day of the range.
 </Callout>
 

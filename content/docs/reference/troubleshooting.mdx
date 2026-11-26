@@ -1,0 +1,136 @@
+---
+title: Troubleshooting
+description: The questions people ask when the calendar doesn't do what they expect, each with its cause and fix.
+---
+
+Each entry is a question as people ask it, then what you see, why, and what to change. When the fix is code, the wrong version comes first.
+
+## Why is the calendar empty, or 0px tall?
+
+**Symptom**: the page renders, but no hours, days or events show.
+
+**Cause**: the calendar fills its parent's height (`h-full`), and a parent with no height of its own is 0px tall.
+
+**Fix**: give the parent a height: `h-screen`, a fixed height, or `flex-1 min-h-0` inside a flex column.
+
+```tsx title="Wrong"
+<div>
+  <Calendar />
+</div>
+```
+
+```tsx title="Right"
+<div className="h-screen">
+  <Calendar />
+</div>
+```
+
+## Why do my events show at the wrong hour?
+
+**Symptom**: every event is off by the same few hours, or an all-day event lands on the day before.
+
+**Cause**: the calendar draws `start` and `end` in the viewer's time zone. A date-only string like `"2026-11-02"` is read as midnight UTC, which is the evening before west of UTC. A date built on a server in another zone is that zone's wall clock.
+
+**Fix**: build dates from parts, or from strings with an offset. To draw everyone's calendar on one clock, pass [`timeZone`](/docs/guides/time-zones#time-zone).
+
+```tsx title="Wrong"
+{ start: new Date("2026-11-02"), end: new Date("2026-11-02"), isAllDay: true }
+```
+
+```tsx title="Right"
+{ start: new Date(2026, 10, 2), end: new Date(2026, 10, 2), isAllDay: true }
+```
+
+## Why does dragging an event do nothing?
+
+**Symptom**: an event moves while you drag it, then snaps back. New events and edits in the details disappear the same way.
+
+**Cause**: passing `events` makes the list yours. The calendar reports each change through `onEventsChange` and draws whatever `events` you pass next, so without the handler nothing changes.
+
+**Fix**: pass `onEventsChange`, or `defaultEvents` to let the calendar own the list.
+
+```tsx title="Wrong"
+<Calendar events={events} />
+```
+
+```tsx title="Right"
+<Calendar events={events} onEventsChange={setEvents} />
+```
+
+## Why don't the colors follow my theme?
+
+**Symptom**: the calendar keeps Notion Calendar's greys and blue while the rest of your app wears its own theme.
+
+**Cause**: the `theme-notion` item writes Notion's colors over your tokens. An install from before every color was a variable has the same effect: an update doesn't change the variables already in your CSS file, so the old values stay.
+
+**Fix**: delete the calendar's color variables from your CSS file and run `add` again, which writes defaults that point at your shadcn/ui tokens. See [Updating an older install](/docs/guides/theming#updating-an-older-install).
+
+## Why does my own event color show as blue?
+
+**Symptom**: an event with `color: "teal"` draws in its calendar's color, or blue.
+
+**Cause**: a color is a name and its CSS variables. Without `--event-teal`, the event falls back to its calendar's color, then to blue.
+
+**Fix**: define `--event-<name>`, `--event-<name>-bg` and `--event-<name>-border` under `:root` and `.dark`. See [Add an event color](/docs/guides/theming#add-an-event-color).
+
+## Why does the shadcn CLI say it can't find @calendarcn?
+
+**Symptom**: `npx shadcn add @calendarcn/calendar` stops on an unknown registry or an item that isn't found.
+
+**Cause**: a shadcn CLI older than 3.7.0 can't read the registry directory, so it doesn't know `@calendarcn`. A cached old CLI does the same.
+
+**Fix**: run `npx shadcn@latest`, or add the registry to `components.json` and run the command again:
+
+```json title="components.json"
+{
+  "registries": {
+    "@calendarcn": "https://calendarcn.xyz/r/{name}.json"
+  }
+}
+```
+
+## Why does pressing D switch dark mode too?
+
+**Symptom**: <Kbd>D</Kbd> opens the day view and toggles light and dark.
+
+**Cause**: projects made by `shadcn init` have a `ThemeProvider` (`components/theme-provider.tsx`) whose `ThemeHotkey` toggles the theme on <Kbd>D</Kbd>, which is also the calendar's day view shortcut.
+
+**Fix**: remove `<ThemeHotkey />` from that file, or [change the calendar's shortcuts](/docs/reference/keyboard-shortcuts#use-them-in-your-own-calendar).
+
+## Why does the type check fail in the calendar's files?
+
+**Symptom**: `tsc` reports "possibly undefined" in the copied files, often after an array or record index.
+
+**Cause**: the files pass `strict`, but not `noUncheckedIndexedAccess`, which shadcn's monorepo template turns on.
+
+**Fix**: set `"noUncheckedIndexedAccess": false` in the `tsconfig.json` of the app the calendar's files are in.
+
+## Why can't new Date() run while my page prerenders?
+
+**Symptom**: `next build` fails with an error about the current time in a prerendered page.
+
+**Cause**: with `cacheComponents: true` in `next.config.ts`, Next.js doesn't let `new Date()` run while a page prerenders.
+
+**Fix**: create date-based events in an effect or an event handler, or load them from your API.
+
+```tsx title="Wrong"
+const [events, setEvents] = React.useState([
+  {
+    id: "1",
+    title: "Standup",
+    start: new Date(),
+    end: addMinutes(new Date(), 15),
+  },
+]);
+```
+
+```tsx title="Right"
+const [events, setEvents] = React.useState<CalendarEvent[]>([]);
+
+React.useEffect(() => {
+  const now = new Date();
+  setEvents([
+    { id: "1", title: "Standup", start: now, end: addMinutes(now, 15) },
+  ]);
+}, []);
+```

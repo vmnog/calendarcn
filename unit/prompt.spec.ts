@@ -197,6 +197,8 @@ for (const name of EXAMPLE_NAMES) {
 
     for (const specifier of imports) {
       if (specifier === "@/lib/utils") continue;
+      // The challenges' check, which the prompt says to leave out
+      if (specifier.startsWith("@/components/docs/")) continue;
 
       if (specifier.startsWith("@/components/ui/")) {
         const component = specifier.slice("@/components/ui/".length);
