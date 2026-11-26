@@ -12,6 +12,7 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import type { MDXComponents } from "mdx/types";
 
 import { cn } from "@/lib/utils";
+import { CalendarAnatomy } from "@/components/docs/calendar-anatomy";
 import { Challenge } from "@/components/docs/challenge";
 import { ComponentPreview } from "@/components/docs/component-preview";
 import { DocsPre } from "@/components/docs/docs-code-block";
@@ -22,6 +23,7 @@ import { LegacyAnchors } from "@/components/docs/legacy-anchors";
 import { LiveDemoPreview } from "@/components/docs/live-demo-preview";
 import { PlayableHero } from "@/components/docs/playable-hero";
 import { PropsTable } from "@/components/docs/props-table";
+import { StateInspector } from "@/components/docs/state-inspector";
 import { EventColorTokens, ThemeTokens } from "@/components/docs/theme-tokens";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
@@ -100,6 +102,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Step,
     Kbd: DocsKbd,
     KbdGroup: DocsKbdGroup,
+    CalendarAnatomy,
     Challenge,
     ComponentPreview,
     Contributor: DocsContributor,
@@ -110,6 +113,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     LiveDemoPreview,
     PlayableHero,
     PropsTable,
+    StateInspector,
     ThemeTokens,
     EventColorTokens,
     ...components,

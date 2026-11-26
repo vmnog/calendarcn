@@ -1,0 +1,30 @@
+---
+title: How it works
+description: "Three layers of ideas: a provider that owns the state, views that draw it, and events you can grab."
+---
+
+## The provider
+
+`CalendarProvider` holds everything the calendar knows: the events, the view and the date it shows, which events are selected, and the event being created. It also does every change: a drag, a resize, a paste or a typed title all end in the provider, which updates its events and calls your handlers (`onEventsChange`, `onEventChange`, `onEventCreate`). Undo and notices live there too, so every view gets them for free.
+
+`<Calendar>` is the provider with a toolbar and the view the provider names. Use the provider yourself when you want your own layout, your own toolbar or more than one view on screen.
+
+## The views
+
+A view only draws. `DayView`, `WeekView`, `MonthView` and `AgendaView` read the provider's state, draw it, and turn what you do with the pointer or the keys back into calls to the provider. The day and week views are one component, `TimeGrid`, built from layers stacked on top of each other. Pull them apart:
+
+<CalendarAnatomy />
+
+The drawing above is made of plain boxes, not the real grid, but each layer is the file named beside it. Events sit above the lines and columns, so a press on an event grabs it and a press on empty space draws a new one. The all-day row and the day headers stay on top while the grid scrolls under them.
+
+## Watch it run
+
+This is a real calendar. The panel beside it prints what `useCalendar()` returns, live. Drag an event, stretch one from its bottom edge, click one to select it, or double-click empty space to start a new one.
+
+<StateInspector />
+
+Each value comes from the provider, except the last change: the panel compares the events before and after each change, as an `onEventsChange` handler of yours could.
+
+## Build your own view
+
+Any component inside a `CalendarProvider` can call `useCalendar()` and get the same state and actions the built-in views use. Read `events` and `visibleRange` to draw, and call `updateEvent`, `selectEvent` or `startEventDraft` when someone acts on what you drew. The [`useCalendar()` reference](/docs/reference/api#usecalendar) lists every value and action.

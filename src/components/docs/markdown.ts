@@ -397,6 +397,8 @@ function getMarkdownComponents(page: DocsPage): Record<string, ElementType> {
   }
 
   return {
+    // A drawing of the time grid's layers: nothing to read
+    CalendarAnatomy: Nothing,
     Callout,
     Card,
     Cards,
@@ -419,6 +421,8 @@ function getMarkdownComponents(page: DocsPage): Record<string, ElementType> {
     // A calendar that plays one move: nothing to read
     PlayableHero: Nothing,
     PropsTable,
+    // A live calendar and its state: nothing to read
+    StateInspector: Nothing,
     Step: ChildrenOnly,
     Steps: ChildrenOnly,
     Tab: ChildrenOnly,
