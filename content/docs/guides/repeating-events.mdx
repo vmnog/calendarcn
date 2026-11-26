@@ -35,6 +35,19 @@ Each answer is one undo step. `onEventsChange` gets the full list once, then `on
 
 The views render the question with `EventSeriesScopeDialog` (`@/components/event-series-scope-dialog`). In a layout without them, render it once inside the provider; without it, a change applies to that date only (a repeat rule change, to that date and the following ones). To skip the question in your own code, pass the answer: `updateEvent(event, "all")` or `deleteEvent(event.id, "this")`. Custom details should change events with `editEvent(event)`, which waits like the built-in details. `getSeriesEditChanges()` and `getSeriesDeleteChanges()` from `@/lib/recurrence` return the same changes without a provider.
 
+## Try it
+
+Click Standup, then pick its repeat in the details. Then drag Wednesday's Standup to another time and answer **This event**: the other dates stay put.
+
+<Challenge
+  task={[
+    "Make Standup repeat every weekday",
+    "Now move only Wednesday's Standup",
+  ]}
+>
+  <ComponentPreview name="repeating-events-challenge-demo" height={640} />
+</Challenge>
+
 ## See also
 
 - [`CalendarEvent`](/docs/reference/api#calendarevent)

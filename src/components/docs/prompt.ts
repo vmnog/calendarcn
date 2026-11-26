@@ -33,6 +33,12 @@ const UI_IMPORT_PREFIX = "@/components/ui/";
 /** The examples' import of `cn()`, which `shadcn init` adds to every project */
 const UTILS_IMPORT = "@/lib/utils";
 
+/**
+ * Import prefix of the docs' own components, which no item ships: the
+ * challenge examples read `useChallenge()` from it to tick off their task
+ */
+const DOCS_IMPORT_PREFIX = "@/components/docs/";
+
 /** Packages every React project has, never listed as something to add */
 const BUILT_IN_PACKAGES = new Set(["react", "react-dom"]);
 
@@ -204,6 +210,8 @@ export function planInstall(itemName: string, source: string): InstallPlan {
 
   for (const specifier of getImports(source)) {
     if (specifier === UTILS_IMPORT) continue;
+    // Docs-only: the prompt asks the agent to leave it out
+    if (specifier.startsWith(DOCS_IMPORT_PREFIX)) continue;
 
     const installed = collectItems(calendarNames);
 
@@ -336,6 +344,8 @@ export function buildExamplePrompt({
   const fileName = examplePath.slice(examplePath.lastIndexOf("/") + 1);
   // The examples that draw events name them: `defaultEvents`, `createSampleEvents`
   const showsEvents = /events/i.test(source);
+  // A challenge's check, which only the docs page has
+  const isChallenge = source.includes(`from "${DOCS_IMPORT_PREFIX}challenge"`);
   // The current time, which Next.js Cache Components won't prerender
   const readsNow = source.includes("new Date()");
 
@@ -368,6 +378,11 @@ export function buildExamplePrompt({
     fence,
     "",
     "- The imports use the aliases `@/components`, `@/hooks` and `@/lib`. Change them if `components.json` sets other aliases.",
+    ...(isChallenge
+      ? [
+          "- Leave out `useChallenge()`, its import and the component that calls it: they tick off the challenge on the docs page.",
+        ]
+      : []),
     ...(readsNow
       ? [
           "- It calls `new Date()`. That is fine unless the project sets `cacheComponents` in its Next.js config: the rule on it below says what to do then.",

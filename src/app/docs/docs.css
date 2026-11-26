@@ -514,3 +514,13 @@ body:has(#nd-notebook-layout) div[data-state]:has(+ #nd-sidebar-mobile) {
     --docs-wide-gutter: 1.25rem;
   }
 }
+
+/*
+ * Callout titles state the rule ("Give the view a parent with a height"), set
+ * in small caps so a page can be skimmed by them.
+ */
+body:has(#nd-notebook-layout) .docs-callout-title {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 12px;
+}

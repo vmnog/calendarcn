@@ -34,6 +34,14 @@ const contactEvents = useFreeBusy(meetWith, visibleRange); // your loader
 
 The [Calendar Sidebar](/docs/components/calendar-sidebar)'s "Meet with..." field and the [People Picker](/docs/guides/meet-with-people) (F and P in [Calendar App](/docs/components/calendar-app)) add people; your own controls can call `addMeetWith`, `addTeammate` and the rest. `getSharedFreeTime(calendars, days, options)` in `lib/free-busy.ts` computes the highlighted free time, to list it elsewhere: it counts an event as busy unless it's marked `status: "free"`, the calendar's owner declined it, or it's all-day (unless marked busy).
 
+## Try it
+
+Meet with Priya to highlight the times you're both free, then drag or double-click inside one. The draft invites her.
+
+<Challenge task="Find a time when you and Priya are both free">
+  <ComponentPreview name="meet-with-people-challenge-demo" height={640} />
+</Challenge>
+
 ## Installation
 
 <InstallTabs item="people-picker" />
