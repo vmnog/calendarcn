@@ -1,6 +1,10 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import defaultMdxComponents from "fumadocs-ui/mdx";
-import { Callout } from "fumadocs-ui/components/callout";
+import {
+  CalloutContainer,
+  CalloutDescription,
+  CalloutTitle,
+} from "fumadocs-ui/components/callout";
 import { Card } from "fumadocs-ui/components/card";
 import { CodeBlockTabs } from "fumadocs-ui/components/codeblock";
 import { Step, Steps } from "fumadocs-ui/components/steps";
@@ -9,6 +13,7 @@ import type { MDXComponents } from "mdx/types";
 
 import { cn } from "@/lib/utils";
 import { CalendarAnatomy } from "@/components/docs/calendar-anatomy";
+import { Challenge } from "@/components/docs/challenge";
 import { ComponentPreview } from "@/components/docs/component-preview";
 import { DocsPre } from "@/components/docs/docs-code-block";
 import { DocsContributor } from "@/components/docs/docs-contributor";
@@ -48,9 +53,34 @@ function DocsCodeBlockTabs({
   );
 }
 
-/** Fumadocs `Callout` with the docs surface instead of a border and drop shadow. */
-function DocsCallout({ className, ...props }: ComponentProps<typeof Callout>) {
-  return <Callout className={cn("docs-surface", className)} {...props} />;
+/** What a docs callout takes: Fumadocs' container props, plus its title */
+type DocsCalloutProps = Omit<
+  ComponentProps<typeof CalloutContainer>,
+  "title"
+> & {
+  /** The rule, in under 8 words: `.docs-callout-title` sets it in small caps */
+  title?: ReactNode;
+};
+
+/**
+ * Fumadocs `Callout` with the docs surface instead of a border and drop
+ * shadow. Its title states the rule ("Give the view a parent with a height"),
+ * so the page can be skimmed by its callouts.
+ */
+function DocsCallout({
+  className,
+  title,
+  children,
+  ...props
+}: DocsCalloutProps) {
+  return (
+    <CalloutContainer className={cn("docs-surface", className)} {...props}>
+      {title && (
+        <CalloutTitle className="docs-callout-title">{title}</CalloutTitle>
+      )}
+      <CalloutDescription>{children}</CalloutDescription>
+    </CalloutContainer>
+  );
 }
 
 /** Fumadocs `Card` with the docs surface; the ring darkens on hover. */
@@ -73,6 +103,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Kbd: DocsKbd,
     KbdGroup: DocsKbdGroup,
     CalendarAnatomy,
+    Challenge,
     ComponentPreview,
     Contributor: DocsContributor,
     DocsMap,

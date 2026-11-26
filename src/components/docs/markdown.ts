@@ -141,6 +141,17 @@ function ChildrenOnly({ children }: ChildrenProps) {
   return children;
 }
 
+/** `Challenge`: its tasks as a numbered list, then the example it wraps */
+async function Challenge({
+  task,
+  children,
+}: ChildrenProps & { task: string | string[] }) {
+  asMarkdown();
+  const tasks = Array.isArray(task) ? task : [task];
+  const list = tasks.map((text, index) => `${index + 1}. ${text}`).join("\n");
+  return `${block(`Try it in the example below:\n\n${list}`)}${await renderChildren(children)}`;
+}
+
 /** Tab buttons: nothing to say in Markdown */
 function Nothing() {
   asMarkdown();
@@ -395,6 +406,7 @@ function getMarkdownComponents(page: DocsPage): Record<string, ElementType> {
     CodeBlockTabs: ChildrenOnly,
     CodeBlockTabsList: Nothing,
     CodeBlockTabsTrigger: Nothing,
+    Challenge,
     ComponentPreview,
     Contributor,
     DocsMap,

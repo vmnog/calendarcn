@@ -116,6 +116,14 @@ Every component page has an "Examples" section after Usage. Each example there i
 
 A full-page block such as `CalendarApp` lays out for the viewport's width. List its examples in `FRAMED_EXAMPLES` (in `examples.ts`) and the preview shows each in an iframe, at `/examples/<name>`.
 
+A guide can end with a story demo: wrap its preview in `<Challenge task="…">` (a list for tasks done in order). The example checks its own state and calls `useChallenge().complete()` from `@/components/docs/challenge` when the task on screen passes. The Prompt tab tells the agent to leave that import out. `e2e/docs-challenges.spec.ts` does each task.
+
+Pages share three templates:
+
+- **Install as a stepper**: `<Steps>` with one `###` heading per `<Step>`, each one action (add, render, pass your events, update), as on Installation.
+- **Callout titles state the rule** in under 8 words, sentence case ("Give the view a parent with a height"). The CSS sets them in small caps.
+- **Symptom, Cause, Fix**: a Troubleshooting entry is the question as people ask it, three bold-led lines, then the wrong and the right code when the fix is code. When an issue is answered with a config fix, add an entry.
+
 `pnpm test:unit` checks that every example is registered and shown and that every component page has enough of them, and `e2e/docs-examples.spec.ts` opens each one.
 
 ## Code Style
