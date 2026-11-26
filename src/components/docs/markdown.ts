@@ -401,6 +401,8 @@ function getMarkdownComponents(page: DocsPage): Record<string, ElementType> {
     InstallTabs,
     Kbd,
     KbdGroup,
+    // Sends old Calendar Core anchors to their guides: nothing to read
+    LegacyAnchors: Nothing,
     LiveDemoPreview,
     // A calendar that plays one move: nothing to read
     PlayableHero: Nothing,

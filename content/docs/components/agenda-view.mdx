@@ -5,7 +5,7 @@ description: The coming days' events as a scrolling list.
 
 <ComponentPreview name="agenda-view-demo" />
 
-Agenda View lists the events of the next 30 days, grouped by day. Days without events are skipped, except today, which always shows with its date in a badge and a line at the current time. It reads its state from the surrounding [`CalendarProvider`](/docs/components/calendar-core) like every view, and fits phones better than a time grid: there's no grid to squeeze, only rows.
+Agenda View lists the events of the next 30 days, grouped by day. Days without events are skipped, except today, which always shows with its date in a badge and a line at the current time. It reads its state from the surrounding [`CalendarProvider`](/docs/reference/api) like every view, and fits phones better than a time grid: there's no grid to squeeze, only rows.
 
 ## Installation
 
@@ -41,7 +41,7 @@ With nothing in the next 30 days, the agenda shows an empty state that names the
 
 ### Your own event content
 
-[`renderEventContent`](/docs/components/calendar-core#custom-event-content) draws the inside of each row, with `placement: "agenda"`.
+[`renderEventContent`](/docs/guides/customise-the-look#custom-event-content) draws the inside of each row, with `placement: "agenda"`.
 
 <ComponentPreview name="agenda-view-event-content-demo" height={600} />
 
@@ -53,7 +53,7 @@ At a phone's width the rows stack the title over the time. A popover has no room
 
 ### A 24-hour clock and week numbers
 
-Times follow the provider's `hourCycle`, and with the `showWeekNumbers` [view setting](/docs/components/calendar-core#view-settings) on, "Week 23" marks where each week starts.
+Times follow the provider's `hourCycle`, and with the `showWeekNumbers` [view setting](/docs/guides/customise-the-look#view-settings) on, "Week 23" marks where each week starts.
 
 <ComponentPreview name="agenda-view-week-numbers-demo" height={600} />
 
@@ -62,7 +62,7 @@ Times follow the provider's `hourCycle`, and with the `showWeekNumbers` [view se
 - Each day lists its all-day events first, then timed events by start time.
 - An event that spans several days shows under each of them with "Day 2 of 3". A timed one reads "From 4 PM" on its first day, "All day" in between and "Until 1 PM" on its last.
 - Click an event, or press <Kbd>Enter</Kbd> on it, to select it and open the same details popover as the other views, below the row. [`renderEventDetails`](/docs/components/event-details#custom-details) replaces its body. Right-click opens the event's context menu.
-- [`renderEventContent`](/docs/components/calendar-core#custom-event-content) draws the inside of each row, with `placement: "agenda"`.
+- [`renderEventContent`](/docs/guides/customise-the-look#custom-event-content) draws the inside of each row, with `placement: "agenda"`.
 - Times follow the provider's `hourCycle`, and day and month names its `locale`. Hiding weekends in the view settings hides their days here too. With week numbers on, "Week 23" marks where each week starts, and with declined events hidden the events you declined aren't listed.
 - Rows stack the title over the time on narrow screens, and line up time, title and location in columns once the agenda is wider than 36rem. It's a container query, so it follows the agenda's own width.
 - Past events are faded. A friendly empty state shows when no event falls in the 30 days.
@@ -78,7 +78,7 @@ Times follow the provider's `hourCycle`, and with the `showWeekNumbers` [view se
 
 ### AgendaView
 
-Everything else (date, events, locale, view settings) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+Everything else (date, events, locale, view settings) is set on [`CalendarProvider`](/docs/reference/api#calendarprovider).
 
 <PropsTable
   rows={[

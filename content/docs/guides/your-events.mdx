@@ -1,0 +1,46 @@
+---
+title: Your events
+description: Keep the events in the provider or in your own state, select several at once, and render on the server.
+---
+
+<ComponentPreview name="controlled-events-demo" />
+
+In the preview, the list on the right is the app's own `events` state: drag, resize or create an event and it updates. All of this goes in `<CalendarProvider>`'s props: see [Installation](/docs/reference/api#installation).
+
+## Controlled or uncontrolled
+
+Each piece of state comes in a shadcn/Radix-style pair. Pass `defaultEvents` (or nothing) and the provider owns the events. Pass `events` with `onEventsChange` and your app owns them: the provider draws whatever `events` holds and reports every drag, resize, create and edit as the full next list. `view`, `date` and `numberOfDays` work the same way.
+
+```tsx
+const [events, setEvents] = React.useState(initialEvents);
+
+<CalendarProvider events={events} onEventsChange={setEvents}>
+  <WeekView />
+</CalendarProvider>;
+```
+
+Use `onEventCreate`, `onEventUpdate`, `onEventDelete` and `onEventSelect` to react to one change at a time, for example to save it to a server. `onEventCreate` also gets an occurrence of a repeating event the first time it is edited: see [Repeating events](/docs/guides/repeating-events#repeating-events). To fetch events for the dates on screen as people navigate, use `onVisibleRangeChange` and `loading`: see [Loading Events](/docs/guides/loading-events).
+
+## Selecting several events
+
+As in Notion Calendar, Shift-click or <Kbd>⌘</Kbd>-click (Ctrl-click on Windows and Linux) on an event adds it to the selection, and on a selected one takes it out. <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup> (`selectAllVisible`) selects every event on the dates on screen. <Kbd>Esc</Kbd>, a click on empty space or a plain click on one event clears the rest. Several selected events are drawn selected but show no details, as in Notion Calendar, and `selectedEventIds` lists them.
+
+On one of them, delete, cut, copy, duplicate and paste act on them all, from the keyboard, the right-click menu or `deleteEvent`, `cutEvent`, `copyEvent` and `duplicateEvent`, each as one undo step. The toasts read "2 events deleted" and "2 events cut" with Undo, and "2 events copied to clipboard". Pasted events keep their distance from the earliest of them, which lands where a single paste would. Dragging one of them, or moving it with <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup>, moves them all by as much; resizing changes that event alone. A date of a repeating event among them changes alone, as its own event: an action on several events never asks which events of the series it applies to. With `timeZone` set, a moved group's events all move by the same time. Selecting other events while a change to a repeating date waits asks about that change first.
+
+## Server rendering
+
+Without `date` or `defaultDate`, the calendar starts on today's period. The server doesn't know the viewer's today or time zone, so in that case the provider renders nothing until hydration finishes, and server and client markup always match. Pass `defaultDate` to render on the server.
+
+## Examples
+
+### Several events selected
+
+Shift-click events, or select every event on screen with `selectAllVisible()`. `selectedEventIds` lists them, and deleting one of them deletes them all, as one step for undo. See [Selecting several events](#selecting-several-events).
+
+<ComponentPreview name="multi-select-demo" height={600} />
+
+## See also
+
+- [`CalendarProvider`](/docs/reference/api#calendarprovider)
+- [`useCalendar()`](/docs/reference/api#usecalendar)
+- [`CalendarEvent`](/docs/reference/api#calendarevent)

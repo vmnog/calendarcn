@@ -1,0 +1,41 @@
+---
+title: Creating events
+description: Double-click or drag on empty space for a draft, saved by its first edit, as in Notion Calendar.
+---
+
+## Creating events
+
+New events start the way they do in Notion Calendar, as a draft:
+
+- **Double-click** an empty slot in the day or week view for a 30-minute draft there, or **press and drag** to draw one of any length: down, up, or across day columns. Both ends snap to `snapMinutes`.
+- Do the same in the all-day row or in the month view for an all-day draft over one day or several.
+- On touch, a long press starts the draft, and dragging on draws it.
+- A single click on empty space creates nothing. It clears the selection.
+
+A draft is drawn and selected, with its title focused in the details, but it isn't in `events` yet. It is saved by its first edit: a title (on <Kbd>Enter</Kbd>, or when focus leaves the title) or a change to any other field. Saving adds it to `events`, calls `onEventCreate` once and is one step for [undo](/docs/guides/undo-and-notices#undo-and-redo). A draft that nothing was typed into is thrown away when the selection moves on: <Kbd>Esc</Kbd> (once to leave the title, once more for the draft), a click elsewhere, or another event. <Kbd>Esc</Kbd> in the middle of a drag drops it too.
+
+While nothing is typed into it, a draft is a tinted range in its calendar's color. Its first title keystroke turns it into an event block that shows the title as you type.
+
+- `createEvent` builds the draft from its range. Return an untitled event, as the default does, for Notion Calendar's flow, or `null` to create nothing there. The range's `isAllDay` is set for whole days.
+- `defaultEventDuration` sets the length of a double-clicked event, in minutes.
+- <Kbd>C</Kbd> and the command menu's "Create event..." start a draft at the
+  next half hour (`addEventAtNextSlot()`), drawn as an event block from the
+  start, as in Notion Calendar.
+- `useCalendar()` returns the draft as `eventDraft` and starts one from your own button or command with `startEventDraft(range)`, drawn the same way. `updateEvent(draft)` saves it, `updateEventDraft(draft)` changes it without saving, and `clearSelection()` throws it away.
+- `addEventFromRange(range)` still adds an event at once, with no draft.
+
+[A New event button](#a-new-event-button) starts drafts from buttons of your own.
+
+## Examples
+
+### A New event button
+
+`addEventAtNextSlot()` starts a [draft](#creating-events) at the next half hour, and `startEventDraft(range)` one for any range. `eventDraft` holds the draft until its first edit saves it.
+
+<ComponentPreview name="create-event-button-demo" height={600} />
+
+## See also
+
+- [`CalendarProvider`](/docs/reference/api#calendarprovider)
+- [`useCalendar()`](/docs/reference/api#usecalendar)
+- [`NewEventRange`](/docs/reference/api#neweventrange)

@@ -5,7 +5,7 @@ description: Twelve months at a glance, with the days that have events marked.
 
 <ComponentPreview name="year-view-demo" />
 
-Year View shows the provider's year as twelve small month grids, like Google Calendar's year view (Notion Calendar has none). Today is marked in red and every day with events gets a dot under its number. Click a day, or press <Kbd>Enter</Kbd> on it, to open its week. Like every view, it reads its state from the surrounding [`CalendarProvider`](/docs/components/calendar-core).
+Year View shows the provider's year as twelve small month grids, like Google Calendar's year view (Notion Calendar has none). Today is marked in red and every day with events gets a dot under its number. Click a day, or press <Kbd>Enter</Kbd> on it, to open its week. Like every view, it reads its state from the surrounding [`CalendarProvider`](/docs/reference/api).
 
 ## Installation
 
@@ -35,7 +35,7 @@ Set `defaultView="year"` (or control `view`) so the provider snaps the date, hea
 
 ### Your own toolbar
 
-Year View has no header of its own. In year view, `goToPrev()` and `goToNext()` from [`useCalendar()`](/docs/components/calendar-core#usecalendar) move a year.
+Year View has no header of its own. In year view, `goToPrev()` and `goToNext()` from [`useCalendar()`](/docs/reference/api#usecalendar) move a year.
 
 <ComponentPreview name="year-view-toolbar-demo" height={600} />
 
@@ -53,7 +53,7 @@ Keep the year on screen and show the day's events beside it.
 
 ### Monday start and week numbers
 
-`defaultWeekStartsOn={1}` starts every month's weeks on Monday, and the `showWeekNumbers` [view setting](/docs/components/calendar-core#view-settings) numbers them.
+`defaultWeekStartsOn={1}` starts every month's weeks on Monday, and the `showWeekNumbers` [view setting](/docs/guides/customise-the-look#view-settings) numbers them.
 
 <ComponentPreview name="year-view-week-numbers-demo" height={600} />
 
@@ -70,7 +70,7 @@ Keep the year on screen and show the day's events beside it.
 
 ### YearView
 
-Everything else (date, events, week start, locale, view settings) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+Everything else (date, events, week start, locale, view settings) is set on [`CalendarProvider`](/docs/reference/api#calendarprovider).
 
 <PropsTable
   rows={[

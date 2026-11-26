@@ -4,13 +4,13 @@ import type { Locator, Page } from "@playwright/test";
 import { FROZEN_NOW, boxOf, dragBy } from "./helpers";
 
 /**
- * The "Second time zone" example on the Calendar Core docs page: a week
+ * The "Second time zone" example on the Time zones guide: a week
  * view with `secondaryTimeZone="Asia/Kolkata"`. The browser runs in New
  * York (GMT−4 in June) and Kolkata is GMT+5:30, 9 hours 30 minutes ahead.
  * The clock is frozen at Thursday June 4 2026, 8:00 AM, so the week is May
  * 31 to June 6.
  */
-const DOCS_PATH = "/docs/components/calendar-core";
+const DOCS_PATH = "/docs/guides/time-zones";
 
 /** Width of one time axis column: `TIME_AXIS_WIDTH` in time-grid.tsx */
 const AXIS_COLUMN_WIDTH = 64;

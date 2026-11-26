@@ -4,12 +4,12 @@ import type { Locator, Page } from "@playwright/test";
 import { boxOf, dragBy } from "./helpers";
 
 /**
- * The "Time zone" example on the Calendar Core docs page: a Calendar drawn
+ * The "Time zone" example on the Time zones guide: a Calendar drawn
  * in Asia/Tokyo with India's hours beside it, and "Your clock", the app's
  * events on the browser's own clock. The browser runs in America/New_York
  * (playwright.config.ts).
  */
-const DOCS_PATH = "/docs/components/calendar-core";
+const DOCS_PATH = "/docs/guides/time-zones";
 
 /** Saturday June 6 2026, 8 PM in New York: already Sunday June 7, 9 AM in Tokyo */
 const SUNDAY_MORNING_IN_TOKYO = new Date("2026-06-06T20:00:00-04:00");

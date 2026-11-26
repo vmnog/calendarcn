@@ -13,6 +13,7 @@ import { DocsPre } from "@/components/docs/docs-code-block";
 import { DocsContributor } from "@/components/docs/docs-contributor";
 import { DocsMap, DocsMapCta } from "@/components/docs/docs-map";
 import { InstallTabs } from "@/components/docs/install-tabs";
+import { LegacyAnchors } from "@/components/docs/legacy-anchors";
 import { LiveDemoPreview } from "@/components/docs/live-demo-preview";
 import { PlayableHero } from "@/components/docs/playable-hero";
 import { PropsTable } from "@/components/docs/props-table";
@@ -74,6 +75,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     DocsMap,
     DocsMapCta,
     InstallTabs,
+    LegacyAnchors,
     LiveDemoPreview,
     PlayableHero,
     PropsTable,

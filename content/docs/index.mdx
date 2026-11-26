@@ -56,7 +56,7 @@ Or add only the pieces you need. Each one pulls in the ones it builds on.
     The whole live demo in one install: both sidebars, the header, every view,
     the command menu and .ics files.
   </Card>
-  <Card title="Calendar Core" href="/docs/components/calendar-core">
+  <Card title="Calendar Core" href="/docs/reference/api">
     `CalendarProvider` and `useCalendar()`, the state every view shares.
   </Card>
   <Card title="Time Grid" href="/docs/components/day-week-view#time-grid">
@@ -98,7 +98,7 @@ Already keep them in Google Calendar, Apple Calendar or Outlook? `parseIcs()` tu
 <Cards>
   <Card
     title="Controlled or uncontrolled"
-    href="/docs/components/calendar-core#controlled-or-uncontrolled"
+    href="/docs/guides/your-events#controlled-or-uncontrolled"
   >
     Who owns the events, and `onEventCreate`, `onEventUpdate` and
     `onEventSelect` for saving one change at a time.
@@ -110,14 +110,14 @@ Already keep them in Google Calendar, Apple Calendar or Outlook? `parseIcs()` tu
   <Card title="Import and Export" href="/docs/guides/import-export">
     Read and write .ics files, plus a recipe that syncs with Google Calendar.
   </Card>
-  <Card
-    title="Event fields"
-    href="/docs/components/calendar-core#calendarevent"
-  >
+  <Card title="Event fields" href="/docs/reference/api#calendarevent">
     The four required fields, plus `isAllDay` for the all-day row and `color`
     for one of the seven event colors.
   </Card>
-  <Card title="Typed events" href="/docs/components/calendar-core#typed-events">
+  <Card
+    title="Typed events"
+    href="/docs/guides/customise-the-look#typed-events"
+  >
     Extend `CalendarEvent` with your own fields, and every callback and renderer
     gets your type back.
   </Card>
@@ -128,13 +128,13 @@ Already keep them in Google Calendar, Apple Calendar or Outlook? `parseIcs()` tu
 The CLI copies the source into your project, so you can change the toolbar or the layout right in `components/calendar.tsx`. Before you edit it, check the props: many changes are one prop away.
 
 <Cards>
-  <Card title="Settings" href="/docs/components/calendar-core#configuration">
+  <Card title="Settings" href="/docs/guides/customise-the-look#configuration">
     A 24-hour clock, a date-fns locale, the first day of the week, the visible
     hours and the snap step are plain props.
   </Card>
   <Card
     title="Event content"
-    href="/docs/components/calendar-core#custom-event-content"
+    href="/docs/guides/customise-the-look#custom-event-content"
   >
     `renderEventContent` draws inside each event. `renderEventDetails` replaces
     the details popover.

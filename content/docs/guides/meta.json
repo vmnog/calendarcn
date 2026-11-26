@@ -1,11 +1,16 @@
 {
   "title": "Guides",
   "pages": [
-    "theming",
+    "your-events",
     "loading-events",
-    "import-export",
+    "creating-events",
+    "repeating-events",
+    "time-zones",
     "meet-with-people",
     "share-your-availability",
-    "undo-and-notices"
+    "undo-and-notices",
+    "customise-the-look",
+    "theming",
+    "import-export"
   ]
 }

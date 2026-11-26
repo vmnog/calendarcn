@@ -5,7 +5,7 @@ description: One day, a week or any number of days on the time grid.
 
 <ComponentPreview name="week-view-demo" wide />
 
-Day View and Week View are the same time grid with a different number of days: an all-day row on top, an hour grid below. They read the date, events and selection from the surrounding [`CalendarProvider`](/docs/components/calendar-core), so they have almost no props of their own.
+Day View and Week View are the same time grid with a different number of days: an all-day row on top, an hour grid below. They read the date, events and selection from the surrounding [`CalendarProvider`](/docs/reference/api), so they have almost no props of their own.
 
 ## Installation
 
@@ -40,7 +40,7 @@ export function Schedule() {
 
 - Drag an event to move it, including to another day. The grid scrolls when you reach its edge.
 - Drag the top or bottom edge of an event to resize it.
-- Double-click an empty slot to create an event, or press and drag to draw one, then type its title. Do the same in the all-day row for an all-day event. See [Creating events](/docs/components/calendar-core#creating-events).
+- Double-click an empty slot to create an event, or press and drag to draw one, then type its title. Do the same in the all-day row for an all-day event. See [Creating events](/docs/guides/creating-events#creating-events).
 - Click an event to open its details in a popover. Right-click it to change its color or calendar.
 - Overlapping events sit side by side. All-day and multi-day events sit in the all-day row.
 - Scroll sideways to move through days. Scrolling snaps to the nearest day.
@@ -85,13 +85,13 @@ The time grid lays out days as columns and hours as rows. Day View and Week View
 - Overlapping events placed side by side.
 - Drag an event to move it, including to another day. The grid scrolls when you reach its edge.
 - Drag the top or bottom edge of an event to resize it.
-- Double-click an empty slot to create an event, or press and drag to draw one, as in Notion Calendar. The all-day row does the same for all-day events. See [Creating events](/docs/components/calendar-core#creating-events).
-- Visible hours, snap step and clock come from [`CalendarProvider`](/docs/components/calendar-core#calendarprovider): `dayStartHour`, `dayEndHour`, `snapMinutes` and `hourCycle`.
-- Additional time zones' hours beside the time axis, from the provider's [`secondaryTimeZones`](/docs/components/calendar-core#additional-time-zones). Each zone's label opens Notion Calendar's menu for it (change, make primary or secondary, remove), and the "+" left of "All-day" adds one.
-- The calendar's own zone, [`timeZone`](/docs/components/calendar-core#time-zone), labels the time axis, and a zone travelled to is filled in the primary color with an x that travels back home.
-- The provider's [view settings](/docs/components/calendar-core#view-settings): with weekends hidden the columns are weekdays only, so scrolling, previous and next, and a drag from Friday to the next column all step over the weekend to Monday. Declined events are struck through on a dashed outline, or hidden.
-- Other people's events behind yours, hatched in their color, and the free time you share highlighted, while you meet with them or show their calendar: see [Meeting with people](/docs/components/calendar-core#meeting-with-people).
-- Hours that fill the screen by default, or the provider's [`hourHeight`](/docs/components/calendar-core#hour-size), which zooming steps through while the middle of the screen stays put.
+- Double-click an empty slot to create an event, or press and drag to draw one, as in Notion Calendar. The all-day row does the same for all-day events. See [Creating events](/docs/guides/creating-events#creating-events).
+- Visible hours, snap step and clock come from [`CalendarProvider`](/docs/reference/api#calendarprovider): `dayStartHour`, `dayEndHour`, `snapMinutes` and `hourCycle`.
+- Additional time zones' hours beside the time axis, from the provider's [`secondaryTimeZones`](/docs/guides/time-zones#additional-time-zones). Each zone's label opens Notion Calendar's menu for it (change, make primary or secondary, remove), and the "+" left of "All-day" adds one.
+- The calendar's own zone, [`timeZone`](/docs/guides/time-zones#time-zone), labels the time axis, and a zone travelled to is filled in the primary color with an x that travels back home.
+- The provider's [view settings](/docs/guides/customise-the-look#view-settings): with weekends hidden the columns are weekdays only, so scrolling, previous and next, and a drag from Friday to the next column all step over the weekend to Monday. Declined events are struck through on a dashed outline, or hidden.
+- Other people's events behind yours, hatched in their color, and the free time you share highlighted, while you meet with them or show their calendar: see [Meeting with people](/docs/guides/meet-with-people#meeting-with-people).
+- Hours that fill the screen by default, or the provider's [`hourHeight`](/docs/guides/customise-the-look#hour-size), which zooming steps through while the middle of the screen stays put.
 
 ```tsx
 import { CalendarProvider } from "@/components/calendar-provider";
@@ -118,13 +118,13 @@ export function ThreeDays() {
 
 ### Your own toolbar
 
-Week View has no header of its own. Read the month and move between weeks with [`useCalendar()`](/docs/components/calendar-core#usecalendar) from any component inside the provider.
+Week View has no header of its own. Read the month and move between weeks with [`useCalendar()`](/docs/reference/api#usecalendar) from any component inside the provider.
 
 <ComponentPreview name="week-view-toolbar-demo" height={600} />
 
 ### Weekdays only
 
-Hide the weekend with the provider's [view settings](/docs/components/calendar-core#view-settings), and start the week on Monday with `defaultWeekStartsOn`.
+Hide the weekend with the provider's [view settings](/docs/guides/customise-the-look#view-settings), and start the week on Monday with `defaultWeekStartsOn`.
 
 <ComponentPreview name="week-view-weekdays-demo" height={600} />
 
@@ -166,7 +166,7 @@ Use one `TimeGrid` under a header of your own and switch its `view`: the grid la
 
 ### Zoom the hours
 
-The [hour size](/docs/components/calendar-core#hour-size) lives in the provider: `zoomHoursIn()`, `zoomHoursOut()` and `resetHourHeight()` change it from your own buttons.
+The [hour size](/docs/guides/customise-the-look#hour-size) lives in the provider: `zoomHoursIn()`, `zoomHoursOut()` and `resetHourHeight()` change it from your own buttons.
 
 <ComponentPreview name="time-grid-zoom-demo" height={600} />
 
@@ -174,7 +174,7 @@ The [hour size](/docs/components/calendar-core#hour-size) lives in the provider:
 
 ### WeekView
 
-Everything else (date, events, number of days, hours, clock, locale) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+Everything else (date, events, number of days, hours, clock, locale) is set on [`CalendarProvider`](/docs/reference/api#calendarprovider).
 
 <PropsTable
   rows={[
@@ -213,7 +213,7 @@ Everything else (date, events, number of days, hours, clock, locale) is set on [
 
 ### DayView
 
-Everything else (date, events, hours, clock, locale) is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+Everything else (date, events, hours, clock, locale) is set on [`CalendarProvider`](/docs/reference/api#calendarprovider).
 
 <PropsTable
   rows={[
@@ -246,7 +246,7 @@ Everything else (date, events, hours, clock, locale) is set on [`CalendarProvide
 
 ### TimeGrid
 
-Use it directly when you switch between day and week yourself and want to keep the scroll position, as the [demo](/) does. Everything else is set on [`CalendarProvider`](/docs/components/calendar-core#calendarprovider).
+Use it directly when you switch between day and week yourself and want to keep the scroll position, as the [demo](/) does. Everything else is set on [`CalendarProvider`](/docs/reference/api#calendarprovider).
 
 <PropsTable
   rows={[

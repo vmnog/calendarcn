@@ -5,7 +5,7 @@ description: Move around the calendar without touching the mouse.
 
 The [Calendar](/docs/components/calendar) block and the [live demo](/) share a set of single-key shortcuts. Single-key shortcuts pause while you type in an input, a select or editable content, and leave presses with <Kbd>⌘</Kbd>, <Kbd>Ctrl</Kbd> or <Kbd>Alt</Kbd> to your app and the browser, apart from the event keys below.
 
-They come from `useCalendarShortcuts()`, part of [Calendar Core](/docs/components/calendar-core), not from the views. A calendar you build from the views alone only handles keys while one of its events has focus: see [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility) for moving and resizing events from the keyboard.
+They come from `useCalendarShortcuts()`, part of [Calendar Core](/docs/reference/api), not from the views. A calendar you build from the views alone only handles keys while one of its events has focus: see [Keyboard & accessibility](/docs/components/calendar#keyboard--accessibility) for moving and resizing events from the keyboard.
 
 ## Navigation
 
@@ -39,7 +39,7 @@ In day and week view, make the hours taller to read busy days, or shorter to see
 | Zoom hours out    | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> |
 | Default hour size | <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>0</Kbd></KbdGroup> |
 
-Like the event keys, they work with <Kbd>Ctrl</Kbd> on Windows and Linux. See [Hour size](/docs/components/calendar-core#hour-size).
+Like the event keys, they work with <Kbd>Ctrl</Kbd> on Windows and Linux. See [Hour size](/docs/guides/customise-the-look#hour-size).
 
 ## Events
 
@@ -59,16 +59,16 @@ Like the event keys, they work with <Kbd>Ctrl</Kbd> on Windows and Linux. See [H
 <Kbd>C</Kbd> starts a new event at the next half hour, as in Notion Calendar: on
 today when it's on screen, else on the day Go to date just went to, else on the
 first day shown. In month view it is an all-day event. It is a
-[draft](/docs/components/calendar-core#creating-events) with its title focused:
+[draft](/docs/guides/creating-events#creating-events) with its title focused:
 name it to save it, or press <Kbd>Esc</Kbd> twice to throw it away.
 
-A paste goes where the mouse is: in day and week view the copy starts at the time slot under it, and in month view it lands on the day under it at its own time of day. With the mouse elsewhere it goes to the last spot it pointed at, while that is on screen, else to today, else to the first day on screen. All-day events stay all-day, and every paste is a new event. Undo covers creating, moving, resizing and editing events and every action above; see [Calendar Core](/docs/components/calendar-core#undo-and-redo).
+A paste goes where the mouse is: in day and week view the copy starts at the time slot under it, and in month view it lands on the day under it at its own time of day. With the mouse elsewhere it goes to the last spot it pointed at, while that is on screen, else to today, else to the first day on screen. All-day events stay all-day, and every paste is a new event. Undo covers creating, moving, resizing and editing events and every action above; see [Calendar Core](/docs/guides/undo-and-notices#undo-and-redo).
 
 These keys act only when they have something to act on (a selected event, something cut or copied, a change to undo or redo) and otherwise leave the press to the browser. They pause while you type in a field or compose text with an input method, and <KbdGroup><Kbd>⌘</Kbd><Kbd>C</Kbd></KbdGroup> and <KbdGroup><Kbd>⌘</Kbd><Kbd>X</Kbd></KbdGroup> also while text is selected on the page.
 
-In a field or menu of the event details, <Kbd>Esc</Kbd> only closes it and restores the value from before. Press it again to deselect the event. For an event that is being [created](/docs/components/calendar-core#creating-events), that second <Kbd>Esc</Kbd> throws the draft away, and <Kbd>Esc</Kbd> while dragging to draw one drops it.
+In a field or menu of the event details, <Kbd>Esc</Kbd> only closes it and restores the value from before. Press it again to deselect the event. For an event that is being [created](/docs/guides/creating-events#creating-events), that second <Kbd>Esc</Kbd> throws the draft away, and <Kbd>Esc</Kbd> while dragging to draw one drops it.
 
-Shift-click or <Kbd>⌘</Kbd>-click on events selects several, and <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup> every event on screen (in a text field it still selects the text). The event keys then act on all of them, and <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> and <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup> on one of them move them all. See [Selecting several events](/docs/components/calendar-core#selecting-several-events).
+Shift-click or <Kbd>⌘</Kbd>-click on events selects several, and <KbdGroup><Kbd>⌘</Kbd><Kbd>A</Kbd></KbdGroup> every event on screen (in a text field it still selects the text). The event keys then act on all of them, and <KbdGroup><Kbd>Alt</Kbd><Kbd>↑</Kbd></KbdGroup> and <KbdGroup><Kbd>Alt</Kbd><Kbd>↓</Kbd></KbdGroup> on one of them move them all. See [Selecting several events](/docs/guides/your-events#selecting-several-events).
 
 ## Scheduling
 
@@ -124,7 +124,7 @@ Calendar groups them: General, Workflows, Editing, Calendar view, Calendar
 navigation and App navigation. Type in its field to find one by name or by key (
 <Kbd>t</Kbd> finds "Go to today"), and press <Kbd>Esc</Kbd> to go back.
 
-The list is data, `KEYBOARD_SHORTCUT_GROUPS` in `lib/keyboard-shortcuts.ts` ([Calendar Core](/docs/components/calendar-core)), with each key in `SHORTCUTS`. The details sidebar's "Useful shortcuts" read their keys from it too. If you change a key in the hook, change it there, so the list stays true.
+The list is data, `KEYBOARD_SHORTCUT_GROUPS` in `lib/keyboard-shortcuts.ts` ([Calendar Core](/docs/reference/api)), with each key in `SHORTCUTS`. The details sidebar's "Useful shortcuts" read their keys from it too. If you change a key in the hook, change it there, so the list stays true.
 
 On Windows and Linux, use <Kbd>Ctrl</Kbd> in place of <Kbd>⌘</Kbd>. The one exception is the sidebar toggle, which needs the <Kbd>⌘</Kbd> (Meta) key. <KbdGroup><Kbd>⌘</Kbd><Kbd>K</Kbd></KbdGroup> and <KbdGroup><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> work from inside a text field too. The [Command Menu](/docs/components/command-menu) and the [Calendar Header](/docs/components/calendar-header) show these keys next to their commands and buttons.
 

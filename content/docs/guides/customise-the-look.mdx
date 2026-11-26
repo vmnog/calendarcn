@@ -1,0 +1,86 @@
+---
+title: Customise the look
+description: Settings, view settings, hour size, your own event content and your own event type.
+---
+
+## Configuration
+
+<ComponentPreview name="config-demo" />
+
+Display and interaction settings are plain props: a 24-hour clock, a [date-fns locale](https://date-fns.org/docs/I18n) for day and month names, the first day of the week, the visible hours of the time grid, the minute step that drag, resize and new events snap to, and the length of a double-clicked event. Events outside the visible hours are clipped at the edge, and hidden when they lie fully outside. Read the resolved settings anywhere with `useCalendarConfig()`, for example to format times in a custom renderer the way the calendar does.
+
+The calendar's time zones have a guide of their own: see [Time zones](/docs/guides/time-zones).
+
+## View settings
+
+`viewSettings` holds the view dropdown's three settings, and every view reads them: `showWeekends`, `showDeclinedEvents` and `showWeekNumbers`. Start with your own through `defaultViewSettings`, and flip them with `toggleWeekends`, `toggleDeclinedEvents` and `toggleWeekNumbers`, or let the [view switcher](/docs/components/calendar-header#calendarviewswitcher) and the [Command Menu](/docs/components/command-menu) do it.
+
+- **Who you are among the participants.** An event is declined when your participant answered "declined": the one with `self: true` (Google Calendar's flag), or, without one, the one whose email is the event's `calendarEmail`. `isDeclinedByViewer(event)` says whether an event is, and `filterDeclinedEvents(events, showDeclinedEvents)` drops them while they're hidden, for a view of your own.
+- **Days without the weekend.** With weekends hidden, `getShownDays()`, `addShownDays()` and `countShownDaysBetween()` count weekdays instead of days, and `getFirstShownDay()` moves a Saturday or Sunday to Monday. `getVisibleDays()`, `getPeriodStart()` and `getVisibleDayCount()` take the setting as their last argument.
+
+## Hour size
+
+The day and week views' hours fill the screen by default, at least 48px an hour. `hourHeight` on `CalendarProvider` sets another size, in pixels, and `null` goes back to the default. It lives in the provider so the [Command Menu](/docs/components/command-menu), the keys and your own controls all change the same size:
+
+- `zoomHoursIn()` and `zoomHoursOut()` step through `HOUR_HEIGHT_STEPS` (24, 32, 40, 48, 64, 80, 96, 128 and 160px), from the size on screen. `resetHourHeight()` goes back to the default. `useCalendarShortcuts()` runs them on <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>.</Kbd></KbdGroup>, <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>,</Kbd></KbdGroup> and <KbdGroup><Kbd>⇧</Kbd><Kbd>⌘</Kbd><Kbd>0</Kbd></KbdGroup>, Notion Calendar's keys.
+- Zooming keeps the time in the middle of the screen where it was. Dragging, resizing, creating, the current-time line and horizontal scrolling work at every size.
+- The size isn't stored. To keep it across visits, save `onHourHeightChange`'s value and pass it back as `defaultHourHeight` (or control `hourHeight`).
+
+```tsx
+// Your app's state: load it from wherever you keep preferences
+const [hourHeight, setHourHeight] = React.useState<number | null>(null);
+
+<CalendarProvider hourHeight={hourHeight} onHourHeightChange={setHourHeight}>
+  <WeekView />
+</CalendarProvider>;
+```
+
+## Custom event content
+
+<ComponentPreview name="custom-event-content-demo" />
+
+`renderEventContent` replaces what's drawn inside each event. The calendar keeps drawing the box (position, color, selection, drag and resize handles), so the renderer only returns the inside. `placement` says where the event is drawn and how much room it has: a timed block in the hour grid (`"time-grid"`, as tall as the event), a 24px bar in the all-day row (`"all-day"`), a 20px line in month view (`"month-item"` and `"month-bar"`), or a row as wide as the [agenda](/docs/components/agenda-view) (`"agenda"`). `isCompact` is true wherever there's room for one line only.
+
+To replace the details popover instead, see [Event Details](/docs/components/event-details#custom-details).
+
+## Typed events
+
+<ComponentPreview name="typed-events-demo" />
+
+Extend `CalendarEvent` with your own fields and pass your events in. The provider infers your type, and every callback and renderer gets it back. Read it in your own components with `useCalendar<Meeting>()`.
+
+Once your type has required fields, `createEvent` becomes required: the calendar can't fill `room` or `attendees` for a [new event](/docs/guides/creating-events#creating-events), so TypeScript asks you to.
+
+```tsx
+interface Meeting extends CalendarEvent {
+  room: string;
+  attendees: string[];
+}
+
+<CalendarProvider
+  defaultEvents={meetings}
+  createEvent={(range) => ({
+    id: crypto.randomUUID(),
+    title: "",
+    ...range,
+    room: "Atlas",
+    attendees: [],
+  })}
+>
+  <WeekView />
+</CalendarProvider>;
+```
+
+## Examples
+
+### Switches for the view settings
+
+The [view settings](#view-settings) and the week's first day are provider state. Change them from your own controls with `toggleWeekends()`, `toggleWeekNumbers()` and `setWeekStartsOn()`.
+
+<ComponentPreview name="view-settings-demo" height={600} />
+
+## See also
+
+- [`CalendarProvider`](/docs/reference/api#calendarprovider)
+- [`useCalendarConfig()`](/docs/reference/api#usecalendarconfig)
+- [`EventContentProps`](/docs/reference/api#eventcontentprops)

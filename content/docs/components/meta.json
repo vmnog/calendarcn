@@ -3,7 +3,6 @@
   "pages": [
     "calendar",
     "calendar-app",
-    "calendar-core",
     "day-week-view",
     "month-view",
     "agenda-view",

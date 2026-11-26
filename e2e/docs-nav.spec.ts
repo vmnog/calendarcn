@@ -17,7 +17,22 @@ const NAV_GROUPS = [
 ];
 
 /** Docs pages the sidebar links */
-const NAV_PAGE_COUNT = 27;
+const NAV_PAGE_COUNT = 32;
+
+/** The Guides group's pages, in order */
+const GUIDES = [
+  "Your events",
+  "Loading events",
+  "Creating events",
+  "Repeating events",
+  "Time zones",
+  "Meet with people",
+  "Share your availability",
+  "Undo and notices",
+  "Customise the look",
+  "Theming",
+  "Import and export",
+];
 
 /** Each old page and where it answers now */
 const MOVED_PAGES = [
@@ -58,6 +73,7 @@ const MOVED_PAGES = [
     from: "/docs/components/calendar-toaster",
     to: "/docs/guides/undo-and-notices",
   },
+  { from: "/docs/components/calendar-core", to: "/docs/reference/api" },
   { from: "/docs/loading-events", to: "/docs/guides/loading-events" },
   { from: "/docs/import-export", to: "/docs/guides/import-export" },
   {
@@ -98,5 +114,42 @@ for (const { from, to } of MOVED_PAGES) {
     expect(markdown.headers()["location"]).toBe(`${to.split("#")[0]}.md`);
 
     expect((await request.get(to)).status()).toBe(200);
+  });
+}
+
+test("the Guides group lists its pages in order", async ({ page }) => {
+  await page.goto("/docs");
+  const links = await page
+    .locator('#nd-sidebar a[href^="/docs"]')
+    .evaluateAll((anchors) =>
+      anchors.map((anchor) => anchor.textContent?.trim() ?? ""),
+    );
+  const start = links.indexOf(GUIDES[0]);
+
+  expect(links.slice(start, start + GUIDES.length)).toEqual(GUIDES);
+});
+
+/** Old Calendar Core anchors and where they end: a guide, or the API page itself */
+const CORE_ANCHORS = [
+  {
+    from: "/docs/components/calendar-core#creating-events",
+    to: "/docs/guides/creating-events#creating-events",
+  },
+  {
+    from: "/docs/components/calendar-core#time-zone",
+    to: "/docs/guides/time-zones#time-zone",
+  },
+  {
+    from: "/docs/components/calendar-core#calendarprovider",
+    to: "/docs/reference/api#calendarprovider",
+  },
+];
+
+for (const { from, to } of CORE_ANCHORS) {
+  test(`${from} ends on ${to}`, async ({ page }) => {
+    await page.goto(from);
+    await expect(page).toHaveURL(new RegExp(`${to}$`));
+    const [, anchor] = to.split("#");
+    await expect(page.locator(`[id="${anchor}"]`)).toBeVisible();
   });
 }
